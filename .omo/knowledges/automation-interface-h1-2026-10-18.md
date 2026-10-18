@@ -78,3 +78,18 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - Keep "compute the answer" apart from "send it" (`ProgramSync.receive`/`handle` vs `upload`/`request`): GameTests
   then drive the server side without a network connection.
 - zsh does not split `$ids` into words: `${=ids}` passes a list of GameTest ids.
+
+## G0: the design row 自动化页签
+
+- Render a Design canvas board: read `project/<Board>.dc.html` and `artifact-type/dc-runtime.js` from the canvas
+  (Artifact read with `paths`), save the runtime as `support.js` beside the boards, serve the folder
+  (`python3 -I -m http.server`) and run `google-chrome --headless=new --hide-scrollbars --window-size=1440,900
+  --virtual-time-budget=8000 --screenshot=<png> http://127.0.0.1:<port>/<Board>.dc.html`. Copy the PNGs to the
+  git-ignored `build/automation-design-check/`: the user cannot open the scratchpad.
+- Added for G0: `AutoScriptErrors` (problems: gutter mark, wavy underline, problem list, count in the program list,
+  Graph disabled, a refused push's answer on the status line), `AutoInstallCondition` (condition picker, run log, Run
+  now, devices shown by ID and position as built), `DeviceGui` (proposal: device alias like the interface's).
+  `AutoInstallEvent` updated to the events as built (no `ae2.` prefix, no network argument).
+- Index gaps the boards expose (H5 follow-ups for G1): no interfaces in `ProgramSync.Index` (the aside names them),
+  installation arguments are one repr string with no `args` request, devices are listed server-wide while the tab
+  lives in a domain's GUI, `FunctionInfo` drops `_` names (the client can parse the fetched text itself).
