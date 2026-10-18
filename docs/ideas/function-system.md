@@ -332,6 +332,10 @@ shares the capability with the consumer (off / on / re-export, with the GUI's li
 which resources pass while it is on. Two functions, provider before consumer, no statistics reads, no interface
 listing in the first version.
 
+`select` stays `ae2f.select` (user, 2026-10-18), after weighing `mc.select` and a top-level `select`: the
+interface is the Federation's block, `Block` serves `ae2` and `mc` alike, and the top level keeps only Python's own
+built-ins (no exception for game functions, no clash with a player's own `select`).
+
 **Round 3: `mc`** (assistant proposals, 2026-10-18, awaiting the user). Names mirror `ae2`; blocks come first, as
 in `ae2.import_from`.
 
