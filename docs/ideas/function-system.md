@@ -747,6 +747,32 @@ values, literals on ports, positions by node ID). What the new decisions add:
   parentheses. A function whose graph was not edited keeps its original text.
 - **Drafts.** A script with a syntax error does not switch (decided above); unconnected nodes stay as a graph draft.
 
+### The canvas as built (B5, 2026-10-18)
+
+`Canvas` is the graph view of one function, computed from the program tree; the program stays the only stored form,
+and `toFunction()` gives back exactly the function it came from (tested on every parser and runner sample). Node IDs
+are the program's node IDs.
+
+- Statements are nodes joined by exec links: `next`; `body` for `while` and `for`; `arm0`, `arm1`, ... and `else`
+  for an `if` chain, whose conditions are the ports `condition`, `condition1`, ... (elif arms are numbered).
+- A port holds a literal (a negative number counts as one), a variable chip, a wire from a value node, or nothing (an
+  optional part left out: a slice bound, a bare `return`). Calls, operators, field reads, indexing, slices and list
+  displays are value nodes, each feeding exactly one port, so script and graph stay one to one.
+- A call's namespace or file (`ae2.`, `iron_tools.`) is part of the node's title, not a port; a method's receiver is a
+  port. A call that is an action is marked.
+
+Assistant proposals (2026-10-18), open for the user:
+
+- **No empty required ports.** Edits never leave a hole: disconnecting a value puts the type's default literal (or the
+  variable it came from) back on the port, so every canvas is still a valid program. A hole would need a new kind of
+  expression in the program and a draft state everywhere.
+- **Actions inside expressions.** Since B4 an action may sit inside a larger expression (`n = ae2.amount(x) +
+  ae2.craft(y)`); the compiler orders it. On the canvas it is a value node in the action colour, not a node on the
+  exec chain, so the Blueprint-style split above applies to the drawing only.
+- **`x = call()` as one node** is a drawing rule on top of the canvas: an assignment whose value port is wired from a
+  call node is drawn merged; the model keeps the two nodes, so no edit needs a special case.
+- **IDs for new nodes** are fresh numbers above the file's highest, so existing IDs never change.
+
 ## Interaction interface (user decisions 2026-10-18)
 
 Programs act on the world through the standard library: moving items, sending and reading redstone, breaking and
