@@ -471,8 +471,8 @@ Decided (user, 2026-10-18):
   from AE2's ME Interface, which it does not resemble: it stores and moves nothing by itself. Registry ID
   `automation_interface`; in programs the type is `Interface` (unambiguous inside a script) (assistant proposals,
   accepted by the user 2026-10-18). The automatic ID is random, not a counter (user, 2026-10-18: a running number
-  looks off); proposal: six characters from a lowercase alphabet without look-alikes (no 0/o, 1/l/i), as in
-  `interface-k7m2qx`, drawn again on a clash with any ID on the server. Below, "interface" means this block.
+  looks off): six characters from a lowercase alphabet without look-alikes (no 0/o, 1/l/i), as in
+  `interface-k7m2qx`, drawn again on a clash with any ID on the server (proposal accepted 2026-10-18). Below, "interface" means this block.
 - **Identity and alias.** Every interface gets an ID automatically, so a program can always name it. Right-clicking it
   with a wrench turns it; any other right-click opens its GUI, where the player sets an alias.
 
@@ -555,7 +555,8 @@ Assistant proposals on how:
   or Import/Export Bus works, with no list of supported blocks.
 - **Sided machines.** The default side is the one facing the interface; choosing another side (a furnace's top for
   input, bottom for output) could be an optional argument of `select`. Open.
-- The user's sample writes IDs as `interface_a6dz` (four characters); either form works as a random ID.
+- ID format (user, 2026-10-18): the proposed one, `interface-k7m2qx` (six characters); the sample's
+  `interface_a6dz` was only an illustration.
 
 Open: the full list of library
 functions that take a location (with the standard library design); entity interactions (later).
