@@ -381,10 +381,15 @@ Sides and other mods' blocks (asked by the user, 2026-10-18). Assistant proposal
   none of those; we accept and document that. Worth reusing: simulate every insertion before doing any, and back
   off retries per target.
 
- (addon types work without new functions) instead of
+Points for the user: one `move` for every resource type (addon types work without new functions) instead of
 `move_item`/`move_fluid`; the side used on a sided machine is the face toward the interface, no side argument in
 the first version; redstone is emitted by the interface itself, so `set_redstone` takes the interface; messages to
 players left out of the first version.
+
+Decided (user, 2026-10-18): `side` is chosen in `ae2f.select`; FE functions are named `mc.fe(block) -> int` and
+`mc.move_fe(source, target, amount: int) -> bool`, since FE is only one kind of energy (other energies get their
+own names later); redstone is emitted by the interface (`mc.set_redstone(interface, level)`); no messages to players
+in the first version. With `mc.move` accepted earlier, round 3 is settled.
 
 
 Status (user, 2026-10-18): the standard library's design, including which functions take an interface as their
