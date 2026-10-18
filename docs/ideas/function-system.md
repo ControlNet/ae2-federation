@@ -327,6 +327,33 @@ ae2f.set_filter(provider, consumer, capability, mode: FilterMode, resources: lis
 Points for the user: argument order provider then consumer ("provider shares with consumer"); statistics reads
 (the dashboard's metrics) left out of the first version; no listing of interfaces.
 
+Decided (user, 2026-10-18, "this should be fine"): the round as drafted. `set_rule` sets whether the provider
+shares the capability with the consumer (off / on / re-export, with the GUI's linked changes); `set_filter` sets
+which resources pass while it is on. Two functions, provider before consumer, no statistics reads, no interface
+listing in the first version.
+
+**Round 3: `mc`** (assistant proposals, 2026-10-18, awaiting the user). Names mirror `ae2`; blocks come first, as
+in `ae2.import_from`.
+
+```python
+mc.move(source, target, resource, amount: int) -> bool  # any resource type: items, fluids, addon types
+mc.amount(block, resource) -> int  # amount in the block
+mc.storage(block) -> list[Stack]  # what the block holds
+mc.block(block) -> str  # its ID, e.g. "minecraft:chest"
+mc.redstone(block) -> int  # signal the block receives, 0-15
+mc.set_redstone(interface, level: int) -> bool  # the interface emits from its front face
+mc.break_block(block) -> bool  # drops go into the domain's storage; False if they do not fit
+mc.place_block(block, item) -> bool  # the item comes from the domain's storage
+mc.time() -> int  # game time in ticks
+mc.wait(ticks: int) -> None  # pause the run
+```
+
+Points for the user: one `move` for every resource type (addon types work without new functions) instead of
+`move_item`/`move_fluid`; the side used on a sided machine is the face toward the interface, no side argument in
+the first version; redstone is emitted by the interface itself, so `set_redstone` takes the interface; messages to
+players left out of the first version.
+
+
 Status (user, 2026-10-18): the standard library's design, including which functions take an interface as their
 location, needs a further dedicated look; the bottom layer goes on meanwhile with a catalogue interface in place of
 the real list.
