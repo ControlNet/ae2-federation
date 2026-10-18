@@ -114,18 +114,6 @@ final class CableBeamTest {
     }
 
     @Test
-    void aVolumeBeamsCoreSurroundsItsAxisRatherThanCrossingIt() {
-        var style = CableBeamStyle.fromLoad(.6);
-        var directions = new HashSet<Long>();
-        CableBeamMesh.emitLayer(3, 0, 0, 0, 1, 0, style, 0, false, true, (glow, x, y, z, r, g, b, a) -> {
-            double dy = y - .5, dz = z - .5;
-            if (Math.hypot(dy, dz) > 1e-4) directions.add(Math.round(Math.toDegrees(Math.atan2(dz, dy))) % 360);
-        });
-        // Crossed ribbons reach out in four directions only; a tube's eight sides go all round.
-        assertEquals(8, directions.size(), directions.toString());
-    }
-
-    @Test
     void passEmissionIsEquivalentAndDistanceLodReducesWork() {
         var style = CableBeamStyle.fromLoad(.6);
         List<Boolean> all = new ArrayList<>(), passes = new ArrayList<>();

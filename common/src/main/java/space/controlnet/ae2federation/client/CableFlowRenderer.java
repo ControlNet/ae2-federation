@@ -112,10 +112,14 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         // A 2x2 bundle draws one beam down its middle, over the box its corner cell names.
         var bundle = cable.bundleBeam();
         if (bundle != null) {
-            if (bundle.length() > 0) renderBundle(cable, bundle, tick, partialTick, style, detail, stack, buffers);
+            if (bundle.length() > 0) {
+                emitBundle(stack, buffers, bundle, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style,
+                        detail);
+                endSceneBatch(level, buffers);
+            }
             return;
         }
-        emitCell(stack, buffers, mask, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail, false);
+        emitCell(stack, buffers, mask, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail);
         endSceneBatch(level, buffers);
     }
 
@@ -124,7 +128,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
      * places and stretches its geometry.
      */
     static void emitCell(PoseStack stack, MultiBufferSource buffers, int mask, int x, int y, int z, long tick,
-            float partialTick, CableBeamStyle style, int detail, boolean volume) {
+            float partialTick, CableBeamStyle style, int detail) {
         var pose = stack.last();
         var matrix = pose.pose();
         var normal = pose.transformNormal(0, 1, 0, new Vector3f());
@@ -132,7 +136,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         // Glow first: the carrier then writes depth over it without fighting the coplanar shoulders.
         for (int pass = 0; pass < 2; pass++) {
             var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
-            float[] layer = FRAME.layer(mask, x, y, z, tick, partialTick, style, detail, pass == 0, volume);
+            float[] layer = FRAME.layer(mask, x, y, z, tick, partialTick, style, detail, pass == 0);
             // The whole vertex in one call, which a block-format BufferBuilder writes straight to memory; the same
             // values the chained calls in draw() would write.
             for (int i = 0; i < layer.length; i += CableBeamFrame.STRIDE) {
@@ -146,12 +150,12 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
     }
 
     /**
-     * The 2x2 beam, in blocks from the corner cell. Its sheaths and halo fade toward their outlines as they turn from
-     * the eye: the cached mesh carries normals, and the fade is taken here per vertex, since it depends on the view.
+     * The 2x2 beam, in blocks from the corner cell at {@code x, y, z}, into the world's batched buffers; the pose places
+     * and stretches it. Its sheaths and halo fade toward their outlines as they turn from the eye: the cached mesh
+     * carries normals, and the fade is taken here per vertex, since it depends on the view.
      */
-    private static void renderBundle(FederationCableBlockEntity cable, BundleBeam bundle, long tick, float partialTick,
-            CableBeamStyle style, int detail, PoseStack stack, MultiBufferSource buffers) {
-        var pos = cable.getBlockPos();
+    static void emitBundle(PoseStack stack, MultiBufferSource buffers, BundleBeam bundle, int x, int y, int z,
+            long tick, float partialTick, CableBeamStyle style, int detail) {
         var pose = stack.last();
         var matrix = pose.pose();
         var normal = pose.transformNormal(0, 1, 0, new Vector3f());
@@ -165,8 +169,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         var facing = new Vector3f();
         for (int pass = 0; pass < 2; pass++) {
             var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
-            float[] layer = FRAME.bundle(bundle, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail,
-                    pass == 0);
+            float[] layer = FRAME.bundle(bundle, x, y, z, tick, partialTick, style, detail, pass == 0);
             for (int i = 0; i < layer.length; i += CableBeamFrame.BUNDLE_STRIDE) {
                 float alpha = layer[i + 6];
                 if (pass == 0) {
@@ -184,7 +187,6 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
                         LightTexture.FULL_BRIGHT, normal.x(), normal.y(), normal.z());
             }
         }
-        endSceneBatch(cable.getLevel(), buffers);
     }
 
     /**

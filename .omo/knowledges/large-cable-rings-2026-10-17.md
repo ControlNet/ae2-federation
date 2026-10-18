@@ -18,8 +18,8 @@ deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The
   1 along; at a joint the low layer draws a 2x2x2 box (uniform scale) with the branch side in its mask, so the
   junction sits on the branch's beam. `CableFlowRenderer.getRenderBoundingBox` widens culling to that box.
 
-- Beam look, superseded: first an octagonal volume tube (`CableBeamMesh` `volume` flag); since branch `beam-render`
-  the R plasma beam in `client/BundleBeamMesh` (see "Bigger middle beam" below). Ordinary cables keep the crossed
+- Beam look, superseded: first an octagonal volume tube (`CableBeamMesh` `volume` flag, removed 2026-10-18); since
+  branch `beam-render` the R plasma beam in `client/BundleBeamMesh` (see "Bigger middle beam" below). Ordinary cables keep the crossed
   ribbons.
 
 ## Pitfalls found
@@ -84,11 +84,12 @@ deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The
   reusing `CableBeamMesh.build` centerlines scaled by the box (no PoseStack stretch any more, so pulses and lobes keep
   their world phase through 2-layer joints). Core 8 sides (straight arms merged to one segment, capped inside the
   box), 3 sheaths 16/12/0 sides at 16/8/2 samples per block (near/medium/distant), halo 8 sides. `CableBeamFrame`
-  caches bundle layers with normals (`BUNDLE_STRIDE` 10); `CableFlowRenderer.renderBundle` fades glow alpha by
+  caches bundle layers with normals (`BUNDLE_STRIDE` 10); `CableFlowRenderer.emitBundle` fades glow alpha by
   `BundleBeamMesh.fade` = 2 (n.v)^2 in eye space (modelView x pose; orthographic projections, m23 == 0, look down -Z).
-  In-shell fog is not drawn for the 2x2 beam (R has its halo instead). The `volume` tube stays in `CableBeamMesh`:
-  dev's Beam Former draws pairs wider than 1x1 with it (`CableFlowRenderer.emitCell(..., volume)`); whether those
-  beams take R too is the owner's call.
+  In-shell fog is not drawn for the 2x2 beam (R has its halo instead). Beam Former pairs wider than 1x1 draw R too
+  (owner, 2026-10-18): `BeamFormerRenderer` passes `BundleBeam(axis, through, 1)` per block step and scales the
+  two-block box by side/2, so a 3x3 beam is R at 1.5x across; the `volume` tube was then unused and removed.
+  In-game check: `build/beam-former-plasma-check/before-after.png`.
 - Verified in a real world (dedicated server, perspective camera): the glow fades evenly above and below the beam
   from level, above and below views. In a GuideME scene the run looks paler above than below; that is the shell's
   glass faces tinting the halves differently (the old beam shows the same split), not the fade: GuideME's camera is

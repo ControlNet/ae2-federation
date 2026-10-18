@@ -56,25 +56,16 @@ public final class CableBeamMesh {
 
     public static void emit(int mask, int x, int y, int z, long tick, float partialTick,
             CableBeamStyle style, int detail, VertexSink sink) {
-        emit(mask, x, y, z, tick, partialTick, style, detail, -1, false, sink);
+        emit(mask, x, y, z, tick, partialTick, style, detail, -1, sink);
     }
 
     public static void emitLayer(int mask, int x, int y, int z, long tick, float partialTick,
             CableBeamStyle style, int detail, boolean glow, VertexSink sink) {
-        emitLayer(mask, x, y, z, tick, partialTick, style, detail, glow, false, sink);
-    }
-
-    /**
-     * As {@link #emitLayer(int, int, int, int, long, float, CableBeamStyle, int, boolean, VertexSink)}; a
-     * {@code volume} beam is a solid tube of light, its glow nested tubes around it, rather than two crossed ribbons.
-     */
-    public static void emitLayer(int mask, int x, int y, int z, long tick, float partialTick,
-            CableBeamStyle style, int detail, boolean glow, boolean volume, VertexSink sink) {
-        emit(mask, x, y, z, tick, partialTick, style, detail, glow ? 1 : 0, volume, sink);
+        emit(mask, x, y, z, tick, partialTick, style, detail, glow ? 1 : 0, sink);
     }
 
     private static void emit(int mask, int x, int y, int z, long tick, float partialTick,
-            CableBeamStyle style, int detail, int layer, boolean volume, VertexSink sink) {
+            CableBeamStyle style, int detail, int layer, VertexSink sink) {
         if (mask < 0 || mask > 63 || detail < 0 || detail > 2) throw new IllegalArgumentException("Invalid beam geometry");
         float strength = style.strength(tick, partialTick);
         float breath = style.breath(tick, partialTick);
@@ -96,11 +87,6 @@ public final class CableBeamMesh {
                 var b = samples[j];
                 float ra = core[i];
                 float rb = core[j];
-                if (volume) {
-                    tubes(sink, a, b, layer, detail, red, strength, (float) style.load(), ra, rb, shoulder[i],
-                            shoulder[j], middle[i], middle[j], style.haloRadius() * breath);
-                    continue;
-                }
                 for (int plane = 0; plane < 2; plane++) {
                     for (int sign : SIGNS) {
                         // Full-bright carrier, pale at its centre and saturated at its rim, so a thick core reads as light.
@@ -123,75 +109,8 @@ public final class CableBeamMesh {
                     }
                 }
             }
-            if (volume && layer != 1) {
-                // A tube is hollow: close it where the beam stops inside the block, as at a closed end.
-                cap(sink, samples[0], core[0], red, strength);
-                cap(sink, samples[samples.length - 1], core[samples.length - 1], red, strength);
-            }
         }
         if (layer != 0) emitFog(mask, x, y, z, tick, partialTick, style, detail, strength, sink);
-    }
-
-    /** Sides of a volume beam's tubes. */
-    private static final int TUBE_SIDES = 8;
-    private static final float[] TUBE_COS = new float[TUBE_SIDES + 1];
-    private static final float[] TUBE_SIN = new float[TUBE_SIDES + 1];
-
-    static {
-        for (int k = 0; k <= TUBE_SIDES; k++) {
-            TUBE_COS[k] = (float) Math.cos(Math.TAU * k / TUBE_SIDES);
-            TUBE_SIN[k] = (float) Math.sin(Math.TAU * k / TUBE_SIDES);
-        }
-    }
-
-    /**
-     * One segment of a volume beam: a pale full-bright tube that writes depth, and around it three additive tubes,
-     * each fainter and wider, so the light thickens toward the middle of the beam however it is seen.
-     */
-    private static void tubes(VertexSink sink, Sample a, Sample b, int layer, int detail, boolean red,
-            float strength, float load, float coreA, float coreB, float shoulderA, float shoulderB, float middleA,
-            float middleB, float halo) {
-        if (layer != 1) tube(sink, a, b, coreA, coreB, false, red ? 1 : .55f, red ? .62f : .95f, red ? .55f : 1,
-                Math.min(1, strength));
-        if (detail == 2 || layer == 0) return;
-        // Every tube is seen through twice, front and back, so each carries half a ribbon's light.
-        float opacity = (.12f + .88f * Math.min(load, 1)) * strength;
-        tube(sink, a, b, shoulderA, shoulderB, true, red ? 1 : .14f, red ? .045f : .85f, red ? .015f : 1,
-                .35f * opacity);
-        tube(sink, a, b, middleA, middleB, true, red ? 1 : .08f, red ? .025f : .7f, red ? .012f : 1,
-                .30f * opacity);
-        tube(sink, a, b, halo, halo, true, red ? 1 : .15f, red ? .025f : .68f, red ? .012f : 1, .10f * opacity);
-    }
-
-    private static void tube(VertexSink sink, Sample a, Sample b, float radiusA, float radiusB, boolean glow,
-            float r, float g, float blue, float alpha) {
-        for (int k = 0; k < TUBE_SIDES; k++) {
-            around(sink, a, radiusA, k, glow, r, g, blue, alpha);
-            around(sink, b, radiusB, k, glow, r, g, blue, alpha);
-            around(sink, b, radiusB, k + 1, glow, r, g, blue, alpha);
-            around(sink, a, radiusA, k + 1, glow, r, g, blue, alpha);
-        }
-    }
-
-    /** The core tube's end, as quads from its centre, unless the beam runs on through the block's face there. */
-    private static void cap(VertexSink sink, Sample end, float radius, boolean red, float strength) {
-        var p = end.point;
-        if (p.x == 0 || p.x == 1 || p.y == 0 || p.y == 1 || p.z == 0 || p.z == 1) return;
-        float r = red ? 1 : .55f, g = red ? .62f : .95f, b = red ? .55f : 1, alpha = Math.min(1, strength);
-        for (int k = 0; k < TUBE_SIDES; k += 2) {
-            around(sink, end, 0, k, false, r, g, b, alpha);
-            around(sink, end, radius, k, false, r, g, b, alpha);
-            around(sink, end, radius, k + 1, false, r, g, b, alpha);
-            around(sink, end, radius, k + 2, false, r, g, b, alpha);
-        }
-    }
-
-    private static void around(VertexSink out, Sample sample, float radius, int k, boolean glow,
-            float r, float g, float b, float alpha) {
-        var p = sample.point;
-        float c = TUBE_COS[k] * radius, s = TUBE_SIN[k] * radius;
-        out.vertex(glow, p.x + c * sample.nx + s * sample.bx, p.y + c * sample.ny + s * sample.by,
-                p.z + c * sample.nz + s * sample.bz, r, g, b, Math.min(1, alpha));
     }
 
     /**
