@@ -126,6 +126,11 @@ public final class Runner {
                 error.at(node.source());
                 failure = new Failure(frame.graph.file(), error.node(), error);
                 return status = Status.FAILED;
+            } catch (RuntimeException bug) {
+                // A fault of the runner or the host must stop this run, never the server's tick.
+                var error = new RunError("SystemError", "internal error: " + bug).at(node.source());
+                failure = new Failure(frame.graph.file(), error.node(), error);
+                return status = Status.FAILED;
             }
         }
         return status = Status.RUNNING;

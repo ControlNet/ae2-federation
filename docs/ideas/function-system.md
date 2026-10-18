@@ -137,8 +137,9 @@ Assistant proposals, built so the checker is complete; the user may change any o
 
 A checked program is compiled to a graph per function, and the graph runs on the server tick; Python code is never
 interpreted directly. Following Python (no decision needed): operators, conversions, built-ins and methods give
-CPython 3.12's results and error messages (380 expressions are compared against CPython in `EvaluatorTest`), lists
-and records are shared by reference, `+=` changes a list in place, floats print as Python prints them.
+CPython 3.12's results and error messages (382 expressions are compared against CPython in `EvaluatorTest`, and 24
+whole programs with their library calls in `RunnerTest`), lists and records are shared by reference, `+=` changes a
+list in place, floats print as Python prints them.
 
 Assistant proposals; the user may change any of them:
 

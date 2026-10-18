@@ -521,6 +521,34 @@ final class RunnerTest {
     }
 
     @Test
+    void aBoolArgumentReachesTheHostAsAnInt() {
+        var host = new FakeHost();
+        var runner = startMain("""
+                def main() -> Block:
+                    on = True
+                    mc.wait(on)
+                    return ae2f.select("north_gate", on)
+                """, host, null);
+        assertEquals(Runner.Status.WAITING, runner.tick(1000));
+        assertEquals(Runner.Status.DONE, runner.tick(1000), "wait(True) pauses one tick");
+        assertEquals(List.of("ae2f.select('north_gate', 1, None)"), host.log);
+    }
+
+    @Test
+    void aFaultOutsideThePythonModelFailsTheRunInsteadOfTheTick() {
+        Evaluator.Host broken = (namespace, name, args) -> {
+            throw new IllegalStateException("host fault");
+        };
+        var runner = start(workspace("""
+                def main() -> int:
+                    return ae2.amount("minecraft:water")
+                """), broken, null, "main", List.of());
+        assertEquals(Runner.Status.FAILED, runner.tick(1000));
+        assertEquals("SystemError: internal error: java.lang.IllegalStateException: host fault",
+                runner.failure().error().toString());
+    }
+
+    @Test
     void theBudgetBoundsATickAndAnEndlessLoopNeverBlocksIt() {
         var runner = startMain("""
                 def main() -> int:

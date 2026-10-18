@@ -224,6 +224,12 @@ public final class Evaluator {
         var bound = Ops.bind(signature, args, keywords);
         for (int i = 0; i < bound.length; i++) {
             var param = signature.args().get(i);
+            // The checker lets a bool stand for an int and an int for a float; the host gets the declared kind.
+            if (Types.INT.equals(param.type()) && bound[i] instanceof Boolean b) {
+                bound[i] = b ? 1L : 0L;
+            } else if (Types.FLOAT.equals(param.type()) && (bound[i] instanceof Long || bound[i] instanceof Boolean)) {
+                bound[i] = bound[i] instanceof Long l ? (double) l : (Boolean) bound[i] ? 1.0 : 0.0;
+            }
             var value = bound[i];
             if (value == null && !"None".equals(param.defaultValue())) {
                 throw Ops.typeError("argument '" + param.name() + "' of " + display + " must be " + param.type()
