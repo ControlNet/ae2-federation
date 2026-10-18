@@ -120,12 +120,16 @@ is replaced step by step; what it proved (round-trip, identity reconciliation, b
 
 | Step | Content | Tests prove |
 |---|---|---|
-| B1 | Python-subset lexer (indentation, comments), parser and printer to a new IR: `def` with typed parameters and result, docstrings, own-line comments, assignment with optional annotation, `if/elif/else`, `while`, `for x in xs`, `break`, `continue`, `return`, call statements; literals (`int`, `float`, `str`, `True`/`False`, `None`, lists), names, `ns.fn` and `file.fn` calls, unary `not`/`-`, `+ - * / // %`, comparisons, `and`/`or`; anything else is a clear "not supported" error | Script -> IR -> script is the identity; every unsupported construct names itself and its line |
+| B1 (done) | Python-subset lexer (indentation, comments), parser and printer to a new IR: `def` with typed parameters and result, docstrings, own-line comments, assignment with optional annotation, `if/elif/else`, `while`, `for x in xs`, `break`, `continue`, `return`, call statements; literals (`int`, `float`, `str`, `True`/`False`, `None`, lists), names, `ns.fn` and `file.fn` calls, unary `not`/`-`, `+ - * / // %`, comparisons, `and`/`or`; anything else is a clear "not supported" error | Script -> IR -> script is the identity; every unsupported construct names itself and its line |
 | B2 | Error-tolerant parsing and completion context: the cursor's scope, expected type and candidates | Half-typed lines still give the right candidates |
 | B3 | Types and checks: `int`/`float` widening, `str`, `bool`, `None`, `Item`/`Fluid`/`Resource` from string literals in typed places (registry catalogue as an interface), `list[T]`, definite assignment, calls across files; capability inference over the call graph | One test per rule, problems point at nodes |
 | B4 | Interpreter as a coroutine: pure steps until the next effectful call, hand it to the host, resume next tick; per-tick step budget | At most one effect per tick; budget carries over; `while True` cannot freeze |
 | B5 | Graph view on the new IR: exec chain, variable chips, `x = call()` merged nodes, reconciler and layout | IR -> graph -> IR identity; layout survives script edits |
 | B6 | Built-in descriptors (`ae2`, `ae2f`, `mc`; capabilities, docs, examples) and `.ae2f` storage with a layout sidecar | Files round-trip; outside edits keep layout through the reconciler |
+
+B1 done 2026-10-18: `Lexer`, `ScriptParser`, `ScriptPrinter` and the IR (`Program`, `FunctionDef`, `Stmt`, `Expr`,
+...) in `common/.../function/`; `ScriptTest` (69 cases with the parameterised ones). The Phase 0 prototype classes
+were removed first (7496a7d0); git history keeps them for B3-B5 to reuse.
 
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
 

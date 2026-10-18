@@ -1,0 +1,343 @@
+package space.controlnet.ae2federation.function;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Splits a script into tokens the Python way: indentation becomes INDENT and DEDENT, a line break inside brackets is
+ * no line break, and whole-line comments come out as COMMENT tokens after the next line's indentation, so they sit
+ * right before the statement they precede. Errors are recorded and lexing goes on; a broken token becomes ERROR.
+ */
+final class Lexer {
+    enum Kind { NAME, INT, FLOAT, STRING, OP, NEWLINE, INDENT, DEDENT, COMMENT, END_COMMENT, ERROR, EOF }
+
+    /** {@code value}: the decoded string, a {@code Long} or {@code Double}, the comment text, or the error message. */
+    record Token(Kind kind, String text, Object value, int line, int column) {
+        boolean is(Kind kind, String text) {
+            return this.kind == kind && this.text.equals(text);
+        }
+    }
+
+    private static final List<String> OPERATORS = List.of(
+            "**=", "//=", ">>=", "<<=", "...",
+            "->", ":=", "==", "!=", "<=", ">=", "//", "**", "<<", ">>",
+            "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "@=",
+            "+", "-", "*", "/", "%", "<", ">", "=", "(", ")", "[", "]", "{", "}", ",", ":", ".", ";", "@", "&", "|",
+            "^", "~");
+    private static final Set<String> STRING_PREFIXES = Set.of("f", "r", "b", "u", "rb", "br", "fr", "rf");
+
+    private final String src;
+    private final List<ScriptError> errors;
+    private final List<Token> tokens = new ArrayList<>();
+    private final List<Token> comments = new ArrayList<>();
+    private final List<Integer> indents = new ArrayList<>(List.of(0));
+    private int pos;
+    private int line = 1;
+    private int lineStart;
+    private int depth;
+
+    private Lexer(String src, List<ScriptError> errors) {
+        this.src = src;
+        this.errors = errors;
+    }
+
+    static List<Token> lex(String src, List<ScriptError> errors) {
+        var lexer = new Lexer(src, errors);
+        lexer.run();
+        return lexer.tokens;
+    }
+
+    private void run() {
+        boolean atLineStart = true;
+        while (pos < src.length()) {
+            if (atLineStart && depth == 0) {
+                if (!indentation()) {
+                    continue;
+                }
+                atLineStart = false;
+            }
+            char c = src.charAt(pos);
+            if (c == '\n' || c == '\r') {
+                if (depth == 0) {
+                    add(Kind.NEWLINE, "\n", null, pos);
+                    atLineStart = true;
+                }
+                newline();
+            } else if (c == ' ' || c == '\t') {
+                pos++;
+            } else if (c == '#') {
+                int start = pos;
+                String text = restOfLine();
+                if (depth > 0) {
+                    error(start, "comments inside brackets are not supported");
+                } else {
+                    add(Kind.END_COMMENT, "#" + text, text, start);
+                }
+            } else if (c == '\\') {
+                error(pos, "line continuation with '\\' is not supported; break the line inside brackets instead");
+                pos++;
+                if (pos < src.length() && (src.charAt(pos) == '\n' || src.charAt(pos) == '\r')) {
+                    newline();
+                }
+            } else if (Character.isLetter(c) || c == '_') {
+                name();
+            } else if (Character.isDigit(c) || c == '.' && pos + 1 < src.length() && Character.isDigit(src.charAt(pos + 1))) {
+                number();
+            } else if (c == '"' || c == '\'') {
+                string(pos);
+            } else {
+                operator();
+            }
+        }
+        if (depth > 0) {
+            error(pos, "a bracket is never closed");
+        }
+        if (!tokens.isEmpty() && tokens.get(tokens.size() - 1).kind() != Kind.NEWLINE
+                && tokens.get(tokens.size() - 1).kind() != Kind.COMMENT) {
+            add(Kind.NEWLINE, "\n", null, pos);
+        }
+        while (indents.size() > 1) {
+            indents.remove(indents.size() - 1);
+            add(Kind.DEDENT, "", null, pos);
+        }
+        tokens.addAll(comments);
+        add(Kind.EOF, "", null, pos);
+    }
+
+    /** At a line start: false for a blank or comment-only line (consumed), else emits the indentation tokens. */
+    private boolean indentation() {
+        int p = pos;
+        int width = 0;
+        boolean tab = false;
+        while (p < src.length() && (src.charAt(p) == ' ' || src.charAt(p) == '\t')) {
+            if (src.charAt(p) == '\t') {
+                tab = true;
+                width = (width / 8 + 1) * 8;
+            } else {
+                width++;
+            }
+            p++;
+        }
+        if (p >= src.length() || src.charAt(p) == '\n' || src.charAt(p) == '\r') {
+            pos = p;
+            if (pos < src.length()) {
+                newline();
+            }
+            return false;
+        }
+        if (src.charAt(p) == '#') {
+            pos = p;
+            int start = pos;
+            String text = restOfLine();
+            comments.add(new Token(Kind.COMMENT, "#" + text, text, line, start - lineStart + 1));
+            if (pos < src.length()) {
+                newline();
+            }
+            return false;
+        }
+        if (tab) {
+            error(pos, "indent with spaces, not tabs");
+        }
+        pos = p;
+        int top = indents.get(indents.size() - 1);
+        if (width > top) {
+            indents.add(width);
+            add(Kind.INDENT, "", null, pos);
+        } else {
+            while (width < indents.get(indents.size() - 1)) {
+                indents.remove(indents.size() - 1);
+                add(Kind.DEDENT, "", null, pos);
+            }
+            if (width != indents.get(indents.size() - 1)) {
+                error(pos, "this indentation does not match any outer block");
+            }
+        }
+        tokens.addAll(comments);
+        comments.clear();
+        return true;
+    }
+
+    private void name() {
+        int start = pos;
+        while (pos < src.length() && (Character.isLetterOrDigit(src.charAt(pos)) || src.charAt(pos) == '_')) {
+            pos++;
+        }
+        String text = src.substring(start, pos);
+        if (pos < src.length() && (src.charAt(pos) == '"' || src.charAt(pos) == '\'')
+                && STRING_PREFIXES.contains(text.toLowerCase())) {
+            int before = errors.size();
+            error(start, "string prefixes such as f\"...\" are not supported");
+            string(start);
+            tokens.set(tokens.size() - 1, errorToken(start, errors.get(before).message()));
+            return;
+        }
+        add(Kind.NAME, text, null, start);
+    }
+
+    private void number() {
+        int start = pos;
+        if (src.startsWith("0x", pos) || src.startsWith("0X", pos) || src.startsWith("0o", pos)
+                || src.startsWith("0O", pos) || src.startsWith("0b", pos) || src.startsWith("0B", pos)) {
+            pos += 2;
+            skipWord();
+            fail(start, "hexadecimal, octal and binary numbers are not supported");
+            return;
+        }
+        boolean isFloat = false;
+        digits();
+        if (pos < src.length() && src.charAt(pos) == '.') {
+            isFloat = true;
+            pos++;
+            digits();
+        }
+        if (pos < src.length() && (src.charAt(pos) == 'e' || src.charAt(pos) == 'E')) {
+            isFloat = true;
+            pos++;
+            if (pos < src.length() && (src.charAt(pos) == '+' || src.charAt(pos) == '-')) {
+                pos++;
+            }
+            digits();
+        }
+        if (pos < src.length() && src.charAt(pos) == '_') {
+            skipWord();
+            fail(start, "underscores in numbers are not supported");
+            return;
+        }
+        if (pos < src.length() && (src.charAt(pos) == 'j' || src.charAt(pos) == 'J')) {
+            pos++;
+            fail(start, "complex numbers are not supported");
+            return;
+        }
+        String text = src.substring(start, pos);
+        if (isFloat) {
+            add(Kind.FLOAT, text, Double.parseDouble(text), start);
+        } else if (text.length() > 1 && text.charAt(0) == '0' && !text.chars().allMatch(ch -> ch == '0')) {
+            fail(start, "leading zeros in numbers are not allowed");
+        } else {
+            try {
+                add(Kind.INT, text, Long.parseLong(text), start);
+            } catch (NumberFormatException e) {
+                fail(start, "integers are 64-bit; this one is too large");
+            }
+        }
+    }
+
+    private void digits() {
+        while (pos < src.length() && Character.isDigit(src.charAt(pos))) {
+            pos++;
+        }
+    }
+
+    private void skipWord() {
+        while (pos < src.length() && (Character.isLetterOrDigit(src.charAt(pos)) || src.charAt(pos) == '_'
+                || src.charAt(pos) == '.')) {
+            pos++;
+        }
+    }
+
+    /** A string starting at the quote under {@code pos}; {@code start} is where its token begins. */
+    private void string(int start) {
+        char quote = src.charAt(pos);
+        boolean triple = src.startsWith(String.valueOf(quote).repeat(3), pos);
+        int startLine = line;
+        int startColumn = start - lineStart + 1;
+        pos += triple ? 3 : 1;
+        var value = new StringBuilder();
+        String error = null;
+        while (true) {
+            if (pos >= src.length() || !triple && (src.charAt(pos) == '\n' || src.charAt(pos) == '\r')) {
+                error = "this string is never closed";
+                break;
+            }
+            char c = src.charAt(pos);
+            if (triple ? src.startsWith(String.valueOf(quote).repeat(3), pos) : c == quote) {
+                pos += triple ? 3 : 1;
+                break;
+            }
+            if (c == '\\' && pos + 1 < src.length()) {
+                char next = src.charAt(pos + 1);
+                switch (next) {
+                    case '\\', '\'', '"' -> value.append(next);
+                    case 'n' -> value.append('\n');
+                    case 't' -> value.append('\t');
+                    case 'r' -> value.append('\r');
+                    default -> {
+                        if (error == null) {
+                            error = "escape \\" + next + " is not supported (use \\\\ \\' \\\" \\n \\t or \\r)";
+                        }
+                    }
+                }
+                pos += 2;
+                continue;
+            }
+            if (c == '\n') {
+                line++;
+                lineStart = pos + 1;
+            }
+            value.append(c);
+            pos++;
+        }
+        String text = src.substring(start, pos);
+        if (error != null) {
+            errors.add(new ScriptError(startLine, startColumn, error));
+            tokens.add(new Token(Kind.ERROR, text, error, startLine, startColumn));
+        } else {
+            tokens.add(new Token(Kind.STRING, text, value.toString(), startLine, startColumn));
+        }
+    }
+
+    private void operator() {
+        for (var op : OPERATORS) {
+            if (src.startsWith(op, pos)) {
+                switch (op) {
+                    case "(", "[", "{" -> depth++;
+                    case ")", "]", "}" -> depth = Math.max(0, depth - 1);
+                    default -> {
+                    }
+                }
+                add(Kind.OP, op, null, pos);
+                pos += op.length();
+                return;
+            }
+        }
+        int start = pos;
+        pos++;
+        fail(start, "unexpected character '" + src.charAt(start) + "'");
+    }
+
+    private String restOfLine() {
+        int start = pos + 1;
+        while (pos < src.length() && src.charAt(pos) != '\n' && src.charAt(pos) != '\r') {
+            pos++;
+        }
+        return src.substring(Math.min(start, pos), pos);
+    }
+
+    private void newline() {
+        if (src.charAt(pos) == '\r' && pos + 1 < src.length() && src.charAt(pos + 1) == '\n') {
+            pos++;
+        }
+        pos++;
+        line++;
+        lineStart = pos;
+    }
+
+    private void add(Kind kind, String text, Object value, int at) {
+        tokens.add(new Token(kind, text, value, line, at - lineStart + 1));
+    }
+
+    private void error(int at, String message) {
+        errors.add(new ScriptError(line, at - lineStart + 1, message));
+    }
+
+    /** Records the error and leaves an ERROR token covering {@code start..pos}. */
+    private void fail(int start, String message) {
+        error(start, message);
+        tokens.add(errorToken(start, message));
+    }
+
+    private Token errorToken(int start, String message) {
+        return new Token(Kind.ERROR, src.substring(start, pos), message, line, start - lineStart + 1);
+    }
+}

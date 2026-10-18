@@ -35,6 +35,33 @@ so the Phase 0 prototype's static step bound goes; every run needs a step budget
 continue over several ticks, so "wait until stock reaches N" is an ordinary loop, is one option to discuss with the
 computing device's CU.
 
+### The subset as built (B1, assistant choices 2026-10-18)
+
+Choices made while writing the parser, where the user decisions left them open:
+
+- **In:** `def` with typed parameters and result; docstrings; `if`/`elif`/`else`, `while`, `for x in xs`, `break`,
+  `continue`, `return`, `pass`; assignment, annotated assignment and augmented assignment (`+=`, `-=`, `*=`, `/=`,
+  `//=`, `%=`); call statements; `int`, `float`, `str` (escapes `\\ \' \" \n \t \r`), `True`, `False`, `None`, lists;
+  calls as `f(...)` or `ns.f(...)`; `not`, unary `-`, `+ - * / // %`, comparisons, `and`, `or`; a line break inside
+  brackets, so a long call can wrap.
+- **Comments are kept:** a whole-line comment belongs to the next statement, `elif`, `else` or `def`; a comment at the
+  end of a line belongs to that line. Both survive a trip through the graph.
+- **Out, each with an error naming it at its line:** imports, classes, decorators, `async`, nested functions,
+  default values, `*args`, union and string type hints, `try`, `with`, `global`, `assert`, `raise`, `del`, `yield`,
+  `lambda`, `else` after a loop, one-line bodies (`if x: f()`), semicolons, tuples, chained assignment and
+  comparisons, conditional expressions, `in` outside `for`, `is`, `**` and bitwise operators, unary `+`,
+  comprehensions, dicts and sets, indexing, keyword arguments, attribute access other than `ns.f(...)`, `:=`, `...`,
+  adjacent strings, string prefixes (`f"..."`), hexadecimal, `1_000`, complex numbers, other escapes, `\`
+  continuation, tabs. Every rejected example is still valid Python (a test checks with CPython's parser), so the
+  message says "not supported", never "syntax error". Indexing and keyword arguments are the likeliest to be added.
+- **A missing type hint is a parse error** naming the parameter or function.
+- **Errors do not stop parsing:** a failed statement or function is skipped, the rest parses, and every error is
+  listed (one per line). The completion engine can work on the part that parsed.
+- **The script text is what is saved.** Printing happens only when the graph changes a program; the printed form is
+  canonical: four spaces, one blank line between functions (shorter than PEP 8's two, for the small editor), double
+  quotes, parentheses only where needed, an empty body as `pass`. A comment that ended an indented block moves to the
+  next line when printed.
+
 ## Static types everywhere (user decision 2026-10-18)
 
 Functions are statically typed: every parameter has a type hint and every function a return type hint (`-> None`
