@@ -144,15 +144,22 @@ Python's names and meaning (`str()`, `int()`, `range()` ...); everything about t
 `mc`. Assistant proposals, accepted by the user (2026-10-18):
 
 - A first set: `int`, `float`, `str`, `bool` (conversions), `range` (1 to 3 arguments), `len`, `abs`, `min`, `max`,
-  `sum`, `round`, `any`, `all`, `print`. Left out while the subset has no tuples: `enumerate`, `zip`, `dict`;
+  `sum`, `round`, `any`, `all`. `print` is left out for now (user, 2026-10-18): the graph's dry run shows values at
+  each node instead (below). Left out while the subset has no tuples: `enumerate`, `zip`, `dict`;
   `isinstance` and `type` are not needed with static types.
 - Results behave exactly as in Python: `int(3.7)` is 3, `round(2.5)` is 2, `-7 // 2` is -4, `-7 % 2` is 1, and a
   failing conversion (`int("abc")`) stops the run with Python's message. B4 can test this against CPython, as B1 tests
   syntax against CPython's parser.
 - Typed for the checker: `range(...)` is iterable as `list[int]` but produced lazily, so `range(10**9)` costs nothing
   until used; `min`/`max`/`sum` take a list or two numbers.
-- `print` writes to the installation's run log in the Automation tab (for debugging); it acts on nothing, so it is
-  not an effect and takes no tick.
+- **Dry run in the graph** (user, 2026-10-18): in graph mode the player sees the current dry run of the function,
+  with each node showing its result. Assistant proposals: reads see the real world (stock, block contents); effects
+  are not performed but simulated where the game can (AE2 storage and NeoForge inventories both have a simulate
+  mode, so "would move 64" is a real answer, and AE2 can plan a craft without starting it), so values downstream
+  of an effect stay meaningful; the run is not paced by ticks but stops at a step budget; parameters come from an
+  installation's arguments or values typed for the dry run. Reads need the server, so the server runs it and sends
+  back the value per node, refreshed while the graph is open. Open: whether the script view shows the same values
+  inline.
 - List and string methods (`xs.append(x)`, `s.startswith(p)`) parse already as calls; supporting them is a later
   step with the type checker.
 
