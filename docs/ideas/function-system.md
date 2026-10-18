@@ -301,15 +301,13 @@ values, literals on ports, positions by node ID). What the new decisions add:
   the whole right side of an assignment (`job = ae2.craft(...)`), never inside a larger expression. Because
   capabilities are inferred, editing a called function can turn a pure call effectful; the checker then reports where
   it must move.
-- **Variables** (first board's getter nodes called a mess by the user, 2026-10-18; reworked, assistant proposal,
-  choice open):
+- **Variables** (user picked option A, 2026-10-18, after calling the first board's getter nodes a mess):
   - A reading of a variable is a chip on the input port, coloured by type, like a literal written there: no wire and
     no node. A Variables strip at the top of the canvas lists the function's variables; dragging one onto a port
     reads it there.
   - An assignment whose value is one call is one node, `now = ae2.stock`; other assignments are a node on the exec
     chain with the value as input.
-  - Option B adds inline expressions: a short expression such as `now < 64` is written on the port as code, so a
-    simple function shows only its statements and exec wires; it can be expanded into nodes.
+  - Not chosen: option B, short expressions written on ports as code (`now < 64`); operators stay nodes.
 - **Values used twice.** Parameters and loop elements may feed any number of ports; variables are read as chips. A computed
   output feeds one port; dragging a second wire from it offers "extract to variable", which inserts an assignment.
   This keeps the script and the graph one to one.
