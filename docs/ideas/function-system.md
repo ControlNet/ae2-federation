@@ -149,13 +149,30 @@ throttle by bandwidth, answer with simulated results for a preview, and refuse e
 gives up against pure return values: the host cannot see all of a run's actions before the first runs, so
 all-or-nothing batches need a separate construct if wanted.
 
+## Program storage and installation (user decision 2026-10-18)
+
+Programs are stored server-wide, not in items and not per network. Installing a program on a computing device decides
+where it runs; storage and execution are separate.
+
+Follow-ups (assistant proposal, open):
+
+- **Identity.** Each program has a stable ID; installations and Policy bindings refer to that ID and a function name,
+  so renaming a program breaks nothing.
+- **Visibility and editing rights** on a multiplayer server: per player, per team, or everyone. Open.
+- **Editing an installed program.** Either installations follow the latest saved version (simple, but a mistake
+  reaches every device at once), or each installation pins a version and is updated on request. Open.
+- **Deleting a program in use** is refused, or its installations stop with a visible reason.
+- **Sharing between servers** needs no item: the script text is a complete export format; pasting it imports a copy.
+  Graph layout can travel along as an optional block.
+- Kept as a world `SavedData`, so it saves with the world and works the same in single player.
+
 ## Layers (assistant proposal)
 
 | Layer | Contents | Game code |
 |---|---|---|
 | 1. Language core | Types, the program representation, script syntax, graph model, conversion both ways, keeping node identity across edits, static checks, interpreter | None |
 | 2. Function descriptors | Each built-in function declared by name, parameters, types, capabilities, category and icon. The core knows only descriptors; hosts register implementations, and addon mods can add functions of their own | None (definitions only) |
-| 3. Program storage | Serialising a program with its graph layout and comments, with a format version | Only the save format |
+| 3. Program storage | Serialising a program with its graph layout and comments, with a format version; the server-wide library | Only the save format |
 | 4. Hosts | Who calls functions: the Policy host asks read-only functions; the automation host (computing device) runs functions on triggers. A host states which capabilities it allows, supplies them and a budget | Yes |
 | 5. Editors | Script editor and graph editor screens, working only on layers 1 and 3 | Yes |
 
@@ -165,7 +182,8 @@ The first batch covers layers 1 to 3.
 
 - **Function**: a generic piece of program with parameters and an optional result; what it can do is inferred
   (above), not declared.
-- **Program**: a set of functions plus their graph layout; the unit that is edited, saved and copied.
+- **Program**: a set of functions plus their graph layout; the unit that is edited, saved server-wide and installed
+  on a computing device.
 - **Binding**: one use of a function at one place, with its arguments. A Policy binding is a policy slot, a read-only
   function and its arguments.
 - **Automation**: a binding with a trigger. It says when to run (trigger), what to run (a function call) and where
@@ -197,7 +215,7 @@ The Phase 0 spike handles complete, valid programs only. Real editing passes thr
 |---|---|---|
 | 1 | ~~Script language~~ | Decided: a Python subset (above). |
 | 2 | ~~Draft policy~~ | Decided (user, 2026-10-18): a script with a syntax error cannot switch to the graph; its text is kept and the error shown until it parses. |
-| 3 | Where programs are stored: an item that can be copied and handed over (like a pattern or a disk), or a library on the network? | Not urgent; it shapes layer 3's format. |
+| 3 | ~~Where programs are stored~~ | Decided (user, 2026-10-18): server-wide; see Program storage and installation. |
 
 Deferred with the world interactions: the first host use (a storage policy's filter list proposed), the first
 action (redstone output proposed), what a policy does with an unavailable answer, sampling period, trigger kinds,
