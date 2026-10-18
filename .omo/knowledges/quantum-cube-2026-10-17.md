@@ -13,8 +13,12 @@ Feature: `docs/features/quantum-cube.md`; plan `.omo/plans/quantum-cube.md`.
 - **No re-track loop.** The anchor's `settle` adopts the body's pair id through `bind`; `bind` must mark the anchor
   dirty only when a member actually changed, or every tick re-tracks the cube.
 - **Server-wide service.** Pairs cross dimensions, so `QuantumLinkService` is keyed by `MinecraftServer`;
-  `closeLevel` drops a dimension's cubes and `closeServer` drops the service. GameTests cannot cover crossing or
-  unloading (one level), so those are checked in game.
+  `closeLevel` drops a dimension's cubes and `closeServer` drops the service.
+- **Cross-dimension GameTests do exist.** `test/world/OtherDimensionSite` opens a ticketed nether region at the
+  test's x/z; `releaseTickets()` lets its chunks really unload (wait on `loaded()`), `forceAgain()` reloads them
+  (wait on `ticking()`). `quantum.pair-links-across-dimensions` uses it. On unload the registry already splits the
+  domain on its own, so only the Jade status (`PARTNER_NOT_LOADED`) proves the cube left the pair index: a mutation
+  that skips `untrack` in `setRemoved` fails on that assertion, not on the link.
 - **In-game capture.** For overview shots put the probe player in spectator; in creative it falls after a `tp`, which
   changes the eye height and the view. Jade shots need a real standing eye height (feet + 1.62). Use the real Memory
   Card through XTEST (`tools/visual/game_input.py sneakrightclick`, which holds left Shift for 0.6 s so the server sees

@@ -10,6 +10,7 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.block.Blocks;
@@ -32,9 +33,11 @@ import space.controlnet.ae2federation.quantum.QuantumLinkService;
 import space.controlnet.ae2federation.quantum.QuantumPairIndex;
 import space.controlnet.ae2federation.quantum.QuantumRegistration;
 import space.controlnet.ae2federation.router.RouterBlock;
+import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
 import space.controlnet.ae2federation.test.world.MockServerPlayers;
+import space.controlnet.ae2federation.test.world.OtherDimensionSite;
 
 /**
  * A Quantum Cube forms only as a solid cube of edge 3, 4 or 5 and links cable inside each face's centre only. Two cubes
@@ -188,6 +191,82 @@ public final class QuantumCubeGameTests {
     }
 
     /**
+     * A Memory Card binds an overworld cube to a nether one and the cables on both join one domain. As AE2's bridge,
+     * the pair unlinks while the nether chunks really unload (their tickets released) and links again when they load;
+     * when the nether level closes, the overworld cube reads its partner as not loaded.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 1400, required = true, manualOnly = true)
+    public static void quantumCubePairLinksAcrossDimensions(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var site = OtherDimensionSite.nether(helper, new BlockPos(5, 3, 5));
+        var here = new BlockPos(2, 2, 2);
+        var there = new BlockPos(1, 0, 1);
+        var farCable = new BlockPos(0, 1, 2);
+        cube(helper, here, 3);
+        var cable = new BlockPos(1, 3, 3);
+        fixtures.placeFederationCable(cable);
+        var nether = site.level();
+        var farNode = FederationDomainRegistryAccess.nodeId(nether, site.absolute(farCable));
+        var player = MockServerPlayers.inLevel(helper);
+        player.setItemInHand(InteractionHand.MAIN_HAND, AEItems.MEMORY_CARD.stack());
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertTrue(site.ready(), "Waiting for the nether site to tick: " + site.tickDiagnostics());
+                for (var cell : box(there, 3, 3, 3)) {
+                    site.setBlock(cell, QuantumRegistration.QUANTUM_CUBE.get().defaultBlockState());
+                }
+                site.setBlock(farCable, RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
+                phase[0] = 1;
+                throw new GameTestAssertException("Waiting for both cubes to form");
+            }
+            if (phase[0] == 1) {
+                helper.assertTrue(RouterBlock.formed(helper.getBlockState(here)), "Waiting for the overworld cube");
+                helper.assertTrue(RouterBlock.formed(site.getBlockState(there)), "Waiting for the nether cube");
+                player.setShiftKeyDown(true);
+                use(player, nether, site.absolute(there));
+                player.setShiftKeyDown(false);
+                use(player, helper.getLevel(), helper.absolutePos(here));
+                phase[0] = 2;
+                throw new GameTestAssertException("Waiting for the pair to link");
+            }
+            if (phase[0] == 2) {
+                helper.assertTrue(linked(helper, cable, farNode), "Waiting for the pair to link across dimensions");
+                helper.assertValueEqual(status(helper, here), QuantumPairIndex.Status.Kind.LINKED, "Jade reads the link");
+                site.releaseTickets();
+                phase[0] = 3;
+                throw new GameTestAssertException("Waiting for the nether chunks to unload");
+            }
+            if (phase[0] == 3) {
+                helper.assertFalse(site.loaded(), "Waiting for the nether chunks to unload");
+                helper.assertTrue(!linked(helper, cable, farNode), "Waiting for the unloaded pair to unlink");
+                helper.assertValueEqual(status(helper, here), QuantumPairIndex.Status.Kind.PARTNER_NOT_LOADED,
+                        "Jade reads the partner as not loaded");
+                site.forceAgain();
+                phase[0] = 4;
+                throw new GameTestAssertException("Waiting for the nether chunks to load again");
+            }
+            if (phase[0] == 4) {
+                helper.assertTrue(site.ticking(), "Waiting for the nether chunks to tick: " + site.tickDiagnostics());
+                helper.assertTrue(linked(helper, cable, farNode), "Waiting for the reloaded pair to link again");
+                helper.assertValueEqual(status(helper, here), QuantumPairIndex.Status.Kind.LINKED, "linked again");
+                QuantumLinkService.closeLevel(nether);
+                phase[0] = 5;
+                throw new GameTestAssertException("Waiting for the closed nether to unlink");
+            }
+            helper.assertTrue(!linked(helper, cable, farNode), "Waiting for the closed nether to unlink");
+            helper.assertValueEqual(status(helper, here), QuantumPairIndex.Status.Kind.PARTNER_NOT_LOADED,
+                    "the nether's level closed");
+            RouterEvidence.write("quantumcubepairlinksacrossdimensions", 7, Map.of("bound", "linked",
+                    "jade", "linked", "unloaded", "unlinked", "unloadedJade", "partner not loaded",
+                    "reloaded", "linked", "reloadedJade", "linked", "levelClosed", "partner not loaded"));
+            fixtures.close();
+            site.close();
+        });
+    }
+
+    /**
      * With operating power required, a 5³ cube pays AE2's bridge cost, 22 AE/t for each of its 125 blocks, linked or
      * not; once linked, the pair counts as 3x3 cable, so a 1x1x2 converter no longer matches its domain.
      */
@@ -249,10 +328,13 @@ public final class QuantumCubeGameTests {
     }
 
     private static void use(GameTestHelper helper, ServerPlayer player, BlockPos relative) {
-        var absolute = helper.absolutePos(relative);
+        use(player, helper.getLevel(), helper.absolutePos(relative));
+    }
+
+    private static void use(ServerPlayer player, ServerLevel level, BlockPos absolute) {
         var hit = new BlockHitResult(Vec3.atCenterOf(absolute).relative(Direction.UP, 0.5), Direction.UP, absolute,
                 false);
-        player.gameMode.useItemOn(player, helper.getLevel(), player.getMainHandItem(), InteractionHand.MAIN_HAND, hit);
+        player.gameMode.useItemOn(player, level, player.getMainHandItem(), InteractionHand.MAIN_HAND, hit);
     }
 
     private static QuantumPairIndex.Status.Kind status(GameTestHelper helper, BlockPos min) {

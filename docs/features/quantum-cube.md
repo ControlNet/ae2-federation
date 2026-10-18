@@ -43,8 +43,9 @@ artist delivers.
   `OperatingPowerCostsTest.aFormedQuantumCubePaysPerBlockLinkedOrNot`, `DeviceStructureGeometryTest`,
   `SurvivalRecipeContractTest`, `GuidePagesContractTest`.
 - GameTests (manifest `quantum.*`): `cube-shapes`, `links-inside-face-centres`, `pair-binds-with-a-memory-card`
-  (bind, another size, break and mend, rebind drops the old partner), `pair-needs-its-size-of-converter`.
-- Not covered by a GameTest: crossing dimensions and unloading (a GameTest has one level and does not unload).
+  (bind, another size, break and mend, rebind drops the old partner), `pair-needs-its-size-of-converter`,
+  `pair-links-across-dimensions` (an overworld cube bound to a nether one through `OtherDimensionSite`: linked, the
+  nether chunks really unload and reload, then the nether level closes).
 - In game (dedicated server, 2026-10-17): a 3x3x3 pair between the Overworld and the Nether bound with a real Memory
   Card, Jade before and after the Nether end unloads and reloads, and the capacity count of the joined networks.
 

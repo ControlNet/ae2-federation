@@ -91,7 +91,8 @@ Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are wri
 - `QuantumLinkService`, the mirrored `quantum:` ports, kind `QUANTUM_CUBE` in the counter, the Jade line (D10).
 - GameTests: a bound pair joins two networks' domain; another size does not link (D7); breaking one block unlinks
   and replacing it relinks; a pair over its tier stops the domain; a 3³ pair carries C. Cross-dimension and unloading
-  cannot run as GameTests (one level, no unload); they are checked in game.
+  run as a GameTest through the testmod's `OtherDimensionSite` (a ticketed nether region whose tickets can be
+  released), added 2026-10-18 as `quantum.pair-links-across-dimensions`, and were also checked in game.
 
 ### 4. Power (done 2026-10-17)
 
