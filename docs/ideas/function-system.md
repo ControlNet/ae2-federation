@@ -156,6 +156,49 @@ Python's names and meaning (`str()`, `int()`, `range()` ...); everything about t
 - List and string methods (`xs.append(x)`, `s.startswith(p)`) parse already as calls; supporting them is a later
   step with the type checker.
 
+### Standard library discussion (started 2026-10-18)
+
+The user chose to settle the standard library before more of the bottom layer. Assistant draft, to discuss in
+rounds; nothing here is decided.
+
+**Foundations first** (they shape every function):
+
+1. **Which ME network `ae2` functions act on.** A program runs on a computing device in a domain of several
+   networks. Options: (a) the network the device is attached to; (b) a network value chosen like a block,
+   `base = ae2f.network("main_base")`, then `ae2.stock(base, item)`; (c) the whole domain at once, as the federation
+   already shares storage across it. Possibly (c) by default with (b) to narrow.
+2. **Values with fields.** Several results are records: a stack (resource, amount), a crafting job (state,
+   progress). Python reads them as `stack.amount`; the subset rejects attribute access today. Proposal: read-only
+   fields on built-in values (still Python syntax), no fields on anything the player defines.
+3. **Failure.** The subset has no `try`. Proposal: an outcome the world decides (nothing to move, target full, chest
+   gone) is a return value (`moved == 0`, `False`); a mistake in the program (an unknown interface, reach 5) stops
+   the run with a message in the run log, as a Python exception would.
+4. **Where each function lives.** Proposal: `ae2` is what AE2 itself has, on one network or the domain (storage,
+   crafting, energy, CPUs); `ae2f` is the Federation's own concepts (selecting blocks through interfaces, networks
+   of the domain, policies, statistics); `mc` is the vanilla world at a selected block (inventories, redstone,
+   breaking and placing, time, waiting).
+
+**First draft of the lists** (types: `Resource` and `Item` are typed strings, `Block` from `ae2f.select`, `Stack` and
+`Job` records):
+
+| Namespace | Function | Effect? |
+|---|---|---|
+| `ae2` | `stock(resource) -> int`, `craftable(resource) -> bool`, `stored() -> list[Stack]` | no |
+| `ae2` | `craft(resource, amount) -> Job`, `cancel(job)` | yes |
+| `ae2` | `job_state(job) -> str` or `job.state`, `busy_cpus() -> int`, `power() -> float` | no |
+| `ae2` | `insert(block, resource, amount) -> int` (block to network), `extract(block, resource, amount) -> int` (network to block) | yes |
+| `ae2f` | `select(interface, reach) -> Block` | no |
+| `ae2f` | `set_policy(...)` (shape follows the existing policy model) | yes |
+| `ae2f` | `networks()`, `online(network) -> bool` | no |
+| `mc` | `move(resource, amount, source, target) -> int` (any resource type: items, fluids, chemicals) | yes |
+| `mc` | `contents(block) -> list[Stack]`, `count(block, resource) -> int`, `block_id(block) -> str` | no |
+| `mc` | `redstone_in(block) -> int`, `redstone(block, level)` | read no, set yes |
+| `mc` | `break_block(block) -> bool` (drops into the network), `place_block(block, item) -> bool` | yes |
+| `mc` | `time() -> int`, `wait(ticks)` | `wait` yes (several ticks) |
+
+Open within the draft: `mc.move` for every resource type versus `move_item`/`move_fluid`; where a redstone signal
+is emitted (the interface itself, facing the selected block, is the natural emitter); messages to players.
+
 Status (user, 2026-10-18): the standard library's design, including which functions take an interface as their
 location, needs a further dedicated look; the bottom layer goes on meanwhile with a catalogue interface in place of
 the real list.
