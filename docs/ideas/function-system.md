@@ -22,8 +22,8 @@ computing device's role (see the two idea pages).
 ## Script language (user decisions 2026-10-18)
 
 - **A subset of Python.** The interpreter is not expected to cover all of Python; scripts in the subset should stay
-  valid Python syntax, so outside editors can highlight and format them. Consequence: resources are written as calls,
-  for example `item("minecraft:iron_ingot")`, not with the spike's `@minecraft:iron_ingot`.
+  valid Python syntax, so outside editors can highlight and format them. Resources are plain strings (below), not
+  the spike's `@minecraft:iron_ingot`.
 - **Numbers as in Python:** `int` (64-bit, matching AE2 amounts) and `float`; `/` gives a float, `//` an int, and an
   int widens to a float where a float is expected.
 - **Loops are in:** `for x in xs` and `while`. Both are easy to draw as graph nodes (a loop node with a body chain and
@@ -34,6 +34,35 @@ so the spike's static step bound goes; every run needs a step budget at run time
 budget needs a defined answer (unavailable is the obvious candidate). For automation, a budget per tick that lets a long run
 continue over several ticks, so "wait until stock reaches N" is an ordinary loop, is one option to discuss with the
 computing device's CU.
+
+## Resources as typed strings (user direction 2026-10-18)
+
+No `item("...")` wrapper and no special symbol: a resource is written as a plain string, and the static type says
+what it is. A parameter typed `Item` (a type hint, valid Python) takes `"minecraft:iron_ingot"`; while the player
+types that string, completion searches items; the checker turns it into an item. The player only needs to know
+that an item goes there.
+
+```python
+def keep_iron(min: int) -> bool:
+    now = ae2.stock("minecraft:iron_ingot")   # stock's parameter is a resource, so this is one
+    return now >= min
+```
+
+Details (assistant proposal):
+
+- **The expected type decides.** A string literal in a place that expects `Item`, `Fluid` or `Resource` (any AE2
+  key type) is parsed there and checked against the game's registries; an unknown ID is an edit-time error with
+  suggestions. The core asks the host for the catalogue of known IDs, so it stays free of game code.
+- **Other key types.** In a `Resource` place a bare ID means an item; another type is named with a prefix:
+  `"fluid:minecraft:water"`, and for addon types their key type ID or a short name the addon registers. Completion
+  inserts the right form, so players rarely type a prefix.
+- **Literals only.** A computed `str` (joined at run time) is not turned into an item silently; an explicit
+  conversion is needed, so every resource error shows up while editing.
+- **Locals.** `iron = "minecraft:iron_ingot"` alone is a `str`; `iron: Item = "minecraft:iron_ingot"` is an item. When
+  a `str` local is passed where an item is expected, the error offers adding the annotation.
+- **Lists.** The expected type flows into list elements: a `list[Item]` parameter takes
+  `["minecraft:iron_ingot", "minecraft:gold_ingot"]`.
+- **Graph.** The port shows the resource's icon and opens a searchable picker instead of a text field.
 
 ## Generic functions, capabilities by static analysis (user decision 2026-10-18)
 
