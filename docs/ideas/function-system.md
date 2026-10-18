@@ -218,9 +218,10 @@ Assistant proposals on top:
 - **Domain-wide meaning per function.** `stock`: the sum over the domain's networks. `craft`: wherever the
   federation can craft it (as pattern projection already decides). `insert`/`extract`: through the domain's storage
   as the federation routes it today.
-- **Policies and automation (question).** Storage and Crafting rules govern what one network shares with another.
-  Does a domain-level program obey them (it can only reach what is shared), or does it reach every network in the
-  domain directly, with the rules only applying between networks?
+- **Policies and automation** (user, 2026-10-18): a program reaches every network of its domain directly; Storage
+  and Crafting rules only govern what networks share with each other. A program can therefore move resources
+  between networks that share nothing, as an administrator would. With the domain-wide default, `stock`, `craft`,
+  `insert` and `extract` cover all networks, not only what the rules share. Revisit if per-player rights arrive.
 
 **First draft of the lists** (types: `Resource` and `Item` are typed strings, `Block` from `ae2f.select`, `Stack` and
 `Job` records):
