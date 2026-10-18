@@ -105,8 +105,10 @@ replacement texture or production asset edit is made.
 
 ## Cable source of truth
 
-`export_cable.py` compiles current production `FederationCableBuilder`, `CableCoreFaces`,
-`CableFlowGeometry`, and the pure connection methods from `CableVisualConnections`.
+`export_cable.py` compiles current production `FederationCableBuilder`, `CableCoreFaces`
+and the pure connection methods from `CableVisualConnections`. The interior flow ribbons come from
+`java/CableFlowGeometry.java`: the cable's first beam, which the mod no longer ships (it draws R / PLASMA), kept
+here only for the older beam studies built on it.
 It removes world-query methods and redirects the rendering types to the functional
 `CaptureBackend.java` quad recorder. This is an offline rendering backend, not dummy
 Minecraft classes or a second handwritten cable design. Production files are unchanged.

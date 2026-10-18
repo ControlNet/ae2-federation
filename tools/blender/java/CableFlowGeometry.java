@@ -1,9 +1,10 @@
-package space.controlnet.ae2federation.client;
-
 import java.util.ArrayList;
 import java.util.List;
 
-/** Cached interior ribbons, in block coordinates. No world or renderer state. */
+/**
+ * The cable's first interior ribbons, in block coordinates, kept only for the Blender studies built on them; the mod
+ * draws R / PLASMA (BundleBeamMesh) and no longer ships this.
+ */
 final class CableFlowGeometry {
     enum Layer { FLOW, BASE, BEND, HUB }
     record Vertex(float x, float y, float z, float along, float across, float alpha) {}

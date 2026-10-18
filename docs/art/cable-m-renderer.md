@@ -77,7 +77,7 @@ not simulated packet routing or a claim about actual transfer direction.
 
 At distances above 24 blocks, sampling falls from 64 to 24 segments per full block, and fog from four to two
 segments per arm; above 48 blocks, four segments retain the carrier plus the two outer fog volumes, unanimated, so
-distant cables still glow. `CableFlowGeometry` remains as a legacy reference for existing export/test tooling.
+distant cables still glow. `CableFlowGeometry` now lives only in `tools/blender/java` for the older Blender studies.
 
 ### Cost per frame
 

@@ -31,5 +31,6 @@ straight neighbour). The ends now leave exactly along their own arm.
 
 After the owner approved the look, M's emission (carrier, shoulders, fog, merging), `CableBeamFrame.layer`, the
 M-only `CableBeamStyle` radii and `phase`, and M's tests were deleted. `CableBeamMesh` now holds only the centerlines
-(`build`, `Path` without the old `fixed` flags) and `detail`. `CableFlowGeometry` is a separate, older ribbon model
-that only the Blender export (`tools/blender/java/ExportCable.java`) still uses; it was left alone.
+(`build`, `Path` without the old `fixed` flags) and `detail`. `CableFlowGeometry`, the older ribbon model, moved out
+of the mod to `tools/blender/java/` (owner's choice): the Blender export and the old beam studies built on its ribbons
+still run; its Java unit test went, `tools/blender/test_assets.py` still checks the exported ribbons.

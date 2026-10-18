@@ -33,7 +33,7 @@ class Materials:
         vector = texcoord.outputs['UV']
         if phase is not None:
             shift = nodes.new('ShaderNodeVectorMath'); shift.operation = 'ADD'
-            shift.label = 'Phase samples from production CableFlowGeometry.phase'
+            shift.label = 'Phase samples from the tools\' CableFlowGeometry.phase'
             links.new(vector, shift.inputs[0])
             for frame, values in enumerate(self.phases, 1):
                 shift.inputs[1].default_value = (values[phase],0,0)
