@@ -107,9 +107,12 @@ public final class Completion {
             return size > 1 && typePlace ? types(prefix) : List.of();
         }
         if (last != null && last.is(Kind.OP, ".")) {
-            boolean qualified = size >= 2 && context.get(size - 2).kind() == Kind.NAME
-                    && !(size >= 3 && context.get(size - 3).is(Kind.OP, "."));
-            return qualified ? members(context.get(size - 2).text(), prefix) : List.of();
+            var receiver = receiver(context);
+            if (receiver.size() == 1 && receiver.get(0).kind() == Kind.NAME
+                    && !variables.containsKey(receiver.get(0).text())) {
+                return members(receiver.get(0).text(), prefix);
+            }
+            return membersOf(receiverType(receiver), prefix);
         }
         if (size >= 2 && context.get(0).kind() == Kind.NAME && context.get(1).is(Kind.OP, ":")
                 && (size == 2 || last.is(Kind.OP, "["))) {
@@ -162,6 +165,109 @@ public final class Completion {
         }
         out.sort(Comparator.comparing(Candidate::label));
         return filter(out, prefix);
+    }
+
+    /** Methods and fields of a value of this type: a list, a string, a range, or a record. */
+    private List<Candidate> membersOf(TypeRef type, String prefix) {
+        if (type == null) {
+            return List.of();
+        }
+        var t = Types.unwrap(type);
+        var out = new ArrayList<Candidate>();
+        List<Signature> methods = List.of();
+        if (Types.isList(t)) {
+            var element = Types.element(t);
+            methods = Checker.LIST_METHODS.stream().map(m -> element == null ? m : Checker.substitute(m, element))
+                    .toList();
+        } else if (Types.isStr(t)) {
+            methods = Checker.STR_METHODS;
+        } else if (Types.isRange(t)) {
+            methods = Checker.RANGE_METHODS;
+            Checker.RANGE_FIELDS.forEach(f -> out.add(new Candidate(f, Candidate.Kind.FIELD, "int")));
+        } else {
+            fields(t.name()).forEach((name, fieldType) ->
+                    out.add(new Candidate(name, Candidate.Kind.FIELD, fieldType.toString())));
+        }
+        methods.forEach(m -> out.add(new Candidate(m.name(), Candidate.Kind.METHOD, m.display())));
+        out.sort(Comparator.comparing(Candidate::label));
+        return filter(out, prefix);
+    }
+
+    /** A record's fields and their types, in declared order: a built-in record or a player class. */
+    private Map<String, TypeRef> fields(String typeName) {
+        var fields = new LinkedHashMap<String, TypeRef>();
+        var builtIn = StandardLibrary.RECORDS.get(typeName);
+        if (builtIn != null) {
+            builtIn.forEach(a -> fields.put(a.name(), a.type()));
+        } else {
+            record(typeName).ifPresent(c -> c.fields().forEach(f -> fields.put(f.name(), f.type())));
+        }
+        return fields;
+    }
+
+    /**
+     * The tokens of the expression before the final {@code .}: names, literals, calls and items joined by dots,
+     * as in {@code ae2.storage()[0]}; empty when there is none.
+     */
+    private static List<Token> receiver(List<Token> context) {
+        int i = context.size() - 2;
+        int start = -1;
+        while (i >= 0) {
+            var token = context.get(i);
+            if (token.is(Kind.OP, ")") || token.is(Kind.OP, "]")) {
+                int depth = 0;
+                for (; i >= 0; i--) {
+                    var t = context.get(i);
+                    if (t.is(Kind.OP, ")") || t.is(Kind.OP, "]")) {
+                        depth++;
+                    } else if (t.is(Kind.OP, "(") || t.is(Kind.OP, "[")) {
+                        depth--;
+                    }
+                    if (depth == 0) {
+                        break;
+                    }
+                }
+                if (i < 0) {
+                    return List.of();
+                }
+                // Applied to what stands before it (a call or an item), or a group or list of its own.
+                var before = i == 0 ? null : context.get(i - 1);
+                boolean applied = before != null && (before.kind() == Kind.STRING || before.is(Kind.OP, ")")
+                        || before.is(Kind.OP, "]") || before.kind() == Kind.NAME && !KEYWORDS.contains(before.text()));
+                if (!applied) {
+                    start = i;
+                    break;
+                }
+                i--;
+            } else if (token.kind() == Kind.NAME && !KEYWORDS.contains(token.text()) || token.kind() == Kind.STRING) {
+                if (i > 0 && context.get(i - 1).is(Kind.OP, ".")) {
+                    i -= 2;
+                    continue;
+                }
+                start = i;
+                break;
+            } else {
+                return List.of();
+            }
+        }
+        return start < 0 ? List.of() : context.subList(start, context.size() - 1);
+    }
+
+    /** Python's keywords: never a value a member is read from. */
+    private static final java.util.Set<String> KEYWORDS = java.util.Set.of("if", "elif", "else", "for", "while",
+            "return", "break", "continue", "pass", "def", "class", "and", "or", "not", "in", "is");
+
+    private TypeRef receiverType(List<Token> receiver) {
+        if (receiver.isEmpty()) {
+            return null;
+        }
+        var text = new StringBuilder();
+        receiver.forEach(t -> text.append(t.text()).append(' '));
+        var parsed = ScriptParser.parse("def completion_receiver() -> None:\n    completion_value = " + text + "\n");
+        if (!parsed.ok()) {
+            return null;
+        }
+        return infer(((Stmt.Assign) parsed.program().functions().get(0).body().get(0)).value());
     }
 
     private List<Candidate> types(String prefix) {
@@ -323,8 +429,8 @@ public final class Completion {
                 }
                 case Stmt.For s -> {
                     var iterable = infer(s.iterable());
-                    declare(s.variable(), iterable != null && iterable.name().equals("list") && iterable.args().size() == 1
-                            ? iterable.args().get(0) : null);
+                    declare(s.variable(), iterable != null && Types.isIterable(Types.unwrap(iterable))
+                            ? Types.iterated(Types.unwrap(iterable)) : null);
                     collect(s.body(), parsed, line);
                 }
                 case Stmt.If s -> {
@@ -362,19 +468,27 @@ public final class Completion {
             case Expr.Name n -> variables.get(n.name());
             case Expr.Call c -> {
                 if (c.receiver() == null) {
-                    yield signature(null, c.name()).map(Signature::result).orElse(null);
+                    var own = signature(null, c.name());
+                    yield own.isPresent() ? own.get().result() : builtIn(c);
                 }
-                yield c.receiver() instanceof Expr.Name n
-                        ? signature(n.name(), c.name()).map(Signature::result).orElse(null) : null;
+                if (c.receiver() instanceof Expr.Name n && !variables.containsKey(n.name())) {
+                    yield signature(n.name(), c.name()).map(Signature::result).orElse(null);
+                }
+                yield method(infer(c.receiver()), c.name());
             }
             case Expr.Attribute a -> {
                 var type = infer(a.target());
-                yield type == null ? null : record(type.name()).flatMap(c -> c.fields().stream()
-                        .filter(f -> f.name().equals(a.name())).findFirst()).map(Field::type).orElse(null);
+                if (type == null) {
+                    yield null;
+                }
+                type = Types.unwrap(type);
+                yield Types.isRange(type) && Checker.RANGE_FIELDS.contains(a.name()) ? Types.INT
+                        : fields(type.name()).get(a.name());
             }
             case Expr.Index i -> {
-                var list = infer(i.target());
-                yield list != null && list.name().equals("list") && list.args().size() == 1 ? list.args().get(0) : null;
+                var target = infer(i.target());
+                target = target == null ? null : Types.unwrap(target);
+                yield target != null && Types.isIterable(target) ? Types.iterated(target) : null;
             }
             case Expr.Slice s -> infer(s.target());
             case Expr.Unary u -> u.op() == UnaryOp.NOT ? simple("bool") : infer(u.operand());
@@ -393,6 +507,38 @@ public final class Completion {
                 yield left.name().equals("float") || right.name().equals("float") ? simple("float") : left;
             }
         };
+    }
+
+    /** What a built-in function gives, as far as completion needs it. */
+    private TypeRef builtIn(Expr.Call c) {
+        var first = c.args().isEmpty() ? null : infer(c.args().get(0));
+        var iterable = first != null && Types.isIterable(Types.unwrap(first)) ? Types.unwrap(first) : null;
+        return switch (c.name()) {
+            case "int", "len" -> Types.INT;
+            case "float" -> Types.FLOAT;
+            case "str" -> Types.STR;
+            case "bool", "any", "all" -> Types.BOOL;
+            case "range" -> Types.RANGE;
+            case "list" -> iterable == null || Types.iterated(iterable) == null ? Types.EMPTY_LIST
+                    : Types.list(Types.iterated(iterable));
+            case "min", "max", "sum" -> c.args().size() == 1 && iterable != null ? Types.iterated(iterable) : first;
+            case "abs" -> first;
+            case "round" -> c.args().size() == 1 ? Types.INT : first;
+            default -> null;
+        };
+    }
+
+    /** What a list, str or range method gives. */
+    private static TypeRef method(TypeRef receiver, String name) {
+        if (receiver == null) {
+            return null;
+        }
+        var t = Types.unwrap(receiver);
+        List<Signature> methods = Types.isList(t) ? Checker.LIST_METHODS : Types.isStr(t) ? Checker.STR_METHODS
+                : Types.isRange(t) ? Checker.RANGE_METHODS : List.of();
+        var element = Types.isList(t) ? Types.element(t) : null;
+        return methods.stream().filter(m -> m.name().equals(name)).findFirst()
+                .map(m -> element == null ? m : Checker.substitute(m, element)).map(Signature::result).orElse(null);
     }
 
     /** A record type by name: one of this file's classes, or {@code file.Name} for another file's. */

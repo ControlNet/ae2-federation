@@ -1382,7 +1382,7 @@ public final class Checker {
     }
 
     /** A list method with the element type in place of {@code T}. */
-    private static Signature substitute(Signature method, TypeRef element) {
+    static Signature substitute(Signature method, TypeRef element) {
         return new Signature(method.name(),
                 method.args().stream().map(a -> a.withType(substitute(a.type(), element))).toList(),
                 substitute(method.result(), element), method.summary());

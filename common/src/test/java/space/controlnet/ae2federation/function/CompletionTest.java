@@ -157,6 +157,69 @@ final class CompletionTest {
     }
 
     @Test
+    void membersOfAValueFollowItsType() {
+        var list = at("""
+                def f(xs: list[int]) -> None:
+                    xs.|
+                """);
+        assertEquals(List.of("append", "clear", "copy", "count", "extend", "index", "insert", "pop", "remove",
+                "reverse", "sort"), labels(list));
+        var append = list.candidates().get(0);
+        assertEquals(Candidate.Kind.METHOD, append.kind());
+        assertEquals("(object: int) -> None", append.detail());
+        assertEquals(List.of("startswith", "strip"), labels(at("""
+                def f(s: str) -> None:
+                    s.st|
+                """)));
+        assertEquals(List.of("upper"), labels(at("""
+                def f(name: Item) -> None:
+                    name.up|
+                """)), "a typed string is a str");
+        assertEquals(List.of("count", "index", "start", "step", "stop"), labels(at("""
+                def f() -> None:
+                    r = range(3)
+                    r.|
+                """)));
+        var order = at(ORDERS.formatted("o.|"));
+        assertEquals(List.of("amount", "item"), labels(order));
+        assertEquals(new Candidate("amount", Candidate.Kind.FIELD, "int"), order.candidates().get(0));
+        assertEquals(List.of(), labels(at("""
+                def f(n: int) -> None:
+                    n.|
+                """)), "an int has no members here");
+    }
+
+    @Test
+    void membersAfterAChainOfCallsItemsAndFields() {
+        assertEquals(List.of("amount", "resource"), labels(at("""
+                def f() -> None:
+                    for st in ae2.storage():
+                        st.|
+                """)), "a built-in record");
+        assertEquals(List.of("amount", "resource"), labels(at("""
+                def f() -> None:
+                    x = ae2.storage()[0].|
+                """)));
+        assertEquals(List.of("upper"), labels(at("""
+                def f(xs: list[str]) -> None:
+                    if xs[0].strip().up|
+                """)));
+        assertEquals(List.of("startswith"), labels(at(ORDERS.formatted("y = o.item.sta|"))));
+        assertTrue(labels(at("""
+                def f(xs: list[int]) -> None:
+                    n = xs.copy().|
+                """)).containsAll(List.of("count", "index")), "a method's result");
+        assertEquals(List.of("lower"), labels(at("""
+                def f() -> None:
+                    return "Abc".lo|
+                """)));
+        assertEquals(List.of("amount", "item"), labels(at("""
+                def f() -> None:
+                    iron_tools.Order("minecraft:iron_ingot").|
+                """)), "a record returned from another file");
+    }
+
+    @Test
     void aVariableIsNotTakenForANamespace() {
         var c = at("""
                 def f(ae2: list[int]) -> None:
