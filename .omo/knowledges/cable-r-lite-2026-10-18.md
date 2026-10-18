@@ -25,5 +25,11 @@ straight neighbour). The ends now leave exactly along their own arm.
 ## Evidence
 
 `build/cable-r-lite-check/`: `before-after.png` (7 views, day and night, 1x1 Former included),
-`before-after-loop.gif` (eye level), `before/`, `after/`, both jars. The M emission code (`CableBeamMesh.emit*`, fog)
-is now unused in production and is kept until the owner approves the in-game look; then remove it in its own commit.
+`before-after-loop.gif` (eye level), `before/`, `after/`, both jars.
+
+## M removed
+
+After the owner approved the look, M's emission (carrier, shoulders, fog, merging), `CableBeamFrame.layer`, the
+M-only `CableBeamStyle` radii and `phase`, and M's tests were deleted. `CableBeamMesh` now holds only the centerlines
+(`build`, `Path` without the old `fixed` flags) and `detail`. `CableFlowGeometry` is a separate, older ribbon model
+that only the Blender export (`tools/blender/java/ExportCable.java`) still uses; it was left alone.

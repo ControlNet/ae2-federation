@@ -50,7 +50,7 @@ final class BundleBeamMeshTest {
     void aRunLayerCostsNoMoreThanTheFourOrdinaryBeamsItReplaces() {
         for (double load : LOADS) {
             int count = both(RUN, CableBeamStyle.fromLoad(load), 0).size();
-            // CableBeamTest holds an ordinary straight cell to 1700 vertices up close; a 2x2 layer is four cells.
+            // The M beam held an ordinary straight cell to 1700 vertices up close; a 2x2 layer is four cells.
             assertTrue(count <= 4 * 1700, "load " + load + ": " + count);
             assertEquals(0, count % 4, "quads");
         }
@@ -265,8 +265,10 @@ final class BundleBeamMeshTest {
                 counts[detail] = both(cell(3, 0, 5, 0, style, detail, true), cell(3, 0, 5, 0, style, detail, false))
                         .size();
             }
-            // CableBeamTest holds the shipped straight beam to 1700 vertices up close.
+            // The M beam it replaced was held to 1700 vertices for a straight cell and 4800 for a six-way joint.
             assertTrue(counts[0] <= 1200, "near " + counts[0]);
+            int sixWay = both(cell(63, 0, 5, 0, style, 0, true), cell(63, 0, 5, 0, style, 0, false)).size();
+            assertTrue(sixWay <= 3600, "six-way " + sixWay);
             assertTrue(counts[0] > counts[1] && counts[1] > counts[2] && counts[2] > 0, java.util.Arrays.toString(counts));
             assertEquals(0, counts[0] % 4);
         }

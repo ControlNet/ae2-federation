@@ -1,8 +1,7 @@
 package space.controlnet.ae2federation.client;
 
-/** M optical design parameters. Load is the cable's capacity count against its limit, not measured traffic. */
-public record CableBeamStyle(double load, boolean overloaded, float coreRadius, float haloRadius,
-        float pulseAmplitude, float pulseDensity, float emission) {
+/** Beam parameters by load. Load is the cable's capacity count against its limit, not measured traffic. */
+public record CableBeamStyle(double load, boolean overloaded, float pulseDensity, float emission) {
     /** A presentation default for previews; world cables use {@link #loadOf} their synced capacity count. */
     public static final double DEFAULT_LOAD = 0.6;
     /**
@@ -33,15 +32,7 @@ public record CableBeamStyle(double load, boolean overloaded, float coreRadius, 
     public static CableBeamStyle fromLoad(double load, boolean overloaded) {
         if (!Double.isFinite(load) || load < 0) throw new IllegalArgumentException("Invalid visual load");
         float u = (float) Math.min(load, 1);
-        // Sized for the shell's 6-voxel glass window (half-width 3/16): visible at play distance, never touching the frame.
-        return new CableBeamStyle(load, overloaded, .018f + .027f * u, .06f + .09f * u,
-                .028f * u, 1 + 2 * u, .45f + 1.55f * u);
-    }
-
-    /** Bounded 64-tick clock, continuous across wrap, including negative coordinates. */
-    public static double phase(int coordinate, float along, long tick, float partialTick) {
-        return (Math.floorMod(coordinate, 2) + along) / 2.0
-                - (Math.floorMod(tick, 64) + partialTick) / 64.0;
+        return new CableBeamStyle(load, overloaded, 1 + 2 * u, .45f + 1.55f * u);
     }
 
     public float wave(double phase) {

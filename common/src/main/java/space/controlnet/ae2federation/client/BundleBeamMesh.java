@@ -228,9 +228,7 @@ public final class BundleBeamMesh {
                 .filter(sample -> component(sample.point(), axis) >= .375f && component(sample.point(), axis) <= .625f)
                 .toArray(CableBeamMesh.Sample[]::new);
         if (stub.length < 2) return List.of();
-        var fixed = new boolean[stub.length];
-        fixed[0] = fixed[stub.length - 1] = true;
-        return List.of(new CableBeamMesh.Path(axis, axis, stub, fixed));
+        return List.of(new CableBeamMesh.Path(axis, axis, stub));
     }
 
     private static float component(CableBeamMesh.Point point, int axis) {

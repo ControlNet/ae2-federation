@@ -54,7 +54,8 @@ placeholder overwrite cannot silently pass validation. It also checks all local 
 Current development builds draw R / LITE inside the cable in world rendering only: the 2x2 bundle's plasma beam
 (`BundleBeamMesh`, Blender study `tools/blender/cable_beams.py`) scaled to the 1x1 glass, with two sheaths of eight
 sides. No command or JVM option is required. Its load, alarm and LOD inputs are those of the
-[M optical cable renderer](cable-m-renderer.md), which it replaced on 2026-10-18. The shell remains unchanged. The artist's
+[M optical cable renderer](cable-m-renderer.md), which it replaced on 2026-10-18 (M's code is removed; the page is a
+record). The shell remains unchanged. The artist's
 `textures/entity/cable_flow.png` is retained but is not used by the new procedural beam.
 The implementation descriptions and V07 evidence below document the original
 baked rendering baseline. Published version 0.0.1 still uses the earlier opt-in
