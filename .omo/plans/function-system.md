@@ -47,6 +47,9 @@ network wiring.
 
 ## Query/action contract
 
+Superseded (user, 2026-10-18): functions are generic and static analysis infers their capabilities; see the
+[idea page](../../docs/ideas/function-system.md). The spike's split below stays as a record of what was tested.
+
 - A **query** reads only. Policies call queries, as often as they need. It returns a value.
 - An **action** may also act (redstone, crafting requests, later moving resources) and returns nothing.
 - Enforced twice: the Checker rejects a query that calls an action, and at run time a query never receives `Effects`

@@ -2,7 +2,7 @@
 
 Discussion date: 2026-10-18. [Idea index](README.md).
 Status: layering and vocabulary proposed by the assistant, not yet accepted; the first batch's scope and the script
-language are the user's decisions (2026-10-18); the overall design is being revisited. Phase 0 spike on branch `feature/function-system`, see the
+language and generic functions are the user's decisions (2026-10-18). Phase 0 spike on branch `feature/function-system`, see the
 [plan](../../.omo/plans/function-system.md).
 
 This page holds the architecture shared by [custom policies](custom-policies.md) and
@@ -30,36 +30,59 @@ computing device's role (see the two idea pages).
   a next chain; for-each also gives the current element as a value output).
 
 Consequences of loops (assistant notes, not decisions): a run's length is no longer bounded by the program's size,
-so the spike's static step bound goes; every run needs a step budget at run time. A query that runs out of budget
-needs a defined answer (unavailable is the obvious candidate). For actions, a budget per tick that lets a long run
+so the spike's static step bound goes; every run needs a step budget at run time. A policy evaluation that runs out of
+budget needs a defined answer (unavailable is the obvious candidate). For automation, a budget per tick that lets a long run
 continue over several ticks, so "wait until stock reaches N" is an ordinary loop, is one option to discuss with the
 computing device's CU.
 
-Still open, to be revisited with the overall design (user, 2026-10-18): how queries and actions are told apart, or
-whether that split stays at all.
+## Generic functions, capabilities by static analysis (user decision 2026-10-18)
+
+A function is just a piece of program, fully generic: there is no declared query or action kind. Static analysis
+works out what a function can do, so the system knows where it may be used. This replaces the spike's declared
+query/action split.
+
+How it could work (assistant proposal):
+
+- **Capabilities on the built-ins.** Each built-in's descriptor states what calling it does, for example: reads the
+  network's storage, reads redstone, emits redstone, requests crafting, moves resources, waits (spans ticks). Plain
+  arithmetic and the player's own logic add nothing.
+- **Inferred per function.** A function's capabilities are the union of those of every built-in it can reach,
+  through any call chain, solved over the call graph so recursion is no obstacle. The analysis is conservative: a
+  call that sits on a branch that never runs still counts, which keeps it simple and easy to explain.
+- **Hosts state requirements.** A policy slot accepts a function that only reads, never waits and returns `bool` (a
+  predicate) or a filter; automation accepts anything. A refusal says why and where, e.g. "emits redstone (line 12,
+  through `signal`)".
+- **More than a yes/no.** The same analysis can report which observations a function reads (a cached policy answer
+  then only needs recomputing when those change), whether it may loop without end (`while`, recursion), and its I/O
+  for the computing device's bandwidth cost, which the device decisions already expect to be inferred from the
+  program.
+- **Guarantee at run time too.** A host passes in only the capabilities it allows, so a policy evaluation physically
+  cannot act even if the analysis had a bug.
+- **Both views show it.** The graph can badge nodes and functions with their capabilities; the script editor can show
+  them beside each `def`.
 
 ## Layers (assistant proposal)
 
 | Layer | Contents | Game code |
 |---|---|---|
 | 1. Language core | Types, the program representation, script syntax, graph model, conversion both ways, keeping node identity across edits, static checks, interpreter | None |
-| 2. Function descriptors | Each built-in function declared by name, parameters, types, query or action, category and icon. The core knows only descriptors; hosts register implementations, and addon mods can add functions of their own | None (definitions only) |
+| 2. Function descriptors | Each built-in function declared by name, parameters, types, capabilities, category and icon. The core knows only descriptors; hosts register implementations, and addon mods can add functions of their own | None (definitions only) |
 | 3. Program storage | Serialising a program with its graph layout and comments, with a format version | Only the save format |
-| 4. Hosts | Who calls functions: the Policy host asks queries; the automation host (computing device) runs actions on triggers. A host supplies observations, effects and a budget | Yes |
+| 4. Hosts | Who calls functions: the Policy host asks read-only functions; the automation host (computing device) runs functions on triggers. A host states which capabilities it allows, supplies them and a budget | Yes |
 | 5. Editors | Script editor and graph editor screens, working only on layers 1 and 3 | Yes |
 
 The first batch covers layers 1 to 3.
 
 ## Vocabulary (assistant proposal)
 
-- **Function**: the smallest callable unit. A **query** only reads and returns a value; an **action** may act on the
-  world and returns nothing. A query never calls an action, also not through other functions.
+- **Function**: a generic piece of program with parameters and an optional result; what it can do is inferred
+  (above), not declared.
 - **Program**: a set of functions plus their graph layout; the unit that is edited, saved and copied.
-- **Binding**: one use of a function at one place, with its arguments. A Policy binding is a policy slot, a query and
-  its arguments.
-- **Automation**: a binding with a trigger. It says when to run (trigger), what to run (an action call) and where
+- **Binding**: one use of a function at one place, with its arguments. A Policy binding is a policy slot, a read-only
+  function and its arguments.
+- **Automation**: a binding with a trigger. It says when to run (trigger), what to run (a function call) and where
   (the computing device, which supplies the budget and the effects).
-- **Trigger**: a redstone change, a schedule, a manual press, or "a query's answer turned true".
+- **Trigger**: a redstone change, a schedule, a manual press, or "a function's answer turned true".
 
 "Automation" is a host-level idea, not a language feature: the language has only functions, and policies and
 automation differ in where and when they call one. That is what lets layer 1 be built and tested alone.
