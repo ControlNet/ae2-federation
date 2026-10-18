@@ -437,6 +437,27 @@ Assistant proposals, to discuss:
   `mc.block_at(port) -> str`. Each effectful call is one tick, as decided. Transfer works on any AE2 key type (items,
   fluids, addon types such as Mekanism chemicals), not an item-only list.
 
+### Example: from one chest to another (asked by the user 2026-10-18)
+
+Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:
+
+- **A. One call that moves between two places**, straight from inventory to inventory, one tick:
+  `moved = mc.move("chest_a", "chest_b", "minecraft:iron_ingot", 64)`, returning how many moved. Nothing passes
+  through network storage, so it works with a full network and nothing else can take the items halfway; the two
+  places may be in different networks or dimensions of the domain.
+- **B. Through the network in two steps**: `ae2.import_from("chest_a", item, 64)`, then `ae2.export("chest_b", item,
+  64)`; two ticks, needs free storage, and another automation may use the items in between. Worth having anyway for
+  "put into the network" and "take out of the network".
+- **Reach without keyword arguments.** With two places and a reach for each, positional reach arguments get hard to
+  read (`mc.move(a, b, item, 64, 1, 2)`). Option: a place value, `mc.at("chest_b", 2)` (an interface and a reach),
+  accepted wherever a place is, while a bare interface string means reach 1:
+  `mc.move("chest_a", mc.at("chest_b", 2), item, 64)`. The other option is supporting keyword arguments in the
+  subset (`reach=2`), which Python has anyway.
+- **Choosing what to move**: reading the source first, `for stack in mc.items("chest_a"):` with each stack's
+  resource and amount, then moving per stack.
+- **Which side of the target is used**: the side facing the interface, as a hopper or an AE2 bus uses the side it
+  touches. Machines with sided inventories (a furnace's top, side and bottom) may need the side as an option.
+
 Open: the full list of library
 functions that take a location (with the standard library design); entity interactions (later).
 
