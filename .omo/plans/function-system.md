@@ -170,7 +170,17 @@ files; delete refused while called). A broken cross-file name was already a chec
 missing file too. Descriptors done 2026-10-18 after the standard library rounds closed: a checked example per
 library function; kinds of access dropped by the user (acting or not stays the only distinction).
 
-Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
+Next (user, 2026-10-18: the host and the editor screens both): assistant phasing, a vertical slice first.
+
+| Step | Content |
+|---|---|
+| H1 | ME Federation Automation Interface block: acts in front, cable on the other faces, random `interface-xxxxxx` ID, alias GUI (ID + copy), wrench turns / sneak-wrench picks up; joins the domain; temporary textures |
+| H2 | Programs in the world save (`<world>/ae2federation/programs/*.ae2f` through `Library`), reload command; server `Catalog` (registries, domain interfaces and networks, `network-xxxxxx` IDs) |
+| H3 | `Evaluator.Host` for the 30 library functions through AE2's strategies and NeoForge capabilities, outside `function/`; GameTests through a dev-only runner |
+| H4 | Creative Computing Device (placeholder, unlimited); installations in `SavedData`; scheduler with the step budget; triggers, events, rate limit and overlap modes; Push |
+| H5 | Packets: library index, chunked upload, last write wins, install/uninstall/push |
+| G0 | Render the design row "自动化页签" and check it covers the Edit view controls; add boards for what is missing and get the user's nod |
+| G1+ | Automation tab: Edit view (program list, file tabs, script editor with completion, errors, item icons), Graph view from `Canvas`/`Layout`, library panel with the examples, Install view |
 
 Decided (user, 2026-10-18): programs are global with no permissions for now; installations run the version last
 pushed with a Push button at the top right of the edit view; Edit and Install are two switched pages; a computing

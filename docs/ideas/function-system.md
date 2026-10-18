@@ -834,6 +834,31 @@ Points to settle:
 - **What `set_policy` addresses**: which domain relationship and which rule (Storage, Crafting) are independent
   today, so the built-in follows the existing policy model.
 
+## Host and triggers, first version (user decisions 2026-10-18)
+
+The user asked for the game integration (host) and the editor screens together.
+
+- **Creative Computing Device** (user, 2026-10-18): a placeholder device for testing, with unlimited compute and
+  bandwidth. The multiblock device, its components and the CU/bandwidth cost model stay deferred, as decided on
+  2026-10-17; the creative device is not the survival design.
+- **Triggers**: a manual button, a redstone signal, a schedule (every N ticks), a condition turning true (a `bool`
+  function evaluated regularly), and events.
+- **Events: a curated list** (user picked it over raw Java event classes, 2026-10-18), each chosen with completion in
+  the install view, with completed arguments. AE2: stock of a resource changed, crafting of a resource changed,
+  craftability of a resource changed, network booting or booted, power lost or restored, controller changed, crafting
+  CPUs changed, spatial IO activated (AE2's internal notices, such as channel or idle-power changes, are left out).
+  Minecraft, at a block selected through an interface: the block changed (placed, broken, state changed), a crop
+  grew, a player right-clicked the block. All through public APIs (`GridHelper.addEventHandler`,
+  `IStorageWatcherNode`, `ICraftingWatcherNode`, NeoForge's `BlockEvent`, `CropGrowEvent`,
+  `PlayerInteractEvent`), no mixins. Raw event classes were rejected: no scope (they fire anywhere on the server),
+  unstable names across versions, and many cannot be used (client-only, off-thread, registration).
+- **Rate limit** (user, 2026-10-18): each installation runs at most once per N ticks (default 20, with a floor such as
+  5); events during the cooldown merge into one run after it. Events start a run and pass no data; the function
+  reads what it needs.
+- **A trigger while running** (user, 2026-10-18): each installation chooses ignore (the new trigger is dropped),
+  restart (the current run stops, actions already done stay done, and a new run starts) or parallel (another run,
+  up to a limit). Proposal: ignore by default, a parallel limit of 4.
+
 ## Graph conversion for the Python subset (assistant proposal 2026-10-18)
 
 The Phase 0 prototype's rules carry over (one program representation, stable node IDs, exec wires for order, data wires for
