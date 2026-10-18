@@ -194,6 +194,10 @@ Assistant proposal:
   - An entry's parameters are filled in when it is installed or bound (an item picker for an `Item`, a number field
     for an `int`), so `keep_stock(item: Item, min: int)` can be installed many times with different arguments.
   - Everything an entry calls comes along with it.
+  - One `_helper` serves any number of entries in its file: privacy is per file, not per caller. Entries in
+    different files that share helpers either use a public helper file, or, if wanted later, folders as packages: a
+    file named `_common` is callable only from files in its own folder (Python's own convention for internal
+    modules). Folders are not needed for the first batch.
 - **Several at once.** The editor opens several files in tabs, possibly side by side. In the graph view each function
   is its own canvas, listed beside it; a call node can be opened to jump to the called function's canvas, in either
   view.
