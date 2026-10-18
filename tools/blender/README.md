@@ -115,8 +115,10 @@ The generated copies retain their upstream licensing comments.
 The recorder implements the subset of AE2 19.2.17 `CubeBuilder` used by the production
 builder: face selection, per-face textures, standard/custom UVs and UV quarter turns.
 Its face/UV conventions follow AE2's CubeBuilder and Fabric QuadEmitter; see its LGPL
-notice. New unsupported backend calls fail compilation so the adapter must be extended
-explicitly. No OpenGL context, game world, or Minecraft startup is needed.
+notice. The artist's collars are baked as vanilla `FaceBakery` bakes an unrotated element
+under a block model rotation without UV lock (`FaceInfo` corner order, `BlockFaceUV`
+rotation, `rotateYXZ(-y, -x, 0)` about the block centre). New unsupported backend calls
+fail compilation so the adapter must be extended explicitly. No OpenGL context, game world, or Minecraft startup is needed.
 
 Every export evaluates all 4096 two-bit connection combinations. It writes 72 useful
 shell states (64 cable masks plus dense/covered examples), the inventory shell, all 64
@@ -162,8 +164,9 @@ The flow material discards texture alpha below 0.1 before multiplying vertex alp
 matching Minecraft 1.21.1's `rendertype_entity_translucent_emissive.fsh`; alpha above
 the cutoff remains fractional, rather than being converted to an opaque cutout.
 
-Weighted model variants currently select the first entry. Multipart blockstates and
-`uvlock` explicitly fail because current project blockstates do not need them. Tint
+Weighted model variants currently select the first entry. A multipart blockstate of one
+unconditional part (the formable devices, whose formed look is a baked model) shows that
+part's model, unformed; any other multipart blockstate and `uvlock` explicitly fail. Tint
 providers, item GUI transforms, and renderer-only AE2 status overlays are not emulated.
 Generated items use a pixel-edge extrusion of their first animation frame; animated
 colors update, but silhouette changes across frames require a dedicated importer.
@@ -433,3 +436,28 @@ python3 tools/blender/compose_plasma_beam.py
 Expected: 8 tests pass, `PLASMA_BEAM_OK: 9 stills, 3 loops; assets unchanged`, `PLASMA_MEDIA_OK`. Output in the repo's
 ignored `build/bundle-beam-check/plasma/`: `sheet-approved-vs-shippable.png`, `sheet-shippable-loads.png` (0, 60, 100,
 125%), `sheet-junctions.png`, and a GIF and 4x MP4 loop of the run, the branch and the turn.
+
+## 1x1 cable beam concepts
+
+Whether ordinary cables take R too is open. `cable_beams.py` (stdlib) draws four concepts in the production 1x1
+shells (core, arms and the artist's collars, through `export_cable.py`), on the inspection scene's run with its south
+branch: `m_current`, the shipped M as tubes with a faint fog filling the glass (a stand-in for CableBeamMesh's crossed
+ribbons and fog volumes); `r_scaled`, the bundle's R at the same share of the glass (3/16 block from the axis against
+11/16 in a 2x2); `r_fill`, R scaled until its halo, breathing out under an alarm, meets the glass; `r_lite`, `r_fill`
+with two sheaths of 8 sides. Light outside the glass would fall behind the rails, so every concept stays within it.
+
+```sh
+python3 -m unittest test_cable_beams    # from tools/blender
+python3 tools/blender/export_cable.py --output tools/blender/build/cable-r/cable.json
+blender --background --factory-startup --python-exit-code 1 --python tools/blender/build_scene.py -- \
+  --output tools/blender/build/cable-r --resource-pack /path/to/minecraft-1.21.1-client.jar
+blender --background tools/blender/build/cable-r/federation.blend --python-exit-code 1 \
+  --python tools/blender/render_cable_beams.py -- --animate
+python3 tools/blender/compose_cable_beams.py
+```
+
+The vanilla client jar supplies `minecraft:block/cube` and the like, which some block models now inherit; NeoForm's
+cache keeps one as `minecraft_1.21.1_client.jar`. Expected: 5 tests pass, `FEDERATION_IMPORT_OK`,
+`CABLE_BEAMS_OK: 32 stills, 4 loops; assets unchanged`, `CABLE_BEAM_MEDIA_OK`. Output in the repo's ignored
+`build/cable-beam-concepts/`: `sheet-concepts-{medium,overload}-{level,close}.png`, `sheet-<concept>-loads.png` (0,
+60, 100, 125%), a GIF loop of each concept and `all-concepts-loop.gif` / `-x4.mp4` with all four at once.

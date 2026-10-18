@@ -12,7 +12,7 @@ public final class ExportCable {
     public static void main(String[] args) {
         var cores = new EnumMap<CableCoreFaces.Variant, TextureRef>(CableCoreFaces.Variant.class);
         for (var v : CableCoreFaces.Variant.values()) cores.put(v, new TextureRef(v.texture()));
-        var builder = new FederationCableBuilder(cores, new TextureRef("line"));
+        var builder = new FederationCableBuilder(cores, new TextureRef("line"), new TextureRef("collar"));
         // Validate the full connection space, even though only requested shapes are exported.
         for (int c=0; c<CableVisualConnections.COUNT; c++) {
             if (builder.build(c).isEmpty()) throw new AssertionError("Empty cable " + c);
