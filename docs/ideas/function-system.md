@@ -430,7 +430,12 @@ ae2.free_cpus(network=None) -> int  # idle crafting CPUs
 ae2.energy(network=None) -> float  # AE stored (user: float after all)
 ```
 
-`import_from`/`export_to` take the selected block first (user, 2026-10-18). The four open questions below were
+`import_from`/`export_to` take the selected block first (user, 2026-10-18).
+
+Editor fixes asked by the user (2026-10-19): brackets and quotes are typed in pairs; a moved caret shows at once;
+item completion also matches the shown name and its pinyin (whole syllables or their starts), putting in the ID. In a
+dry run a selected block shows as the block there, `Block('minecraft:chest')`, with the item's icon in the script
+notes (format an assistant proposal). The four open questions below were
 adopted as proposed, the user raising no objection when asked twice (2026-10-18).
 
 `ae2.move(source: Network, target: Network, resource, amount: int) -> bool` moves between two networks of the domain
@@ -651,6 +656,9 @@ The Federation domain GUI gains a fourth tab on its left strip, Automation, wher
 them on a computing device. Boards on the GUI design canvas, row "自动化页签" (sample data):
 
 - **Two views, switched** (user, 2026-10-18): Edit and Install are two pages of the one tab, switched at the top.
+  Replaced (user, 2026-10-19): they are two tabs on the left strip, 程序 (Programs, the edit view) and 自动化
+  (Automation, the install view), and the Edit / Install chips are gone. The Programs tab's glyph, a page of code
+  lines, is an assistant proposal.
 - **Edit view:** the program list (files and their functions) on the left; the editor with file tabs and a Script /
   Graph switch on the right.
 - **Push** (user, 2026-10-18): a button at the top right of the edit view sends the file's current version to the
@@ -1280,7 +1288,11 @@ User decisions (2026-10-19):
 
 ### The Install view as built (G1e-i, 2026-10-19)
 
-- **Edit / Install** chips at the top right switch the tab's two views; Push belongs to the Edit view.
+- **Edit / Install** chips at the top right switch the tab's two views; Push belongs to the Edit view. Since
+  2026-10-19 (user) the two views are the Programs and Automation tabs; Push has the chips' look, with **Delete**
+  beside it, which asks in a dialog first (user). The server refuses to delete an installed program (assistant
+  choice, the request's earlier rule). The log box scrolls within about five lines so the actions stay in view (user;
+  the height is an assistant choice).
 - **Program cards** on the left, every program with its functions and parameters, a colour per program (index
   order) and "→ N" for the installations of a function; **device cards** on the right, this domain's computing
   devices only (decided 2026-10-19), titled by the alias or, without one, by the ID with the position below

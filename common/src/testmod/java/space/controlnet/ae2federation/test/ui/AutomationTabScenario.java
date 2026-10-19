@@ -789,7 +789,6 @@ public final class AutomationTabScenario implements UIScenario {
         return editor.isCompleting() ? editor.completionPopup().labels() : java.util.List.of();
     }
 
-    /** A line counted from the last non-empty one: 0 is that line, 1 the one before. */
     /** A press and release at a button's centre that may open a dialog over it, as a mouse does. */
     private static void pressAndRelease(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector) {
         var bounds = context.el(selector).bounds();
@@ -801,6 +800,7 @@ public final class AutomationTabScenario implements UIScenario {
         return context.all("#auto_install_aside .install-log-row").size();
     }
 
+    /** A line counted from the last non-empty one: 0 is that line, 1 the one before. */
     private static String lastLine(com.lowdragmc.lowdraglib2.uitest.TestContext context, int back) {
         var lines = new java.util.ArrayList<>(editor(context).getLines());
         while (!lines.isEmpty() && lines.get(lines.size() - 1).isBlank()) lines.remove(lines.size() - 1);

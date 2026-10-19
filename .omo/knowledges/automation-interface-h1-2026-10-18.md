@@ -401,3 +401,37 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - A test cell can be filled before it goes into a chest: `StorageCells.getCellInventory(stack, null).insert(...)`
   writes the stack at once when it has no host.
 - GameTest `programmovesbetweenitsnetworks`; compare: `build/ae2-move-check/compare.png`.
+
+## Editor and tab fixes (2026-10-19, user list of ten)
+
+- `PythonLanguage` must match every character: LDLib2's editor draws only matched tokens. "1a" matched nothing
+  because the number pattern ended in `\b`; numbers now end without a boundary, and `operator` takes any non-letter
+  (so non-ASCII digits draw too). `PythonLanguageTest` checks that tokens join back to the line.
+- LDLib2 blinks the caret by the wall clock (`millis % 1000 < 500`); `ScriptEditor` overrides `setCursor` and
+  `drawCursor` so the blink restarts at each move (`CaretBlink`). `UIElement` cannot load in unit tests (LDLib2's
+  registry needs FML), so pure rules live in small helper classes (`CaretBlink`, `Pairs`).
+- Pairs: `Pairs.typed` decides PAIR / STEP / PLAIN; Backspace inside an empty pair removes both in one undo step. An
+  accepted resource with an existing closing quote puts the caret after it. The UI scenario's "Graph is not offered
+  while the script does not parse" check moved to `n = ae2.` since a typed quote now closes itself.
+- Pinyin: Minecraft ships ICU4J, so `Transliterator.getInstance("Han-Latin; Latin-ASCII; Lower")` gives pinyin with no
+  new dependency (one reading per character). `NameMatch.startsWith` matches each Han character by a start of its
+  syllable or the character itself; `NameMatch.rank` puts ID-path or name starts first (shorter names first), then
+  contains. `RegistryResources.values` now lists every item/fluid and ranks them.
+- `print`: checked in `Checker.print` (any args, `sep` str/None; `end`/`file`/`flush` refused), run in
+  `Evaluator.call` through `Host.print`; `ProgramHost.printTo` routes it to `ProgramScheduler.log`; dry runs print
+  nowhere.
+- Tabs: pages `programs` (edit view, `page_programs`) and `automation` (install view, `page_automation`) share one
+  `FederationAutomationView`; the workspace calls `setInstalling` and `setOpen`. Header tools (Push, Delete as
+  `range-chip auto-action`) show on the Programs tab only. `FederationIcons.PROGRAMS` is an assistant-drawn glyph.
+- Delete: the server's `delete` request already refused installed programs; the client asks in a `Dialog` (as
+  `FederationReleaseDialog`), then `LocalCopies.delete` removes the copy and its base so the folder watch does not
+  offer it again. A Dialog opened or closed on press makes the UI harness's click fail on release: press and release
+  by hand (`pressAndRelease`, as `TaskThirtyThreeScenarioSupport.activateNavigation`).
+- Log box: a `ScrollerView` with `adaptive-height: true` and `max-height: 60` (min-height needed: a 0-height scroller
+  never adapts); rows go in with `addScrollViewChild`.
+- Dry-run values: `Evaluator.Host.repr` (default `Ops.repr`); `Ops.repr(value, own)` writes host values; `ProgramHost`
+  writes a `Block` as `Block('minecraft:chest')`. `ScriptEditor.drawNotes` cuts a note with `SyntaxParser` +
+  `PythonLanguage` and draws an item icon before each resource string, as in code lines.
+- Before/after shots: a throwaway zh_cn UI scenario run on a detached worktree of the old commit and on the branch
+  (never committed). Escape with no completion open closes the screen, so the scenario closed the string with a typed
+  quote instead. Compare: `build/editor-tabs-check/compare.png`.
