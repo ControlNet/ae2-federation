@@ -62,6 +62,7 @@
   "ae2federation.ui.domain.links": "%s 条连接",
   "ae2federation.ui.domain.links.one": "%s 条连接",
   "ae2federation.ui.domain.members": "%s 个网络",
+  "ae2federation.ui.domain.members.one": "%s 个网络",
   "ae2federation.ui.domain.members.pending": "尚无已确认的联邦域成员",
   "ae2federation.ui.domain.consumer": "使用方：%s",
   "ae2federation.ui.domain.provider": "提供方：%s",

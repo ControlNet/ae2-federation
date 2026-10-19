@@ -334,6 +334,38 @@ public final class RouterGameTests {
     }
 
     /**
+     * A domain of one ME network still shows it: the Switch's screen lists the network for the topology, though
+     * there is no pair for rules yet.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void aDomainOfOneNetworkShowsItsNetwork(GameTestHelper helper) {
+        BlockPos.betweenClosed(CENTER.offset(-3, -1, -1), CENTER.offset(3, 2, 1))
+                .forEach(position -> helper.setBlock(position, net.minecraft.world.level.block.Blocks.AIR));
+        var fixtures = new RouterFixtures(helper);
+        var switchEntity = fixtures.placeSwitch(CENTER);
+        fixtures.placeNativeDevice(CENTER, Direction.WEST);
+        fixtures.placeFederationCable(CENTER.east());
+        var player = space.controlnet.ae2federation.test.world.MockServerPlayers.inLevel(helper);
+        var at = helper.absolutePos(CENTER);
+        player.moveTo(at.getX() + 0.5, at.getY() + 1, at.getZ() + 0.5);
+        helper.succeedWhen(() -> {
+            var network = network(helper, switchEntity, Direction.WEST);
+            var session = space.controlnet.ae2federation.client.policy.FederationDomainPolicySession
+                    .forRouter(player, at);
+            var root = com.google.gson.JsonParser.parseString(session.workspaceChoices()).getAsJsonObject();
+            var networks = root.getAsJsonArray("networks");
+            helper.assertTrue(networks != null && networks.size() == 1,
+                    "The workspace lists the domain's one network, got " + networks);
+            helper.assertValueEqual(networks.get(0).getAsJsonObject().get("id").getAsString(),
+                    network.value().toString(), "The listed network is the Switch's");
+            helper.assertValueEqual(session.statusCode(), "ready", "A domain of one network is not pending");
+            RouterEvidence.write("adomainofonenetworkshowsitsnetwork", 3, Map.of("network", network.toString()));
+            fixtures.close();
+        });
+    }
+
+    /**
      * The device models have gaps, so their neighbours must keep the faces seen through them: all six around the
      * Router, the one in front of a Provider or Endpoint. Behind those two the model is closed and still hides it.
      */
