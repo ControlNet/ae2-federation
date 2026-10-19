@@ -289,3 +289,16 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - Test hooks: `.graph-card` (`.acts` when it acts), `.function-tab`, `.auto-variable`, `#auto_view_graph`. The
   function tabs must not reuse `.file-tab`: a scenario counts the file tabs.
 - Compare: `build/automation-graph-check/compare.png`.
+
+## G1f-ii: editing values on the cards
+
+- A value typed on a port must not reuse the canvas's node IDs: `ScriptParser.expression(text, ids)` parses it with
+  `new Ids("n", parse(text).positions().keySet())`, which continues after the file's highest ID.
+- `Library.splice(text, function)` prints only the edited function in place, keeping comments and blank lines
+  elsewhere; `GraphCards.put` chains expression, `Edits.put`, `toFunction` and splice.
+- A card that ignores hits (`setAllowHitTest(false)`) can still have children that take them: the value areas get
+  clicks while presses elsewhere reach the `GraphView` and pan.
+- Every index the server sends re-checks the script; redrawing the graph for the same text would rebuild the cards
+  and close a field being typed in, so the view redraws only when the text it was drawn from changes.
+- A UI run that dies at start with `FileSystemNotFoundException` in securejarhandler is flaky; run it again.
+- Compare: `build/automation-graph-edit-check/compare.png`.

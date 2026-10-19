@@ -30,20 +30,21 @@ public final class ScriptParser {
     private final List<ScriptError> errors;
     private final Map<String, Position> positions = new HashMap<>();
     private final Map<String, Position> ends = new HashMap<>();
-    private final Ids ids = new Ids("n");
+    private final Ids ids;
     private final List<String> pending = new ArrayList<>();
     private int pos;
     /** How many loops the statement being parsed is inside. */
     private int loops;
 
-    private ScriptParser(List<Token> tokens, List<ScriptError> errors) {
+    private ScriptParser(List<Token> tokens, List<ScriptError> errors, Ids ids) {
         this.tokens = tokens;
         this.errors = errors;
+        this.ids = ids;
     }
 
     public static ParseResult parse(String source) {
         var errors = new ArrayList<ScriptError>();
-        var parser = new ScriptParser(Lexer.lex(source, errors), errors);
+        var parser = new ScriptParser(Lexer.lex(source, errors), errors, new Ids("n"));
         var program = parser.file();
         errors.sort(Comparator.comparingInt(ScriptError::line).thenComparingInt(ScriptError::column));
         var firstPerLine = new ArrayList<ScriptError>();
@@ -53,6 +54,25 @@ public final class ScriptParser {
             }
         }
         return new ParseResult(program, firstPerLine, parser.positions, parser.ends);
+    }
+
+    /**
+     * One expression typed on its own, such as a value written on a graph port. Its nodes take their IDs from
+     * {@code ids}, so they never meet a program's. Refused with the first problem's message unless the text is one
+     * expression on one line.
+     */
+    public static Expr expression(String text, Ids ids) {
+        if (text.isBlank() || text.contains("\n")) throw new IllegalArgumentException("write one value");
+        var errors = new ArrayList<ScriptError>();
+        var parser = new ScriptParser(Lexer.lex("def _() -> None:\n    _ = " + text.strip() + "\n", errors), errors,
+                ids);
+        var program = parser.file();
+        if (!errors.isEmpty()) throw new IllegalArgumentException(errors.get(0).message());
+        var body = program.functions().get(0).body();
+        if (body.size() != 1 || !(body.get(0) instanceof Stmt.Assign assign)) {
+            throw new IllegalArgumentException("write one value");
+        }
+        return assign.value();
     }
 
     /** Thrown to abandon the current statement; carries no stack trace. */

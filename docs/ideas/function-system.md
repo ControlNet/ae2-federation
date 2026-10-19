@@ -1319,6 +1319,23 @@ User decisions (2026-10-19):
   - Python's built-ins (`len`, `int`...) have no parameter names, so their rows have no label.
 - `AutoGraphInline` is option B (short expressions on ports), which the user did not choose; it is not built.
 
+**Editing on the cards (G1f-ii, 2026-10-19).** A click on a literal's field or a variable's chip opens a field over
+it with its text selected; Enter or leaving the field writes what is typed into the script, and the graph is drawn
+again from it. Only that function's text is printed again; every other line of the file stays as written. Assistant
+choices, open for the user:
+
+- The field takes any value, as the script would: a number, a variable's name (a chip), or an expression such as
+  `min(15, n + 1)`, which becomes new cards. Something that is no value is refused on the status line, in red.
+- An item or fluid ID may be typed without quotes on a resource port (`minecraft:gold_ingot`); the field shows it
+  that way.
+- A wired port is not edited this way yet: that comes with the wiring edits (G1f-iv).
+
+**A function dropped from the Library is a draft (user decision 2026-10-19).** Dropped on the canvas, it stays there
+as a dashed card that is not in the script; it is written into the script only once it is wired to the exec chain or
+to a port. A draft lives only while the screen is open and is lost when it closes. Not chosen: accepting drops only on
+a wire or a port, or appending the call at the end of the function.
+
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

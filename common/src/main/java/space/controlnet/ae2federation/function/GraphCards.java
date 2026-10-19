@@ -101,6 +101,39 @@ public final class GraphCards {
         return list;
     }
 
+    /**
+     * {@code text} with {@code typed} written on a port of the graph {@code canvas}, a function of {@code text}: a
+     * literal, a variable or any value, edited as {@link Edits#put} does and printed in place of that function, the
+     * rest of the text kept. An item or fluid ID typed without quotes on a resource port is taken as its string.
+     * Refused with a message when {@code typed} is no value or the edit gives no program.
+     */
+    public static String put(String text, Canvas canvas, String node, String port, TypeRef portType, String typed) {
+        var value = typed.strip();
+        if (resource(portType) && RESOURCE_ID.matcher(value).matches()) value = "\"" + value + "\"";
+        var ids = new Ids("n", ScriptParser.parse(text).positions().keySet());
+        var edited = Edits.put(canvas, node, port, ScriptParser.expression(value, ids));
+        return Library.splice(text, edited.toFunction());
+    }
+
+    /** What a resource port's field shows to be edited: an item's ID without its quotes, anything else as written. */
+    public static String editText(Canvas.Input input, TypeRef type) {
+        return switch (input) {
+            case Canvas.Input.Literal literal when resource(type) && literal.value() instanceof Expr.StrLit string ->
+                    string.value();
+            case Canvas.Input.Literal literal -> ScriptPrinter.expr(literal.value());
+            case Canvas.Input.Chip chip -> chip.name().name();
+            default -> "";
+        };
+    }
+
+    private static final java.util.regex.Pattern RESOURCE_ID = java.util.regex.Pattern.compile(
+            "[a-z0-9_.-]+:[a-z0-9_./-]+");
+
+    private static boolean resource(TypeRef type) {
+        return type != null && (type.name().equals("Item") || type.name().equals("Fluid")
+                || type.name().equals("Resource"));
+    }
+
     /** The type of the value on a port: a literal's, a variable's or the wired node's; {@code null} for none. */
     static TypeRef type(Canvas.Input input, Map<String, TypeRef> types) {
         return switch (input) {

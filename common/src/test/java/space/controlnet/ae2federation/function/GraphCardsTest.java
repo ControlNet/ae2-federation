@@ -97,4 +97,45 @@ final class GraphCardsTest {
                 GraphCards.variables(canvas("collect")).stream()
                         .map(variable -> variable.name() + ": " + variable.type()).toList());
     }
+
+    /** The row of the card titled {@code title} labelled {@code label}. */
+    private static GraphCards.Row row(String function, String title, String label) {
+        return cards(function).stream().filter(card -> card.title().equals(title)).findFirst().orElseThrow().rows()
+                .stream().filter(row -> row.label().equals(label)).findFirst().orElseThrow();
+    }
+
+    private static String put(String function, String title, String label, String typed) {
+        var row = row(function, title, label);
+        return GraphCards.put(IRON_TOOLS, canvas(function), row.node(), row.port(), row.type(), typed);
+    }
+
+    @Test
+    void aValueTypedOnAPortChangesOnlyThatFunctionsText() {
+        var text = put("low_iron_alarm", "<", "b", " 32 ");
+        assertEquals(IRON_TOOLS.replace("if now < 64:", "if now < 32:"), text);
+        assertEquals(IRON_TOOLS.replace("ae2.craft(iron, 64 - now)", "ae2.craft(iron, 64 - iron_count)"),
+                put("low_iron_alarm", "-", "b", "iron_count"));
+        assertEquals(IRON_TOOLS.replace("mc.set_redstone(lamp, 15)", "mc.set_redstone(lamp, min(15, 7 + 1))"),
+                put("low_iron_alarm", "mc.set_redstone", "level", "min(15, 7 + 1)"));
+    }
+
+    @Test
+    void anItemIdNeedsNoQuotesOnAResourcePort() {
+        assertEquals(IRON_TOOLS.replace("\"minecraft:iron_ingot\"", "\"minecraft:gold_ingot\""),
+                put("low_iron_alarm", "iron: Item =", "value", "minecraft:gold_ingot"));
+        assertEquals("minecraft:iron_ingot", GraphCards.editText(row("low_iron_alarm", "iron: Item =", "value").input(),
+                row("low_iron_alarm", "iron: Item =", "value").type()));
+        assertEquals("now", GraphCards.editText(row("low_iron_alarm", "<", "a").input(),
+                row("low_iron_alarm", "<", "a").type()));
+    }
+
+    @Test
+    void whatIsNoValueIsRefused() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> put("low_iron_alarm", "<", "b", "1 +"));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> put("low_iron_alarm", "<", "b", ""));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> put("low_iron_alarm", "<", "b", "x = 1"));
+    }
 }

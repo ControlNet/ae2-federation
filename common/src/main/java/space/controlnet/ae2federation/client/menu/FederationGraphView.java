@@ -6,6 +6,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
 import com.lowdragmc.lowdraglib2.gui.util.DrawerHelper;
@@ -15,12 +16,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.client.automation.CompletionPopup;
 import space.controlnet.ae2federation.client.automation.ScriptChecker;
 import space.controlnet.ae2federation.client.policy.WireCurve;
@@ -36,6 +40,9 @@ import space.controlnet.ae2federation.function.TypeRef;
  * the function's variables in a strip, and its cards on a canvas that pans and zooms, placed by {@link Layout}. The
  * cards come from the script, checked on the client worker ({@link ScriptChecker#graph}); the script stays the only
  * stored form. A script that does not parse has no graph, so Graph is inactive until it does.
+ *
+ * <p>A literal or a variable on a card is edited in place: a click opens a field, and Enter or leaving it writes what
+ * is typed into the script ({@link GraphCards#put}), which is checked and drawn again as any edit is.
  */
 final class FederationGraphView {
     /** A card's geometry in GUI units, as the board draws it: its head, the first row's centre and the row pitch. */
@@ -75,6 +82,13 @@ final class FederationGraphView {
     private final Button scriptChip;
     private final Button graphChip;
     private final Consumer<Boolean> switched;
+    /** The editor's text, and where an edited text goes: into the editor, as typing there would. */
+    private final Supplier<String> text;
+    private final Consumer<String> write;
+    /** Where a refused edit says why: the status line. */
+    private final Consumer<String> refuse;
+    /** The text the shown graphs were drawn from; an edit applies only to it. */
+    private String drawnFrom = "";
     private boolean shown;
     private boolean parses;
     private Map<String, ScriptChecker.Graph> graphs = Map.of();
@@ -85,8 +99,12 @@ final class FederationGraphView {
     private int extentX;
     private int extentY;
 
-    FederationGraphView(UI ui, Consumer<Boolean> switched) {
+    FederationGraphView(UI ui, Consumer<Boolean> switched, Supplier<String> text, Consumer<String> write,
+            Consumer<String> refuse) {
         this.switched = switched;
+        this.text = text;
+        this.write = write;
+        this.refuse = refuse;
         graph = element(ui, "auto_graph", GraphView.class);
         script = element(ui, "auto_script", UIElement.class);
         box = element(ui, "auto_graph_box", UIElement.class);
@@ -134,8 +152,11 @@ final class FederationGraphView {
         if (shown) setShown(false);
     }
 
-    /** The worker's graphs of the shown script, or nothing when it does not parse. */
-    void show(Optional<Map<String, ScriptChecker.Graph>> answer) {
+    /** The worker's graphs of {@code from}, the shown script, or nothing when it does not parse. */
+    void show(String from, Optional<Map<String, ScriptChecker.Graph>> answer) {
+        // Every index from the server checks the script again; drawing the same text again would close an open field.
+        boolean same = parses && answer.isPresent() && from.equals(drawnFrom);
+        drawnFrom = from;
         parses = answer.isPresent();
         graphChip.setActive(parses);
         if (!parses) {
@@ -147,7 +168,7 @@ final class FederationGraphView {
             function = graphs.keySet().stream().findFirst().orElse(null);
             recentre = true;
         }
-        if (shown) redraw();
+        if (shown && !same) redraw();
     }
 
     /** Shows {@code name}'s graph, as clicking its tab does. */
@@ -195,7 +216,8 @@ final class FederationGraphView {
         graph.addContentChild(wires);
         for (var card : shownGraph.cards()) {
             var place = boxes.get(card.id());
-            graph.addContentChild(new CardElement(drawn.get(card.id()), place.x() + MARGIN, place.y() + MARGIN));
+            graph.addContentChild(new CardElement(drawn.get(card.id()), place.x() + MARGIN, place.y() + MARGIN,
+                    (row, typed) -> put(shownGraph, row, typed)));
         }
         extentX = right + 2 * MARGIN;
         extentY = bottom + 2 * MARGIN;
@@ -210,6 +232,16 @@ final class FederationGraphView {
         // Fitting a region the view's size over the scale gives that scale with the top left in the corner.
         graph.fit(0, 0, viewWidth / scale, viewHeight / scale, scale);
         recentre = false;
+    }
+
+    /** Writes a value typed on a card into the script, or says on the status line why it cannot be. */
+    private void put(ScriptChecker.Graph shownGraph, GraphCards.Row row, String typed) {
+        if (!text.get().equals(drawnFrom)) return;
+        try {
+            write.accept(GraphCards.put(drawnFrom, shownGraph.canvas(), row.node(), row.port(), row.type(), typed));
+        } catch (IllegalArgumentException e) {
+            refuse.accept(e.getMessage());
+        }
     }
 
     private void rebuildTabs() {
@@ -277,6 +309,11 @@ final class FederationGraphView {
 
     /** What a row shows after its label: a variable's chip, or a literal in a field; nothing for a wire. */
     private record Value(String text, ItemStack icon, boolean chip, int color, int width) {
+    }
+
+    /** Where a row's value sits on its card, after its label. */
+    private static float valueX(GraphCards.Row row) {
+        return LABEL_X + net.minecraft.client.Minecraft.getInstance().font.width(row.label()) + GAP;
     }
 
     /** A card measured for drawing: its rows' values, its size, and where its first input row is. */
@@ -398,15 +435,64 @@ final class FederationGraphView {
     private static final class CardElement extends UIElement {
         private final Drawn drawn;
 
-        CardElement(Drawn drawn, int x, int y) {
+        CardElement(Drawn drawn, int x, int y, BiConsumer<GraphCards.Row, String> put) {
             this.drawn = drawn;
             setId("auto_graph_card_" + drawn.card().id());
             addClass("graph-card");
             if (drawn.card().acts()) addClass("acts");
             layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(x).top(y).width(drawn.width())
                     .height(drawn.height()));
-            // Read only for now: presses reach the canvas, which pans.
+            // Only its values take presses; a press anywhere else reaches the canvas, which pans.
             setAllowHitTest(false);
+            for (int i = 0; i < drawn.card().rows().size(); i++) {
+                var value = drawn.values().get(i);
+                if (value != null) addChild(editable(drawn.card().rows().get(i), value, drawn.rowY(i), put));
+            }
+        }
+
+        /** The value's place on the card: a click opens a field over it, and Enter or leaving it writes it. */
+        private static UIElement editable(GraphCards.Row row, Value value, int rowY,
+                BiConsumer<GraphCards.Row, String> put) {
+            var area = new UIElement();
+            area.setId("auto_graph_value_" + row.node() + "_" + row.port().replace(':', '_'));
+            area.addClass("graph-value");
+            float left = valueX(row);
+            area.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(left).top(rowY - 6)
+                    .width(value.width()).height(11));
+            var shown = GraphCards.editText(row.input(), row.type());
+            // On the click, not the press: the field opens under the pointer.
+            area.addEventListener(UIEvents.CLICK, event -> {
+                if (area.getChildren().isEmpty()) open(area, shown, value.width(), typed -> put.accept(row, typed));
+            });
+            return area;
+        }
+
+        private static void open(UIElement area, String shown, int width, Consumer<String> send) {
+            var field = new TextField();
+            field.setId("auto_graph_field");
+            field.addClass("graph-field");
+            field.textFieldStyle(style -> style.placeholder(Component.empty()));
+            int fieldWidth = Math.max(width, 60);
+            field.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(0).top(0).width(fieldWidth)
+                    .height(11));
+            field.setText(shown, false);
+            boolean[] done = {false};
+            Runnable leave = () -> {
+                if (done[0]) return;
+                done[0] = true;
+                var typed = field.getText().strip();
+                area.removeChild(field);
+                if (!typed.equals(shown)) send.accept(typed);
+            };
+            field.addEventListener(UIEvents.KEY_DOWN, event -> {
+                if (event.keyCode == GLFW.GLFW_KEY_ENTER || event.keyCode == GLFW.GLFW_KEY_KP_ENTER) leave.run();
+            });
+            field.addEventListener(UIEvents.BLUR, event -> leave.run());
+            area.addChild(field);
+            field.focus();
+            // All of the text selected, so typing replaces it.
+            field.setCursor(shown.length());
+            field.setSelection(0, shown.length());
         }
 
         @Override
@@ -438,7 +524,7 @@ final class FederationGraphView {
                 text(context, row.label(), x + LABEL_X, cy - 4, LABEL);
                 var value = drawn.values().get(i);
                 if (value == null) continue;
-                float vx = x + LABEL_X + font.width(row.label()) + GAP;
+                float vx = x + valueX(row);
                 float vy = cy - 6;
                 if (value.chip()) {
                     float left = vx;

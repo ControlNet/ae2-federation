@@ -359,7 +359,7 @@ public final class Library {
      * {@code text} with {@code edited} printed in place of the definition with its ID (IDs as a parse of
      * {@code text} gives them). The definition's own comments above it are part of it; every other line is kept.
      */
-    static String splice(String text, Definition edited) {
+    public static String splice(String text, Definition edited) {
         var normal = text.replace("\r\n", "\n");
         var parsed = ScriptParser.parse(normal);
         var definitions = parsed.program().definitions();

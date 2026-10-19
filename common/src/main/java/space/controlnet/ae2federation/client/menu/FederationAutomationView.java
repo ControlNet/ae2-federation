@@ -136,7 +136,12 @@ final class FederationAutomationView {
         new FederationLibraryPanel(ui);
         graphs = new FederationGraphView(ui, shown -> {
             if (shown) editor.hideCompletion();
-        });
+        }, this::text, edited -> {
+            // As if typed: the local copy, the upload after a pause and the check all follow.
+            clearAnswer();
+            editor.setValue(edited.split("\n", -1), false);
+            edited();
+        }, refusal -> answer(new ProgramSync.Answer(0, false, refusal)));
         editView = element("auto_edit_view", UIElement.class);
         installView = element("auto_install_view", UIElement.class);
         modeEdit = element("auto_mode_edit", Button.class);
@@ -323,7 +328,9 @@ final class FederationAutomationView {
     }
 
     private void clearAnswer() {
-        element("automation_answer", Label.class).setText(Component.empty());
+        var label = element("automation_answer", Label.class);
+        label.removeClass("refused");
+        label.setText(Component.empty());
     }
 
     private void refresh() {
@@ -437,7 +444,7 @@ final class FederationAutomationView {
         });
         // The graph is drawn from the same text, and Graph is offered only while it parses.
         ScriptChecker.graph(text, snapshot.others(), snapshot.catalog(), answer -> {
-            if (name.equals(selected) && reconciled && text.equals(text())) graphs.show(answer);
+            if (name.equals(selected) && reconciled && text.equals(text())) graphs.show(text, answer);
         });
     }
 

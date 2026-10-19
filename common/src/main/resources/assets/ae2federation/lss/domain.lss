@@ -220,6 +220,7 @@
 .domain-panel .auto-variables-title { adaptive-width: true; height: 9; flex-shrink: 0; margin-right: 3; text-color: #ffaaa4b2; }
 .domain-panel .auto-variable { height: 12; flex-shrink: 0; padding-left: 4; padding-top: 2; text-wrap: hide; text-color: #ffefeaf8; }
 .auto-graph { width: 100%; flex: 1; min-height: 0; allow-pan: true; allow-zoom: true; min-scale: 0.5; max-scale: 2; grid-size: 24; grid-subdivisions: 4; grid-min-pixels: 8; grid-line-color: #ff2c2935; grid-accent-color: #ff2c2935; background: #ff201e27; }
+.domain-panel .graph-field { padding-all: 0; padding-left: 2; padding-top: 1; background: built-in(federation:FIELD); text-color: #ff413f54; }
 .auto-script { width: 100%; flex: 1; min-height: 0; }
 .auto-problems { width: 100%; flex-shrink: 0; gap-all: 2; }
 .auto-divider { width: 100%; height: 1; flex-shrink: 0; background: #ff3a3545; }

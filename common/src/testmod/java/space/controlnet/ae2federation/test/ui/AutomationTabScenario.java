@@ -25,7 +25,9 @@ import space.controlnet.ae2federation.automation.ProgramScheduler;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.client.automation.ScriptEditor;
+import space.controlnet.ae2federation.function.ScriptParser;
 import space.controlnet.ae2federation.function.StandardLibrary;
+import space.controlnet.ae2federation.function.Stmt;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
 /**
@@ -131,6 +133,31 @@ public final class AutomationTabScenario implements UIScenario {
                         context.all(".auto-variable").stream().map(chip -> chip.text()).toList()
                                 .equals(java.util.List.of("lamp: Interface", "iron: Item", "now: int")))
                 .frames(2).screenshot("ui-automation-graph")
+                // Values are edited on the cards (G1f-ii) and written into the script.
+                .click(alarmBound())
+                .check("a click opens a field over the value, its text selected", context ->
+                        context.el("#auto_graph_field").as(TextField.class).getText().equals("64"))
+                .type("32")
+                .frames(2).screenshot("ui-automation-graph-edit")
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("Enter writes the value into the script and the graph is drawn again", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS.replace("now < 64", "now < 32"))
+                                && context.all("#auto_graph_field").isEmpty() && context.all(".graph-card").size() == 9)
+                .click(alarmBound())
+                .type("1 +")
+                .key(GLFW.GLFW_KEY_ENTER)
+                .check("what is no value is refused on the status line, in red", context ->
+                        context.all("#automation_answer.refused").size() == 1
+                                && String.join("\n", editor(context).getLines())
+                                        .equals(IRON_TOOLS.replace("now < 64", "now < 32")))
+                .waitUntil("the bound is back after the next check", context -> context.all(alarmBound()).size() == 1)
+                .click(alarmBound())
+                .type("64")
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("the value goes back", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                .check("a written value clears the refusal", context ->
+                        context.all("#automation_answer.refused").isEmpty())
                 .click("#auto_function_refill")
                 .waitUntil("another tab shows that function", context ->
                         context.all("#auto_function_refill.selected").size() == 1
@@ -505,6 +532,15 @@ public final class AutomationTabScenario implements UIScenario {
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
+    }
+
+    /** The place of the alarm's bound, 64 in {@code now < 64}, on its graph. */
+    private static String alarmBound() {
+        var alarm = ScriptParser.parse(IRON_TOOLS).program().functions().stream()
+                .filter(function -> function.name().equals("low_iron_alarm")).findFirst().orElseThrow();
+        var condition = alarm.body().stream().filter(statement -> statement instanceof Stmt.If).map(statement ->
+                ((Stmt.If) statement).condition()).findFirst().orElseThrow();
+        return "#auto_graph_value_" + condition.id() + "_right";
     }
 
     private static boolean graphOffered(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
