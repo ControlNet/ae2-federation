@@ -61,6 +61,9 @@ public final class ScriptEditor extends CodeEditor {
     }
 
     private boolean editing;
+    private boolean numbered = true;
+    /** The lines shown to be read, without the room at their ends; null while the editor edits. */
+    private String @Nullable [] readOnly;
     private @Nullable Completer completer;
     private @Nullable CompletionPopup popup;
     /** The text and caret the shown completion was asked for; accepting it needs them unchanged. */
@@ -82,6 +85,38 @@ public final class ScriptEditor extends CodeEditor {
     /** Whether keys change the text; the text can be selected and scrolled either way. */
     public void setEditing(boolean editing) {
         this.editing = editing;
+    }
+
+    /** Whether the gutter with the line numbers shows; without it the text starts after a small gap. */
+    public void setNumbered(boolean numbered) {
+        this.numbered = numbered;
+    }
+
+    /**
+     * Shows {@code lines} to be read, not edited. Each line ends with blank room as wide as its icons' room, measured
+     * again when the font changes: LDLib2 scrolls over the plain text's width, so a line's end would otherwise stay
+     * out of reach.
+     */
+    public void setReadOnlyLines(String[] lines) {
+        setEditing(false);
+        readOnly = lines.clone();
+        if (LDLib2.isClient()) padReadOnly();
+    }
+
+    @Override
+    protected void onTextAreaStyleChanged() {
+        super.onTextAreaStyleChanged();
+        if (readOnly != null && LDLib2.isClient()) padReadOnly();
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private void padReadOnly() {
+        setValue(readOnly, false);
+        var padded = new String[readOnly.length];
+        for (int line = 0; line < readOnly.length; line++) {
+            padded[line] = readOnly[line] + room().repeat(resources(line).size());
+        }
+        setValue(padded, false);
     }
 
     /** The problems to mark, for the text as it is now. */
@@ -420,6 +455,18 @@ public final class ScriptEditor extends CodeEditor {
         var font = getFont();
         float scale = scale();
         int lines = getLines().size();
+        float lineHeight = lineHeight();
+        int first = Math.max(0, (int) Math.floor(getScrollY() / lineHeight));
+        int last = Math.min(lines - 1, first + (int) Math.ceil(contentView.getContentHeight() / lineHeight) + 1);
+        if (!numbered) {
+            if (padding != TEXT_GAP) {
+                padding = TEXT_GAP;
+                contentView.layout(layout -> layout.paddingLeft(padding));
+            }
+            drawUnderlines(context, first, last);
+            drawIcons(context, first, last);
+            return;
+        }
         float width = Math.max(MIN_GUTTER, MARK + font.getSplitter().stringWidth(
                 inFont("9".repeat(String.valueOf(lines).length()))) * scale + 2 * NUMBER_GAP);
         if (width + TEXT_GAP != padding) {
@@ -428,9 +475,6 @@ public final class ScriptEditor extends CodeEditor {
         }
         float left = contentView.getPositionX();
         DrawerHelper.drawSolidRect(context.graphics, left, contentView.getPositionY(), width, contentView.getSizeHeight(), GUTTER);
-        float lineHeight = lineHeight();
-        int first = Math.max(0, (int) Math.floor(getScrollY() / lineHeight));
-        int last = Math.min(lines - 1, first + (int) Math.ceil(contentView.getContentHeight() / lineHeight) + 1);
         var marked = new HashSet<Integer>();
         problems.forEach(problem -> marked.add(problem.line() - 1));
         context.graphics.flush();

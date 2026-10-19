@@ -31,7 +31,8 @@ import space.controlnet.ae2federation.function.ScriptParser;
 import space.controlnet.ae2federation.function.ScriptProblems;
 
 /**
- * The Automation tab's edit view: the programs on the left, the opened ones as tabs above the script. Programs are
+ * The Automation tab's edit view: the programs on the left with the Library under them
+ * ({@link FederationLibraryPanel}), the opened ones as tabs above the script. Programs are
  * global; the header counts this domain's devices and what is installed on them. The page subscribes to the server's
  * program index while it is open ({@link ClientPrograms}), on the client only, since the tree is built on both sides.
  *
@@ -117,6 +118,7 @@ final class FederationAutomationView {
             newName.setText("", false);
             if (show) newName.focus();
         });
+        new FederationLibraryPanel(ui);
         // An empty label would show LDLib2's default text until the first answer.
         clearAnswer();
         // The root always ticks; the editor does not while another page hides it.

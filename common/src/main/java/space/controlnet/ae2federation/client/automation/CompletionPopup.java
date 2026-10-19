@@ -45,8 +45,9 @@ public final class CompletionPopup extends UIElement {
     private static final int BACKGROUND = FederationTheme.WELL;
     private static final int CHOSEN = 0xff2c2735;
     private static final int RULE = 0xff3a3545;
-    private static final int NAME = 0xff7fb6ff;
-    private static final int ACTS = 0xffb26cff;
+    /** A function's name, and the square of a function that acts; the Library panel shows them alike. */
+    public static final int NAME = 0xff7fb6ff;
+    public static final int ACTS = 0xffb26cff;
 
     private final Font font;
     private final ResourceLocation textFont;

@@ -132,6 +132,24 @@
 .domain-panel .program-row.selected .program-name { text-color: #ffefeaf8; }
 .domain-panel .program-row.private .program-name { text-color: #ff6f6a7a; }
 .domain-panel .program-problems { adaptive-width: true; height: 9; flex-shrink: 0; text-color: #ffff6a75; }
+.auto-library { width: 100%; flex: 2; min-height: 0; }
+.domain-panel .auto-library-search { width: 100%; height: 13; flex-shrink: 0; padding-top: 3; background: #ff17141e; text-color: #ffefeaf8; }
+.library-row { width: 100%; height: 13; flex-shrink: 0; flex-direction: row; align-items: center; padding-left: 5; padding-right: 4; gap-all: 3; }
+.library-row.library-function { padding-left: 17; }
+.domain-panel .library-arrow { width: 6; height: 9; flex-shrink: 0; text-color: #ffaaa4b2; }
+.domain-panel .library-row .program-name { text-color: #ffefeaf8; }
+.domain-panel .library-row.library-function .program-name { text-color: #ff7fb6ff; }
+.domain-panel .library-count { adaptive-width: true; height: 9; flex-shrink: 0; text-color: #ff6f6a7a; }
+.library-acts { width: 3; height: 3; flex-shrink: 0; background: #ffb26cff; }
+.auto-library-doc .__scroller_view_view-container__ { padding-left: 2; padding-right: 2; gap-all: 3; }
+.domain-panel .library-text { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; text-color: #ffd6d0e0; }
+.domain-panel .library-text.signature { text-color: #ffaaa4b2; }
+.domain-panel .library-text.heading { margin-top: 3; text-color: #ffefeaf8; }
+.library-acts-row { width: 100%; height: 9; flex-shrink: 0; flex-direction: row; align-items: center; gap-all: 3; }
+.domain-panel .library-acts-row .library-text { flex: 1; width: auto; min-width: 0; text-wrap: hide; adaptive-height: false; height: 9; }
+.library-example { width: 100%; flex-shrink: 0; padding-all: 1; background: #ff3a3545; }
+.domain-panel .library-example .script-editor { font-size: 7; line-spacing: 2; scroller-view-mode: horizontal; scroller-horizontal-display: never; background: #ff17141e; }
+.domain-panel .library-example .script-editor .__text-area_content-view__ { padding-top: 3; }
 .domain-panel .program-empty { width: 100%; height: 9; margin-left: 5; margin-top: 2; text-color: #ff6f6a7a; }
 .auto-editor-box { flex: 1; min-width: 0; height: 100%; }
 .auto-file-tabs { width: 100%; height: 12; flex-shrink: 0; flex-direction: row; gap-all: 2; }

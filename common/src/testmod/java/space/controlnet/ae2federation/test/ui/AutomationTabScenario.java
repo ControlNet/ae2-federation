@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.test.ui;
 
+import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.lowdraglib2.registry.RegistrationEnvironment;
 import com.lowdragmc.lowdraglib2.registry.annotation.LDLRegisterClient;
 import com.lowdragmc.lowdraglib2.uitest.ScenarioBuilder;
@@ -12,16 +13,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import net.minecraft.world.level.storage.LevelResource;
 import org.lwjgl.glfw.GLFW;
+import space.controlnet.ae2federation.automation.LibraryRows;
 import space.controlnet.ae2federation.automation.LocalCopies;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.client.automation.ScriptEditor;
+import space.controlnet.ae2federation.function.StandardLibrary;
 
 /**
  * The Automation tab's edit view (G1a, G1b): the programs the server holds, one opened in the script editor with its
  * functions listed, typing with Python's indentation and comments, the edit reaching the local copy and the server
  * without a save, Push and its refusal, a new program, edits on an older version kept beside the server's, problems
- * checked on the client and cleared by a fix, completion of functions and items, and the index subscription ending
+ * checked on the client and cleared by a fix, completion of functions and items, item icons in the script, the
+ * Library panel (namespaces, a function's page with its example, search), and the index subscription ending
  * when the screen closes. The programs are sample content written for this scenario;
  * {@code smelting} misspells a function so the list shows its problem count and Push refuses it.
  */
@@ -209,6 +213,44 @@ public final class AutomationTabScenario implements UIScenario {
                     }
                     return true;
                 })
+                // The Library: namespaces with their counts, a function's page and the way back, a search.
+                .check("the library lists the namespaces with their counts", context ->
+                        context.el("#auto_library_ns_ae2 .library-count").text().equals("11")
+                                && context.el("#auto_library_ns_ae2f .library-count").text().equals("6")
+                                && context.el("#auto_library_ns_mc .library-count").text().equals("13")
+                                && context.all("#auto_library_tree .library-function").isEmpty())
+                .click("#auto_library_ns_ae2")
+                .check("opening a namespace lists its functions", context ->
+                        context.all("#auto_library_tree .library-function").size() == 11
+                                && context.all("#auto_library_fn_ae2_craft .library-acts").size() == 1
+                                && context.all("#auto_library_fn_ae2_amount .library-acts").isEmpty())
+                .frames(2).screenshot("ui-automation-library")
+                .click("#auto_library_fn_ae2_craft")
+                .check("a function's page shows its signature, that it acts, its summary and its example", context -> {
+                    var craft = LibraryRows.find(StandardLibrary.NAMESPACES, "ae2", "craft");
+                    var texts = context.all("#auto_library_doc .library-text").stream().map(text -> text.text())
+                            .toList();
+                    var example = context.el("#auto_library_doc .script-editor").as(ScriptEditor.class);
+                    return context.el("#auto_library_doc").isVisible() && !context.el("#auto_library_tree").isVisible()
+                            && context.el("#auto_library_back").text().equals("\u2039 ae2")
+                            && texts.contains("ae2.craft") && texts.contains(craft.display())
+                            && texts.contains("action: one per tick") && texts.contains(craft.summary())
+                            && example.getLines().stream().map(String::stripTrailing).toList()
+                                    .equals(craft.example().stripTrailing().lines().toList());
+                })
+                .frames(2).screenshot("ui-automation-library-doc")
+                .click("#auto_library_back")
+                .check("back returns to the list as it was", context ->
+                        !context.el("#auto_library_doc").isVisible()
+                                && context.all("#auto_library_tree .library-function").size() == 11)
+                .step("search the library", context ->
+                        context.el("#auto_library_search").as(TextField.class).setText("redstone", true))
+                .check("a search lists only the matches, under their namespace", context ->
+                        context.all("#auto_library_tree .library-row").size() == 3
+                                && context.el("#auto_library_ns_mc .library-count").text().equals("2")
+                                && context.all("#auto_library_fn_mc_redstone").size() == 1
+                                && context.all("#auto_library_fn_mc_set_redstone").size() == 1)
+                .frames(2).screenshot("ui-automation-library-search")
                 .closeScreen()
                 .waitUntilServer("closing the screen unsubscribes", context ->
                         !ProgramSync.get(context.server()).subscribed(context.player().getUUID()));
@@ -238,7 +280,7 @@ public final class AutomationTabScenario implements UIScenario {
     }
 
     private static ScriptEditor editor(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
-        return context.el(".script-editor").as(ScriptEditor.class);
+        return context.el("#auto_script .script-editor").as(ScriptEditor.class);
     }
 
     /** The open completion list's candidates, or none. */

@@ -189,3 +189,21 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - Strings come from the `CodeEditor` segments: a string token is one segment from quote to quote and a comment is
   one segment, so `ResourceStrings.find` needs no tokenizer of its own. Dark items (coal) are hard to see on the
   editor's background; that is the item art.
+
+## G1d: the Library panel
+
+- `Button` with `text=""` in a layout file calls `noText()`: the label is removed and a later `setText` shows
+  nothing. Give such a button any text in the layout file.
+- `Button.setOnClick` fires on the press (`MOUSE_DOWN`). A control that hides itself or its row on click should
+  listen to `UIEvents.CLICK` instead: the UI test's `click` then finds the target on release (else "Target ... has
+  zero size").
+- Style sheet `display: none` does not hold a `TextArea` scroller hidden: `updateScrollers` calls `setDisplay` itself.
+  Use `scroller-horizontal-display: never` (`ScrollDisplay` AUTO/ALWAYS/NEVER). `scroller-view-mode: horizontal`
+  turns the wheel into sideways scrolling.
+- `flex: 0` sets a zero basis, so an element with a code-set height collapses in a column. To size a `ScriptEditor`
+  (whose `.script-editor` rule has `flex: 1`), set the height on its parent box.
+- `TextArea`'s scroll range comes from the private `getMaxWidth` (plain text). The read-only example pads each line
+  with the icons' room (`ScriptEditor.setReadOnlyLines`, again in `onTextAreaStyleChanged` once the style sheet sets
+  the font) so a line's end can be reached; `scrollX` has no setter, so the range cannot be fixed otherwise.
+- `editor(context)` in the scenario must select `#auto_script .script-editor`: the library's example is another
+  `.script-editor`, earlier in the tree.

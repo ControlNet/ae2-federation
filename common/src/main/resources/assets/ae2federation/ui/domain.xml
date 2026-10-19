@@ -174,6 +174,15 @@
                         </element>
                         <scroller-view id="auto_programs" class="auto-list"/>
                     </element>
+                    <element id="auto_library" class="auto-box auto-library">
+                        <element class="auto-box-head">
+                            <label class="auto-box-title"><lang key="ae2federation.ui.automation.library"/></label>
+                            <button id="auto_library_back" class="kind-chip auto-library-back" text="&#8249;"/>
+                        </element>
+                        <text-field id="auto_library_search" class="auto-library-search" mode="string" value=""/>
+                        <scroller-view id="auto_library_tree" class="auto-list"/>
+                        <scroller-view id="auto_library_doc" class="auto-list auto-library-doc"/>
+                    </element>
                 </element>
                 <element id="auto_editor" class="auto-box auto-editor-box">
                     <element id="auto_file_tabs" class="auto-file-tabs"/>

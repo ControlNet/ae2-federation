@@ -1227,6 +1227,11 @@ User decisions (2026-10-19):
   their icon, name and ID, the expected type below. Up/Down choose, Tab accepts, Enter accepts unless the choice is
   what is typed already (so Enter after a finished word still breaks the line), Escape closes. Accepting a resource
   closes its string. The board's "in stock" footer waits for a server request (G1c-iii).
+- **Library panel** (G1d) under the programs: `ae2`, `ae2f` and `mc` with their function counts, opened with a click;
+  a function opens its page in the same box (qualified name, signature, "action: one per tick" when it acts, summary,
+  its checked example in a small read-only editor) with a back chip in the head. Assistant proposal for the search
+  (not on the boards): it ignores case, matches a function's name or its qualified name (`mc.am`), and lists only the
+  matches under their namespaces, open, counting the matches. A long example line scrolls sideways with the wheel.
 - **Item icons** (G1c-ii): a string naming a registered item or fluid has its icon just before its opening quote, in
   room the editor leaves there; the caret, the selection, clicks and underlines all measure the line with that room.
 

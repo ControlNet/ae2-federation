@@ -24,6 +24,8 @@ public final class PythonLanguage implements ILanguageDefinition {
             "del", "import", "from", "as", "with", "try", "except", "finally", "raise", "assert", "yield", "async",
             "await", "match", "case");
     private static final List<String> CONSTANTS = List.of("True", "False");
+    /** A library namespace's colour (RGB), as in {@code ae2.craft}. */
+    public static final int NAMESPACE = 0xe0855a;
 
     /** The kinds, in the order they are tried, with their colours. */
     private static final Map<String, Integer> COLORS = new LinkedHashMap<>();
@@ -41,7 +43,7 @@ public final class PythonLanguage implements ILanguageDefinition {
         kind("keyword", 0xb37bea, words(KEYWORDS));
         kind("constant", 0xffb86c, words(CONSTANTS));
         kind("type", 0x6ff0e0, words(types));
-        kind("namespace", 0xe0855a, words(StandardLibrary.NAMESPACES.keySet().stream().toList()) + "(?=\\s*\\.)");
+        kind("namespace", NAMESPACE, words(StandardLibrary.NAMESPACES.keySet().stream().toList()) + "(?=\\s*\\.)");
         kind("call", 0x9cd3ff, "(?<![.\\p{L}\\p{N}_])[\\p{L}_][\\p{L}\\p{N}_]*(?=\\s*\\()");
         kind("name", 0xd6d0e0, "[\\p{L}_][\\p{L}\\p{N}_]*");
         kind("operator", 0xd6d0e0, "->|[^\\s\\p{L}\\p{N}_]");
