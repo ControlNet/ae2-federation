@@ -172,3 +172,20 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   opened before clicking further.
 - In game: `press.py` (scratchpad) sends keysyms (`F2` saves a screenshot to `<client>/screenshots`) or `button3`;
   the check world's mod file is `mods/ae2federation-check.jar` on both sides (copy over it, do not add a second).
+
+## G1c-ii: item icons inside the script
+
+- LDLib2's `TextArea` measures the caret, the selection and the popup/underline positions with
+  `styledLineComponent(line, 0, column)`. Room for an inline icon is a few spaces (in the text's font) appended in
+  that component before the string's opening quote, included when `from <= quote <= to`, so the caret at the quote's
+  column sits after the icon. `drawLines` (copied from `CodeEditor`) advances by the same room; the icons are drawn
+  in `drawBackgroundOverlay` under the content box's scissor (not inside `drawManaged`, which runs with
+  `depthMask(false)`).
+- `TextArea.getCursorUnderMouse` maps a click with `font.substrByWidth(...).getString().length()`, which would count
+  the room's spaces as columns: `ScriptEditor` overrides it with a binary search over the measured column widths.
+  The UI scenario checks that a click at each column's left edge finds that column.
+- Not adjusted: `ensureCursorVisible` and the private `getMaxWidth` still measure plain text, so horizontal
+  scrolling can be off by the icons' room on long lines (the horizontal scroller is hidden in the tab).
+- Strings come from the `CodeEditor` segments: a string token is one segment from quote to quote and a comment is
+  one segment, so `ResourceStrings.find` needs no tokenizer of its own. Dark items (coal) are hard to see on the
+  editor's background; that is the item art.

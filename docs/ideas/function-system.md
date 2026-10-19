@@ -1226,8 +1226,9 @@ User decisions (2026-10-19):
   with "..." when long), a purple square when they act and the chosen one's summary below; items and fluids with
   their icon, name and ID, the expected type below. Up/Down choose, Tab accepts, Enter accepts unless the choice is
   what is typed already (so Enter after a finished word still breaks the line), Escape closes. Accepting a resource
-  closes its string. The board's "in stock" footer waits for a server request (G1c-iii); the icons inside the script
-  come next (G1c-ii).
+  closes its string. The board's "in stock" footer waits for a server request (G1c-iii).
+- **Item icons** (G1c-ii): a string naming a registered item or fluid has its icon just before its opening quote, in
+  room the editor leaves there; the caret, the selection, clicks and underlines all measure the line with that room.
 
 ### Example: from one chest to another (asked by the user 2026-10-18)
 

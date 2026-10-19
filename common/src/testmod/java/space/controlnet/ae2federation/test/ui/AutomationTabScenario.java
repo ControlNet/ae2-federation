@@ -196,6 +196,19 @@ public final class AutomationTabScenario implements UIScenario {
                 .key(GLFW.GLFW_KEY_ENTER)
                 .check("Enter puts the item in and closes its string", context ->
                         lastLine(context, 0).equals("    iron: Item = \"minecraft:iron_ingot\""))
+                // The item's icon sits before its string; clicks still find each column after it.
+                .frames(2).screenshot("ui-automation-item-icon")
+                .check("a click finds each column of a line with an item's icon", context -> {
+                    var editor = editor(context);
+                    int line = editor.getLines().size() - 1;
+                    while (editor.getLines().get(line).isBlank()) line--;
+                    for (int column = 0; column <= editor.getLines().get(line).length(); column++) {
+                        var at = editor.columnPosition(line, column);
+                        var cursor = editor.getCursorUnderMouse(at.x + 0.5f, at.y + 4);
+                        if (cursor.line() != line || cursor.col() != column) return false;
+                    }
+                    return true;
+                })
                 .closeScreen()
                 .waitUntilServer("closing the screen unsubscribes", context ->
                         !ProgramSync.get(context.server()).subscribed(context.player().getUUID()));

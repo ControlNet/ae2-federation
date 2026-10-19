@@ -186,7 +186,7 @@ Next (user, 2026-10-18: the host and the editor screens both): assistant phasing
 | H7 (done) | Networks of every domain in the index (`NetworkInfo`: short ID, name, domain), so the client checks against what the server checks against |
 | G1b-ii (done) | Problems checked on a client worker (gutter mark, underline, problem list, count in the list), against every program's text and a client catalogue (`AutoScriptErrors`); Graph disabled while the script does not parse waits for the Graph switch (G1f) |
 | G1c-i (done) | Completion popup from the B2 engine on the client worker: signatures with the acting square and the summary, items and fluids with icon, name and ID (`AutoScript`, `AutoScriptItem`) |
-| G1c-ii | Item icons beside item strings in the script (`AutoScript` line 14) |
+| G1c-ii (done) | Item icons beside item strings in the script (`AutoScript` line 14): room before the string in the measured line, so caret, selection and clicks stay aligned |
 | G1c-iii | Stock in the item popup's footer ("Item · in stock: 1,284" on `AutoScriptItem`): needs a server request for the amount in the domain |
 | G1d | Library panel: namespaces, docs with the checked example, search (`AutoLibraryDoc`) |
 | G1e | Install view and the Edit/Install switch: programs and this domain's devices, wires to install, aside with arguments, trigger, interval, overlap, log, Run now, Uninstall, Open in editor; installed functions marked in the program list (`AutoInstall*`) |

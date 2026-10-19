@@ -1,20 +1,27 @@
 package space.controlnet.ae2federation.client.automation;
 
+import com.lowdragmc.lowdraglib2.LDLib2;
 import com.lowdragmc.lowdraglib2.gui.LDLibFonts;
+import com.lowdragmc.lowdraglib2.gui.ui.data.Cursor;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.codeeditor.CodeEditor;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.codeeditor.StyledText;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
 import com.lowdragmc.lowdraglib2.gui.util.DrawerHelper;
 import java.util.HashSet;
 import java.util.List;
 import java.util.function.Consumer;
+import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
+import space.controlnet.ae2federation.automation.ResourceStrings;
 import space.controlnet.ae2federation.function.Candidate;
 import space.controlnet.ae2federation.function.Completions;
 import space.controlnet.ae2federation.function.ScriptProblems;
@@ -24,6 +31,8 @@ import space.controlnet.ae2federation.function.ScriptProblems;
  * line-number gutter in the left padding of its content view, widened to fit the numbers. Python's habits: Tab
  * indents by four spaces, a new line after a colon indents once more, and Ctrl+/ comments lines with {@code #}. It
  * only shows a program until editing is turned on. Problems are marked beside their line number and underlined.
+ * A string naming an item or a fluid has its icon before it, in room the editor makes there: the caret, the
+ * selection and clicks measure the line with that room ({@link #styledLineComponent}).
  *
  * <p>Typing a name, a dot or a quote asks its {@link Completer} for candidates (Ctrl+Space asks anywhere);
  * they show in a {@link CompletionPopup} under the caret. Up and Down choose, Tab accepts, Enter accepts unless the
@@ -36,6 +45,9 @@ public final class ScriptEditor extends CodeEditor {
     /** The square beside a problem's line number, and the wave under its text, one column high per step. */
     private static final float MARK = 3;
     private static final int[] WAVE = {0, 1, 2, 1};
+    /** A resource's icon before its string, and the room around it. */
+    private static final float ICON = 8;
+    private static final float ICON_GAP = 2;
     /** The narrowest gutter, the room on either side of its numbers, and between the gutter and the text. */
     private static final float MIN_GUTTER = 16;
     private static final float NUMBER_GAP = 3;
@@ -138,12 +150,9 @@ public final class ScriptEditor extends CodeEditor {
         // The screen sees Escape before any element does: keep it open so Escape reaches the list.
         if (closedOnEscape == null) closedOnEscape = modular.shouldCloseOnEsc();
         modular.shouldCloseOnEsc(false);
-        int at = completions.line() - 1;
-        float x = contentView.getContentX() - getScrollX()
-                + getFont().getSplitter().stringWidth(styledLineComponent(at, 0, completions.column() - 1)) * scale()
-                - CompletionPopup.TEXT_INSET;
-        float y = contentView.getContentY() + (at + 1) * lineHeight() - getScrollY() + 1;
-        var position = root.worldToLocalLayoutOffset(localToWorld(new Vector2f(x, y)));
+        var under = columnPosition(completions.line() - 1, completions.column() - 1);
+        var position = root.worldToLocalLayoutOffset(localToWorld(
+                new Vector2f(under.x - CompletionPopup.TEXT_INSET, under.y + lineHeight() + 1)));
         popup.layout(layout -> {
             layout.left(position.x);
             layout.top(position.y);
@@ -296,6 +305,106 @@ public final class ScriptEditor extends CodeEditor {
         setCursor(caretLine, Math.max(0, caretCol + caretShift));
     }
 
+    /** The strings on {@code line} that name an item or a fluid. */
+    @OnlyIn(Dist.CLIENT)
+    private List<ResourceStrings.At> resources(int line) {
+        var styled = getStyledLines();
+        if (line < 0 || line >= styled.size()) return List.of();
+        return ResourceStrings.find(styled.get(line).text().stream().map(StyledText::text).toList(),
+                id -> !CompletionPopup.icon(id).isEmpty());
+    }
+
+    /** The room before a resource's string: enough spaces in the text's font for the icon and a gap each side. */
+    @OnlyIn(Dist.CLIENT)
+    private String room() {
+        float space = getFont().getSplitter().stringWidth(inFont(" ")) * scale();
+        return " ".repeat(Math.max(1, (int) Math.ceil((ICON + 2 * ICON_GAP) / space)));
+    }
+
+    /** As drawn: the room before each resource's string counts as part of the string's first column. */
+    @Override
+    @OnlyIn(Dist.CLIENT)
+    protected Component styledLineComponent(int line, int from, int to) {
+        var resources = resources(line);
+        if (resources.isEmpty()) return super.styledLineComponent(line, from, to);
+        var result = Component.empty();
+        int at = from;
+        for (var resource : resources) {
+            if (resource.column() < from || resource.column() > to) continue;
+            result.append(super.styledLineComponent(line, at, resource.column())).append(inFont(room()));
+            at = resource.column();
+        }
+        return result.append(super.styledLineComponent(line, at, to));
+    }
+
+    /** The code editor's coloured segments, leaving the room before each resource's string. */
+    @Override
+    @OnlyIn(Dist.CLIENT)
+    protected void drawLines(GUIContext context, Font font, ResourceLocation textFont, float scale, float x, float y,
+            int firstVisibleLine, int lastVisibleLine) {
+        var styled = getStyledLines();
+        float room = font.getSplitter().stringWidth(inFont(room())) * scale;
+        for (int line = firstVisibleLine; line <= lastVisibleLine && line < styled.size(); line++) {
+            float lineY = y + line * lineHeight() - getScrollY();
+            float drawX = x - getScrollX();
+            var resources = resources(line);
+            int column = 0;
+            for (var segment : styled.get(line).text()) {
+                int at = column;
+                if (resources.stream().anyMatch(resource -> resource.column() == at)) drawX += room;
+                var text = inFont(segment.text()).withStyle(segment.style());
+                context.pose.pushPose();
+                context.pose.translate(drawX, lineY, 0);
+                context.pose.scale(scale, scale, 1);
+                LDLibFonts.drawText(context.graphics, font, text, 0, 0, -1, getTextAreaStyle().textShadow());
+                context.pose.popPose();
+                drawX += font.getSplitter().stringWidth(text) * scale;
+                column += segment.text().length();
+            }
+        }
+        if (styled.isEmpty() || (styled.size() == 1 && styled.getFirst().text().isEmpty())) {
+            drawPlaceHolder(context, font, scale, x, y);
+        }
+    }
+
+    /** The column nearest the mouse, measured as drawn (LDLib2's own count would take the room for text). */
+    @Override
+    public Cursor getCursorUnderMouse(double mouseX, double mouseY) {
+        if (!LDLib2.isClient()) return super.getCursorUnderMouse(mouseX, mouseY);
+        float relY = (float) (mouseY - contentView.getContentY() + getScrollY()) - 2;
+        int line = Mth.clamp((int) Math.floor(relY / lineHeight()), 0, Math.max(0, lines.size() - 1));
+        return new Cursor(line, columnAt(line, (float) (mouseX - contentView.getContentX() + getScrollX())));
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private int columnAt(int line, float x) {
+        int low = 0;
+        int high = lines.get(line).length();
+        // The first column at or right of x, then whichever of it and the one before is nearer.
+        while (low < high) {
+            int middle = (low + high) / 2;
+            if (columnX(line, middle) < x) {
+                low = middle + 1;
+            } else {
+                high = middle;
+            }
+        }
+        if (low > 0 && x - columnX(line, low - 1) < columnX(line, low) - x) return low - 1;
+        return low;
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private float columnX(int line, int column) {
+        return getFont().getSplitter().stringWidth(styledLineComponent(line, 0, column)) * scale();
+    }
+
+    /** Where a column starts on a line, as drawn: its left edge, and the line's top. */
+    @OnlyIn(Dist.CLIENT)
+    public Vector2f columnPosition(int line, int column) {
+        return new Vector2f(contentView.getContentX() - getScrollX() + columnX(line, column),
+                contentView.getContentY() + line * lineHeight() - getScrollY());
+    }
+
     private MutableComponent inFont(String text) {
         return Component.literal(text).withStyle(style -> style.withFont(getTextAreaStyle().font()));
     }
@@ -342,6 +451,29 @@ public final class ScriptEditor extends CodeEditor {
         context.graphics.flush();
         context.disableScissor();
         drawUnderlines(context, first, last);
+        drawIcons(context, first, last);
+    }
+
+    /** Each resource's icon, in the room before its string. */
+    @OnlyIn(Dist.CLIENT)
+    private void drawIcons(GUIContext context, int first, int last) {
+        context.graphics.flush();
+        context.enableScissor(contentView.getContentX(), contentView.getContentY(), contentView.getContentWidth(),
+                contentView.getContentHeight());
+        for (int line = first; line <= last && line < lines.size(); line++) {
+            for (var resource : resources(line)) {
+                // The quote's place counts the room before it.
+                var quote = columnPosition(line, resource.column());
+                context.pose.pushPose();
+                context.pose.translate(quote.x - ICON_GAP - ICON, quote.y + (getTextAreaStyle().fontSize() - ICON) / 2,
+                        0);
+                context.pose.scale(ICON / 16, ICON / 16, 1);
+                context.graphics.renderItem(CompletionPopup.icon(resource.id()), 0, 0);
+                context.pose.popPose();
+            }
+        }
+        context.graphics.flush();
+        context.disableScissor();
     }
 
     /** A wave under each problem's columns, clamped to its line as it is now. */
