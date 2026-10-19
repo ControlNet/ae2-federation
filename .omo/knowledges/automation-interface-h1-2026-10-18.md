@@ -322,3 +322,18 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - UI scenario: `.drag("#auto_library_fn_ae2_amount", "#auto_graph")` then `.drag("#auto_graph_draft_0_out", pin)`;
   only one namespace fits open at 1600x960, so close `ae2` before opening `mc`.
 - Compare: `build/automation-graph-drag-check/compare.png`.
+
+## G1f-iv: wiring the cards
+
+- One `PinDrag(draft, card, exec, colour)` serves drafts and cards; every card pin drops into one `wired(...)`, which
+  picks `putCall`/`insertCall` for a draft and `move`/`relocate` for a card. Sources: `#auto_graph_exec_<card>` (a
+  statement's exec pin) and `#auto_graph_result_<card>` (a value's pin).
+- An if or loop without a following statement still gets an `#auto_graph_out_<id>_next` drop pin; its triangle and
+  label are drawn only while an exec wire is dragged, so the layout does not change. `Edits.attach` already accepts
+  `next` on a compound statement that has none.
+- The UI driver refuses a drag whose source is outside the GraphView's clipped area ("hit testing its centre returned
+  none"): pick cards that are visible at the opening zoom in the 800x480 test viewport.
+- Restoring a check-world program by editing the server's `.ae2f` while the server is stopped makes the client keep
+  its own copy as `<name>_local` on the next join (its base no longer matches). Restore through the GUI instead.
+- `pixi run ... --title "a; b"` splits at the semicolon: pixi tasks run through a shell. Keep titles free of `;`.
+- Compare: `build/automation-graph-wiring-check/compare.png`.

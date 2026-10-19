@@ -172,4 +172,35 @@ final class GraphCardsTest {
                 GraphCards.insertCall(IRON_TOOLS, canvas("low_iron_alarm"), branch.id(), "else", "ae2",
                         library("ae2", "craftable")));
     }
+
+    private static GraphCards.Card card(String function, String title, int nth) {
+        return cards(function).stream().filter(card -> card.title().equals(title)).skip(nth).findFirst().orElseThrow();
+    }
+
+    @Test
+    void aValueWiredToAnotherPortLeavesAPlainValueOfItsTypeBehind() {
+        var minus = card("low_iron_alarm", "-", 0);
+        var bound = row("low_iron_alarm", "<", "b");
+        assertEquals(IRON_TOOLS.replace("if now < 64:", "if now < 64 - now:")
+                        .replace("ae2.craft(iron, 64 - now)", "ae2.craft(iron, 0)"),
+                GraphCards.move(IRON_TOOLS, canvas("low_iron_alarm"), minus.id(), bound.node(), bound.port()));
+    }
+
+    @Test
+    void aStatementWiredToAnotherExecOutputMovesThere() {
+        var lamp = card("low_iron_alarm", "mc.set_redstone", 0);
+        var branch = card("low_iron_alarm", "if", 0);
+        assertEquals(IRON_TOOLS.replace("""
+                        mc.set_redstone(lamp, 15)
+                    else:
+                        mc.set_redstone(lamp, 0)
+                """, """
+                    else:
+                        mc.set_redstone(lamp, 0)
+                    mc.set_redstone(lamp, 15)
+                """),
+                GraphCards.relocate(IRON_TOOLS, canvas("low_iron_alarm"), lamp.id(), branch.id(), "next"));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> GraphCards.relocate(
+                IRON_TOOLS, canvas("low_iron_alarm"), branch.id(), lamp.id(), "next"));
+    }
 }

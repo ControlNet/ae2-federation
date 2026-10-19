@@ -50,7 +50,9 @@ import space.controlnet.ae2federation.function.TypeRef;
  *
  * <p>A function dragged from the Library becomes a dashed draft card where it is dropped, kept on the client only and
  * lost with the screen (user decision, 2026-10-19). Dragging its value pin onto a card's input port, or its exec pin
- * onto a card's exec output, writes the call there ({@link GraphCards#putCall}, {@link GraphCards#insertCall}).
+ * onto a card's exec output, writes the call there ({@link GraphCards#putCall}, {@link GraphCards#insertCall}). A
+ * card's own pins drag the same way: a value onto another port ({@link GraphCards#move}), a statement onto another
+ * exec output ({@link GraphCards#relocate}).
  */
 final class FederationGraphView {
     /** A card's geometry in GUI units, as the board draws it: its head, the first row's centre and the row pitch. */
@@ -109,8 +111,11 @@ final class FederationGraphView {
         }
     }
 
-    /** A wire dragged from a draft's exec pin or value pin. */
-    private record PinDrag(Draft draft, boolean exec) {
+    /**
+     * A wire dragged from an exec pin or a value pin: a draft's, or a card's ({@code card}, the statement or value
+     * it moves).
+     */
+    private record PinDrag(@Nullable Draft draft, @Nullable String card, boolean exec, int color) {
     }
 
     private final GraphView graph;
@@ -277,7 +282,7 @@ final class FederationGraphView {
         for (var card : shownGraph.cards()) {
             var place = boxes.get(card.id());
             graph.addContentChild(new CardElement(drawn.get(card.id()), place.x() + MARGIN, place.y() + MARGIN,
-                    (row, typed) -> put(shownGraph, row, typed), this::wired));
+                    (row, typed) -> put(shownGraph, row, typed)));
         }
         for (var draft : drafts.getOrDefault(function, List.of())) graph.addContentChild(new DraftElement(draft));
         extentX = right + 2 * MARGIN;
@@ -317,24 +322,35 @@ final class FederationGraphView {
     }
 
     /**
-     * A draft's wire dropped on a card's pin: its value pin on an input row ({@code row}), or its exec pin on an
-     * exec output ({@code output} of {@code card}). The draft leaves the canvas once its call is in the script.
+     * A wire dropped on a card's pin: a value pin's on an input row ({@code row}), or an exec pin's on an exec output
+     * ({@code output} of {@code card}). A draft's writes its call there and leaves the canvas; a card's moves its value
+     * or its statement there. Dropped where it already is, nothing changes.
      */
     private void wired(UIEvent event, @Nullable GraphCards.Row row, @Nullable String card, @Nullable String output) {
         if (!(event.dragHandler.draggingObject instanceof PinDrag drag) || drag.exec() != (row == null)) return;
         var shownGraph = function == null ? null : graphs.get(function);
         if (shownGraph == null || !text.get().equals(drawnFrom)) return;
+        var canvas = shownGraph.canvas();
         var draft = drag.draft();
+        if (draft == null && (row != null ? row.input() instanceof Canvas.Input.Wire wire
+                && wire.node().equals(drag.card()) : canvas.links().contains(new Canvas.Link(card, output, drag.card())))) {
+            return;
+        }
         try {
-            var edited = row != null
-                    ? GraphCards.putCall(drawnFrom, shownGraph.canvas(), row.node(), row.port(), draft.namespace(),
-                            draft.function())
-                    : GraphCards.insertCall(drawnFrom, shownGraph.canvas(), card, output, draft.namespace(),
-                            draft.function());
-            drafts.getOrDefault(function, new ArrayList<>()).remove(draft);
-            graph.contentRoot.getChildren().stream()
-                    .filter(child -> child instanceof DraftElement element && element.draft == draft).toList()
-                    .forEach(graph::removeContentChild);
+            String edited;
+            if (draft == null) {
+                edited = row != null ? GraphCards.move(drawnFrom, canvas, drag.card(), row.node(), row.port())
+                        : GraphCards.relocate(drawnFrom, canvas, drag.card(), card, output);
+            } else {
+                edited = row != null
+                        ? GraphCards.putCall(drawnFrom, canvas, row.node(), row.port(), draft.namespace(),
+                                draft.function())
+                        : GraphCards.insertCall(drawnFrom, canvas, card, output, draft.namespace(), draft.function());
+                drafts.getOrDefault(function, new ArrayList<>()).remove(draft);
+                graph.contentRoot.getChildren().stream()
+                        .filter(child -> child instanceof DraftElement element && element.draft == draft).toList()
+                        .forEach(graph::removeContentChild);
+            }
             write.accept(edited);
         } catch (IllegalArgumentException e) {
             refuse.accept(e.getMessage());
@@ -528,11 +544,6 @@ final class FederationGraphView {
         }
     }
 
-    /** A wire dropped on a card's pin: an input row's, or an exec output's of a card. */
-    private interface Wiring {
-        void wired(UIEvent event, @Nullable GraphCards.Row row, @Nullable String card, @Nullable String output);
-    }
-
     /** A pin's square centred on {@code (x, y)} of its card; it may stick out of the card, as the pin drawn does. */
     private static UIElement pin(String id, float x, float y) {
         var pin = new UIElement();
@@ -543,11 +554,47 @@ final class FederationGraphView {
         return pin;
     }
 
-    /** One card, drawn whole: face, head and title, its pins and ports, and each row's label and value. */
-    private static final class CardElement extends UIElement {
-        private final Drawn drawn;
+    /** A press on {@code pin} that drags a wire once the pointer moves. */
+    private UIElement source(UIElement pin, PinDrag drag) {
+        pin.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+            if (event.button != 0) return;
+            pressed = pin;
+            pressedDrag = drag;
+            pressX = event.x;
+            pressY = event.y;
+        });
+        return pin;
+    }
 
-        CardElement(Drawn drawn, int x, int y, BiConsumer<GraphCards.Row, String> put, Wiring wiring) {
+    /** The wire being dragged from {@code element}'s pin at {@code (x, y)}, dashed to the pointer; none otherwise. */
+    @OnlyIn(Dist.CLIENT)
+    private static void dragged(UIElement element, GUIContext context, java.util.function.Predicate<PinDrag> from,
+            float x, float y) {
+        var ui = element.getModularUI();
+        if (ui == null || !ui.getDragHandler().isDragging()
+                || !(ui.getDragHandler().draggingObject instanceof PinDrag drag) || !from.test(drag)) {
+            return;
+        }
+        var mouse = element.getLocalMouse(ui.getLastMouseX(), ui.getLastMouseY());
+        // An exec wire comes into its statement from the output it is dragged to; a value wire leaves its value.
+        var curve = drag.exec() ? new WireCurve(mouse.x, mouse.y, x, y) : new WireCurve(x, y, mouse.x, mouse.y);
+        FederationProcessingGraph.dashed(context, FederationProcessingGraph.polyline(curve), drag.color());
+    }
+
+    /** Whether an exec wire is being dragged, so the cards show where it may go. */
+    private static boolean execDragged(UIElement element) {
+        var ui = element.getModularUI();
+        return ui != null && ui.getDragHandler().isDragging()
+                && ui.getDragHandler().draggingObject instanceof PinDrag drag && drag.exec();
+    }
+
+    /** One card, drawn whole: face, head and title, its pins and ports, and each row's label and value. */
+    private final class CardElement extends UIElement {
+        private final Drawn drawn;
+        /** After an if or a loop with nothing after it, its {@code next}: shown only while an exec wire is dragged. */
+        private final boolean openNext;
+
+        CardElement(Drawn drawn, int x, int y, BiConsumer<GraphCards.Row, String> put) {
             this.drawn = drawn;
             setId("auto_graph_card_" + drawn.card().id());
             addClass("graph-card");
@@ -560,17 +607,30 @@ final class FederationGraphView {
                 var row = drawn.card().rows().get(i);
                 var value = drawn.values().get(i);
                 if (value != null) addChild(editable(row, value, drawn.rowY(i), put));
-                // Each port and exec output takes a draft's wire.
+                // Each port and exec output takes a dragged wire.
                 var in = pin("auto_graph_in_" + row.node() + "_" + row.port().replace(':', '_'), 0, drawn.rowY(i));
-                in.addEventListener(UIEvents.DRAG_PERFORM, event -> wiring.wired(event, row, null, null));
+                in.addEventListener(UIEvents.DRAG_PERFORM, event -> wired(event, row, null, null));
                 addChild(in);
             }
             var card = drawn.card();
-            for (int i = 0; i < card.outputs().size(); i++) {
-                var output = card.outputs().get(i).name();
+            var kind = card.card().node().kind();
+            openNext = (kind == Canvas.Kind.IF || kind == Canvas.Kind.WHILE || kind == Canvas.Kind.FOR)
+                    && card.outputs().stream().noneMatch(output -> output.name().equals("next"));
+            int outputs = card.outputs().size() + (openNext ? 1 : 0);
+            for (int i = 0; i < outputs; i++) {
+                var output = i < card.outputs().size() ? card.outputs().get(i).name() : "next";
                 var out = pin("auto_graph_out_" + card.id() + "_" + output, drawn.width(), drawn.outputY(i));
-                out.addEventListener(UIEvents.DRAG_PERFORM, event -> wiring.wired(event, null, card.id(), output));
+                out.addEventListener(UIEvents.DRAG_PERFORM, event -> wired(event, null, card.id(), output));
                 addChild(out);
+            }
+            // A statement's exec pin drags it to another output; a value's pin wires it to another port.
+            if (drawn.execIn()) {
+                addChild(source(pin("auto_graph_exec_" + card.id(), 0, FIRST),
+                        new PinDrag(null, card.id(), true, EXEC)));
+            }
+            if (card.result() != null) {
+                addChild(source(pin("auto_graph_result_" + card.id(), drawn.width(), FIRST),
+                        new PinDrag(null, card.id(), false, color(card.result()))));
             }
         }
 
@@ -640,7 +700,14 @@ final class FederationGraphView {
                 var label = card.outputs().get(i).label();
                 if (!label.isEmpty()) text(context, label, x + w - 5 - font.width(label), cy - 4, LABEL);
             }
+            if (openNext && execDragged(this)) {
+                float cy = y + drawn.outputY(card.outputs().size());
+                triangle(graphics, x + w - 3, cy - 3);
+                text(context, "next", x + w - 5 - font.width("next"), cy - 4, LABEL);
+            }
             if (card.result() != null) port(graphics, x + w - 3, y + FIRST - 2, color(card.result()));
+            dragged(this, context, drag -> card.id().equals(drag.card()), drawn.execIn() ? x - 1 : x + w + 2,
+                    y + FIRST);
             for (int i = 0; i < card.rows().size(); i++) {
                 var row = card.rows().get(i);
                 float cy = y + drawn.rowY(i);
@@ -697,23 +764,15 @@ final class FederationGraphView {
                     .height(height));
             // Only its pins take presses; a press anywhere else reaches the canvas, which pans.
             setAllowHitTest(false);
-            if (draft.execIn()) addChild(source(pin(getId() + "_in", 0, FIRST), true));
-            if (draft.valueOut()) addChild(source(pin(getId() + "_out", width, FIRST), false));
+            if (draft.execIn()) addChild(source(pin(getId() + "_in", 0, FIRST), new PinDrag(draft, null, true, EXEC)));
+            if (draft.valueOut()) {
+                addChild(source(pin(getId() + "_out", width, FIRST),
+                        new PinDrag(draft, null, false, color(draft.function().result()))));
+            }
         }
 
         private String title() {
             return draft.namespace() + "." + draft.function().name();
-        }
-
-        private UIElement source(UIElement pin, boolean exec) {
-            pin.addEventListener(UIEvents.MOUSE_DOWN, event -> {
-                if (event.button != 0) return;
-                pressed = pin;
-                pressedDrag = new PinDrag(draft, exec);
-                pressX = event.x;
-                pressY = event.y;
-            });
-            return pin;
         }
 
         @Override
@@ -743,17 +802,8 @@ final class FederationGraphView {
                 port(graphics, x - 3, cy - 2, color(rows.get(i).type()));
                 text(context, rows.get(i).name(), x + LABEL_X, cy - 4, LABEL);
             }
-            var ui = getModularUI();
-            if (ui != null && ui.getDragHandler().isDragging()
-                    && ui.getDragHandler().draggingObject instanceof PinDrag drag && drag.draft() == draft) {
-                var mouse = getLocalMouse(ui.getLastMouseX(), ui.getLastMouseY());
-                float fromX = drag.exec() ? x - 1 : x + width + 2;
-                // An exec wire comes into the draft from the output it is dragged to; a value wire leaves it.
-                var curve = drag.exec() ? new WireCurve(mouse.x, mouse.y, fromX, y + FIRST)
-                        : new WireCurve(fromX, y + FIRST, mouse.x, mouse.y);
-                FederationProcessingGraph.dashed(context, FederationProcessingGraph.polyline(curve),
-                        drag.exec() ? EXEC : color(draft.function().result()));
-            }
+            dragged(this, context, drag -> drag.draft() == draft && drag.exec(), x - 1, y + FIRST);
+            dragged(this, context, drag -> drag.draft() == draft && !drag.exec(), x + width + 2, y + FIRST);
         }
     }
 

@@ -1345,10 +1345,21 @@ it. Assistant choices, open for the user:
 - Each required argument is written with a plain value of its type, to be edited on the card: `0`, `0.0`, `False`,
   `""` (a string or a resource), `[]`, and `None` for a type that has no literal (an interface, a block, a network).
   The checker marks what is still missing, such as `unknown resource ''`.
-- Wires are drawn from the draft's pins only. Wiring cards already in the script comes with G1f-iv.
-- A draft has no delete control; it goes with the screen.
+- A draft has no delete control; it is lost when the screen closes or another program is opened.
 - After an if or a loop, `next` has no pin until a statement follows it, so a draft cannot be placed after the last
-  compound statement yet.
+  compound statement yet (G1f-iv lifts this).
+
+**Wiring the cards (G1f-iv, 2026-10-19).** The cards already in the script take the same wires. A statement card's
+exec pin drags the statement, with what is inside it, onto another exec output (`Edits.relocate`); what followed it
+closes up, and what followed the output moves after it. A value card's pin drags the value onto another input port
+(`Edits.move`); the port it leaves takes a plain value of its type, as a dropped function's arguments do. A wire
+dropped where it already is changes nothing; a move that gives no program (a statement into itself) is refused on the
+status line. Assistant choices, open for the user:
+
+- After an if or a loop with nothing after it, `next` appears below its outputs only while an exec wire is dragged,
+  so the cards keep the board's look at rest and a statement can still be placed at the end of the function.
+- Removing a statement or a value, and turning a value into a variable (`Edits.remove`, `Edits.extract`), have no
+  control yet.
 
 
 ### Example: from one chest to another (asked by the user 2026-10-18)

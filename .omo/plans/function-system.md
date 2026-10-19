@@ -197,7 +197,8 @@ Next (user, 2026-10-18: the host and the editor screens both): assistant phasing
 | G1f-i (done) | Graph view, read only (assistant phasing, 2026-10-19): Script/Graph switch (Graph inactive while the script does not parse), a tab per function, the Variables strip, cards placed by `Layout` on a `GraphView` that pans and zooms, exec and typed data wires (`AutoGraph`) |
 | G1f-ii (done) | Edits on the cards: a click on a literal or a variable opens a field; what is typed goes through `Edits.put` and is spliced into the script as one function, so upload, checks and local copies stay as they are |
 | G1f-iii (done) | Library drag (`AutoLibraryDrag`): a dropped function stays a client-side draft card, dashed, until it is wired to the exec chain or a port; only then is it written into the script (user decision 2026-10-19) |
-| G1f-iv | Wiring edits: connect values to ports, move and insert statements on the exec chain |
+| G1f-iv (done) | Wiring edits: a value card's pin onto another port (`Edits.move`), a statement card's exec pin onto another exec output (`Edits.relocate`); an if's or a loop's open `next` shows while an exec wire is dragged |
+| G1f-v | Removing statements and values, and turning a value into a variable (`Edits.remove`, `Edits.extract`): controls to be designed |
 | G1g | Outside editors: files of the open window synced both ways |
 | G1+ | Automation tab: Edit view (program list, file tabs, script editor with completion, errors, item icons), Graph view from `Canvas`/`Layout`, library panel with the examples, Install view |
 

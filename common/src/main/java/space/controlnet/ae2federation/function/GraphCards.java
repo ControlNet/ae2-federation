@@ -140,7 +140,23 @@ public final class GraphCards {
         return Library.splice(text, edited.toFunction());
     }
 
+    /**
+     * {@code text} with the value card {@code value} wired to another port ({@link Edits#move}); the port it leaves
+     * takes a plain value of its type, as a dropped library call's arguments do.
+     */
+    public static String move(String text, Canvas canvas, String value, String node, String port) {
+        var ids = new Ids("n", ScriptParser.parse(text).positions().keySet());
+        var filler = ScriptParser.expression(filler(canvas.types().get(value)), ids);
+        return Library.splice(text, Edits.move(canvas, value, node, port, filler).toFunction());
+    }
+
+    /** {@code text} with the statement card {@code statement} moved to the exec output {@code output} of {@code from}. */
+    public static String relocate(String text, Canvas canvas, String statement, String from, String output) {
+        return Library.splice(text, Edits.relocate(canvas, statement, from, output).toFunction());
+    }
+
     private static String filler(TypeRef type) {
+        if (type == null) return "None";
         return switch (type.name()) {
             case "int" -> "0";
             case "float" -> "0.0";

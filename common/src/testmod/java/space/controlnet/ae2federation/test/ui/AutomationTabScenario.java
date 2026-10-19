@@ -187,6 +187,23 @@ public final class AutomationTabScenario implements UIScenario {
                                 && context.all(".graph-draft").isEmpty())
                 .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
                 .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9)
+                // Cards already in the script are wired too (G1f-iv): a statement moves, a value feeds another port.
+                .drag(alarmPin("now"), alarmPin("after if"))
+                .waitUntil("a statement's exec pin dropped after the if moves the statement there", context ->
+                        String.join("\n", editor(context).getLines()).equals(
+                                IRON_TOOLS.replace("    now = ae2.amount(iron)\n", "") + "    now = ae2.amount(iron)\n"))
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
+                        && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                .drag(alarmPin("minus"), alarmPin("bound"))
+                .waitUntil("a value wired to another port leaves a plain value behind", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS
+                                .replace("if now < 64:", "if now < 64 - now:")
+                                .replace("ae2.craft(iron, 64 - now)", "ae2.craft(iron, 0)")))
+                .frames(2).screenshot("ui-automation-graph-moved")
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
+                        && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
                 .click("#auto_library_ns_mc")
                 .click("#auto_function_refill")
                 .waitUntil("another tab shows that function", context ->
@@ -574,17 +591,25 @@ public final class AutomationTabScenario implements UIScenario {
     }
 
     /**
-     * A pin on the alarm's graph: {@code in} of the amount crafted, {@code - now}'s right port, or {@code out} of the
-     * {@code now =} statement's next.
+     * A pin on the alarm's graph: {@code in}, the right port of {@code 64 - now}; {@code out}, the {@code now =}
+     * statement's next; {@code now}, the exec pin of the {@code now =} statement; {@code after if}, the if's
+     * next; {@code minus}, the value pin of {@code 64 - now}; {@code bound}, the right port of {@code now < 64}.
      */
     private static String alarmPin(String kind) {
         var alarm = ScriptParser.parse(IRON_TOOLS).program().functions().stream()
                 .filter(function -> function.name().equals("low_iron_alarm")).findFirst().orElseThrow();
-        if (kind.equals("out")) return "#auto_graph_out_" + alarm.body().get(1).id() + "_next";
         var branch = (Stmt.If) alarm.body().stream().filter(statement -> statement instanceof Stmt.If).findFirst()
                 .orElseThrow();
-        var craft = (Stmt.CallStmt) branch.body().get(0);
-        return "#auto_graph_in_" + craft.call().args().get(1).id() + "_right";
+        var minus = ((Stmt.CallStmt) branch.body().get(0)).call().args().get(1).id();
+        return switch (kind) {
+            case "out" -> "#auto_graph_out_" + alarm.body().get(1).id() + "_next";
+            case "in" -> "#auto_graph_in_" + minus + "_right";
+            case "now" -> "#auto_graph_exec_" + alarm.body().get(1).id();
+            case "after if" -> "#auto_graph_out_" + branch.id() + "_next";
+            case "minus" -> "#auto_graph_result_" + minus;
+            case "bound" -> "#auto_graph_in_" + branch.condition().id() + "_right";
+            default -> throw new IllegalArgumentException(kind);
+        };
     }
 
     private static boolean graphOffered(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
