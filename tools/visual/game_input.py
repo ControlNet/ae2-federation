@@ -33,6 +33,12 @@ elif sys.argv[1] == 'close':
 elif sys.argv[1] == 'rightclick':
     xtest.fake_input(d,X.ButtonPress,3);d.sync();time.sleep(.08)
     xtest.fake_input(d,X.ButtonRelease,3);d.sync()
+elif sys.argv[1] == 'sneakrightclick':
+    # Hold the default sneak key (left Shift) long enough for the server to see the player sneaking.
+    key('Shift_L'); time.sleep(.6)
+    xtest.fake_input(d,X.ButtonPress,3);d.sync();time.sleep(.08)
+    xtest.fake_input(d,X.ButtonRelease,3);d.sync();time.sleep(.3)
+    key('Shift_L',False)
 elif sys.argv[1] == 'reload':
     key('F3'); tap('t'); key('F3',False)
 elif sys.argv[1] == 'profile':

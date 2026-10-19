@@ -2,7 +2,7 @@
     DataVersion: 3955,
     size: [7, 2, 1],
     data: [
-        {pos: [3, 0, 0], state: "ae2federation:router"},
+        {pos: [3, 0, 0], state: "ae2federation:switch"},
         {pos: [4, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsEast: 2, channelsWest: 2, connections: ["west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, north: {id: "ae2:terminal", visual: {missingChannel: 0b, powered: 1b}}}},
         {pos: [5, 0, 0], state: "appflux:flux_accessor"},
         {pos: [6, 0, 0], state: "mekanism:crusher{active:true,facing:north}"},
@@ -13,7 +13,7 @@
     ],
     entities: [],
     palette: [
-        "ae2federation:router",
+        "ae2federation:switch",
         "ae2:cable_bus{light_level:0,waterlogged:false}",
         "appflux:flux_accessor",
         "mekanism:crusher{active:true,facing:north}",

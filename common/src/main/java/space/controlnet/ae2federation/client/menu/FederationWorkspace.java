@@ -16,8 +16,11 @@ import net.minecraft.network.chat.Component;
 
 /** Local navigation and presentation; every business selection still goes through the authorized menu request. */
 final class FederationWorkspace {
-    /** The topology (with each Endpoint's panel) and the wires view; an Endpoint's details are on the topology. */
-    private static final List<String> PAGES = List.of("overview", "mapping");
+    /**
+     * The topology (with each Endpoint's panel), the wires view and the statistics; an Endpoint's details are on the
+     * topology.
+     */
+    private static final List<String> PAGES = List.of("overview", "mapping", "statistics");
     /** The server's choice groups; the wires view and the topology present them. */
     private static final List<String> CHOICE_GROUPS = List.of("mapping_provider", "slot", "target", "endpoint");
     private final PatternChoices patterns = new PatternChoices();
@@ -25,7 +28,8 @@ final class FederationWorkspace {
     private final Consumer<String> select;
     private final Map<String, String> confirmedSelections = new HashMap<>();
     private final Map<String, com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture> icons =
-            Map.of("overview", FederationIcons.TOPOLOGY, "mapping", FederationIcons.PROCESSING);
+            Map.of("overview", FederationIcons.TOPOLOGY, "mapping", FederationIcons.PROCESSING, "statistics",
+                    FederationIcons.STATISTICS);
     private final Map<String, List<JsonObject>> choices = new HashMap<>();
     private boolean entranceApplied;
     private String navigationGroup;
@@ -33,6 +37,7 @@ final class FederationWorkspace {
     private String endpointNavigationReceipt;
     private FederationTopologyView topology;
     private FederationProcessingGraph processing;
+    private FederationStatisticsView statistics;
     private boolean authorityAllowsNavigation;
     private String page = "overview";
 
@@ -74,6 +79,11 @@ final class FederationWorkspace {
         if (topology != null) topology.onSearch(processing::filter);
     }
 
+    void bindStatistics(FederationStatisticsView view) {
+        statistics = view;
+        view.setOpen("statistics".equals(page));
+    }
+
     void setProcessingEditable(boolean editable) {
         if (processing != null) processing.setEditable(editable);
     }
@@ -91,6 +101,8 @@ final class FederationWorkspace {
         element("domain_tab", Label.class).setText(PAGES.contains(page) ? Component.literal(" · ").append(tr("tab_title." + page)) : Component.empty());
         boolean mapping = "mapping".equals(page);
         element("header_graph_tools", UIElement.class).setDisplay("overview".equals(page));
+        element("header_stats_tools", UIElement.class).setDisplay("statistics".equals(page));
+        if (statistics != null) statistics.setOpen("statistics".equals(page));
         // Classes, not setDisplay: the narrow layout's LSS also folds the summary away.
         for (var summary : Map.of("members_value", !mapping, "processing_summary", mapping, "scope_caption", "overview".equals(page)).entrySet()) {
             var label = element(summary.getKey(), UIElement.class);
@@ -132,6 +144,7 @@ final class FederationWorkspace {
         element("bridge_unavailable", UIElement.class).setDisplay(bridgeUnavailable);
         element("workspace_tabs", UIElement.class).setDisplay(!bridgeUnavailable);
         if (bridgeUnavailable) show("unavailable");
+        if (statistics != null) statistics.acceptChoices(root);
         var selected = root.getAsJsonObject("selected");
         for (var group : CHOICE_GROUPS) {
             var values = new ArrayList<JsonObject>();

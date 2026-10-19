@@ -25,7 +25,7 @@ public final class TopologySearch {
             }
         }
         for (var text : texts) {
-            if (text.toLowerCase(Locale.ROOT).contains(normalized)) return true;
+            if (SearchText.contains(text, normalized)) return true;
         }
         return false;
     }

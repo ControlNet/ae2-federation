@@ -337,6 +337,9 @@ public final class EnergySharingService implements AutoCloseable {
                     || !(binding.claimState() instanceof ClaimState.Owned owned)) {
                 continue;
             }
+            if (stopped(binding)) {
+                continue;
+            }
             var subnet = binding.subnetNode().getGrid();
             var owner = owners.get(owned.ownerIdentity().provider());
             if (subnet != null && owner != null && subnet != owner) {
@@ -344,6 +347,13 @@ public final class EnergySharingService implements AutoCloseable {
             }
         }
         return edges;
+    }
+
+    /** Whether the Endpoint's domain has stopped, over capacity or unpowered: a stopped domain powers no Endpoint either. */
+    private static boolean stopped(EndpointTargetBinding binding) {
+        var registry = FederationDomainRegistryAccess.get(binding.level());
+        return registry.federationDomainOf(FederationDomainRegistryAccess.nodeId(binding.level(), binding.runtime().position()))
+                .filter(domain -> registry.stopped(domain.federationDomainId())).isPresent();
     }
 
     private static boolean eligible(PolicyService policies, PolicyKey key) {

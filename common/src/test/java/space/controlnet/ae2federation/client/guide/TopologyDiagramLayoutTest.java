@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram.Capability;
+import space.controlnet.ae2federation.client.guide.TopologyDiagram.Domain;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram.Endpoint;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram.Energy;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram.Network;
@@ -113,12 +114,22 @@ public class TopologyDiagramLayoutTest {
         return new Endpoint(key, "Endpoint · " + key, owner, true, List.of("Furnace"));
     }
 
-    /** Every card, Endpoint node and label of {@code layout} inside its canvas, none covering another. */
+    /**
+     * Every card, Endpoint node, label and domain name of {@code layout} inside its canvas, none covering another, and
+     * every plate inside the canvas.
+     */
     public static void assertApartAndOnCanvas(TopologyDiagramLayout layout, String where) {
         var drawn = new ArrayList<Rect>();
         layout.cards().forEach(card -> drawn.add(card.rect()));
         layout.endpoints().forEach(node -> drawn.add(node.rect()));
         for (var link : layout.links()) link.labels().forEach(label -> drawn.add(label.rect()));
+        layout.plates().forEach(plate -> drawn.add(plate.name()));
+        for (var plate : layout.plates()) {
+            for (var point : plate.outline()) {
+                assertTrue(point[0] >= 0 && point[1] >= 0 && point[0] <= layout.width() && point[1] <= layout.legendY(),
+                        "Plate of " + plate.domain().key() + " on the canvas " + where);
+            }
+        }
         for (int index = 0; index < drawn.size(); index++) {
             var rect = drawn.get(index);
             assertTrue(rect.x() >= 0 && rect.y() >= 0 && rect.x() + rect.width() <= layout.width()
@@ -190,5 +201,84 @@ public class TopologyDiagramLayoutTest {
         assertTrue(endpoints.contains("Endpoint \"e\" names the unknown network \"z\""), endpoints);
         assertTrue(new TopologyDiagram(List.of(network("a", 0, 0), network("b", 1, 0)),
                 List.of(new Rule("a", "b", Capability.CRAFTING, State.ACTIVE)), List.of()).problems().isEmpty());
+    }
+    // A chain of two domains: a and b meet in d1 (the opened one), b and c in d2.
+    private static TopologyDiagram chain() {
+        return new TopologyDiagram(List.of(network("a", 0, 0), network("b", 1, 0), network("c", 2, 0)), List.of(
+                new Rule("a", "b", Capability.STORAGE, State.ACTIVE), new Rule("b", "c", Capability.STORAGE, State.REEXPORT)),
+                List.of(), List.of(), List.of(new Domain("d1", "This domain", List.of("a", "b"), true),
+                        new Domain("d2", "Domain 3C91", List.of("b", "c"), false)));
+    }
+
+    @Test
+    void eachDomainStandsOnAPlateAroundItsNetworksWithItsNameAbove() {
+        for (int width : PAGE_WIDTHS) {
+            var layout = lay(chain(), width);
+            assertEquals(List.of("d1", "d2"), layout.plates().stream().map(plate -> plate.domain().key()).toList());
+            for (var plate : layout.plates()) {
+                for (var card : layout.cards()) {
+                    var rect = card.rect();
+                    boolean member = plate.domain().networks().contains(card.network().key());
+                    float x = rect.x() + rect.width() / 2f;
+                    float y = rect.y() + rect.height() / 2f;
+                    assertEquals(member, space.controlnet.ae2federation.client.policy.DomainClusterLayout.inside(plate.outline(), x, y),
+                            card.network().key() + " on the plate of " + plate.domain().key() + " at width " + width);
+                    if (member) {
+                        // The plate reaches past the card on every side.
+                        assertTrue(space.controlnet.ae2federation.client.policy.DomainClusterLayout.inside(plate.outline(),
+                                rect.x() - 1, y) && space.controlnet.ae2federation.client.policy.DomainClusterLayout.inside(
+                                        plate.outline(), x, rect.y() - 1), "A margin around " + card.network().key());
+                    }
+                }
+                float top = (float) plate.outline().stream().mapToDouble(point -> point[1]).min().orElse(0);
+                assertTrue(plate.name().y() + plate.name().height() <= top + 1, "The name stands above the plate");
+                assertEquals(width(plate.domain().label()), plate.name().width());
+            }
+            assertApartAndOnCanvas(layout, "a chain of domains at width " + width);
+        }
+    }
+
+    @Test
+    void aDiagramWithoutDomainsHasNoPlatesAndKeepsItsLayout() {
+        var networks = List.of(network("a", 0, 0), network("b", 1, 0));
+        var rules = List.of(new Rule("a", "b", Capability.STORAGE, State.ACTIVE));
+        var layout = lay(new TopologyDiagram(networks, rules, List.of()), 300);
+        assertTrue(layout.plates().isEmpty());
+        assertEquals(layout.cards(), lay(new TopologyDiagram(networks, rules, List.of(), List.of(), List.of()), 300).cards());
+    }
+
+    @Test
+    void aDomainInsideAnotherHasTheSmallerPlate() {
+        // A Bridge between a and b inside the Switch domain that holds a, b and c.
+        var diagram = new TopologyDiagram(List.of(network("a", 0, 0), network("b", 1, 0), network("c", 2, 0)), List.of(
+                new Rule("a", "b", Capability.STORAGE, State.ACTIVE)), List.of(), List.of(), List.of(
+                new Domain("switch", "This domain", List.of("a", "b", "c"), true),
+                new Domain("bridge", "Domain 3C91", List.of("a", "b"), false)));
+        var layout = lay(diagram, 420);
+        var outer = layout.plates().get(0);
+        var inner = layout.plates().get(1);
+        for (var point : inner.outline()) {
+            assertTrue(space.controlnet.ae2federation.client.policy.DomainClusterLayout.inside(outer.outline(), point[0], point[1]));
+        }
+        assertFalse(inner.name().intersects(outer.name()));
+        assertApartAndOnCanvas(layout, "a nested domain");
+    }
+
+    @Test
+    void domainProblemsNameWhatIsWrong() {
+        var parsed = TopologyDiagram.parse(List.of(
+                new TopologyDiagram.Element("Network", java.util.Map.of("key", "a")),
+                new TopologyDiagram.Element("Domain", java.util.Map.of("key", "d", "label", "Domain 1", "networks", "a,z")),
+                new TopologyDiagram.Element("Domain", java.util.Map.of("key", "d", "networks", "a")),
+                new TopologyDiagram.Element("Domain", java.util.Map.of("key", "e", "networks", "a", "opened", "maybe"))));
+        var problems = String.join("\n", parsed.problems());
+        assertTrue(problems.contains("Domain \"d\" names the unknown network \"z\""), problems);
+        assertTrue(problems.contains("Domain key \"d\" is used twice"), problems);
+        assertTrue(problems.contains("opened true or false"), problems);
+        var good = TopologyDiagram.parse(List.of(new TopologyDiagram.Element("Network", java.util.Map.of("key", "a")),
+                new TopologyDiagram.Element("Domain", java.util.Map.of("key", "d", "label", "This domain", "networks", "a",
+                        "opened", "true"))));
+        assertTrue(good.problems().isEmpty(), good.problems().toString());
+        assertEquals(new Domain("d", "This domain", List.of("a"), true), good.diagram().domains().getFirst());
     }
 }

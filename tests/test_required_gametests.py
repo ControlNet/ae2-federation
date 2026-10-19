@@ -1,6 +1,13 @@
+import tempfile
 import unittest
+from pathlib import Path
 
-from tools.required_gametests import gametest_command, required_test_ids, select_shard, verify_one
+from tools.required_gametests import (direct_command, freeze_argument_files, gametest_command, required_test_ids,
+                                      select_shard, verify_one)
+
+LAUNCH = {"java": "/jdk/bin/java", "jvmArgs": ["-Dfile.encoding=UTF-8", "@/build/vm.txt"],
+          "classpath": ["/a.jar", "/b.jar"], "mainClass": "net.neoforged.devlaunch.Main",
+          "args": ["@/build/program.txt"], "environment": {}}
 
 
 class RequiredGameTestsTest(unittest.TestCase):
@@ -36,3 +43,27 @@ class RequiredGameTestsTest(unittest.TestCase):
                              ("All 1 required tests passed :)", 1), ("", 0)):
             with self.subTest(output=output, code=code), self.assertRaises(ValueError):
                 verify_one("harnessnativesmoke", output, code)
+
+    def test_a_direct_launch_names_its_test_after_the_baked_arguments(self):
+        command = direct_command(LAUNCH, "harnessnativesmoke")
+        # A later -D wins, and the argument file holds the test id of whichever Gradle run wrote it last.
+        self.assertLess(command.index("@/build/vm.txt"), command.index("-Dae2federation.testId=harnessnativesmoke"))
+        self.assertIn("-Dae2federation.testSelection=positive", command)
+        self.assertEqual(command[0], "/jdk/bin/java")
+        self.assertEqual(command[command.index("-cp") + 1], "/a.jar:/b.jar")
+        self.assertEqual(command[-2:], ["net.neoforged.devlaunch.Main", "@/build/program.txt"])
+
+    def test_argument_files_are_copied_so_a_later_gradle_run_cannot_change_them(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "vm.txt"
+            source.write_text("-Dae2federation.testId=other\n")
+            program = Path(directory) / "program.txt"
+            program.write_text("--launchTarget\nforgeserverdev\n")
+            launch = dict(LAUNCH, jvmArgs=["-Dfile.encoding=UTF-8", f"@{source}"], args=[f"@{program}"])
+            frozen = freeze_argument_files(launch, Path(directory) / "frozen")
+            copied = Path(frozen["jvmArgs"][1][1:])
+            self.assertNotEqual(copied, source)
+            self.assertEqual(copied.read_text(), source.read_text())
+            source.write_text("changed")
+            self.assertEqual(copied.read_text(), "-Dae2federation.testId=other\n")
+            self.assertEqual(frozen["jvmArgs"][0], "-Dfile.encoding=UTF-8")

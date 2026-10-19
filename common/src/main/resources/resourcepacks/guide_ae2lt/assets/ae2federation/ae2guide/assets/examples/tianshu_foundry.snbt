@@ -3,7 +3,7 @@
     size: [17, 11, 7],
     data: [
         {pos: [9, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsSouth: 3, channelsUp: 3, channelsWest: 3, connections: ["up", "south", "west"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, north: {id: "ae2:crafting_terminal", visual: {missingChannel: 0b, powered: 1b}}}},
-        {pos: [8, 0, 0], state: "ae2federation:router"},
+        {pos: [8, 0, 0], state: "ae2federation:switch"},
         {pos: [7, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsEast: 1, channelsSouth: 1, connections: ["south", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
         {pos: [6, 0, 0], state: "ae2lt:matter_warping_matrix_casing{formed:true}"},
         {pos: [5, 0, 0], state: "ae2lt:matter_warping_matrix_casing{formed:true}"},
@@ -703,7 +703,7 @@
     entities: [],
     palette: [
         "ae2:cable_bus{light_level:0,waterlogged:false}",
-        "ae2federation:router",
+        "ae2federation:switch",
         "ae2lt:matter_warping_matrix_casing{formed:true}",
         "ae2lt:tianshu_supercomputer_casing{formed:true}",
         "ae2:energy_cell{fullness:4}",

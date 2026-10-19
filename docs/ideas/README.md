@@ -7,21 +7,45 @@ what the feature should do; it does not mean implementation has started or a rel
 
 | Idea | Discussion status | Scope |
 |---|---|---|
+| [Rule-based automation](rule-based-automation.md) | Shared function system proposed; computing device role settled 2026-10-17; execution details open | Unified function editing in the automation GUI; Policy uses predicates/filters, automation performs actions |
+| [Configurable gameplay rules](configurable-gameplay-rules.md) | Enabled-by-default controls confirmed; schema and values open | Full intended gameplay by default; independent power/capacity opt-outs and dependent numerical settings |
 | [Custom policies](custom-policies.md) | Direction established; details under discussion | Storage resource filtering, conditions based on AE2 information, and interchangeable graph/script editors |
-| [Remote Federation connections](remote-federation-connections.md) | Multiple forms under exploration | Quantum-bridge-style jumping is the first candidate; other connection models remain open |
-| [Nexus Processor and Nexus Core](nexus-processor.md) | Implemented; chain revised after AE2 on 2026-10-08 | Printed Nexus Circuit -> Nexus Processor -> Nexus Core, with devices taking the core |
+| [Remote Federation connections](remote-federation-connections.md) | Multiple forms under exploration; wireless cube for bundles implemented on `dev` 2026-10-17 as the Quantum Cube ([feature](../features/quantum-cube.md)) | Quantum-bridge-style jumping is the first candidate; other connection models remain open |
+| [Multiblock routers, switches, and cable capacity](multiblock-routing-and-cable-capacity.md) | Counting, limits and bundled cables implemented on `dev`; power versus capacity, progression and balancing open | Solid-cuboid routers and switches, bundled cable multipliers, and attachment capacity independent of Policy; no router capacity limit for now |
 
 The remote connection page also carries the earlier "Federation quantum bridge" working-name discussion.
 Its name, appearance and detailed behavior remain undecided.
 
 ## Implemented ideas
 
+- [Nexus Processor and Nexus Core](../features/survival-playability.md): implemented the Printed Nexus Circuit ->
+  Nexus Processor -> Nexus Core chain; Federation devices consume cores. The
+  [original discussion](../archive/ideas/nexus-processor.md) is archived for historical context.
 - [GuideME use-case tutorials](../features/guideme-use-cases.md): implemented bilingual examples and optional-mod tutorial packs.
   The [original discussion](../archive/ideas/guideme-use-cases.md) is archived for historical context.
 - [Survival playability](../features/survival-playability.md): implemented recipes, processor icon and GuideME guide.
   The [original discussion](../archive/ideas/survival-playability.md) is archived for historical context.
 - [Federation P2P](../features/federation-p2p.md): implemented a native AE2 P2P mode that carries Federation
   connectivity, including across dimensions. The [original discussion](../archive/ideas/federation-p2p.md) is
+  archived for historical context.
+- [Federation Switch](../features/federation-switch.md): implemented the Switch, which attaches ME networks, and made
+  the Router Federation-only. The [original discussion](../archive/ideas/federation-switch.md) is archived for
+  historical context.
+- [Multiblock Routers and Switches](../features/multiblock-devices.md): implemented solid-cuboid bodies (edge at most
+  8, AE2 grouping rules, invalid groups link nothing) with the artist's connected tiles. The
+  [original discussion](../archive/ideas/multiblock-device-assembly-and-appearance.md) is archived for historical
+  context.
+- [Cable capacity](../features/cable-capacity.md): implemented counting, the limit, the Jade line and bundled cables.
+  The [Jade display discussion](../archive/ideas/jade-cable-capacity.md) is archived for historical context; the
+  [capacity idea](multiblock-routing-and-cable-capacity.md) keeps its open balancing questions.
+- [Statistics dashboard](../features/statistics-dashboard.md): implemented the domain screen's statistics page with
+  24 h of saved history. The [original discussion](../archive/ideas/statistics-dashboard.md) is archived for
+  historical context.
+- [Operating power](../features/operating-power.md): implemented the configurable requirement, the ME Federation Beam
+  Converter, per-block costs and the gauge, Jade and statistics displays. The
+  [original discussion](../archive/ideas/federation-operating-power.md) is archived for historical context.
+- [Beam Former](../features/beam-former.md): implemented line-of-sight links between square formers of 1x1, 2x2 and
+  3x3; back-to-back relays are not built. The [original discussion](../archive/ideas/line-of-sight-beam-links.md) is
   archived for historical context.
 
 ## Comparative research

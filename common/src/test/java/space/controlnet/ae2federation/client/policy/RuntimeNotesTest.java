@@ -8,16 +8,23 @@ import org.junit.jupiter.api.Test;
 class RuntimeNotesTest {
     @Test
     void aCraftingRuleWhoseStorageRuleIsNotInEffectSaysSo() {
-        assertEquals("crafting_storage_not_in_effect", RuntimeNotes.crafting(Optional.of(false)));
+        assertEquals("crafting_storage_not_in_effect", RuntimeNotes.crafting(true, Optional.of(false)));
     }
 
     @Test
     void aCraftingRuleWithItsStorageRuleInEffectHasNoNote() {
-        assertEquals("", RuntimeNotes.crafting(Optional.of(true)));
+        assertEquals("", RuntimeNotes.crafting(true, Optional.of(true)));
     }
 
     @Test
     void anUnobservedStorageServiceAddsNoNote() {
-        assertEquals("", RuntimeNotes.crafting(Optional.empty()));
+        assertEquals("", RuntimeNotes.crafting(true, Optional.empty()));
+    }
+
+    @Test
+    void aCraftingRuleWithItsStorageRuleOffHasNoNote() {
+        // Crafting does not need the storage rule; switching it off is a choice, not a fault.
+        assertEquals("", RuntimeNotes.crafting(false, Optional.of(false)));
+        assertEquals("", RuntimeNotes.crafting(false, Optional.empty()));
     }
 }

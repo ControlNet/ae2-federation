@@ -22,6 +22,11 @@ final class PolicyActivation {
                 request.key().providerNetworkId())) {
             return PolicyActivationState.DISCONNECTED;
         }
+        if (!request.federationDomainRegistry().shareRunningFederationDomain(request.key().consumerNetworkId(),
+                request.key().providerNetworkId())) {
+            return request.federationDomainRegistry().shareOverCapacityFederationDomain(request.key().consumerNetworkId(),
+                    request.key().providerNetworkId()) ? PolicyActivationState.OVER_CAPACITY : PolicyActivationState.UNPOWERED;
+        }
         return switch (request.backendStatus()) {
             case UNREADY -> PolicyActivationState.BACKEND_UNREADY;
             case READY -> PolicyActivationState.ACTIVE;

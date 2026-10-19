@@ -16,7 +16,7 @@ item_ids:
   <ImportStructure src="../assets/bridge_part.snbt" />
 </GameScene>
 
-The Bridge joins two networks that sit side by side, with no Router needed. Place it on a cable of one network, so
+The Bridge joins two networks that sit side by side, with no Switch needed. Place it on a cable of one network, so
 that its outer side touches a cable or device of the other network. The two sides stay separate networks; the Bridge
 uses no channel and no idle power.
 

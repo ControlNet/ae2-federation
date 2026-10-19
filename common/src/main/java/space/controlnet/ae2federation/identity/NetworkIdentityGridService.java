@@ -38,6 +38,8 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
     // Nodes of this Grid minted in the tick freshTick; they may adopt another lineage until that tick ends.
     private final Set<IGridNode> fresh = Collections.newSetFromMap(new IdentityHashMap<>());
     private int freshTick;
+    private boolean settlementRefreshPending;
+    private int settlementReadyTick;
     private @Nullable MinecraftServer server;
     private int duplicateLineages;
     private IdentitySettlement settlement = new IdentitySettlement(IdentityStatus.NEW_NETWORK, java.util.Optional.empty());
@@ -88,6 +90,8 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         }
         if (!neutral && Integer.valueOf(server.getTickCount()).equals(MINTED_TICK.get(gridNode))) {
             freshNodes().add(gridNode);
+            settlementRefreshPending = true;
+            settlementReadyTick = server.getTickCount() + 1;
         }
         adoptEstablishedLineage();
     }
@@ -234,7 +238,7 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
 
     @Override
     public IdentitySettlement settlement() {
-        if (!provisional.isEmpty()) {
+        if (!provisional.isEmpty() || (!freshNodes().isEmpty() && durableNetworks(fresh).isEmpty())) {
             return new IdentitySettlement(IdentityStatus.PARTIAL_LOAD, java.util.Optional.empty());
         }
         if (duplicateLineages > 0) {
@@ -249,6 +253,25 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
             }
         }
         return settlement;
+    }
+
+    /**
+     * Fresh nodes may adopt throughout their minting tick. Once it ends, publish a real event, even when no node
+     * moved: boundary listeners must replace their provisional evidence before policies can bind the final identity.
+     */
+    @Override
+    public void onServerStartTick() {
+        if (!settlementRefreshPending || server == null || server.getTickCount() < settlementReadyTick) return;
+        freshNodes();
+        settlementRefreshPending = false;
+        IdentityEpoch.advance();
+        for (var node : java.util.List.copyOf(nodes.keySet())) {
+            ((GridNode) node).callListener(IGridNodeListener::onSaveChanges);
+        }
+        for (var node : nodes.keySet()) {
+            space.controlnet.ae2federation.domain.FederationBindingRefresh.request(node.getLevel());
+            break;
+        }
     }
 
     @Override

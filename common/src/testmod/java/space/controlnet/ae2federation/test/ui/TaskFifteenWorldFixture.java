@@ -185,7 +185,7 @@ final class TaskFifteenWorldFixture {
     }
 
     private static void placeRouter(ServerContext context) {
-        context.level().setBlockAndUpdate(world(context).router, RouterRegistration.ROUTER.get().defaultBlockState());
+        context.level().setBlockAndUpdate(world(context).router, RouterRegistration.SWITCH.get().defaultBlockState());
     }
 
     private static boolean entrancesReady(ServerContext context) {

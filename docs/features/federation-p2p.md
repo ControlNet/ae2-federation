@@ -12,7 +12,9 @@ display and so on) are not current requirements.
 - **Getting one:** there is no recipe. A player attunes any P2P tunnel with Federation Cable, through AE2's
   attunement tag `ae2federation:p2p_attunements/federation_p2p_tunnel`. The tunnel keeps its frequency and its role.
   It is also in the creative tab.
-- **Pairing:** with a memory card, as for AE2's tunnels.
+- **Pairing:** with a memory card, as for AE2's tunnels. Unpaired tunnels (frequency zero) remain separate.
+  Two inputs do not link directly, even if copied configurations or carrier changes give them the same frequency;
+  outputs follow the input selected by AE2's native P2P registry.
 - **Cable-equivalent links:** tunnels of one frequency act as if Federation Cable ran between their fronts.
   - A tunnel's front is a Federation port, so a Federation Cable, Router, Pattern Provider or Endpoint in front of it
     joins the domain.
@@ -20,6 +22,9 @@ display and so on) are not current requirements.
   - Internally the input links to each active output and each output to the input, a star: N outputs publish 2N
     links instead of N(N+1). The Domains are the same, because outputs reach one another through the input. The
     Policy screens and the topology view still show every network of a frequency related to every other, as before.
+- **Capacity:** a frequency carries one ordinary cable's capacity (C). Its tunnels count as cable in the segment they
+  join, so they have that segment's count and stop the domain when it is over C, as a cable would; Jade shows the
+  count on each tunnel ([cable capacity](cable-capacity.md)).
 - **When a link holds:** only while both ends and the frequency's input are active (powered, with a channel).
   Outputs reach each other only through a working input. A tunnel without a channel (for example the ninth on an
   ad-hoc network) gets no link until it has one.
@@ -34,8 +39,8 @@ display and so on) are not current requirements.
     returns and the FE relay.
   - Nothing forces chunks to load. As with AE2's Quantum Bridge, an unloaded end drops the link, and the link returns
     when the end loads again.
-- **Appearance:** AE2's P2P base model with a teal type panel. The panel is drawn from scratch by
-  `tools/visual/p2p_panel_texture.py`. Federation Cable draws an arm toward a tunnel's front.
+- **Appearance:** AE2's P2P base model with a teal type panel drawn by the artist. Federation Cable draws a thin
+  covered arm toward a tunnel's front.
 
 ## Runtime groundwork
 
@@ -60,6 +65,11 @@ The following checks cover this feature:
 - `FederationP2PGameTests`, the `p2p.*` manifest cases: attunement and sharing, outputs linking through their input,
   isolation, power loss and reload, across dimensions over a real Quantum Network Bridge, a moved output, an input
   taken off and replaced, and a channel shortage.
+  `p2p.nether-outpost` builds the guide's Nether outpost in a player's order, with a separate carrier powered through a
+  quartz fiber, and breaks and restores the Quantum link. `p2p.nether-outpost-orders-factory` adds the page's factory:
+  a Bridge joins the base to a pattern provider network, so the outpost's domain meets a second one at the base, and
+  the outpost's own crafting CPU orders the factory's planks through the base's re-export; stepping it back to Enabled
+  takes the recipe off the outpost but not the base.
 - The `cross-dimension.*` manifest cases: a nether Federation Pattern Provider projected to an overworld consumer, a
   Provider and an Endpoint in different dimensions at the same coordinates (restart, broken link, replaced Endpoint,
   real chunk unload of either side) and a nether level close. See the

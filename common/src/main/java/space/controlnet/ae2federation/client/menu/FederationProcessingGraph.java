@@ -28,6 +28,7 @@ import net.minecraft.network.chat.Style;
 import org.joml.Vector2f;
 import space.controlnet.ae2federation.client.policy.BlockMarks;
 import space.controlnet.ae2federation.client.policy.MappingWireTarget;
+import space.controlnet.ae2federation.client.policy.SearchText;
 
 /**
  * Processing wires for the domain's Pattern Providers: each Provider as a card of pattern rows with an output port on
@@ -649,10 +650,16 @@ public final class FederationProcessingGraph {
         return index < 0 ? FederationTheme.EDGE : FederationTheme.networkAccent(index);
     }
 
-    /** The name of the network a Provider or Endpoint is on, as the overview names it; empty when it is not a member. */
+    /** The name of the network a Provider is on, as the overview names it; "outside the domain" when it is not a member. */
     private Component networkName(JsonObject choice) {
         int index = choice.has("networkIndex") ? choice.get("networkIndex").getAsInt() : -1;
         return index >= 0 && index < networkNames.size() ? Component.literal(networkNames.get(index)) : tr("network_unknown");
+    }
+
+    /** "Endpoint @ 596, 69, 900", or "Endpoint" when it is not loaded and has no position. */
+    private Component endpointTitle(JsonObject endpoint) {
+        return endpoint.has("position") ? tr("endpoint_title", place(endpoint))
+                : Component.translatable("ae2federation.ui.topology.device.endpoint");
     }
 
     /** A card's name line: the network's accent swatch, then the name. */
@@ -741,7 +748,9 @@ public final class FederationProcessingGraph {
         if (withThumbnail && endpoint.has("position")) card.addChild(deviceThumbnail(endpoint, endpoint.get("position").getAsString()));
         var lines = new UIElement();
         lines.layout(style -> style.flex(1).minWidth(0).gapAll(1).flexDirection(FlexDirection.COLUMN));
-        var name = titled(endpoint, tr("endpoint_title", networkName(endpoint)));
+        // The card's title is the coordinates alone; the dimension goes on the network line, where it has room.
+        var name = titled(endpoint, endpoint.has("position")
+                ? tr("endpoint_title", endpoint.get("position").getAsString()) : endpointTitle(endpoint));
         int returned = returnKinds(endpoint);
         if (returned > 0) {
             // Results waiting in this Endpoint's Lane buffer to enter the ME network; they keep it from being released.
@@ -752,8 +761,10 @@ public final class FederationProcessingGraph {
                     .tooltips(tr("returns_badge_help", returned)));
             name.addChild(badge);
         }
-        var where = text(endpoint.has("position") ? place(endpoint)
-                : Component.literal(endpoint.get("label").getAsString()), FederationTheme.DARK_MUTED);
+        // The title already says where it is, so this line names its network, and its dimension seen from another.
+        var where = text(endpoint.has("position") ? DevicePlace.withDimension(EndpointText.network(endpoint, networkNames),
+                dimension(endpoint), playerDimension()) : Component.literal(endpoint.get("label").getAsString()),
+                FederationTheme.DARK_MUTED);
         var state = new Label();
         state.addClass("processing-endpoint-state");
         state.setId("processing_endpoint_state_" + sanitize(id));
@@ -841,8 +852,8 @@ public final class FederationProcessingGraph {
         for (var endpoint : endpoints) {
             var card = endpointCards.get(endpoint.get("id").getAsString());
             if (card == null) continue;
-            boolean match = matches(tr("endpoint_title", networkName(endpoint)).getString() + " "
-                    + (endpoint.has("position") ? place(endpoint).getString() : endpoint.get("label").getAsString()));
+            boolean match = matches(endpointTitle(endpoint).getString() + " " + (endpoint.has("position")
+                    ? EndpointText.network(endpoint, networkNames).getString() : endpoint.get("label").getAsString()));
             card.setDisplay(match);
             any |= match;
         }
@@ -850,7 +861,7 @@ public final class FederationProcessingGraph {
     }
 
     private boolean matches(String text) {
-        return query.isEmpty() || text.toLowerCase(java.util.Locale.ROOT).contains(query);
+        return SearchText.contains(text, query);
     }
 
     /** "#1 Gold Ingot" and its resources, as the search reads a pattern. */
@@ -923,10 +934,8 @@ public final class FederationProcessingGraph {
                 }
                 title.setText(Component.empty()
                         .append(Component.literal("■ ").withStyle(Style.EMPTY.withColor(accent(endpoint) & 0xffffff)))
-                        .append(tr("endpoint_title", networkName(endpoint)))
-                        .append(endpoint.has("position") ? Component.literal(" @ ").append(place(endpoint))
-                                : Component.empty()));
-                fact("network", networkName(endpoint).copy().append(" · ").append(subnet(endpoint)));
+                        .append(endpointTitle(endpoint)));
+                fact("network", EndpointText.network(endpoint, networkNames).copy().append(" · ").append(subnet(endpoint)));
                 fact("owner", claim == Claim.OCCUPIED ? tr("owner", owner(endpoint))
                         : claim == Claim.IN_USE || claim == Claim.RETAINED ? tr("owner_here") : Component.literal("-"));
                 var mapped = wires.stream().filter(value -> value.endpoint().equals(selection.endpoint()))

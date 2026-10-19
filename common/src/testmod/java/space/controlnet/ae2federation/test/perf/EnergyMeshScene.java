@@ -79,7 +79,7 @@ public final class EnergyMeshScene implements AutoCloseable {
             return false;
         }
         if (!routerPlaced) {
-            routers.placeRouter(CENTER);
+            routers.placeSwitch(CENTER);
             routerPlaced = true;
             status = "router";
             return false;

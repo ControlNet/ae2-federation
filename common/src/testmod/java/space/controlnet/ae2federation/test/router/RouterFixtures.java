@@ -28,6 +28,12 @@ public final class RouterFixtures implements AutoCloseable {
         return helper.getBlockEntity(position);
     }
 
+    /** A Switch, which attaches ME networks as well as Federation ports; a Router attaches Federation ports only. */
+    public RouterBlockEntity placeSwitch(BlockPos position) {
+        helper.setBlock(position, RouterRegistration.SWITCH.get());
+        return helper.getBlockEntity(position);
+    }
+
     public RouterBlockEntity router(BlockPos position) {
         return helper.getBlockEntity(position);
     }

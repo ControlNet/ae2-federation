@@ -5,7 +5,7 @@
       "tag": "c:ender_pearls"
     },
     "top": {
-      "item": "ae2:logic_processor_press"
+      "item": "ae2federation:nexus_processor_press"
     }
   },
   "mode": "inscribe",

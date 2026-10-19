@@ -36,6 +36,13 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
      */
     private final Throttled choicesText = new Throttled();
     private final Throttled graphText = new Throttled();
+    /** What the client's open statistics page asked for, or null while the page is closed; server side. */
+    private @Nullable space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Request statisticsRequest;
+    private net.minecraft.nbt.CompoundTag statisticsPayload = new net.minecraft.nbt.CompoundTag();
+    private @Nullable space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Request statisticsBuiltRequest;
+    private long statisticsBuiltAt;
+    /** The pins the page last sent; server side. */
+    private net.minecraft.nbt.Tag statisticsPinned = new net.minecraft.nbt.ListTag();
     /** The largest size this screen grows to; it fills the screen up to it. */
     private final int maxWidth;
     private final int maxHeight;
@@ -94,6 +101,30 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             }
         };
         workspace.bindProcessing(target -> send(FederationDomainPolicyAction.SET_MAPPING, target), prepareRelease);
+        // The statistics page asks for its range and metric while it is open; the server sends the figures only then.
+        var statisticsAsk = new BindableValue<String>("");
+        // Both ways: the server sends the opened menu's initial values for every binding, a client-only one included.
+        statisticsAsk.bind(DataBindingBuilder.string(() -> statisticsRequest == null ? "" : statisticsRequest.encode(),
+                this::acceptStatisticsRequest).initialValue("").build());
+        statisticsAsk.addClass("state-sync");
+        ui.rootElement.addChild(statisticsAsk);
+        // The keys the page pins, all of them each time. Both ways, like the request: a C2S-only binding is refused
+        // when the menu opens.
+        var statisticsPins = new BindableValue<net.minecraft.nbt.Tag>(new net.minecraft.nbt.ListTag());
+        statisticsPins.bind(DataBindingBuilder.tag(() -> statisticsPinned, tag -> {
+            statisticsPinned = tag;
+            if (session != null && session.pinStatistics(tag)) statisticsBuiltRequest = null;
+        }).initialValue(new net.minecraft.nbt.ListTag()).build());
+        statisticsPins.addClass("state-sync");
+        ui.rootElement.addChild(statisticsPins);
+        var statistics = new FederationStatisticsView(ui, value -> statisticsAsk.setValue(value, true),
+                pins -> statisticsPins.setValue(pins, true));
+        var statisticsSync = new BindableValue<net.minecraft.nbt.Tag>(new net.minecraft.nbt.CompoundTag());
+        statisticsSync.bind(DataBindingBuilder.tagS2C(this::statisticsPayload).initialValue(new net.minecraft.nbt.CompoundTag())
+                .remoteSetter(statistics::accept).build());
+        statisticsSync.addClass("state-sync");
+        ui.rootElement.addChild(statisticsSync);
+        workspace.bindStatistics(statistics);
         element(ui, "return_provider", Button.class).setOnClick(event ->
                 FederationDomainPolicyActionSink.returnToProvider(player.containerMenu.containerId));
         var graphState = new FederationTopologyView(ui, target -> send(FederationDomainPolicyAction.SET_POLICY, target),
@@ -110,6 +141,11 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 }).build());
         choices.addClass("state-sync");
         ui.rootElement.addChild(choices);
+        var power = new BindableValue<String>("");
+        power.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : session.powerGauge())
+                .initialValue("").remoteSetter(graphState::acceptPower).build());
+        power.addClass("state-sync");
+        ui.rootElement.addChild(power);
 
         var state = new BindableValue<String>("");
         state.bind(DataBindingBuilder.stringS2C(this::statusCode)
@@ -378,6 +414,33 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         void invalidate() {
             value = null;
         }
+    }
+
+    /** What the open page asks for, or empty when it closes; anything else closes it too. */
+    private void acceptStatisticsRequest(String value) {
+        statisticsRequest = space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Request.parse(value);
+    }
+
+    /**
+     * The open page's figures, rebuilt when its request changes and otherwise every second for the two-minute range
+     * and every five for the longer ones, whose points change more slowly; the same tag in between, so nothing is
+     * resent.
+     */
+    private net.minecraft.nbt.Tag statisticsPayload() {
+        var request = statisticsRequest;
+        if (session == null || request == null) {
+            if (!statisticsPayload.isEmpty()) statisticsPayload = new net.minecraft.nbt.CompoundTag();
+            statisticsBuiltRequest = null;
+            return statisticsPayload;
+        }
+        long now = Math.floorDiv(System.currentTimeMillis(), 1000L);
+        long period = Math.min(request.range().seconds(), 5);
+        if (!request.equals(statisticsBuiltRequest) || now >= statisticsBuiltAt + period || now < statisticsBuiltAt) {
+            statisticsPayload = session.statistics(request);
+            statisticsBuiltRequest = request;
+            statisticsBuiltAt = now;
+        }
+        return statisticsPayload;
     }
 
     private String statusCode() {

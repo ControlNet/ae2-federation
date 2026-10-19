@@ -12,7 +12,7 @@ navigation:
 workshop networks. Each network keeps its own channels, and only the warehouse needs power.
 
 **You need:** a warehouse network with storage and power, one or more workshop networks with a terminal, and a
-<ItemLink id="ae2federation:router" />.
+<ItemLink id="ae2federation:switch" />.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/shared_warehouse.snbt" />
@@ -26,7 +26,7 @@ workshop networks. Each network keeps its own channels, and only the warehouse n
     Workshop 2: a terminal, running on the warehouse's power
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
-    Router: one face per network
+    Switch: one face per network
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -45,17 +45,17 @@ In the Federation screen, each workshop uses the warehouse's storage and shares 
 
 ## Build it
 
-1. **Connect each network to its own face of the Router**, with an ME cable touching that face. One Router takes up
-   to six networks. Networks far apart each get their own Router, joined by
+1. **Connect each network to its own face of the Switch**, with an ME cable touching that face. One Switch takes up
+   to six networks. Networks far apart each get their own Switch, joined by
    <ItemLink id="ae2federation:cable" />; see [Getting Started](../getting-started.md).
-2. **Open the Federation screen** by right-clicking the Router, and select the line between the warehouse and the
+2. **Open the Federation screen** by right-clicking the Switch, and select the line between the warehouse and the
    first workshop.
 3. **Switch on Storage under "Workshop uses Warehouse's".** Leave the other direction off, so the warehouse does not
    see the workshop's storage. Switch on **ME power** for the pair too: the workshop then runs on the warehouse's
    power.
 4. **Check it.** Open the workshop's terminal: the warehouse's items are listed with the workshop's own. Take some
    out, and put something in: with no storage of its own, the workshop stores it in the warehouse.
-5. **Add the second workshop** the same way: its own Router face, its own Storage rule and ME power. The two workshops
+5. **Add the second workshop** the same way: its own Switch face, its own Storage rule and ME power. The two workshops
    do not see each other's storage unless you switch that pair on too. Their power is pooled through the warehouse
    all the same: networks that share energy with a common network share one pool.
 

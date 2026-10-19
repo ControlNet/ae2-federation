@@ -29,7 +29,7 @@ import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 import space.controlnet.ae2federation.test.world.MockServerPlayers;
 
-/** A crafting rule always brings the same direction's storage rule, through the real pair-editor packet path. */
+/** Crafting and storage rules switch apart, through the real pair-editor packet path; energy stays one pool per pair. */
 @PrefixGameTestTemplate(false)
 public final class RuleLinkGameTests {
     private RuleLinkGameTests() {
@@ -37,9 +37,11 @@ public final class RuleLinkGameTests {
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
             required = true, timeoutTicks = 400)
-    public static void rulesCraftingNeedsStorage(GameTestHelper helper) {
+    public static void rulesCraftingAndStorageApart(GameTestHelper helper) {
         var fixtures = new PolicyBridgeFixtures(helper, new BlockPos(5, 3, 5));
         var bridgePlaced = new boolean[1];
+        // The edits below run once: a retry would see the rules the first run left, so it keeps the first failure.
+        var failure = new String[1];
         helper.succeedWhen(() -> {
             if (!bridgePlaced[0] && fixtures.networksSettled()) {
                 fixtures.placeFirstBridge();
@@ -52,53 +54,64 @@ public final class RuleLinkGameTests {
             ObservationGameTestPlayerTransport.install(player);
             helper.assertTrue(FederationDomainPolicyMenu.openBridge(player, fixtures.firstBridgeContext()),
                     "The pair editor must open");
-            var policy = PolicyService.get(helper.getLevel());
-            var crafting = new PolicyKey(fixtures.mainNetwork(), fixtures.outerNetwork(), PolicyCapability.CRAFTING);
-            var storage = new PolicyKey(fixtures.mainNetwork(), fixtures.outerNetwork(), PolicyCapability.STORAGE);
-            var reverseStorage = new PolicyKey(fixtures.outerNetwork(), fixtures.mainNetwork(), PolicyCapability.STORAGE);
-            var watermark = policy.highWatermark();
-
-            // 1. Crafting on brings storage on, in one edit.
-            helper.assertValueEqual(set(player, crafting, RuleMode.ENABLED, policy.revision(crafting)),
-                    FederationDomainPolicyActionResult.ACCEPTED, "Crafting on must be accepted");
-            helper.assertValueEqual(mode(policy, crafting), RuleMode.ENABLED, "Crafting must be on");
-            helper.assertValueEqual(policy.configured(storage).orElseThrow().rule(), PolicyRule.storageDefaults(),
-                    "Crafting on must switch on the same direction's storage rule with its defaults");
-            helper.assertValueEqual(policy.highWatermark(), watermark + 2, "The two rules must advance two revisions");
-            helper.assertTrue(policy.configured(reverseStorage).isEmpty(), "The other direction must stay untouched");
-
-            // 2. Storage off takes crafting off.
-            set(player, storage, RuleMode.DISABLED, policy.revision(storage));
-            helper.assertValueEqual(mode(policy, storage), RuleMode.DISABLED, "Storage must be off");
-            helper.assertValueEqual(mode(policy, crafting), RuleMode.DISABLED, "Storage off must take crafting off");
-
-            // 3. Crafting with re-export brings storage back on, plain.
-            set(player, crafting, RuleMode.REEXPORT, policy.revision(crafting));
-            helper.assertValueEqual(mode(policy, crafting), RuleMode.REEXPORT, "Crafting must re-export");
-            helper.assertValueEqual(mode(policy, storage), RuleMode.ENABLED, "Storage must be on again");
-
-            // 4. A switch seen at an old revision changes nothing.
-            var before = policy.highWatermark();
-            set(player, storage, RuleMode.DISABLED, new PolicyRevision(policy.revision(storage).value() - 1));
-            helper.assertValueEqual(policy.highWatermark(), before, "A stale switch must not edit any rule");
-            helper.assertValueEqual(mode(policy, crafting), RuleMode.REEXPORT, "A stale switch must leave crafting on");
-
-            // 5. A world saved with crafting but no storage loads with both.
-            var old = new PolicySavedData();
-            old.edit(new PolicyEdit(crafting, PolicyRevision.NONE, PolicyRule.enabled(Set.of(PolicyOperation.REQUEST))));
-            var registries = helper.getLevel().registryAccess();
-            var loaded = PolicySavedData.load(old.save(new CompoundTag(), registries), registries);
-            helper.assertValueEqual(loaded.configured(storage).map(record -> record.rule()).orElse(null),
-                    PolicyRule.storageDefaults(), "Loading must switch on the storage rule a crafting rule needs");
-            helper.assertTrue(loaded.isDirty(), "The loaded fix must be saved");
-            PolicyEvidence.write("rulescraftingneedsstorage", 14, Map.of("craftingBringsStorage", "true",
-                    "oneEditForBoth", "true", "otherDirectionUntouched", "true", "storageOffTakesCrafting", "true",
-                    "reexportBringsPlainStorage", "true", "staleSwitchEditsNothing", "true",
-                    "loadAddsStorage", "true"));
+            if (failure[0] != null) helper.fail(failure[0]);
+            try {
+                editApart(helper, fixtures, player);
+            } catch (net.minecraft.gametest.framework.GameTestAssertException e) {
+                failure[0] = e.getMessage();
+                throw e;
+            }
 
             player.doCloseContainer();
             fixtures.close();
         });
+    }
+
+    private static void editApart(GameTestHelper helper, PolicyBridgeFixtures fixtures, ServerPlayer player) {
+        var policy = PolicyService.get(helper.getLevel());
+        var crafting = new PolicyKey(fixtures.mainNetwork(), fixtures.outerNetwork(), PolicyCapability.CRAFTING);
+        var storage = new PolicyKey(fixtures.mainNetwork(), fixtures.outerNetwork(), PolicyCapability.STORAGE);
+        var reverseStorage = new PolicyKey(fixtures.outerNetwork(), fixtures.mainNetwork(), PolicyCapability.STORAGE);
+        var watermark = policy.highWatermark();
+
+        // 1. Crafting on changes crafting alone, in one edit.
+        helper.assertValueEqual(set(player, crafting, RuleMode.ENABLED, policy.revision(crafting)),
+                FederationDomainPolicyActionResult.ACCEPTED, "Crafting on must be accepted");
+        helper.assertValueEqual(mode(policy, crafting), RuleMode.ENABLED, "Crafting must be on");
+        helper.assertTrue(policy.configured(storage).isEmpty(), "Crafting on must leave the storage rule alone");
+        helper.assertValueEqual(policy.highWatermark(), watermark + 1, "Crafting on must advance one revision");
+        helper.assertTrue(policy.configured(reverseStorage).isEmpty(), "The other direction must stay untouched");
+
+        // 2. Storage on and off leaves crafting on.
+        set(player, storage, RuleMode.ENABLED, policy.revision(storage));
+        helper.assertValueEqual(mode(policy, storage), RuleMode.ENABLED, "Storage must be on");
+        set(player, storage, RuleMode.DISABLED, policy.revision(storage));
+        helper.assertValueEqual(mode(policy, storage), RuleMode.DISABLED, "Storage must be off");
+        helper.assertValueEqual(mode(policy, crafting), RuleMode.ENABLED, "Storage off must leave crafting on");
+
+        // 3. Crafting with re-export, then off, leaves storage off.
+        set(player, crafting, RuleMode.REEXPORT, policy.revision(crafting));
+        helper.assertValueEqual(mode(policy, crafting), RuleMode.REEXPORT, "Crafting must re-export");
+        helper.assertValueEqual(mode(policy, storage), RuleMode.DISABLED, "Crafting re-export must leave storage off");
+
+        // 4. A switch seen at an old revision changes nothing.
+        var before = policy.highWatermark();
+        set(player, crafting, RuleMode.DISABLED, new PolicyRevision(policy.revision(crafting).value() - 1));
+        helper.assertValueEqual(policy.highWatermark(), before, "A stale switch must not edit any rule");
+        helper.assertValueEqual(mode(policy, crafting), RuleMode.REEXPORT, "A stale switch must leave crafting on");
+
+        // 5. A world saved with crafting but no storage loads as it was saved.
+        var old = new PolicySavedData();
+        old.edit(new PolicyEdit(crafting, PolicyRevision.NONE, PolicyRule.enabled(Set.of(PolicyOperation.REQUEST))));
+        var registries = helper.getLevel().registryAccess();
+        var loaded = PolicySavedData.load(old.save(new CompoundTag(), registries), registries);
+        helper.assertTrue(loaded.configured(storage).isEmpty(), "Loading must not add a storage rule");
+        helper.assertTrue(loaded.configured(crafting).map(record -> record.rule().enabled()).orElse(false),
+                "Loading must keep the crafting rule");
+        helper.assertFalse(loaded.isDirty(), "Loading must change nothing");
+        PolicyEvidence.write("rulescraftingandstorageapart", 15, Map.of("craftingAlone", "true",
+                "oneRevisionForCrafting", "true", "otherDirectionUntouched", "true", "storageOffKeepsCrafting", "true",
+                "reexportKeepsStorageOff", "true", "staleSwitchEditsNothing", "true", "loadKeepsRules", "true"));
     }
 
     private static FederationDomainPolicyActionResult set(ServerPlayer player, PolicyKey key, RuleMode mode,

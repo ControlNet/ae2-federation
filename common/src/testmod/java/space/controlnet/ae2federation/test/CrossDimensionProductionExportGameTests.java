@@ -138,9 +138,9 @@ public final class CrossDimensionProductionExportGameTests {
                         .setValue(BlockStateProperties.FACING, Direction.NORTH));
                 site.setBlock(QuantumP2PCarrier.NETHER_FRONT, RouterRegistration.FEDERATION_CABLE.get()
                         .defaultBlockState());
-                helper.setBlock(OVERWORLD_ROUTER, RouterRegistration.ROUTER.get());
+                helper.setBlock(OVERWORLD_ROUTER, RouterRegistration.SWITCH.get());
                 for (var cable : OVERWORLD_ROUTER_CABLES) helper.setBlock(cable, RouterRegistration.FEDERATION_CABLE.get());
-                site.setBlock(STORAGE_ROUTER, RouterRegistration.ROUTER.get().defaultBlockState());
+                site.setBlock(STORAGE_ROUTER, RouterRegistration.SWITCH.get().defaultBlockState());
                 for (var cable : NETHER_ROUTER_CABLES) {
                     site.setBlock(cable, RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
                 }

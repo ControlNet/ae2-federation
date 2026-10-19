@@ -1,0 +1,29 @@
+{
+    DataVersion: 3955,
+    size: [9, 2, 4],
+    data: [
+        {pos: [8, 0, 0], state: "ae2:drive{facing:north,spin:0}", nbt: {id: "ae2:drive", priority: 0, visual: {cell0: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell1: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell2: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell3: {id: "ae2:item_storage_cell_4k", state: "not_empty"}}}},
+        {pos: [7, 1, 0], state: "ae2:drive{facing:north,spin:0}", nbt: {id: "ae2:drive", priority: 0, visual: {cell0: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell1: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell2: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell3: {id: "ae2:item_storage_cell_4k", state: "not_empty"}}}},
+        {pos: [7, 0, 0], state: "ae2federation:switch"},
+        {pos: [6, 0, 0], state: "ae2federation:cable"},
+        {pos: [5, 0, 0], state: "ae2federation:cable"},
+        {pos: [4, 0, 0], state: "ae2federation:router{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}"},
+        {pos: [3, 0, 0], state: "ae2federation:cable"},
+        {pos: [2, 0, 0], state: "ae2federation:cable"},
+        {pos: [1, 0, 0], state: "ae2federation:switch"},
+        {pos: [0, 0, 0], state: "ae2:energy_cell{fullness:4}", nbt: {id: "ae2:energy_cell", internalCurrentPower: 200000.0d}},
+        {pos: [0, 1, 0], state: "ae2:drive{facing:north,spin:0}", nbt: {id: "ae2:drive", priority: 0, visual: {cell0: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell1: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell2: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell3: {id: "ae2:item_storage_cell_4k", state: "not_empty"}}}},
+        {pos: [4, 0, 1], state: "ae2federation:cable"},
+        {pos: [4, 0, 2], state: "ae2federation:cable"},
+        {pos: [4, 0, 3], state: "ae2federation:processing_endpoint{facing:north}"}
+    ],
+    entities: [],
+    palette: [
+        "ae2:drive{facing:north,spin:0}",
+        "ae2federation:switch",
+        "ae2federation:cable",
+        "ae2federation:router{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}",
+        "ae2:energy_cell{fullness:4}",
+        "ae2federation:processing_endpoint{facing:north}"
+    ]
+}

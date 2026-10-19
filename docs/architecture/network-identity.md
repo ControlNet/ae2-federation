@@ -55,16 +55,18 @@ Only `SETTLED` may inherit existing Policy. `PARTIAL_LOAD`, `COPIED_LIVE_IDENTIT
 Identity establishment is a native lifecycle boundary, never a node-count or read-count heuristic.
 `CableBusIdentityInitializationMixin` wraps the pinned AE2 `CableBusContainer.addPart` and `addToWorld` calls with
 `NativeIdentityInitialization` (including nested calls and try-with-resources cleanup). AE2 creates a part's temporary
-Grid before connecting the part to its cable. Only a new live node with no saved identity, minted inside that call,
-is eligible to adopt the unique established lineage of the Grid it joins. Its persistent node UUID is preserved.
-If the assembled Grid contains only new nodes, they share a newly minted identity. Multiple established lineages
-remain ambiguous. Reads during this assembly report `PARTIAL_LOAD` and cannot publish a Policy-bearing identity.
+Grid before connecting the part to its cable. New live nodes without saved lineage may adopt a single identity
+throughout the server tick in which they were minted, including separate native initialization batches. This authority
+follows the original node across native Grid transfers, preserves its node UUID, and is never saved in NBT. A node
+joining an established network adopts its unique durable identity; independently established histories still conflict.
 
-When the outer native call returns, all new nodes are established, including a single node. Other native
-nodes establish their identity when added: AE2 `GridNode.updateState` finds world connections before making a Grid.
-A subsequent connection between independent established single-node networks is therefore a real merge. Adding a
-part to an existing cable is one initialization history; placing an independent network, finishing initialization,
-and later connecting it is a different history. Reading identity or opening a GUI does not alter either result.
+A wholly fresh Grid reports `PARTIAL_LOAD` while adoption can still change its identity. Closing one multipart call
+does not prematurely publish a settled ID. At the next native Grid start tick, the identity service advances the epoch
+and sends native `onSaveChanges` notifications, including to boundary nodes, so Bridges/Switches republish membership
+and bindings without requiring an unrelated player action. A fresh node joined to a durable single-identity network
+can use that stable identity immediately after multipart assembly ends. Reading settlement neither grants adoption
+rights nor consumes the scheduled notification. Identity data loaded from disk, including copied NBT, never grants
+fresh adoption authority.
 
 The initialization scope is process-local and keyed by the original `IGridNode` object. It is not encoded in NBT.
 Grid transfers preserve the node UUID; a different node loaded from copied NBT cannot inherit initialization authority.

@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "ae2federation:block/creative_beam_converter/creative_beam_converter_side",
+    "north": "ae2federation:block/creative_beam_converter/creative_beam_converter_back",
+    "south": "ae2federation:block/creative_beam_converter/creative_beam_converter_front",
+    "east": "ae2federation:block/creative_beam_converter/creative_beam_converter_side",
+    "west": "ae2federation:block/creative_beam_converter/creative_beam_converter_side",
+    "up": "ae2federation:block/creative_beam_converter/creative_beam_converter_side",
+    "down": "ae2federation:block/creative_beam_converter/creative_beam_converter_side"
+  }
+}

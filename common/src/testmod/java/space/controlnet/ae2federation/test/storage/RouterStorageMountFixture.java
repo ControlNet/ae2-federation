@@ -60,8 +60,8 @@ public final class RouterStorageMountFixture implements AutoCloseable {
 
     /** The two Routers without the Federation cable between them, which runs along x from 4 to 8 at y 4 and z 6. */
     public void placeRouters() {
-        routers.placeRouter(LEFT);
-        routers.placeRouter(RIGHT);
+        routers.placeSwitch(LEFT);
+        routers.placeSwitch(RIGHT);
     }
 
     public boolean connected() {

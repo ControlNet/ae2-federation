@@ -18,18 +18,22 @@ The replacement proof first resolves a real ME chest attachment, removes that ex
 state to settle, and then resolves the original boundary node again. The stale boundary must return no attachment and
 records `replacedAccepted=false` in the existing `ports.reject-floating-node` case.
 
-## Router isolation
+## Switch isolation
 
-A Router candidate owns six distinct managed in-world boundary nodes, each exposed only on its corresponding face. The
+Since 2026-10-10 the Switch attaches ME networks and the Router attaches Federation ports only: a Router face creates no
+boundary node and resolves as Federation or disconnected. The rest of this section describes the Switch, which keeps
+the Router's former attachment code (`RouterFacePort` with `attachesNetworks`).
+
+A Switch owns six distinct managed in-world boundary nodes, each exposed only on its corresponding face. The
 nodes are not connected to one another or to a shared internal native node. Each valid face record retains its own
 direction, boundary node, neighbor node, and current `IGrid` identity.
 
-Distinct native neighbors remain distinct Grids. If two faces reach a network already joined outside the Router, both face
+Distinct native neighbors remain distinct Grids. If two faces reach a network already joined outside the Switch, both face
 records remain present while membership views group them by native `IGrid` object identity. This deduplicates one native
 network without collapsing physical face ownership.
 
 `GridHelper.createConnection` is not a Federation transport primitive. AE2 uses it to merge the connected node graphs,
-so the Router boundary rejects requests to connect face nodes. Bridge and Router product implementations in Tasks 11 and 12
+so the Switch boundary rejects requests to connect face nodes. Bridge and Router product implementations in Tasks 11 and 12
 must adopt this boundary rather than creating native cross-boundary edges.
 
 ## Rendering boundary

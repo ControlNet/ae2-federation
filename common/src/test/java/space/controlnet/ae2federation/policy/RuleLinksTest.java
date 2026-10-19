@@ -25,33 +25,20 @@ class RuleLinksTest {
     }
 
     @Test
-    void craftingOnBringsTheSamePairsStorage() {
-        assertEquals(List.of(new RuleLinks.Change(CRAFTING, RuleMode.ENABLED),
-                new RuleLinks.Change(STORAGE, RuleMode.ENABLED)), switchTo(CRAFTING, RuleMode.ENABLED));
-        assertEquals(List.of(new RuleLinks.Change(CRAFTING, RuleMode.REEXPORT),
-                new RuleLinks.Change(STORAGE, RuleMode.ENABLED)), switchTo(CRAFTING, RuleMode.REEXPORT));
-    }
-
-    @Test
-    void craftingOnKeepsStorageAsItIs() {
-        rules.put(STORAGE, RuleMode.REEXPORT);
+    void craftingChangesAlone() {
         assertEquals(List.of(new RuleLinks.Change(CRAFTING, RuleMode.ENABLED)), switchTo(CRAFTING, RuleMode.ENABLED));
+        assertEquals(List.of(new RuleLinks.Change(CRAFTING, RuleMode.REEXPORT)), switchTo(CRAFTING, RuleMode.REEXPORT));
+        rules.put(STORAGE, RuleMode.REEXPORT);
+        assertEquals(List.of(new RuleLinks.Change(CRAFTING, RuleMode.DISABLED)), switchTo(CRAFTING, RuleMode.DISABLED));
     }
 
     @Test
-    void storageOffTakesCraftingOff() {
+    void storageChangesAlone() {
         rules.put(STORAGE, RuleMode.ENABLED);
         rules.put(CRAFTING, RuleMode.REEXPORT);
-        assertEquals(List.of(new RuleLinks.Change(STORAGE, RuleMode.DISABLED),
-                new RuleLinks.Change(CRAFTING, RuleMode.DISABLED)), switchTo(STORAGE, RuleMode.DISABLED));
-        // Stepping storage between its on states leaves crafting alone.
+        assertEquals(List.of(new RuleLinks.Change(STORAGE, RuleMode.DISABLED)), switchTo(STORAGE, RuleMode.DISABLED));
         assertEquals(List.of(new RuleLinks.Change(STORAGE, RuleMode.REEXPORT)), switchTo(STORAGE, RuleMode.REEXPORT));
-    }
-
-    @Test
-    void linksStayWithinOneDirection() {
         rules.put(REVERSE_STORAGE, RuleMode.DISABLED);
-        assertEquals(List.of(new RuleLinks.Change(CRAFTING, RuleMode.DISABLED)), switchTo(CRAFTING, RuleMode.DISABLED));
         assertEquals(List.of(new RuleLinks.Change(STORAGE, RuleMode.ENABLED)), switchTo(STORAGE, RuleMode.ENABLED));
     }
 

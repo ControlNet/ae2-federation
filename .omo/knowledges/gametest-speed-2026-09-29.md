@@ -54,6 +54,18 @@ Batch mode is for fast local iteration only:
 
 The required gate remains `python3 tools/required_gametests.py`: one server per test, and a test passes only on exactly one "All 1 required tests passed". That gate also doesn't run the evidence verifiers.
 
+## Fix 3: the required gate in parallel (2026-10-17)
+
+Serially, the gate's 247 tests took about 20 s each, mostly Gradle and server start-up: about 1.5 h. `--jobs N` keeps
+one server and one fresh level per test but starts N at once without Gradle:
+- `federationWriteGameTestLaunch` (in `federation-qa.gradle`) builds what `runGameTestServer` needs and writes its
+  launch command (java, JVM args, classpath, main class, args) to `neoforge-1.21.1/build/gametest-launch.json`.
+- MDG's `@...RunVmArgs.txt` bakes the test id of the last Gradle run, so the runner copies the argument files first
+  and passes `-Dae2federation.testId=<id>` after them (a later `-D` wins).
+- Each test runs in `build/gametest-parallel/<id>/` (removed when it passes) with its log beside it.
+- Each server spends about 90 CPU-seconds, so the machine's cores, not memory, set the pace. Measured 2026-10-17:
+  `--jobs 12`, 247 tests, all passed in 12 min 53 s at about 29 cores busy on average (serial: about 1.5 h).
+
 ## Real defects batch mode found
 
 `CableFacePort.tick()` queried its `BlockCapabilityCache` after `destroy()`: a neighbour change marked the destroyed port dirty again. NeoForge then throws "Do not call getCapability on an invalid cache", which crashes the server. A destroyed port now skips resolution until the cable initializes again.

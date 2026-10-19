@@ -60,11 +60,17 @@ public final class ProviderTargetAuthorization {
         }
         // No rule: a Provider may use every Endpoint of the domain its own Federation face joins. Its network being a
         // member of that domain through another route is not enough.
-        var domain = FederationDomainRegistryAccess.get(level)
-                .federationDomainOf(FederationDomainRegistryAccess.nodeId(level, position));
+        var registry = FederationDomainRegistryAccess.get(level);
+        var domain = registry.federationDomainOf(FederationDomainRegistryAccess.nodeId(level, position));
         if (domain.isEmpty() || !domain.orElseThrow().nodes().contains(context.federationFace())
                 || !domain.orElseThrow().memberships().containsKey(sourceId.orElseThrow())) {
             return paused(ProviderTargetState.FEDERATION_DOMAIN_DISCONNECTED);
+        }
+        if (registry.overCapacity(domain.orElseThrow().federationDomainId())) {
+            return paused(ProviderTargetState.FEDERATION_DOMAIN_OVER_CAPACITY);
+        }
+        if (registry.unpowered(domain.orElseThrow().federationDomainId())) {
+            return paused(ProviderTargetState.FEDERATION_DOMAIN_UNPOWERED);
         }
         return new ProviderTargetResolution.Authorized(new AuthorizedNativeTarget(level, position,
                 request.endpointSide(), mode.orElseThrow(), context.provenance()));

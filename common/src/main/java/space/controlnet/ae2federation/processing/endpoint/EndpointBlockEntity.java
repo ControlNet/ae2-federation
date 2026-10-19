@@ -16,6 +16,7 @@ import appeng.me.energy.IEnergyOverlayGridConnection;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -54,6 +55,8 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     private @Nullable CableFacePort federationPort;
     private boolean federationDomainDirty = true;
     private boolean providerNodePending;
+    /** Set when the chunk unloads, so the removal that follows is not taken for a broken block. */
+    private boolean unloading;
 
     public EndpointBlockEntity(BlockPos position, BlockState state) {
         super(space.controlnet.ae2federation.processing.ProcessingRegistration.ENDPOINT_BLOCK_ENTITY.get(),
@@ -218,7 +221,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
                     new FederationDomainPortId(remoteNode, peer.outwardFace().getSerializedName())));
         }
         if (FederationDomainRegistryAccess.get(serverLevel).upsertNode(
-                new FederationDomainNodeEvidence(federationDomainNodeId, evidence))) {
+                new FederationDomainNodeEvidence(federationDomainNodeId, FederationDomainNodeKind.ENDPOINT, evidence))) {
             FederationBindingRefresh.request(serverLevel);
         }
         federationDomainDirty = false;
@@ -230,7 +233,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
             federationPort = null;
         }
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
+            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId, !unloading);
             FederationBindingRefresh.request(serverLevel);
         }
         federationDomainDirty = true;
@@ -348,9 +351,16 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
 
     @Override
     public void onChunkUnloaded() {
+        unloading = true;
         closeBinding();
         closeFederationPort();
         super.onChunkUnloaded();
+    }
+
+    @Override
+    public void clearRemoved() {
+        super.clearRemoved();
+        unloading = false;
     }
 
     @Override

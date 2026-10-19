@@ -11,6 +11,9 @@ final class CompatTestClasses {
     static Map<String, Class<?>> groups() {
         var groups = new LinkedHashMap<String, Class<?>>();
         groups.put("core", CoreCompatGameTests.class);
+        if (!System.getProperty("ae2federation.compat.transitRestartPhase", "").isBlank()) {
+            groups.put("transit-restart", TransitRecoveryRestartGameTests.class);
+        }
         groups.put("extendedae", ExtendedAECompatGameTests.class);
         groups.put("extendedae-plus", ExtendedAEPlusCompatGameTests.class);
         groups.put("data-energistics", DataEnergisticsCompatGameTests.class);
@@ -32,6 +35,7 @@ final class CompatTestClasses {
         groups.put("omnisequence", OmniSequenceCompatGameTests.class);
         groups.put("expandedae", ExpandedAECompatGameTests.class);
         groups.put("neoecoae", NeoEcoCompatGameTests.class);
+        groups.put("neoecoprototype", NeoEcoPrototypeCompatGameTests.class);
         groups.put("useless-mod", UselessModCompatGameTests.class);
         return groups;
     }

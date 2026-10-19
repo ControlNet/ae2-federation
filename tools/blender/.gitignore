@@ -1,0 +1,10 @@
+# Reproducible Blender scenes, renders, resource copies, exports and Java classes.
+/build/
+
+# Python bytecode caches.
+__pycache__/
+*.py[cod]
+
+# Blender's numbered backup files, including backups outside build/.
+*.blend[0-9]
+*.blend[0-9][0-9]

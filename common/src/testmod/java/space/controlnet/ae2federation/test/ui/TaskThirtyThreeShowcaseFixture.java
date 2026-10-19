@@ -54,10 +54,18 @@ final class TaskThirtyThreeShowcaseFixture {
      * (which the Mine's Provider joins later), so both Routers are one domain. No two networks touch.
      */
     static void placeNetworks(ServerContext context) {
+        // Eight networks, three Providers and five Endpoints share the Routers' cable: more than the default cable
+        // capacity, which would stop the whole domain. The design-review world raises it, as a server owner can.
+        space.controlnet.ae2federation.domain.CableCapacityLimit.set(true, 32);
         var router = TaskFifteenWorldFixture.routerPosition(context);
         var state = new State(router.east(), router.below());
         context.put(STATE, state);
         placeChestNetwork(context, state.mine, state.mine.east());
+        // Two one-block crafting CPUs on the Mine, for the statistics page's CPU list.
+        for (var cpu : mineCpus(state)) {
+            require(context.level().isEmptyBlock(cpu.getKey()), "Showcase CPU position must be empty: " + cpu.getKey());
+            context.level().setBlockAndUpdate(cpu.getKey(), cpu.getValue().defaultBlockState());
+        }
         placeChestNetwork(context, state.hall, state.hall.below());
         state.remoteRouter = router.above().east(4);
         var remote = state.remoteRouter;
@@ -75,7 +83,7 @@ final class TaskThirtyThreeShowcaseFixture {
         }
         state.cables = List.copyOf(cables);
         require(context.level().isEmptyBlock(remote), "Showcase second Router position must be empty");
-        context.level().setBlockAndUpdate(remote, space.controlnet.ae2federation.router.RouterRegistration.ROUTER.get()
+        context.level().setBlockAndUpdate(remote, space.controlnet.ae2federation.router.RouterRegistration.SWITCH.get()
                 .defaultBlockState());
         for (var network : state.remoteNetworks) placeChestNetwork(context, network[0], network[1]);
     }
@@ -135,7 +143,7 @@ final class TaskThirtyThreeShowcaseFixture {
         names.rename(lab, "Sky Lab");
         rule(context, new PolicyKey(main, farm, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
         rule(context, new PolicyKey(smeltery, mine, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
-        // Crafting takes the Smeltery's materials through the same direction's storage rule.
+        // The storage rule lets crafting also take the Smeltery's materials.
         rule(context, new PolicyKey(main, smeltery, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
         rule(context, new PolicyKey(main, smeltery, PolicyCapability.CRAFTING), PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)));
         rule(context, new PolicyKey(lab, main, PolicyCapability.ME_POWER), PolicyRule.enabled(Set.of(PolicyOperation.SUPPLY)));
@@ -254,6 +262,9 @@ final class TaskThirtyThreeShowcaseFixture {
     }
 
     static void cleanup(ServerContext context) {
+        space.controlnet.ae2federation.domain.CableCapacityLimit.set(true,
+                space.controlnet.ae2federation.domain.CableCapacityLimit.DEFAULT_CAPACITY);
+        stopConverterFeed(context);
         var state = context.<State>get(STATE);
         if (state == null) return;
         var policies = PolicyService.get(context.level());
@@ -271,9 +282,18 @@ final class TaskThirtyThreeShowcaseFixture {
         blocks.addAll(state.towerEndpoints);
         if (state.hallEndpoint != null) blocks.add(state.hallEndpoint);
         blocks.addAll(List.of(state.mine, state.mine.east(), state.hall, state.hall.below()));
+        mineCpus(state).forEach(cpu -> blocks.add(cpu.getKey()));
         for (var network : state.remoteNetworks) blocks.addAll(List.of(network));
         if (state.remoteRouter != null) blocks.add(state.remoteRouter);
+        blocks.addAll(state.converter);
         for (var position : blocks) context.level().setBlockAndUpdate(position, Blocks.AIR.defaultBlockState());
+    }
+
+    /** The Mine's crafting CPUs: a 1k one north of its energy cell and a 4k one under it, not touching each other. */
+    private static List<Map.Entry<BlockPos, net.minecraft.world.level.block.Block>> mineCpus(State state) {
+        var cell = state.mine.east();
+        return List.of(Map.entry(cell.north(), AEBlocks.CRAFTING_STORAGE_1K.block()),
+                Map.entry(cell.below(), AEBlocks.CRAFTING_STORAGE_4K.block()));
     }
 
     private static void placeChestNetwork(ServerContext context, BlockPos chest, BlockPos cell) {
@@ -382,6 +402,169 @@ final class TaskThirtyThreeShowcaseFixture {
         return tick - since >= 20;
     }
 
+    /** The share of its buffer the showcase converter holds, as the design board's gauge shows it. */
+    private static final double CONVERTER_FILL = 0.825;
+    /** TEST-ONLY: the converter the server tick tops up with the domain's use, or null when nothing is fed. */
+    private static volatile BlockPos feeding;
+    private static boolean feederRegistered;
+
+    /**
+     * Runs the domain on a 1x1x2 Beam Converter standing on the middle cable, its front down, with power required. The
+     * buffer starts at {@link #CONVERTER_FILL} and the server tick feeds it the domain's use, standing in for a
+     * generator, so the topology's gauge shows a domain that runs.
+     */
+    static void placeConverter(ServerContext context) {
+        var state = state(context);
+        var cable = state.cables.get(1);
+        var converter = List.of(cable.above(), cable.above(2));
+        for (var position : converter) {
+            require(context.level().isEmptyBlock(position), "Showcase converter position must be empty: " + position);
+            context.level().setBlockAndUpdate(position, space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER
+                    .get().defaultBlockState().setValue(space.controlnet.ae2federation.power.BeamConverterBlock.FACING,
+                            Direction.DOWN));
+        }
+        state.converter = converter;
+    }
+
+    /** Whether the converter has formed and joined the Router's domain; it then gets its stock and power is required. */
+    static boolean converterJoined(ServerContext context) {
+        var state = state(context);
+        var level = context.level();
+        if (!state.converter.stream().allMatch(position -> space.controlnet.ae2federation.router.RouterBlock.formed(
+                level.getBlockState(position)))) {
+            return false;
+        }
+        var routerNode = FederationDomainRegistryAccess.nodeId(level, TaskFifteenWorldFixture.routerPosition(context));
+        var converterNode = FederationDomainRegistryAccess.nodeId(level, state.converter.get(0));
+        var joined = FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
+                .anyMatch(domain -> domain.nodes().contains(routerNode) && domain.nodes().contains(converterNode));
+        if (!joined) return false;
+        var capacity = space.controlnet.ae2federation.power.BeamConverterBlockEntity.CAPACITY;
+        for (var position : state.converter) {
+            ((space.controlnet.ae2federation.power.BeamConverterBlockEntity) level.getBlockEntity(position))
+                    .setStored(capacity * CONVERTER_FILL);
+        }
+        space.controlnet.ae2federation.power.OperatingPowerRule.set(true,
+                space.controlnet.ae2federation.power.OperatingPowerRule.DEFAULT_MULTIPLIER);
+        feeding = state.converter.get(0);
+        if (!feederRegistered) {
+            feederRegistered = true;
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(TaskThirtyThreeShowcaseFixture::feedConverter);
+        }
+        return true;
+    }
+
+    /** Whether the Router's domain runs on its converter. */
+    static boolean converterRuns(ServerContext context) {
+        return routerDomainReading(context).filter(reading -> reading.running() && reading.capacity() > 0).isPresent();
+    }
+
+    /** Removes the converter: the domain can no longer pay and stops. */
+    static void removeConverter(ServerContext context) {
+        feeding = null;
+        for (var position : state(context).converter) {
+            context.level().setBlockAndUpdate(position, Blocks.AIR.defaultBlockState());
+        }
+    }
+
+    static boolean domainUnpowered(ServerContext context) {
+        return routerDomainReading(context).filter(reading -> !reading.running()).isPresent();
+    }
+
+    private static java.util.Optional<space.controlnet.ae2federation.power.OperatingPowerService.Reading> routerDomainReading(
+            ServerContext context) {
+        var level = context.level();
+        var routerNode = FederationDomainRegistryAccess.nodeId(level, TaskFifteenWorldFixture.routerPosition(context));
+        return FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
+                .filter(domain -> domain.nodes().contains(routerNode)).findFirst()
+                .flatMap(domain -> space.controlnet.ae2federation.power.OperatingPowerService.reading(level.getServer(),
+                        domain.federationDomainId()));
+    }
+
+    /** TEST-ONLY generator: each tick, the converter takes in what the domain used on the last one, rounded up. */
+    private static void feedConverter(net.neoforged.neoforge.event.tick.ServerTickEvent.Pre event) {
+        var position = feeding;
+        if (position == null) return;
+        var level = event.getServer().overworld();
+        if (!level.isLoaded(position)
+                || !(level.getBlockEntity(position) instanceof space.controlnet.ae2federation.power.BeamConverterBlockEntity converter)) {
+            return;
+        }
+        var node = FederationDomainRegistryAccess.nodeId(level, position);
+        FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
+                .filter(domain -> domain.nodes().contains(node)).findFirst()
+                .flatMap(domain -> space.controlnet.ae2federation.power.OperatingPowerService.reading(event.getServer(),
+                        domain.federationDomainId()))
+                .ifPresent(reading -> converter.energy(Direction.UP)
+                        .receiveEnergy((int) Math.ceil(reading.use().total()), false));
+    }
+
+    /** Turns the power rule off, as a server without it runs. */
+    static void powerOff(ServerContext context) {
+        stopConverterFeed(context);
+    }
+
+    private static void stopConverterFeed(ServerContext context) {
+        feeding = null;
+        space.controlnet.ae2federation.power.OperatingPowerRule.set(false,
+                space.controlnet.ae2federation.power.OperatingPowerRule.DEFAULT_MULTIPLIER);
+    }
+
+    /** Ticks of storage traffic before the statistics page is opened: most of its two-minute range. */
+    private static final int TRAFFIC_TICKS = 1_500;
+    /**
+     * Test-world activity for the statistics page: [consumer, provider] network indexes, the item, and a base amount.
+     * Each consumer takes the item out of the provider's chest through its Storage rule, as its machines would.
+     */
+    private static final Object[][] TRAFFIC = {
+            {0, 4, Items.WHEAT, 3}, {0, 4, Items.CARROT, 2}, {6, 2, Items.RAW_IRON, 2}, {6, 2, Items.COAL, 4},
+            {0, 6, Items.IRON_INGOT, 5}, {0, 6, Items.COPPER_INGOT, 2}, {5, 3, Items.OAK_LOG, 4}, {5, 3, Items.GLASS, 2},
+            {0, 2, Items.COBBLESTONE, 12}, {0, 2, Items.REDSTONE, 1}};
+
+    /** Starts the statistics showcase's storage traffic. */
+    static void startTraffic(ServerContext context) {
+        var state = state(context);
+        state.trafficStart = context.level().getGameTime();
+        state.trafficSlot = -1;
+    }
+
+    /**
+     * One tick of storage traffic: every half second each route moves a varying amount, with an occasional burst, as
+     * automation pulling in batches does. True once {@link #TRAFFIC_TICKS} ticks have passed.
+     */
+    static boolean traffic(ServerContext context) {
+        var state = state(context);
+        long tick = context.level().getGameTime() - state.trafficStart;
+        // The wait may read the server more or less than once a tick: each half-second slot runs once.
+        for (long slot = state.trafficSlot + 1; slot <= tick / 10; slot++) {
+            state.trafficSlot = slot;
+            long at = slot * 10;
+            for (int route = 0; route < TRAFFIC.length; route++) {
+                var entry = TRAFFIC[route];
+                var consumer = grid(context, state, (Integer) entry[0]);
+                if (consumer == null) continue;
+                int base = (Integer) entry[3];
+                double wave = 0.4 + 0.6 * Math.abs(Math.sin(at / (37.0 + route * 11)));
+                long amount = Math.round(base * wave) + (Math.floorMod(at / 100 + route, 5) == 0 ? base * 3L : 0);
+                if (amount > 0) consumer.getStorageService().getInventory().extract(AEItemKey.of((Item) entry[2]), amount,
+                        Actionable.MODULATE, IActionSource.empty());
+            }
+        }
+        return tick >= TRAFFIC_TICKS;
+    }
+
+    /** The grid of the showcase network at {@code index} in {@link State#networks}. */
+    private static appeng.api.networking.IGrid grid(ServerContext context, State state, int index) {
+        IGridNode node = switch (index) {
+            case 0 -> TaskThirtyThreeWorldFixture.mainNode(context);
+            case 1 -> TaskThirtyThreeWorldFixture.outerNode(context);
+            case 2 -> chestNode(context, state.mine);
+            case 3 -> chestNode(context, state.hall);
+            default -> chestNode(context, state.remoteNetworks.get(index - 4)[0]);
+        };
+        return node == null ? null : node.getGrid();
+    }
+
     private static State state(ServerContext context) {
         var state = context.<State>get(STATE);
         require(state != null, "Showcase world was not arranged");
@@ -403,7 +586,10 @@ final class TaskThirtyThreeShowcaseFixture {
         private BlockPos remoteRouter;
         private List<BlockPos[]> remoteNetworks = List.of();
         private BlockPos hallEndpoint;
+        private List<BlockPos> converter = List.of();
         private boolean stocked;
+        private long trafficStart;
+        private long trafficSlot;
 
         private State(BlockPos mine, BlockPos hall) {
             this.mine = mine;

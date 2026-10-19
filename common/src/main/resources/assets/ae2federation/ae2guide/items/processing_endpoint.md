@@ -18,7 +18,7 @@ Lets a <ItemLink id="ae2federation:pattern_provider" /> on another network use y
 [Remote Crafting](../remote-processing.md).
 
 * **Front:** the Federation face. It faces the block you clicked when placing it, so click
-  <ItemLink id="ae2federation:cable" /> or a Router. A wrench turns it.
+  <ItemLink id="ae2federation:cable" />, a Switch or a Router. A wrench turns it.
 * **Other five faces:** join the machines' own small ME network (a processing subnet). Inputs from the Provider
   go into that network's storage; machines must push their results back into one of these faces.
 

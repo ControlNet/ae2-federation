@@ -1,6 +1,8 @@
 # Nexus Processor implementation (2026-10-06)
 
-Implements `docs/ideas/nexus-processor.md`. Decisions the owner made when it was implemented:
+Implements the 2026-10-06 proposal now preserved in [the archived Nexus idea](../../docs/archive/ideas/nexus-processor.md).
+The later 2026-10-08 revision is documented in [the current survival feature](../../docs/features/survival-playability.md).
+Decisions the owner made when it was implemented:
 
 - Ender Dust in both recipes is the tag `c:dusts/ender_pearl` (AE2's `ae2:ender_dust` is in it); redstone is
   `c:dusts/redstone`.

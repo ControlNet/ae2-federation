@@ -44,6 +44,7 @@ import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderOwnerLogic;
 import space.controlnet.ae2federation.domain.FederationDomainInvalidationReason;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -306,7 +307,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             runtime = null;
         }
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
+            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId, removedFromWorld);
             reconcileServices(serverLevel);
         }
         federationCache = null;
@@ -406,6 +407,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         var block = level.getBlockState(position).getBlock();
         return block == ProcessingRegistration.ENDPOINT.get() || block == ProcessingRegistration.PROVIDER.get()
                 || block == space.controlnet.ae2federation.router.RouterRegistration.ROUTER.get()
+                || block == space.controlnet.ae2federation.router.RouterRegistration.SWITCH.get()
                 || block == space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get();
     }
 
@@ -526,6 +528,21 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     private boolean endpointLoaded(ServerLevel serverLevel, LaneBinding binding) {
         var endpointLevel = endpointLevel(serverLevel, binding);
         return endpointLevel != null && endpointLevel.isLoaded(binding.position);
+    }
+
+    /** Filled pattern slots of all slots, and the Endpoint mappings they hold, as the Provider's screen counts them. */
+    public record PatternSummary(int used, int total, int mappings) {
+    }
+
+    public PatternSummary patternSummary() {
+        var inventory = provider.patternInventory();
+        int used = 0;
+        int mappings = 0;
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            if (!inventory.getStackInSlot(slot).isEmpty()) used++;
+            mappings += endpointsForSlot(slot).size();
+        }
+        return new PatternSummary(used, inventory.size(), mappings);
     }
 
     @Override
@@ -868,7 +885,8 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             evidence.put(NATIVE_PORT, FederationDomainRegistryAccess.nativeEvidence(grid, new FederationDomainPortId(federationDomainNodeId,
                     NATIVE_PORT)));
         }
-        return new FederationDomainNodeEvidence(federationDomainNodeId, evidence);
+        return new FederationDomainNodeEvidence(federationDomainNodeId, FederationDomainNodeKind.PATTERN_PROVIDER,
+                evidence);
     }
 
     private @Nullable FederationPort federationPeer(ServerLevel serverLevel) {

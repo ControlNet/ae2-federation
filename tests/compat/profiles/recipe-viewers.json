@@ -1,0 +1,17 @@
+{
+  "name": "recipe-viewers",
+  "group": "addons",
+  "description": "JEI, Jade and AE2 JEI Integration beside AE2 Federation's own dependencies at the build's pinned versions",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.17",
+    "guideme@21.1.19",
+    "ldlib2@2.2.34",
+    "jei@19.57.0.449",
+    "jade@15.10.6+neoforge",
+    "ae2jeiintegration@1.2.1"
+  ],
+  "tests": [
+    "core"
+  ]
+}

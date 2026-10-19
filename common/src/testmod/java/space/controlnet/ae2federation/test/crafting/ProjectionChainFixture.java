@@ -81,7 +81,7 @@ public final class ProjectionChainFixture implements AutoCloseable {
             if (grids().stream().anyMatch(grid -> FederationDomainRegistryAccess.confirmedNetworkId(grid).isEmpty())) {
                 return false;
             }
-            routers.placeRouter(CENTER);
+            routers.placeSwitch(CENTER);
             stage = 1;
             return false;
         }
@@ -115,6 +115,16 @@ public final class ProjectionChainFixture implements AutoCloseable {
                 && grid(SOURCE).getCraftingService().isCraftable(planks())
                 && FACES.stream().skip(1).allMatch(face -> registry.federationdomainsFor(network(FACES.indexOf(face)))
                         .stream().anyMatch(common::contains));
+    }
+
+    /** Removes the actual Switch after a test has finished assertions on its native member Grids. */
+    public void removeSwitch() {
+        helper.setBlock(CENTER, net.minecraft.world.level.block.Blocks.AIR);
+    }
+
+    /** Reconnects the same three native networks after an explicit physical Switch removal. */
+    public void restoreSwitch() {
+        routers.placeSwitch(CENTER);
     }
 
     /** Consumer uses middle, middle uses source with {@code sourceMode}; each with its storage rule. */
@@ -237,6 +247,11 @@ public final class ProjectionChainFixture implements AutoCloseable {
     /** Sets {@code consumer} uses {@code provider}'s crafting to {@code mode}, with the pair's storage rule on. */
     public void crafting(int consumer, int provider, RuleMode mode) {
         rule(key(consumer, provider, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
+        craftingOnly(consumer, provider, mode);
+    }
+
+    /** Enables a crafting relationship without ever creating a storage rule. */
+    public void craftingOnly(int consumer, int provider, RuleMode mode) {
         rule(key(consumer, provider, PolicyCapability.CRAFTING),
                 PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)).withMode(mode));
     }
@@ -253,11 +268,11 @@ public final class ProjectionChainFixture implements AutoCloseable {
         return Objects.requireNonNull(chest(FACES.get(index)).getOriginalCellInventory(0));
     }
 
-    private IGrid grid(int index) {
+    public IGrid grid(int index) {
         return grids().get(index);
     }
 
-    private NetworkId network(int index) {
+    public NetworkId network(int index) {
         return FederationDomainRegistryAccess.confirmedNetworkId(grid(index)).orElseThrow();
     }
 

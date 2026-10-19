@@ -1,0 +1,7 @@
+{
+  "parent": "ae2federation:block/router",
+  "textures": {
+    "0": "ae2federation:block/quantum_cube/quantum_cube",
+    "particle": "ae2federation:block/quantum_cube/quantum_cube"
+  }
+}

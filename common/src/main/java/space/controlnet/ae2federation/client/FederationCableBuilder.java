@@ -4,9 +4,10 @@
  *
  * Applied Energistics 2: Copyright (c) 2013 - 2014, AlgorithmX2, All rights reserved.
  * Both are free software under the GNU Lesser General Public License, version 3 or later
- * <https://www.gnu.org/licenses/lgpl-3.0.html>. Changes: dense cable paths only, one shell and one cap texture,
- * connection kinds from Federation ports instead of AECableType, and the faces a translucent shell would show
- * inside itself left out (see the class comment).
+ * <https://www.gnu.org/licenses/lgpl-3.0.html>. Changes: dense cable paths only, the artist's core and line
+ * textures, a 12-voxel core with 10-voxel dense arms, connection kinds from Federation ports instead of AECableType,
+ * and the faces a translucent shell would show inside itself left out (see the class comment). The collars are the
+ * artist's, not AE2's.
  */
 package space.controlnet.ae2federation.client;
 
@@ -14,115 +15,180 @@ import appeng.client.render.cablebus.CubeBuilder;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.BlockElementFace;
+import net.minecraft.client.renderer.block.model.BlockFaceUV;
+import net.minecraft.client.renderer.block.model.FaceBakery;
+import net.minecraft.client.resources.model.BlockModelRotation;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.Direction;
+import org.joml.Vector3f;
+import space.controlnet.ae2federation.router.CableCoreFaces;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
 /**
- * Builds a Federation Cable's quads as AE2 builds a dense cable's: a 10-voxel core, 8-voxel dense arms to other
- * Federation Cables and Routers, 4-voxel covered arms (with AE2's 6-voxel cap against a Provider or Endpoint front),
- * and one 10-voxel tube for a straight dense line.
+ * Builds a Federation Cable's translucent quads as AE2 builds a dense cable's, at the artist's sizes: a 12-voxel
+ * core, 12-voxel arms to other Federation Cables, 10-voxel dense arms to Routers and Provider or Endpoint fronts,
+ * 4-voxel covered arms to Federation P2P tunnels, and one 12-voxel tube for a straight line of cables.
  *
- * <p>The geometry is AE2's. Unlike AE2's opaque cable, the shell is translucent so the flow renderer shows through
- * it, so faces that only an opaque shell may hide are not drawn: an arm starts at the core's surface instead of
- * inside the core and has no inner end, and a straight tube has no end caps and does not reach past the block
- * (AE2 lets it, against facades, which a Federation Cable has none of). From outside an opaque shell this looks the
- * same.
+ * <p>The layout is AE2's. Unlike AE2's opaque cable, the shell is translucent so the flow renderer shows through
+ * it, so an arm starts at the core's surface instead of inside the core, and a straight tube does not reach past the
+ * block (AE2 lets it, against facades, which a Federation Cable has none of). Cables meet at full width, so no face
+ * is drawn where two cables meet: neither a tube's end nor the core's side toward a cable, which would show through
+ * the glass as a seam.
  *
- * <p>TEMPORARY TEXTURES: the shell uses the old cable's {@code glass}, the caps its {@code collar} and the item's
- * core its {@code stream_u} and {@code stream_v}, until the artist's dense cable textures replace them.
+ * <p>Where two cables meet, each draws the artist's collar ({@code cable_straight.bbmodel}): a 1-voxel ring of
+ * four bars round the tube, 4..12, inside the shell, so the two halves make a 2-voxel ring at the seam.
  */
 final class FederationCableBuilder {
-    /** The quads of one cable shape, by layer. {@code cutout} is drawn only for the item. */
-    record Quads(List<BakedQuad> solid, List<BakedQuad> translucent, List<BakedQuad> cutout) {
-        List<BakedQuad> all() {
-            var all = new ArrayList<BakedQuad>(solid.size() + translucent.size() + cutout.size());
-            all.addAll(solid);
-            all.addAll(translucent);
-            all.addAll(cutout);
-            return List.copyOf(all);
-        }
+    private static final FaceBakery BAKERY = new FaceBakery();
+
+    /** One face of a collar bar: its side, whether it is the bar's 1x1 end, and its UV rotation. */
+    private record Face(Direction side, boolean end, int rotation) {
     }
 
+    /** One collar bar in the model's north-south frame. */
+    private record Bar(Vector3f from, Vector3f to, Face... faces) {
+    }
+
+    // The artist's bars at the north end; the south end is the same 15 voxels on, sampling the bar's other column.
+    private static final Bar[] COLLAR = {
+            new Bar(new Vector3f(4, 4, 0), new Vector3f(5, 11, 1), side(Direction.NORTH, 0), side(Direction.EAST, 0),
+                    side(Direction.SOUTH, 0), side(Direction.WEST, 0), end(Direction.DOWN, 0)),
+            new Bar(new Vector3f(5, 4, 0), new Vector3f(12, 5, 1), side(Direction.NORTH, 90), end(Direction.EAST, 270),
+                    side(Direction.SOUTH, 270), side(Direction.UP, 270), side(Direction.DOWN, 270)),
+            new Bar(new Vector3f(11, 5, 0), new Vector3f(12, 12, 1), side(Direction.NORTH, 180),
+                    side(Direction.EAST, 180), side(Direction.SOUTH, 180), side(Direction.WEST, 180),
+                    end(Direction.UP, 180)),
+            new Bar(new Vector3f(4, 11, 0), new Vector3f(11, 12, 1), side(Direction.NORTH, 270),
+                    side(Direction.SOUTH, 90), end(Direction.WEST, 90), side(Direction.UP, 90),
+                    side(Direction.DOWN, 90))};
+    private static final float[] SIDE_NORTH = {4, 5, 5, 12}, END_NORTH = {4, 11, 5, 12};
+    private static final float[] SIDE_SOUTH = {4, 5, 3, 12}, END_SOUTH = {3, 12, 4, 11};
+
+    private final Map<CableCoreFaces.Variant, TextureAtlasSprite> cores;
     private final TextureAtlasSprite core;
     private final TextureAtlasSprite line;
-    private final TextureAtlasSprite connector;
-    private final TextureAtlasSprite coreSide;
-    private final TextureAtlasSprite coreEnd;
+    private final TextureAtlasSprite collar;
 
-    FederationCableBuilder(TextureAtlasSprite core, TextureAtlasSprite line, TextureAtlasSprite connector, TextureAtlasSprite coreSide,
-                           TextureAtlasSprite coreEnd) {
-        this.core = core;
+    /** {@code cores} holds every connected core texture; the closed one also draws the covered arms. */
+    FederationCableBuilder(Map<CableCoreFaces.Variant, TextureAtlasSprite> cores, TextureAtlasSprite line,
+            TextureAtlasSprite collar) {
+        this.cores = cores;
+        this.core = cores.get(CableCoreFaces.Variant.CLOSED);
         this.line = line;
-        this.connector = connector;
-        this.coreSide = coreSide;
-        this.coreEnd = coreEnd;
+        this.collar = collar;
+    }
+
+    /** How the north-south collar model turns to reach {@code toward}, and whether its south ring lands there. */
+    record CollarEnd(BlockModelRotation rotation, boolean high) {
+    }
+
+    static CollarEnd collarEnd(Direction toward) {
+        var rotation = switch (toward.getAxis()) {
+            case X -> BlockModelRotation.X0_Y90;
+            case Y -> BlockModelRotation.X90_Y0;
+            case Z -> BlockModelRotation.X0_Y0;
+        };
+        return new CollarEnd(rotation,
+                Direction.rotate(rotation.getRotation().getMatrix(), Direction.SOUTH) == toward);
     }
 
     /** The world quads for {@code connections}, as {@link CableVisualConnections#connections} encodes them. */
-    Quads build(int connections) {
-        var solid = new ArrayList<BakedQuad>();
-        var translucent = new ArrayList<BakedQuad>();
+    List<BakedQuad> build(int connections) {
+        var quads = new ArrayList<BakedQuad>();
         if (CableVisualConnections.straight(connections)) {
             var facing = CableVisualConnections.DIRECTIONS[
                     Integer.numberOfTrailingZeros(CableVisualConnections.maskOf(connections))];
-            addStraightDenseConnection(facing, EnumSet.complementOf(EnumSet.of(facing, facing.getOpposite())),
-                    translucent);
-            return new Quads(List.copyOf(solid), List.copyOf(translucent), List.of());
+            // Both ends run on into another cable at full width, so neither end face is drawn.
+            addStraightDenseConnection(facing, EnumSet.complementOf(EnumSet.of(facing, facing.getOpposite())), quads);
+            addCollar(facing, quads);
+            addCollar(facing.getOpposite(), quads);
+            return List.copyOf(quads);
         }
-        addDenseCore(translucent);
+        var coreFaces = EnumSet.allOf(Direction.class);
+        coreFaces.removeIf(side -> CableVisualConnections.kind(connections, side) == CableVisualConnections.CABLE);
+        addDenseCore(connections, coreFaces, quads);
         for (var facing : CableVisualConnections.DIRECTIONS) {
             switch (CableVisualConnections.kind(connections, facing)) {
-                case CableVisualConnections.DENSE -> addDenseConnection(facing, translucent);
-                case CableVisualConnections.COVERED_CAP -> addCoveredConnection(facing, true, translucent, solid);
-                case CableVisualConnections.COVERED -> addCoveredConnection(facing, false, translucent, solid);
+                case CableVisualConnections.CABLE -> {
+                    addCableConnection(facing, quads);
+                    addCollar(facing, quads);
+                }
+                case CableVisualConnections.DENSE -> addDenseConnection(facing, quads);
+                case CableVisualConnections.COVERED -> addCoveredConnection(facing, quads);
                 default -> {
                 }
             }
         }
-        return new Quads(List.copyOf(solid), List.copyOf(translucent), List.of());
+        return List.copyOf(quads);
     }
 
-    /** The item: a straight east-west dense tube, closed at both ends, around a lit core. */
-    Quads item() {
-        var translucent = new ArrayList<BakedQuad>();
-        addStraightDenseConnection(Direction.NORTH, EnumSet.allOf(Direction.class), translucent);
-        var cutout = new ArrayList<BakedQuad>();
-        //var cubeBuilder = new CubeBuilder(cutout);
-        //cubeBuilder.setTextures(coreSide, coreSide, coreSide, coreSide, coreEnd, coreEnd);
-        //cubeBuilder.setEmissiveMaterial(true);
-        //cubeBuilder.addCube(7, 7, 1, 9, 9, 15);
-        return new Quads(List.of(), List.copyOf(translucent), List.copyOf(cutout));
+    /** The item: a straight north-south dense tube, closed at both ends. */
+    List<BakedQuad> item() {
+        var quads = new ArrayList<BakedQuad>();
+        addStraightDenseConnection(Direction.NORTH, EnumSet.allOf(Direction.class), quads);
+        addCollar(Direction.NORTH, quads);
+        addCollar(Direction.SOUTH, quads);
+        return List.copyOf(quads);
     }
 
-    private void addDenseCore(List<BakedQuad> quadsOut) {
+    private void addDenseCore(int connections, EnumSet<Direction> faces, List<BakedQuad> quadsOut) {
         var cubeBuilder = new CubeBuilder(quadsOut);
-        cubeBuilder.setTexture(core);
+        cubeBuilder.setDrawFaces(faces);
+        // Each face opens the frame's edges toward cables, so its rails run on into their arms
+        for (var face : faces) {
+            var texture = CableCoreFaces.face(connections, face);
+            cubeBuilder.setTexture(face, cores.get(texture.variant()));
+            cubeBuilder.setUvRotation(face, texture.quarterTurns());
+        }
         cubeBuilder.addCube(2, 2, 2, 14, 14, 14);
     }
 
-    private void addDenseConnection(Direction facing, List<BakedQuad> quadsOut) {
+    private void addCableConnection(Direction facing, List<BakedQuad> quadsOut) {
         var cubeBuilder = new CubeBuilder(quadsOut);
-        // We render all faces except the one on the connection side and the one inside the core
+        // Only the sides: the inner end meets the core and the outer end meets the next cable, both at full width
+        cubeBuilder.setDrawFaces(EnumSet.complementOf(EnumSet.of(facing, facing.getOpposite())));
+        cubeBuilder.setTexture(line);
+        addCableSizedCube(facing, cubeBuilder);
+    }
+
+    void addDenseConnection(Direction facing, List<BakedQuad> quadsOut) {
+        var cubeBuilder = new CubeBuilder(quadsOut);
+        // Every face but the one on the connection side; the inner end is the artist's seam against the core
         cubeBuilder.setDrawFaces(EnumSet.complementOf(EnumSet.of(facing)));
         cubeBuilder.setTexture(line);
         addDenseCableSizedCube(facing, cubeBuilder);
     }
 
-    private void addCoveredConnection(Direction facing, boolean machineCap, List<BakedQuad> shellOut,
-            List<BakedQuad> capOut) {
-        // For to-machine connections, use a thicker end-cap for the connection
-        if (machineCap) {
-            var capBuilder = new CubeBuilder(capOut);
-            capBuilder.setDrawFaces(EnumSet.complementOf(EnumSet.of(facing)));
-            capBuilder.setTexture(connector);
-            addBigCoveredCableSizedCube(facing, capBuilder);
-        }
-        var cubeBuilder = new CubeBuilder(shellOut);
+    private void addCoveredConnection(Direction facing, List<BakedQuad> quadsOut) {
+        var cubeBuilder = new CubeBuilder(quadsOut);
         cubeBuilder.setDrawFaces(EnumSet.complementOf(EnumSet.of(facing, facing.getOpposite())));
         cubeBuilder.setTexture(core);
-        addCoveredCableSizedCube(facing, machineCap ? 12 : 16, cubeBuilder);
+        addCoveredCableSizedCube(facing, cubeBuilder);
+    }
+
+    void addCollar(Direction toward, List<BakedQuad> quadsOut) {
+        var end = collarEnd(toward);
+        float shift = end.high() ? 15 : 0;
+        for (var bar : COLLAR) {
+            var from = new Vector3f(bar.from()).add(0, 0, shift);
+            var to = new Vector3f(bar.to()).add(0, 0, shift);
+            for (var face : bar.faces()) {
+                var uv = face.end() ? (end.high() ? END_SOUTH : END_NORTH) : end.high() ? SIDE_SOUTH : SIDE_NORTH;
+                var element = new BlockElementFace(null, -1, "", new BlockFaceUV(uv.clone(), face.rotation()));
+                quadsOut.add(BAKERY.bakeQuad(from, to, element, collar, face.side(), end.rotation(), null, true));
+            }
+        }
+    }
+
+    private static Face side(Direction side, int rotation) {
+        return new Face(side, false, rotation);
+    }
+
+    private static Face end(Direction side, int rotation) {
+        return new Face(side, true, rotation);
     }
 
     private void addStraightDenseConnection(Direction facing, EnumSet<Direction> faces, List<BakedQuad> quadsOut) {
@@ -219,28 +285,28 @@ final class FederationCableBuilder {
         }
     }
 
-    // Adds a cube to the given cube builder that has the size of a covered cable connection from the core of the
-    // cable to {@code end} voxels toward the given face (16 reaches the face, 12 stops at a machine cap)
-    private static void addCoveredCableSizedCube(Direction facing, int end, CubeBuilder cubeBuilder) {
-        int start = 16 - end;
+    // Adds a cube to the given cube builder that is as wide as the core, from the core of the cable to the given face
+    private static void addCableSizedCube(Direction facing, CubeBuilder cubeBuilder) {
         switch (facing) {
-            case DOWN -> cubeBuilder.addCube(6, start, 6, 10, 3, 10);
-            case EAST -> cubeBuilder.addCube(13, 6, 6, end, 10, 10);
-            case NORTH -> cubeBuilder.addCube(6, 6, start, 10, 10, 3);
-            case SOUTH -> cubeBuilder.addCube(6, 6, 13, 10, 10, end);
-            case UP -> cubeBuilder.addCube(6, 13, 6, 10, end, 10);
-            case WEST -> cubeBuilder.addCube(start, 6, 6, 3, 10, 10);
+            case DOWN -> cubeBuilder.addCube(2, 0, 2, 14, 2, 14);
+            case EAST -> cubeBuilder.addCube(14, 2, 2, 16, 14, 14);
+            case NORTH -> cubeBuilder.addCube(2, 2, 0, 14, 14, 2);
+            case SOUTH -> cubeBuilder.addCube(2, 2, 14, 14, 14, 16);
+            case UP -> cubeBuilder.addCube(2, 14, 2, 14, 16, 14);
+            case WEST -> cubeBuilder.addCube(0, 2, 2, 2, 14, 14);
         }
     }
 
-    private static void addBigCoveredCableSizedCube(Direction facing, CubeBuilder cubeBuilder) {
+    // Adds a cube to the given cube builder that has the size of a covered cable connection from the core of the
+    // cable to the given face
+    private static void addCoveredCableSizedCube(Direction facing, CubeBuilder cubeBuilder) {
         switch (facing) {
-            case DOWN -> cubeBuilder.addCube(4, 0, 4, 12, 2, 12);
-            case EAST -> cubeBuilder.addCube(14, 4, 4, 16, 12, 12);
-            case NORTH -> cubeBuilder.addCube(4, 4, 0, 12, 12, 2);
-            case SOUTH -> cubeBuilder.addCube(4, 4, 14, 12, 12, 16);
-            case UP -> cubeBuilder.addCube(4, 14, 4, 12, 16, 12);
-            case WEST -> cubeBuilder.addCube(0, 4, 4, 2, 12, 12);
+            case DOWN -> cubeBuilder.addCube(6, 0, 6, 10, 2, 10);
+            case EAST -> cubeBuilder.addCube(14, 6, 6, 16, 10, 10);
+            case NORTH -> cubeBuilder.addCube(6, 6, 0, 10, 10, 2);
+            case SOUTH -> cubeBuilder.addCube(6, 6, 14, 10, 10, 16);
+            case UP -> cubeBuilder.addCube(6, 14, 6, 10, 16, 10);
+            case WEST -> cubeBuilder.addCube(0, 6, 6, 2, 10, 10);
         }
     }
 }

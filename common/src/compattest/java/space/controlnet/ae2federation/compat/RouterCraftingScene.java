@@ -280,7 +280,7 @@ final class RouterCraftingScene implements AutoCloseable {
             }
             case 2 -> {
                 helper.assertTrue(settled(), "Waiting for every network to settle again");
-                routers.placeRouter(center);
+                routers.placeSwitch(center);
                 stage = 3;
                 helper.fail("Placed the Router");
             }

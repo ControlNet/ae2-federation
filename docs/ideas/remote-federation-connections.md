@@ -1,8 +1,53 @@
 # Remote Federation connections
 
-Status: multiple forms under exploration; quantum-bridge-style jumping is the user's first candidate.
+Status: multiple forms under exploration; quantum-bridge-style jumping is the user's first candidate,
+with a line-of-sight beam-link proposal added on 2026-10-09 and a cube for bundled cables on 2026-10-17. The cube is
+implemented on `dev` (2026-10-17): [Quantum Cube](../features/quantum-cube.md).
 
 Discussion started: 2026-10-02. Research expanded: 2026-10-03. [Idea index](README.md).
+
+## Follow-up 2026-10-17: a wireless cube for bundled cables
+
+The user shaped the quantum-bridge-style candidate into a multiblock and set its purpose:
+
+- **Name (user, 2026-10-17).** ME Federation Quantum Cube, 「ME联邦量子立方」, `ae2federation:quantum_cube`. AE2's
+  own "ME Quantum Ring" (「ME量子环」) is only the outer part of its bridge, so "ring" was not reused.
+- **Why it exists.** Federation P2P carries only a 1x1 cable. This device carries bundled cross-sections remotely.
+- **P2P capacity.** A Federation P2P tunnel pair has the capacity of one ordinary cable (C); implemented 2026-10-17,
+  see [cable capacity](../features/cable-capacity.md).
+- **Shape.** A solid cube; every face may connect Federation cable. 3x3x3 is the smallest and connects only 1x1
+  cable; 4x4x4 connects up to 2x2; only 5x5x5 connects 3x3 (user, 2026-10-17). An edge-K cube thus takes cables up
+  to (K-2) x (K-2), as if each face kept a one-block border.
+- **Linking.** Cross-dimensional, bound with an AE2 Memory Card as Federation P2P is (user accepted, 2026-10-17).
+- **Topology.** Counts as cable joined directly, as Federation P2P does: both ends are one capacity region
+  (user accepted, 2026-10-17).
+
+- **Connections.** A cable must lie inside a face's (K-2) x (K-2) centre; the border ring connects nothing. The
+  smallest cube a cross-section needs is the one whose centre fits it: 1x1 needs 3x3x3, 1x2 and 2x2 need 4x4x4, and
+  1x3, 2x3 and 3x3 need 5x5x5 (user, 2026-10-17).
+- **Capacity.** A cube carries the largest tier it can connect: 3x3x3 is C, 4x4x4 is 6C, 5x5x5 is unlimited
+  (user, 2026-10-17).
+
+- **Energy and unloading.** Both follow AE2's Quantum Network Bridge: a very large operating cost, and the bridge's
+  behavior when the far end is unloaded (user, 2026-10-17). Chunks are not force-loaded.
+  In AE2 19.2.17 the bridge costs 22 AE/t per block (198 per formed side) with no distance or dimension term; when
+  either side's chunk unloads the link breaks, and it reconnects when the chunk loads again
+  ([energy survey](../../.omo/knowledges/ae2-addon-energy-costs-2026-10-17.md)).
+
+## Follow-up 2026-10-09: operating power and beam links
+
+The user proposed two additional ideas, maintained on separate pages:
+
+- [Optional Federation operating power](../archive/ideas/federation-operating-power.md): an input device tentatively called
+  光束充能器 sustains Federation operation, with different block costs and especially high wireless costs.
+  The requirement can be disabled in configuration; its default and numerical costs remain open.
+- [Line-of-sight beam links](../archive/ideas/line-of-sight-beam-links.md): devices described as 光束收发器 connect distant points
+  along an unobstructed straight line without cable along the span, at increased operating energy cost.
+
+The latter is now a user-proposed connection form, beyond the earlier survey's generic directional-link suggestion.
+Neither idea finalizes the quantum-bridge-style device, its name, or its appearance. Earlier statements below
+that operating costs were unselected should now be read alongside the new qualitative cost direction;
+exact rates and charging behavior are still undecided.
 
 ## Intent and confirmed context
 

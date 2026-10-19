@@ -63,7 +63,7 @@ considerations, not settled implementation requirements.
 The initial ideation response missed `crafting-pattern-projection-design-2026-10-02.md`, committed in
 `2d8a792` and subsequently expanded. That note explicitly records an agreed, not-yet-implemented simplification:
 storage and crafting use disabled / enabled / enabled-with-re-export states; crafting requires storage for the
-same pair and direction; this version has no filters. Storage exposes all storage and crafting all patterns.
+same pair and direction (reversed 2026-10-10: the two rules are now independent); this version has no filters. Storage exposes all storage and crafting all patterns.
 `PolicyFilter` remains in the data model with ALL, the storage compiler still reads it, and the new crafting
 implementation is instructed not to read it. The editor should remove the filter summary.
 

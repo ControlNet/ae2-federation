@@ -22,7 +22,9 @@ public final class FederationCableBlock extends BaseEntityBlock {
     protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState state,
             net.minecraft.world.level.BlockGetter level, BlockPos position,
             net.minecraft.world.phys.shapes.CollisionContext context) {
-        return CableShapes.shape(CableVisualConnections.connections(level, position));
+        var look = space.controlnet.ae2federation.bundle.BundleLook.of(level, position);
+        return look.isPresent() ? CableShapes.bundle(look.get())
+                : CableShapes.shape(CableVisualConnections.connections(level, position));
     }
 
     @Override
@@ -59,6 +61,9 @@ public final class FederationCableBlock extends BaseEntityBlock {
     protected void onRemove(BlockState state, Level level, BlockPos position, BlockState newState,
             boolean movedByPiston) {
         level.invalidateCapabilities(position);
+        if (!newState.is(this) && level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            space.controlnet.ae2federation.bundle.BundledCables.get(serverLevel).removed(serverLevel, position);
+        }
         super.onRemove(state, level, position, newState, movedByPiston);
     }
 

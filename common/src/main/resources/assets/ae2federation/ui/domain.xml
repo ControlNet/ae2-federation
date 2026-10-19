@@ -7,6 +7,7 @@
             <element id="workspace_rail" class="workspace-rail">
                 <button id="tab_overview" class="rail-tab" text=""/>
                 <button id="tab_mapping" class="rail-tab" text=""/>
+                <button id="tab_statistics" class="rail-tab" text=""/>
             </element>
         </element>
         <element id="domain_window" class="domain-panel">
@@ -30,6 +31,12 @@
                     </element>
                     <button id="graph_flow_toggle" class="header-icon" text=""/>
                 </element>
+                <element id="header_stats_tools" class="header-tools stats-ranges">
+                    <button id="stats_range_SECONDS" class="range-chip" text="ae2federation.ui.statistics.range.seconds"/>
+                    <button id="stats_range_FIVE_SECONDS" class="range-chip" text="ae2federation.ui.statistics.range.five_seconds"/>
+                    <button id="stats_range_MINUTES" class="range-chip" text="ae2federation.ui.statistics.range.minutes"/>
+                    <button id="stats_range_DAY" class="range-chip" text="ae2federation.ui.statistics.range.day"/>
+                </element>
                 <text-field id="graph_search" mode="string" value=""/>
                 <button id="return_provider" class="return-provider" text="ae2federation.ui.workspace.back_provider"/>
             </element>
@@ -49,6 +56,11 @@
                     <label id="graph_throughput" class="graph-throughput"/>
                     <label id="graph_search_empty" class="graph-search-empty"/>
                     <label id="graph_legend" class="graph-legend"/>
+                    <element id="graph_power" class="graph-power">
+                        <label class="graph-power-name"><lang key="ae2federation.ui.topology.power"/></label>
+                        <element class="graph-power-track"><element id="graph_power_fill" class="graph-power-fill"/></element>
+                        <label id="graph_power_value" class="graph-power-value"/>
+                    </element>
                 </element>
                 <scroller-view id="topology_aside" class="topology-aside">
                     <element id="network_detail" class="aside-section">
@@ -122,6 +134,25 @@
                                 <button id="processing_highlight" text="ae2federation.ui.location.highlight_endpoint"/>
                             </element>
                         </scroller-view>
+                    </element>
+                </element>
+            </element>
+            <element id="page_statistics" class="workspace-page statistics-page">
+                <element id="stats_networks" class="stats-networks"/>
+                <element class="stats-body">
+                    <element id="stats_metrics" class="stats-metrics"/>
+                    <element class="stats-main">
+                        <element id="stats_chart" class="stats-chart">
+                            <element id="stats_kinds" class="stats-kinds"/>
+                        </element>
+                        <element id="stats_lower" class="stats-lower">
+                            <element id="stats_filter" class="stats-filter">
+                                <text-field id="stats_search" mode="string" value=""/>
+                                <button id="stats_pick_top" class="kind-chip" text="ae2federation.ui.statistics.stock.top"/>
+                                <button id="stats_pick_pinned" class="kind-chip" text="ae2federation.ui.statistics.stock.pinned"/>
+                                <button id="stats_pick_none" class="kind-chip" text="ae2federation.ui.statistics.stock.none"/>
+                            </element>
+                        </element>
                     </element>
                 </element>
             </element>
