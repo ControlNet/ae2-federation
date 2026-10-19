@@ -18,7 +18,7 @@ import space.controlnet.ae2federation.processing.provider.FederationPatternProvi
  * cables run on without a step. A Router, and a Provider or Endpoint front, get a dense connection, a narrower arm
  * that marks where the cable meets a machine. AE2 would shrink the connection to a smart machine such as its Pattern
  * Provider to a covered one with a cap; at the artist's request a Federation machine's port joins the cable as a
- * Router does. A Federation P2P tunnel's front is a part on another cable bus, which AE2 joins with a covered
+ * Router does, and so do the Computing Device and the Automation Interface on the faces that link. A Federation P2P tunnel's front is a part on another cable bus, which AE2 joins with a covered
  * connection.
  *
  * <p>A bundled cable is no ordinary cable: an ordinary cable stays closed toward one, and a bundled cell's sides come
@@ -119,6 +119,12 @@ public final class CableVisualConnections {
         // Provider and Endpoint expose FederationPortCapability on their front only; the Bridge exposes none.
         if ((block instanceof FederationPatternProviderBlock || block instanceof EndpointBlock)
                 && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {
+            return DENSE;
+        }
+        // The Computing Device links every face; the Automation Interface every face but its front.
+        if (block instanceof space.controlnet.ae2federation.automation.ComputingDeviceBlock) return DENSE;
+        if (block instanceof space.controlnet.ae2federation.automation.AutomationInterfaceBlock
+                && neighbor.getValue(BlockStateProperties.FACING) != direction.getOpposite()) {
             return DENSE;
         }
         // A Federation P2P tunnel's front is its port.

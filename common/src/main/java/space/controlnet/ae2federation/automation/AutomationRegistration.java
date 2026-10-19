@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.automation;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Rarity;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -37,7 +38,7 @@ public final class AutomationRegistration {
             "creative_computing_device", ComputingDeviceBlock::new,
             BlockBehaviour.Properties.of().strength(2.2F, 11.0F).sound(SoundType.METAL).requiresCorrectToolForDrops());
     public static final DeferredItem<BlockItem> DEVICE_ITEM = ITEMS.registerSimpleBlockItem(DEVICE,
-            new Item.Properties());
+            new Item.Properties().rarity(Rarity.EPIC));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ComputingDeviceBlockEntity>>
             DEVICE_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register("creative_computing_device", () -> {
                 var type = BlockEntityType.Builder.of(ComputingDeviceBlockEntity::new, DEVICE.get()).build(null);

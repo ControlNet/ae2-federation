@@ -18,6 +18,7 @@ import space.controlnet.ae2federation.domain.CableCapacityCounter.Demand;
 import space.controlnet.ae2federation.domain.CableCapacityCounter.Scope;
 import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.router.CableVisualConnections;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
 
@@ -125,6 +126,36 @@ public final class AutomationInterfaceGameTests {
                     fixtures.close();
                 })
                 .thenSucceed();
+    }
+
+    /**
+     * The cable draws its arm toward the faces that link it: the Computing Device's every face and the interface's
+     * faces but its front, as toward an Endpoint's front.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 100, required = true, manualOnly = true)
+    public static void automationBlocksJoinTheCableAsDrawn(GameTestHelper helper) {
+        BlockPos.betweenClosed(CENTER.offset(-3, -1, -1), CENTER.offset(3, 2, 1))
+                .forEach(position -> helper.setBlock(position, Blocks.AIR));
+        var fixtures = new RouterFixtures(helper);
+        fixtures.placeFederationCable(CENTER);
+        helper.setBlock(CENTER.west(), AutomationRegistration.DEVICE.get().defaultBlockState());
+        helper.setBlock(CENTER.east(), AutomationRegistration.INTERFACE.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.EAST));
+        helper.setBlock(CENTER.above(), AutomationRegistration.INTERFACE.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.DOWN));
+        helper.runAfterDelay(2, () -> {
+            var connections = CableVisualConnections.connections(helper.getLevel(), helper.absolutePos(CENTER));
+            helper.assertValueEqual(CableVisualConnections.kind(connections, Direction.WEST),
+                    CableVisualConnections.DENSE, "The cable joins the Computing Device");
+            helper.assertValueEqual(CableVisualConnections.kind(connections, Direction.EAST),
+                    CableVisualConnections.DENSE, "The cable joins the interface's back");
+            helper.assertValueEqual(CableVisualConnections.kind(connections, Direction.UP),
+                    CableVisualConnections.NONE, "The cable stays closed toward the interface's front");
+            RouterEvidence.write("automationblocksjointhecableasdrawn", 3, Map.of());
+            fixtures.close();
+            helper.succeed();
+        });
     }
 
     /** The Switch and its chest west of the cable, the interface east of it with its front facing {@code front}. */

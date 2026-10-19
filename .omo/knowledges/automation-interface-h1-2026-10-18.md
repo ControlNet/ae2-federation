@@ -381,3 +381,12 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   show them. `ScriptEditor.setDryNotes(lines, notes)` keeps the lines they were found for and draws nothing once
   `lines` differ, so no edit path has to clear them; `shownNotes()` is the test hook.
 - Compare: `build/automation-graph-dryrun-check/compare.png`.
+
+## Cable arms toward the automation blocks
+
+- Registering `FederationPortCapability` links a block into the domain, but the Federation Cable draws its arms from
+  a separate block-type list, `CableVisualConnections.kind`. A new block with a Federation port must be added there
+  too, or it links without an arm (found in game for the Computing Device and the interface, 2026-10-19). GameTest
+  `automationblocksjointhecableasdrawn` checks the kinds.
+- A creative block's item takes `Rarity.EPIC` for the purple name, as the Creative Beam Converter's does.
+- Compare: `build/automation-cable-device-check/compare.png`.
