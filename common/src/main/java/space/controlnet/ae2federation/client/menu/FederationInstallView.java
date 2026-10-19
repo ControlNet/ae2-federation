@@ -2,16 +2,18 @@ package space.controlnet.ae2federation.client.menu;
 
 import com.lowdragmc.lowdraglib2.client.shader.LDLibRenderTypes;
 import com.lowdragmc.lowdraglib2.gui.ui.UI;
-import dev.vfyjxf.taffy.style.AlignContent;
-import dev.vfyjxf.taffy.style.AlignItems;
-import dev.vfyjxf.taffy.style.FlexDirection;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
 import com.lowdragmc.lowdraglib2.gui.util.DrawerHelper;
+import dev.vfyjxf.taffy.style.AlignContent;
+import dev.vfyjxf.taffy.style.AlignItems;
+import dev.vfyjxf.taffy.style.FlexDirection;
+import dev.vfyjxf.taffy.style.FlexWrap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,8 +32,11 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
+import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.automation.ClientPrograms;
+import space.controlnet.ae2federation.automation.ProgramEvents;
 import space.controlnet.ae2federation.automation.ProgramSync;
+import space.controlnet.ae2federation.automation.TriggerText;
 import space.controlnet.ae2federation.client.policy.WireCurve;
 
 /**
@@ -41,8 +46,9 @@ import space.controlnet.ae2federation.client.policy.WireCurve;
  * program's current version (green) or an older one, waiting for Push (yellow).
  *
  * <p>Selecting an installation shows it beside the canvas: its signature, arguments, trigger, rate limit, what a
- * trigger does while it runs and whether it runs, with Uninstall, Open in editor and Run now. Changing its settings
- * and installing by drawing a wire come in a later step.
+ * trigger does while it runs and whether it runs, with Uninstall, Open in editor and Run now. A click on an argument
+ * or the rate limit edits it in place, sent on Enter or when the field loses focus; chips choose the trigger and what
+ * a trigger does while it runs. The server's answer comes back as a new index, which rebuilds the aside.
  */
 final class FederationInstallView {
     /** Programs take these colours in the index's order: their squares, ports and wires. */
@@ -53,6 +59,8 @@ final class FederationInstallView {
     private static final int CARD_SHADOW = 0xff121016;
     private static final int PORT_FILL = 0xff17141e;
     private static final int PORT = 4;
+    /** Secondary text in a value field, darker than the theme's muted text to read on the field. */
+    private static final int FIELD_MUTED = 0xff575468;
 
     private final ScrollerView canvasScroll;
     private final ScrollerView aside;
@@ -66,6 +74,15 @@ final class FederationInstallView {
     private @Nullable ProgramSync.Index index;
     private String domain = "";
     private @Nullable String selected;
+    /** The aside's field being typed in: a new index leaves the aside alone until it loses focus. */
+    private @Nullable TextField editing;
+    /** A trigger kind chosen with its chip that cannot be sent yet: Every waits for its ticks. */
+    private @Nullable String draftTrigger;
+    /** A drafted condition's function or event, and its arguments as typed so far. */
+    private @Nullable String draftName;
+    private List<String> draftArgs = new ArrayList<>();
+    /** A field to open once the aside holds it: focus needs the field in the UI. */
+    private @Nullable Runnable opening;
 
     private record Wire(String function, String device, String installation, int color) {
     }
@@ -135,7 +152,8 @@ final class FederationInstallView {
         wires = installations.stream().map(installation -> new Wire(installation.file() + "."
                 + installation.function(), installation.device(), installation.id(), color(installation.file())))
                 .toList();
-        rebuildAside();
+        // A refresh would drop what is being typed; the aside is rebuilt once the field is left.
+        if (editing == null || !editing.isFocused() || selected == null) rebuildAside();
     }
 
     private UIElement column(String type, String heading) {
@@ -254,6 +272,7 @@ final class FederationInstallView {
         }
         row.addChild(label("install-muted install-summary", Component.literal(String.join(" · ", summary))));
         row.addEventListener(UIEvents.CLICK, event -> {
+            if (!installation.id().equals(selected)) draftTrigger = null;
             selected = installation.id();
             rebuild();
         });
@@ -280,6 +299,7 @@ final class FederationInstallView {
 
     private void rebuildAside() {
         aside.clearAllScrollViewChildren();
+        editing = null;
         var installation = installations().stream().filter(found -> found.id().equals(selected)).findFirst()
                 .orElse(null);
         if (installation == null) return;
@@ -296,11 +316,23 @@ final class FederationInstallView {
                 + installation.function() + "(" + String.join(", ", params) + ")")));
         for (int i = 0; i < params.size(); i++) {
             var arg = i < installation.args().size() ? installation.args().get(i) : "";
-            aside.addScrollViewChild(fact(Component.literal(params.get(i).split(":")[0].strip()), argument(arg)));
+            int index = i;
+            aside.addScrollViewChild(fact(Component.literal(params.get(i).split(":")[0].strip()),
+                    editable("auto_install_arg_" + i, argument(arg), arg, numeric(params.get(i)), false,
+                            text -> sendArgs(installation, params, index, text))));
         }
-        aside.addScrollViewChild(fact(tr("trigger"), trigger(installation.trigger())));
-        aside.addScrollViewChild(fact(tr("min_gap"), tr("ticks", installation.interval())));
-        aside.addScrollViewChild(fact(tr("if_running"), tr("overlap." + installation.overlap())));
+        triggerRows(installation);
+        aside.addScrollViewChild(fact(tr("min_gap"), editable("auto_install_gap", value(tr("ticks", installation.interval())),
+                String.valueOf(installation.interval()), true, false, text -> ClientPrograms.get()
+                        .request("interval", List.of(installation.id(), text), answer))));
+        var overlap = new UIElement();
+        overlap.addClass("install-chips");
+        for (var mode : new String[] {"ignore", "restart", "parallel"}) {
+            overlap.addChild(chip("auto_install_overlap_" + mode, tr("overlap." + mode),
+                    mode.equals(installation.overlap()), () -> ClientPrograms.get()
+                            .request("overlap", List.of(installation.id(), mode), answer)));
+        }
+        aside.addScrollViewChild(fact(tr("if_running"), overlap));
         var running = installation.running() > 0;
         var state = fact(tr("state"), tr(running ? "running" : "idle"));
         state.addClass(running ? "running" : "idle");
@@ -314,6 +346,312 @@ final class FederationInstallView {
         actions.addChild(action("auto_install_run", "run_now", null, () -> ClientPrograms.get()
                 .request("run", List.of(installation.id()), answer)));
         aside.addScrollViewChild(actions);
+        if (opening != null) opening.run();
+        opening = null;
+    }
+
+    /**
+     * The trigger chips and, below them, what the chosen kind needs: Every its ticks, Condition a function of the
+     * program that gives a {@code bool} without acting and its arguments, Event an event and its arguments. A kind
+     * chosen with its chip is a draft until all it needs is given; then the trigger is sent.
+     */
+    private void triggerRows(ProgramSync.InstallationInfo installation) {
+        var words = TriggerText.words(installation.trigger());
+        var kind = words.isEmpty() ? "manual" : words.get(0);
+        if (kind.equals(draftTrigger) && kind.equals("every")) draftTrigger = null;
+        var shown = draftTrigger != null ? draftTrigger : kind;
+        var chips = new UIElement();
+        chips.addClass("install-chips");
+        // Five chips do not fit a narrow aside on one line.
+        chips.layout(layout -> layout.flexWrap(FlexWrap.WRAP));
+        for (var choice : new String[] {"manual", "redstone", "every", "when", "on"}) {
+            chips.addChild(chip("auto_install_trigger_" + choice, tr("trigger." + switch (choice) {
+                case "when" -> "condition";
+                case "on" -> "event";
+                default -> choice;
+            }),
+                    choice.equals(shown), () -> {
+                        if (choice.equals(kind) || choice.equals("manual") || choice.equals("redstone")) {
+                            draftTrigger = null;
+                            if (choice.equals(kind)) {
+                                rebuildAside();
+                            } else {
+                                ClientPrograms.get().request("trigger", List.of(installation.id(), choice), answer);
+                            }
+                        } else {
+                            // The other kinds need more first: the chip shows their fields.
+                            draftTrigger = choice;
+                            draftName = null;
+                            draftArgs = new ArrayList<>();
+                            rebuildAside();
+                        }
+                    }));
+        }
+        aside.addScrollViewChild(fact(tr("trigger"), chips));
+        if (shown.equals("every")) {
+            var ticks = kind.equals("every") && words.size() > 1 ? words.get(1) : "";
+            aside.addScrollViewChild(fact(Component.empty(), editable("auto_install_every", value(ticks.isEmpty()
+                    ? Component.empty() : tr("ticks", ticks)), ticks, true, draftTrigger != null, text ->
+                            ClientPrograms.get().request("trigger", List.of(installation.id(), "every " + text),
+                                    answer))));
+            return;
+        }
+        if (!shown.equals("when") && !shown.equals("on")) return;
+        var draft = draftTrigger != null;
+        var name = draft ? draftName : words.size() > 1 ? words.get(1) : null;
+        var args = draft ? draftArgs : new ArrayList<>(words.subList(Math.min(2, words.size()), words.size()));
+        List<Choice> choices = shown.equals("when") ? conditions(installation) : events();
+        var chosen = choices.stream().filter(choice -> choice.name().equals(name)).findFirst().orElse(null);
+        if (shown.equals("when")) {
+            aside.addScrollViewChild(fact(Component.empty(), dropdown(name == null
+                    ? tr("choose_condition").withColor(FIELD_MUTED) : chosen == null
+                            ? Component.literal(name) : chosen.display(FIELD_MUTED), choices, name == null, tr("no_conditions"),
+                    choice -> choose(installation, "when", choice))));
+        } else {
+            aside.addScrollViewChild(fact(Component.empty(), eventField(name == null ? "" : name, choices,
+                    choice -> choose(installation, "on", choice))));
+        }
+        if (chosen == null) return;
+        for (int i = 0; i < chosen.params().size(); i++) {
+            var param = chosen.params().get(i);
+            var arg = i < args.size() ? args.get(i) : "";
+            int index = i;
+            var row = fact(Component.literal(param.split("[:=]")[0].strip()), editable("auto_install_" + shown
+                    + "_arg_" + i, argument(arg), arg, numeric(param), draft && opening == null && arg.isEmpty(),
+                    text -> setTriggerArg(installation, shown, chosen, args, index, text)));
+            row.addClass("sub");
+            aside.addScrollViewChild(row);
+        }
+    }
+
+    /**
+     * Something a trigger starts on: a condition function, shown with its parameters as declared, or an event (no
+     * result), shown with their names and defaults as on {@code AutoInstallEvent}.
+     */
+    private record Choice(String name, List<String> params, String result, String description) {
+        Component display(int muted) {
+            var shown = result.isEmpty() ? params.stream().map(param -> param.split(":")[0].strip()
+                    + (param.contains("=") ? "=" + param.substring(param.indexOf('=') + 1).strip() : "")).toList()
+                    : params;
+            return Component.literal(name).append(Component.literal("(" + String.join(", ", shown) + ")"
+                    + (result.isEmpty() ? "" : " -> " + result)).withColor(muted));
+        }
+    }
+
+    /** The program's functions a condition may name: public, giving a {@code bool}, not acting. */
+    private List<Choice> conditions(ProgramSync.InstallationInfo installation) {
+        var file = file(installation.file());
+        if (file == null) return List.of();
+        return file.functions().stream().filter(function -> !function.name().startsWith("_")
+                && function.result().equals("bool") && !function.acts())
+                .map(function -> new Choice(function.name(), function.params(), "bool", "")).toList();
+    }
+
+    /** The curated events, with their arguments as the scheduler takes them. */
+    private static List<Choice> events() {
+        return ProgramEvents.EVENTS.values().stream().map(spec -> new Choice(spec.name(), switch (spec.kind()) {
+            case NETWORK -> List.<String>of();
+            case RESOURCE -> List.of("resource: Resource");
+            case BLOCK -> List.of("interface: Interface", "reach: int = 1");
+        }, "", spec.description())).toList();
+    }
+
+    /** A condition or an event chosen: sent at once when it needs no arguments, else a draft until they are given. */
+    private void choose(ProgramSync.InstallationInfo installation, String kind, Choice choice) {
+        draftTrigger = kind;
+        draftName = choice.name();
+        draftArgs = new ArrayList<>();
+        for (var param : choice.params()) {
+            draftArgs.add(param.contains("=") ? param.substring(param.indexOf('=') + 1).strip() : "");
+        }
+        sendTriggerWhenComplete(installation);
+    }
+
+    /** One argument of a condition or an event typed: a draft keeps it, a trigger in place is sent again. */
+    private void setTriggerArg(ProgramSync.InstallationInfo installation, String kind, Choice choice,
+            List<String> args, int index, String text) {
+        if (draftTrigger == null) {
+            draftTrigger = kind;
+            draftName = choice.name();
+            draftArgs = new ArrayList<>(args);
+        }
+        while (draftArgs.size() < choice.params().size()) draftArgs.add("");
+        draftArgs.set(index, text);
+        sendTriggerWhenComplete(installation);
+    }
+
+    private void sendTriggerWhenComplete(ProgramSync.InstallationInfo installation) {
+        if (draftArgs.stream().anyMatch(String::isEmpty)) {
+            rebuildAside();
+            return;
+        }
+        var text = new StringBuilder(draftTrigger).append(' ').append(draftName);
+        for (var arg : draftArgs) {
+            text.append(' ').append(arg.contains(" ") ? '"' + arg + '"' : arg);
+        }
+        draftTrigger = null;
+        ClientPrograms.get().request("trigger", List.of(installation.id(), text.toString()), answer);
+    }
+
+    /** A field showing the choice, opening the list of choices under it when clicked (the Condition's). */
+    private UIElement dropdown(Component text, List<Choice> choices, boolean open, Component none,
+            Consumer<Choice> pick) {
+        var box = new UIElement();
+        box.setId("auto_install_choose");
+        box.addClass("install-dropdown");
+        var shown = new UIElement();
+        shown.addClass("install-value");
+        shown.addChildren(label("install-value-text", text), label("install-arrow", Component.literal("\u25bc")));
+        var list = choiceList(choices, none, pick);
+        list.setDisplay(open);
+        shown.addEventListener(UIEvents.CLICK, event -> list.setDisplay(!list.isDisplayed()));
+        box.addChildren(shown, list);
+        return box;
+    }
+
+    /** A field to type an event's name in, listing the events that contain the text (the Event's). */
+    private UIElement eventField(String name, List<Choice> choices, Consumer<Choice> pick) {
+        var box = new UIElement();
+        box.setId("auto_install_choose");
+        box.addClass("install-dropdown");
+        var field = new TextField();
+        field.addClass("install-field");
+        field.setText(name, false);
+        field.textFieldStyle(style -> style.placeholder(tr("choose_event")));
+        var holder = new UIElement();
+        holder.addClass("install-choices-holder");
+        Runnable list = () -> {
+            holder.clearAllChildren();
+            var typed = field.getText().strip().toLowerCase(java.util.Locale.ROOT);
+            // The event in place is not offered again until the text changes.
+            if (!name.isEmpty() && typed.equals(name)) return;
+            holder.addChild(choiceList(choices.stream().filter(choice -> choice.name().contains(typed)).toList(),
+                    tr("no_events"), pick));
+        };
+        field.setTextResponder(text -> list.run());
+        field.addEventListener(UIEvents.FOCUS, event -> editing = field);
+        field.addEventListener(UIEvents.KEY_DOWN, event -> {
+            if (event.keyCode != GLFW.GLFW_KEY_ENTER && event.keyCode != GLFW.GLFW_KEY_KP_ENTER) return;
+            var typed = field.getText().strip().toLowerCase(java.util.Locale.ROOT);
+            choices.stream().filter(choice -> choice.name().contains(typed)).findFirst().ifPresent(pick);
+        });
+        if (name.isEmpty()) {
+            list.run();
+            opening = () -> {
+                editing = field;
+                field.focus();
+            };
+        }
+        box.addChildren(field, holder);
+        return box;
+    }
+
+    /** The choices as rows, each its name and parameters, with the first one's description below when it has one. */
+    private UIElement choiceList(List<Choice> choices, Component none, Consumer<Choice> pick) {
+        var list = new UIElement();
+        list.addClass("install-choices");
+        if (choices.isEmpty()) list.addChild(label("install-choice-note", none.copy()));
+        for (var choice : choices) {
+            var row = new UIElement();
+            row.addClass("install-choice");
+            row.setId("auto_install_choice_" + choice.name());
+            row.addChild(label("install-choice-text", choice.display(FederationTheme.DARK_MUTED)));
+            // On the click, not the press: choosing rebuilds the aside.
+            row.addEventListener(UIEvents.CLICK, event -> pick.accept(choice));
+            list.addChild(row);
+        }
+        if (!choices.isEmpty() && !choices.get(0).description().isEmpty()) {
+            list.addChild(label("install-choice-note", Component.literal(choices.get(0).description())));
+        }
+        return list;
+    }
+
+    /** Sends the installation's arguments with the one at {@code index} changed, defaults filling any before it. */
+    private void sendArgs(ProgramSync.InstallationInfo installation, List<String> params, int index, String text) {
+        var args = new ArrayList<String>();
+        args.add(installation.id());
+        for (int i = 0; i < Math.max(index + 1, installation.args().size()); i++) {
+            if (i == index) {
+                args.add(text);
+            } else if (i < installation.args().size()) {
+                args.add(installation.args().get(i));
+            } else {
+                var param = params.get(i);
+                args.add(param.contains("=") ? param.substring(param.indexOf('=') + 1).strip() : "");
+            }
+        }
+        ClientPrograms.get().request("args", args, answer);
+    }
+
+    /** Whether a parameter takes a number, for a narrow field. */
+    private static boolean numeric(String param) {
+        var type = param.contains(":") ? param.substring(param.indexOf(':') + 1) : "";
+        if (type.contains("=")) type = type.substring(0, type.indexOf('='));
+        return type.strip().equals("int") || type.strip().equals("float");
+    }
+
+    /**
+     * A value shown in a field until clicked, then edited as its text: Enter or leaving the field sends a changed
+     * text, and the new index shows the result. {@code open} starts it edited, for a trigger that waits for it.
+     */
+    private UIElement editable(String id, UIElement shown, String text, boolean narrow, boolean open,
+            Consumer<String> send) {
+        var box = new UIElement();
+        box.setId(id);
+        box.addClass("install-edit");
+        if (narrow) box.addClass("narrow");
+        var field = new TextField();
+        field.addClass("install-field");
+        field.setText(text, false);
+        field.textFieldStyle(style -> style.placeholder(Component.empty()));
+        field.setDisplay(false);
+        Runnable leave = () -> {
+            if (editing != field) return;
+            editing = null;
+            var typed = field.getText().strip();
+            field.setDisplay(false);
+            shown.setDisplay(true);
+            if (!typed.equals(text) && !typed.isEmpty()) send.accept(typed);
+        };
+        Runnable edit = () -> {
+            shown.setDisplay(false);
+            field.setDisplay(true);
+            editing = field;
+            field.focus();
+            // All of the text selected, so typing replaces it.
+            field.setCursor(text.length());
+            field.setSelection(0, text.length());
+        };
+        // On the click, not the press: the shown value hides under the pointer.
+        shown.addEventListener(UIEvents.CLICK, event -> edit.run());
+        field.addEventListener(UIEvents.KEY_DOWN, event -> {
+            if (event.keyCode == GLFW.GLFW_KEY_ENTER || event.keyCode == GLFW.GLFW_KEY_KP_ENTER) leave.run();
+        });
+        field.addEventListener(UIEvents.BLUR, event -> leave.run());
+        box.addChildren(shown, field);
+        if (open) opening = edit;
+        return box;
+    }
+
+    /** Text in a value field. */
+    private static UIElement value(Component text) {
+        var value = new UIElement();
+        value.addClass("install-value");
+        value.addChild(label("install-value-text", text.copy()));
+        return value;
+    }
+
+    private static Button chip(String id, Component text, boolean chosen, Runnable run) {
+        var button = new Button();
+        button.setId(id);
+        button.addClass("install-chip");
+        if (chosen) button.addClass("selected");
+        button.setText(text);
+        int width = net.minecraft.client.Minecraft.getInstance().font.width(text) + 10;
+        button.layout(layout -> layout.width(width));
+        // On the click, not the press: the answer rebuilds the aside.
+        button.addEventListener(UIEvents.CLICK, event -> run.run());
+        return button;
     }
 
     /** An argument as its field shows it: an item or fluid by its icon and name, an interface by its alias. */
@@ -332,22 +670,8 @@ final class FederationInstallView {
         }
         var name = interfaceName(arg);
         value.addChild(label("install-value-text", name.equals(arg) ? Component.literal(arg)
-                : Component.literal(name + " ").append(Component.literal(arg).withColor(FederationTheme.TEXT_MUTED))));
+                : Component.literal(name + " ").append(Component.literal(arg).withColor(FIELD_MUTED))));
         return value;
-    }
-
-    /** A trigger line ({@code every 40}, {@code when is_low ...}) as the aside words it. */
-    private static MutableComponent trigger(String text) {
-        var space = text.indexOf(' ');
-        var kind = space < 0 ? text : text.substring(0, space);
-        var rest = space < 0 ? "" : text.substring(space + 1);
-        return switch (kind) {
-            case "every" -> tr("trigger.every", rest);
-            case "when" -> tr("trigger.condition", rest);
-            case "on" -> tr("trigger.event", rest);
-            case "redstone" -> tr("trigger.redstone");
-            default -> tr("trigger.manual");
-        };
     }
 
     private static UIElement fact(Component name, Component value) {

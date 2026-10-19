@@ -1255,6 +1255,24 @@ User decisions (2026-10-19):
 - "Creative" is the only device kind, so every device card says it; the index needs a device kind when a second
   kind comes.
 
+### Editing an installation (G1e-ii, 2026-10-19)
+
+- **In place** (decided 2026-10-19): a click on an argument or on Min gap turns its field into a text field with the
+  text selected; Enter or leaving the field sends it (`args` with all the arguments, `interval`), and the new index
+  shows the result. Nothing is sent while typing: every settings change stops the runs in progress. A refused value
+  shows its reason on the status line and the field goes back to the server's value.
+- **Chips** for If running (Ignore, Restart, Parallel) and for the trigger (Manual, Redstone, Every, Condition,
+  Event); Manual and Redstone are sent at once. The chips wrap onto a second line when the aside is narrow.
+- **Every** opens its ticks field; the trigger is sent with the ticks.
+- **Condition** lists the program's public functions that give a `bool` without acting (the scheduler's rule; the
+  board's `_low` would be refused), as `name(params) -> bool`; choosing one opens its first empty argument, and the
+  trigger is sent once every argument is given.
+- **Event**: typing in its field lists the events whose name contains the text, with the first one's description
+  below (`AutoInstallEvent`); a click or Enter takes one. A resource event then asks for its resource, a block event
+  for its interface and reach (1 by default); a network event is sent at once. The list sits in the aside's flow
+  under the field rather than over the rows below it (assistant choice). The board's `network` row for
+  `ae2.stock_changed` is not shown: the scheduler's events take no network yet.
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

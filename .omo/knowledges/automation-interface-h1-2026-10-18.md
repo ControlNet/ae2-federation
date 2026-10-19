@@ -223,3 +223,20 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   by spaces (`"minecraft:iron_ingot" 256 "interface-bk8hty"`), not commas. Device `device-w7c47q` at 1,-60,11 is in
   the Switch's domain; the Install chip is at (1852,47), the first installation row at (960,205), the aside's
   actions at y=397 (Uninstall 1390, Open in editor 1590, Run now 1792). Compare: `build/automation-install-check/`.
+
+## G1e-ii: editing in the aside
+
+- `TextField` has no Enter or commit hook: listen to `UIEvents.KEY_DOWN` (Enter, keypad Enter) and `UIEvents.BLUR`.
+  `field.focus()` does nothing before the field is in the UI tree: open a field drafted during a rebuild only after
+  the aside holds it (`opening` runs at the end of `rebuildAside`). Select the text on open
+  (`setCursor(len)` + `setSelection(0, len)`), or typed digits are appended (seen in game: 256 became 256128).
+- A new index rebuilds the whole aside; skip that while one of its fields is focused, or the typed text is lost.
+- `TextField`'s default placeholder is "Empty"; clear it with `textFieldStyle(style -> style.placeholder(...))`.
+- Style sheet `flex-wrap` did not take; `layout(layout -> layout.flexWrap(FlexWrap.WRAP))` does, and the row needs
+  `flex: 1; min-width: 0` to have a width to wrap in.
+- `flex: 1` in a column gives a zero basis: an element with a set height and no parent height collapses to zero
+  (the dropdown's field). Give such elements `width: 100%; height: N; flex-shrink: 0` instead.
+- LDLib2's `Selector` options fire on the press (`setOnClick`) and its dialog is an overlay; a plain list of rows
+  listening to `UIEvents.CLICK` in the aside's flow is simpler to test and survives the rebuild a choice causes.
+- The check world has no `args` command; reset an argument through the GUI. Compare:
+  `build/automation-install-edit-check/compare.png`.

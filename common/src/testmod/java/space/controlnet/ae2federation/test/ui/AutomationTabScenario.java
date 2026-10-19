@@ -18,6 +18,7 @@ import net.minecraft.world.level.storage.LevelResource;
 import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.automation.AutomationRegistration;
 import space.controlnet.ae2federation.automation.ComputingDevices;
+import space.controlnet.ae2federation.automation.Installation;
 import space.controlnet.ae2federation.automation.LibraryRows;
 import space.controlnet.ae2federation.automation.LocalCopies;
 import space.controlnet.ae2federation.automation.ProgramScheduler;
@@ -33,7 +34,8 @@ import space.controlnet.ae2federation.router.RouterRegistration;
  * without a save, Push and its refusal, a new program, edits on an older version kept beside the server's, problems
  * checked on the client and cleared by a fix, completion of functions and items, item icons in the script, the
  * Library panel (namespaces, a function's page with its example, search), the Install view (G1e: a device beside
- * the Router, a function installed on it, its row and aside, Run now, Open in editor, Uninstall), and the index
+ * the Router, a function installed on it, its row and aside, editing its arguments, gap, overlap mode and trigger
+ * in place (Every, Condition, Event), Run now, Open in editor, Uninstall), and the index
  * subscription ending when the screen closes. The programs, the device and its installation are sample content
  * written for this scenario;
  * {@code smelting} misspells a function so the list shows its problem count and Push refuses it.
@@ -67,6 +69,9 @@ public final class AutomationTabScenario implements UIScenario {
             def keep(item: Item, min: int) -> None:
                 if ae2.amount(item) < min:
                     ae2.craft(item, min - ae2.amount(item))
+
+            def low(item: Item, min: int) -> bool:
+                return ae2.amount(item) < min
             """;
     /** The sample device's ID, once it has claimed one. */
     private static String device = "";
@@ -305,10 +310,98 @@ public final class AutomationTabScenario implements UIScenario {
                     var texts = context.all("#auto_install_aside .install-value-text").stream()
                             .map(text -> text.text()).toList();
                     return context.el("#auto_install_view .installation").as(UIElement.class).hasClass("selected")
-                            && texts.equals(java.util.List.of("Iron Ingot", "256", "Manual", "20 ticks", "Ignore",
-                                    "Idle"));
+                            && texts.equals(java.util.List.of("Iron Ingot", "256", "20 ticks", "Idle"))
+                            && chosen(context, "#auto_install_trigger_manual")
+                            && chosen(context, "#auto_install_overlap_ignore");
                 })
                 .frames(2).screenshot("ui-automation-install")
+                // Editing in place (G1e-ii): a click opens the field, Enter sends it, the new index shows it.
+                .click("#auto_install_arg_1 .install-value")
+                .check("a click opens the argument's field with its text selected", context -> {
+                    var field = context.el("#auto_install_arg_1 text-field").as(TextField.class);
+                    return context.el("#auto_install_arg_1 text-field").isVisible() && field.getText().equals("256")
+                            && field.getHighlighted().equals("256");
+                })
+                .step("type a new minimum", context ->
+                        context.el("#auto_install_arg_1 text-field").as(TextField.class).setText("128", true))
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("Enter sends the arguments", context ->
+                        context.el("#auto_install_view .install-summary").text().equals("Iron Ingot \u00b7 128"))
+                .click("#auto_install_overlap_restart")
+                .waitUntil("a chip sets what a trigger does while it runs", context ->
+                        chosen(context, "#auto_install_overlap_restart"))
+                .click("#auto_install_trigger_every")
+                .check("Every opens its ticks field before sending anything", context ->
+                        chosen(context, "#auto_install_trigger_every")
+                                && context.el("#auto_install_every text-field").isVisible())
+                .step("type the ticks", context ->
+                        context.el("#auto_install_every text-field").as(TextField.class).setText("40", true))
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("Enter sends the trigger", context ->
+                        context.all("#auto_install_every text-field").size() == 1
+                                && context.el("#auto_install_every .install-value-text").text().equals("40 ticks"))
+                .click("#auto_install_gap .install-value")
+                .step("type a new gap", context ->
+                        context.el("#auto_install_gap text-field").as(TextField.class).setText("10", true))
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("the gap is sent", context ->
+                        context.el("#auto_install_gap .install-value-text").text().equals("10 ticks"))
+                .checkServer("the server holds every change", context -> {
+                    var installation = installation(context);
+                    return installation.args().equals(java.util.List.of("minecraft:iron_ingot", 128L))
+                            && installation.trigger().equals(new Installation.Trigger.Schedule(40))
+                            && installation.interval() == 10 && installation.overlap() == Installation.Overlap.RESTART;
+                })
+                .frames(2).screenshot("ui-automation-install-edit")
+                .click("#auto_install_trigger_manual")
+                .waitUntil("Manual is sent at once", context -> chosen(context, "#auto_install_trigger_manual")
+                        && context.all("#auto_install_every").isEmpty())
+                // A condition: a public function of the program giving a bool without acting, then its arguments.
+                .click("#auto_install_trigger_when")
+                .check("Condition lists only the functions a condition may name", context ->
+                        context.all("#auto_install_choose .install-choice").size() == 1
+                                && context.all("#auto_install_choice_low").size() == 1)
+                .click("#auto_install_choice_low")
+                .check("choosing it opens its first argument", context ->
+                        context.el("#auto_install_when_arg_0 text-field").isVisible())
+                .step("type the item", context -> context.el("#auto_install_when_arg_0 text-field")
+                        .as(TextField.class).setText("minecraft:iron_ingot", true))
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("the next argument opens", context ->
+                        context.all("#auto_install_when_arg_1 text-field").size() == 1
+                                && context.el("#auto_install_when_arg_1 text-field").isVisible())
+                .step("type the minimum", context -> context.el("#auto_install_when_arg_1 text-field")
+                        .as(TextField.class).setText("64", true))
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntilServer("the condition is sent with its arguments", context ->
+                        installation(context).trigger().equals(new Installation.Trigger.Condition("low",
+                                java.util.List.of("minecraft:iron_ingot", 64L))))
+                .waitUntil("the aside shows it", context -> chosen(context, "#auto_install_trigger_when")
+                        && context.el("#auto_install_when_arg_1 .install-value-text").text().equals("64"))
+                .frames(2).screenshot("ui-automation-install-condition")
+                // An event: typing lists the events containing the text, Enter takes the first.
+                .click("#auto_install_trigger_on")
+                .check("Event opens its field with every event listed", context ->
+                        context.all("#auto_install_choose .install-choice").size() == 11)
+                .step("type part of a name", context -> context.el("#auto_install_choose text-field")
+                        .as(TextField.class).setText("c", true))
+                .frames(2).screenshot("ui-automation-install-event")
+                .step("type more", context -> context.el("#auto_install_choose text-field")
+                        .as(TextField.class).setText("stock", true))
+                .check("the list narrows", context -> context.all("#auto_install_choose .install-choice").size() == 1
+                        && context.all("#auto_install_choice_stock_changed").size() == 1)
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("Enter takes it and opens its resource", context ->
+                        context.all("#auto_install_on_arg_0 text-field").size() == 1
+                                && context.el("#auto_install_on_arg_0 text-field").isVisible())
+                .step("type the resource", context -> context.el("#auto_install_on_arg_0 text-field")
+                        .as(TextField.class).setText("minecraft:iron_ingot", true))
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntilServer("the event is sent", context -> installation(context).trigger().equals(
+                        new Installation.Trigger.Event("stock_changed", java.util.List.of("minecraft:iron_ingot"))))
+                .waitUntil("the aside shows the event", context -> chosen(context, "#auto_install_trigger_on")
+                        && context.el("#auto_install_choose text-field").as(TextField.class).getText()
+                                .equals("stock_changed"))
                 .click("#auto_install_run")
                 .waitUntil("Run now triggers it", context -> context.el("#automation_answer").text().equals("triggered"))
                 .click("#auto_install_open")
@@ -377,6 +470,16 @@ public final class AutomationTabScenario implements UIScenario {
             throw new UncheckedIOException(exception);
         }
         ProgramSync.get(context.server()).changed();
+    }
+
+    /** The sample device's one installation. */
+    private static Installation installation(ServerContext context) {
+        return ComputingDevices.get(context.level()).installations().stream()
+                .filter(found -> found.device().equals(device)).findFirst().orElseThrow();
+    }
+
+    private static boolean chosen(com.lowdragmc.lowdraglib2.uitest.TestContext context, String chip) {
+        return context.el(chip).as(UIElement.class).hasClass("selected");
     }
 
     private static BlockPos devicePosition(ServerContext context) {

@@ -143,9 +143,23 @@
 .domain-panel .install-aside-caption { width: 100%; adaptive-height: true; text-wrap: wrap; text-color: #ff6d6a82; }
 .install-fact { width: 100%; flex-shrink: 0; flex-direction: row; align-items: center; gap-all: 4; }
 .domain-panel .install-fact-name { width: 56; flex-shrink: 0; height: 9; text-color: #ff413f54; }
-.install-value { flex: 1; min-width: 0; height: 13; flex-direction: row; align-items: center; gap-all: 3; padding-left: 3; background: built-in(federation:FIELD); }
+.install-value { width: 100%; height: 13; flex-shrink: 0; flex-direction: row; align-items: center; gap-all: 3; padding-left: 3; background: built-in(federation:FIELD); }
 .domain-panel .install-value-text { flex: 1; min-width: 0; height: 9; text-wrap: hide; text-color: #ff413f54; }
 .domain-panel .install-fact.running .install-value-text { text-color: #ff28633b; }
+.install-edit { flex-grow: 1; min-width: 0; height: 13; }
+.install-edit.narrow { flex-grow: 0; width: 64; }
+.domain-panel .install-edit text-field { width: 100%; height: 13; padding-all: 0; padding-left: 3; padding-top: 2; text-color: #ff413f54; }
+.install-fact.sub { padding-left: 8; }
+.domain-panel .install-fact.sub .install-fact-name { width: 48; text-color: #ff6d6a82; }
+.install-dropdown { flex-grow: 1; min-width: 0; }
+.domain-panel .install-arrow { width: 7; height: 9; flex-shrink: 0; text-color: #ff413f54; }
+.domain-panel .install-dropdown text-field { width: 100%; height: 13; padding-all: 0; padding-left: 3; padding-top: 2; text-color: #ff413f54; }
+.install-choices { width: 100%; padding-all: 2; gap-all: 1; background: #f017141e; }
+.install-choice { width: 100%; height: 11; flex-direction: row; align-items: center; padding-left: 2; }
+.domain-panel .install-choice-text { flex: 1; min-width: 0; height: 9; text-wrap: hide; text-color: #ff8fc8ff; }
+.domain-panel .install-choice-note { width: 100%; adaptive-height: true; text-wrap: wrap; padding-top: 2; text-color: #ffaaa4b2; }
+.install-chips { flex: 1; min-width: 0; flex-direction: row; gap-all: 3; }
+.domain-panel button.install-chip { height: 14; flex-shrink: 0; padding-bottom: 4; }
 .install-actions { width: 100%; flex-shrink: 0; flex-direction: row; gap-all: 3; margin-top: 6; }
 .install-actions button { flex: 1; }
 .auto-side { width: 26%; min-width: 120; max-width: 220; height: 100%; flex-shrink: 0; gap-all: 4; }
