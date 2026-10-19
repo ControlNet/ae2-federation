@@ -118,6 +118,13 @@ public final class CraftingReturnLedger extends SavedData {
         return owed.containsKey(executing);
     }
 
+    /** Whether anything here is kept under {@code network}: debts either way, watched jobs or transit stock. */
+    public boolean references(NetworkId network) {
+        return owed.containsKey(network) || jobs.containsKey(network) || transit.containsKey(network)
+                || unknownJobs.contains(network) || owed.values().stream().anyMatch(keys -> keys.values().stream()
+                        .anyMatch(consumers -> consumers.containsKey(network)));
+    }
+
     /** The consumers owed {@code key} by {@code executing} and how much each, in the order they pushed. */
     Map<NetworkId, Long> consumers(NetworkId executing, AEKey key) {
         var keys = owed.get(executing);

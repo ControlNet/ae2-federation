@@ -68,6 +68,8 @@ final class FederationTopologyView {
     private static final float LINK_PICK_PIXELS = 5;
     /** Fitting may zoom out this far, so a narrow canvas still shows every card. */
     private static final float MIN_FIT_SCALE = 0.1f;
+    /** Fitting goes no closer than this, so a domain of one or two cards does not open blown up to the largest zoom. */
+    private static final float MAX_FIT_SCALE = 1f;
 
     private final GraphView graph;
     /** The canvas layer the links are drawn on, whose coordinates a press is measured in to pick a link. */
@@ -243,7 +245,10 @@ final class FederationTopologyView {
         });
         element(ui, "graph_zoom_in", Button.class).setOnClick(event -> graph.setScale(graph.getScale() * 1.25f));
         element(ui, "graph_zoom_out", Button.class).setOnClick(event -> graph.setScale(graph.getScale() / 1.25f));
-        element(ui, "graph_fit", Button.class).setOnClick(event -> graph.fitToChildren(12, MIN_FIT_SCALE));
+        element(ui, "graph_fit", Button.class).setOnClick(event -> {
+            graph.fitToChildren(12, MIN_FIT_SCALE);
+            limitFitScale();
+        });
         var legend = element(ui, "graph_legend", Label.class);
         legend.setText(legendText());
         var legendToggle = element(ui, "graph_legend_toggle", Button.class);
@@ -682,6 +687,17 @@ final class FederationTopologyView {
             if (at == graph.contentRoot) return true;
         }
         return false;
+    }
+
+    /** Zooms a fit that came out closer than {@link #MAX_FIT_SCALE} back out to it, around the same centre. */
+    private void limitFitScale() {
+        float scale = graph.getScale();
+        if (scale <= MAX_FIT_SCALE) return;
+        float centerX = graph.getOffsetX() + graph.getContentWidth() / scale / 2;
+        float centerY = graph.getOffsetY() + graph.getContentHeight() / scale / 2;
+        float halfWidth = graph.getContentWidth() / MAX_FIT_SCALE / 2;
+        float halfHeight = graph.getContentHeight() / MAX_FIT_SCALE / 2;
+        graph.fit(centerX - halfWidth, centerY - halfHeight, centerX + halfWidth, centerY + halfHeight, MIN_FIT_SCALE);
     }
 
     /** GraphView's own wheel zoom, kept on the point under the mouse, for a wheel turn over something on the canvas. */
@@ -2485,6 +2501,7 @@ final class FederationTopologyView {
                 var focus = focusBounds();
                 if (focus == null) graph.fitToChildren(16, MIN_FIT_SCALE);
                 else graph.fit(focus[0] - 16, focus[1] - 16, focus[2] + 16, focus[3] + 16, MIN_FIT_SCALE);
+                limitFitScale();
                 fitted = true;
                 fittedWidth = graph.getContentWidth();
                 fittedHeight = graph.getContentHeight();
