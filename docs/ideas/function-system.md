@@ -292,6 +292,17 @@ Python's names and meaning (`str()`, `int()`, `range()` ...); everything about t
   installation's arguments or values typed for the dry run. Reads need the server, so the server runs it and sends
   back the value per node, refreshed while the graph is open. Open: whether the script view shows the same values
   inline.
+  - Decided 2026-10-19 (user, on the boards of the design row "图的 dry run"): the point is debugging while
+    editing: the inputs, every intermediate value and the return value. The entry card gets one row per
+    parameter with the dry run's value, filled from the function's installation arguments when it is installed,
+    editable, and lost when the screen closes (like drafts). The script view shows the values too, after each line.
+    The user suggested showing a card's value at its output and picked board `AutoDryRunPortIn`: the value sits
+    inside the card, right-aligned on the output's line beside the pin (a statement uses its exec line, otherwise
+    empty); cards not reached are dimmed with their exec wires; the card that stopped the run has a red edge and
+    the error's type at its output, with the full message on the status line.
+  - Implementation note: `Runner.Trace` reports statement values only (assignments, actions, branch decisions,
+    loop items, returns). Value cards (`<`, `-`, reads inside an expression) need the evaluator to report each
+    computed sub-expression by its ID too.
 - **List and string methods are needed** (user, 2026-10-18). Assistant proposals:
   - Lists: `append`, `extend`, `insert`, `pop`, `remove`, `index`, `count`, `reverse`, `sort` (no `key=`, no
     lambdas), `clear`, `copy`. Strings: `startswith`, `endswith`, `lower`, `upper`, `strip`, `split`, `join`,

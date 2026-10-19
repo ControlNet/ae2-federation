@@ -25,10 +25,17 @@ public final class Evaluator {
 
     private final Workspace workspace;
     private final Host host;
+    /** Receives each computed expression's value, for the dry run; {@code null} when nothing listens. */
+    private final Runner.Trace trace;
 
     public Evaluator(Workspace workspace, Host host) {
+        this(workspace, host, null);
+    }
+
+    public Evaluator(Workspace workspace, Host host, Runner.Trace trace) {
         this.workspace = workspace;
         this.host = host;
+        this.trace = trace;
     }
 
     /**
@@ -36,11 +43,22 @@ public final class Evaluator {
      * expression that raised it.
      */
     public Object eval(String file, Expr e, Map<String, Object> locals) {
+        Object value;
         try {
-            return evaluate(file, e, locals);
+            value = evaluate(file, e, locals);
         } catch (RunError error) {
             throw error.at(e.id());
         }
+        if (trace != null && computed(e)) {
+            trace.value(file, e.id(), value);
+        }
+        return value;
+    }
+
+    /** Whether the expression computes a value: literals and names only show what is written. */
+    private static boolean computed(Expr e) {
+        return !(e instanceof Expr.IntLit || e instanceof Expr.FloatLit || e instanceof Expr.StrLit
+                || e instanceof Expr.BoolLit || e instanceof Expr.NoneLit || e instanceof Expr.Name);
     }
 
     private Object evaluate(String file, Expr e, Map<String, Object> locals) {

@@ -52,13 +52,28 @@ public final class ProgramHost implements Evaluator.Host {
     private final FederationDomainId domain;
     private final GameCatalog catalog;
     private final DomainCalls domainCalls;
+    /** Whether actions only say what they would do: the editor's dry run. */
+    private final boolean simulate;
 
     /** A host for one run; {@code owner} names the run's crafting jobs, so it cancels only its own. */
     public ProgramHost(MinecraftServer server, FederationDomainId domain, String owner) {
+        this(server, domain, owner, false);
+    }
+
+    private ProgramHost(MinecraftServer server, FederationDomainId domain, String owner, boolean simulate) {
         this.server = server;
         this.domain = domain;
+        this.simulate = simulate;
         this.catalog = ProgramStore.catalog(server, domain);
-        this.domainCalls = new DomainCalls(server, domain, owner, catalog);
+        this.domainCalls = new DomainCalls(server, domain, owner, catalog, simulate);
+    }
+
+    /**
+     * A host for the editor's dry run: reads see the world, and every action gives what it would give now, checked
+     * with the game's simulate modes, without changing anything.
+     */
+    public static ProgramHost dryRun(MinecraftServer server, FederationDomainId domain) {
+        return new ProgramHost(server, domain, "dry run", true);
     }
 
     public GameCatalog catalog() {
@@ -155,7 +170,9 @@ public final class ProgramHost implements Evaluator.Host {
 
     private boolean setRedstone(String name, long level) {
         return place(new Block(interfaceId(name), 0, null)).map(place -> {
-            place.through().setRedstone((int) level);
+            if (!simulate) {
+                place.through().setRedstone((int) level);
+            }
             return true;
         }).orElse(false);
     }
@@ -176,6 +193,9 @@ public final class ProgramHost implements Evaluator.Host {
         var accepted = to.get().receiveEnergy(offered, true);
         if (accepted <= 0) {
             return false;
+        }
+        if (simulate) {
+            return true;
         }
         var taken = from.get().extractEnergy(accepted, false);
         var leftover = taken - to.get().receiveEnergy(taken, false);

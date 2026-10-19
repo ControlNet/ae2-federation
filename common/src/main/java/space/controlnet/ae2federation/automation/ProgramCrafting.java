@@ -55,17 +55,21 @@ public final class ProgramCrafting {
         }
     }
 
+    /** Whether {@link #request} would ask the grid to plan the job: something makes it there and a CPU is free. */
+    public boolean couldRequest(IGrid grid, AEKey key, long amount) {
+        var pivot = grid.getPivot();
+        return amount > 0 && grid.getCraftingService().isCraftable(key) && freeCpus(grid) > 0 && pivot != null
+                && pivot.getLevel() != null;
+    }
+
     /** Asks the grid to plan the job; false when nothing makes the resource there or no CPU is free. */
     public boolean request(String owner, IGrid grid, AEKey key, long amount) {
+        if (!couldRequest(grid, key, amount)) {
+            return false;
+        }
         var crafting = grid.getCraftingService();
-        if (amount <= 0 || !crafting.isCraftable(key) || freeCpus(grid) == 0) {
-            return false;
-        }
         var pivot = grid.getPivot();
-        var level = pivot == null ? null : pivot.getLevel();
-        if (level == null) {
-            return false;
-        }
+        var level = pivot.getLevel();
         // AE2 looks up patterns through the requester's node; without one every plan comes back missing.
         var requester = new ICraftingSimulationRequester() {
             @Override

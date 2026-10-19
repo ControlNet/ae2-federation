@@ -63,16 +63,20 @@ final class DomainCalls {
     private final FederationDomainId domain;
     private final String owner;
     private final GameCatalog catalog;
+    /** Whether actions only check what they would do (the editor's dry run). */
+    private final boolean simulate;
     private final RegistryResources resources;
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
     private Map<NetworkId, IGrid> grids = Map.of();
     private int gridsTick = -1;
 
-    DomainCalls(MinecraftServer server, FederationDomainId domain, String owner, GameCatalog catalog) {
+    DomainCalls(MinecraftServer server, FederationDomainId domain, String owner, GameCatalog catalog,
+            boolean simulate) {
         this.server = server;
         this.domain = domain;
         this.owner = owner;
         this.catalog = catalog;
+        this.simulate = simulate;
         this.resources = new RegistryResources(server.registryAccess());
     }
 
@@ -86,7 +90,8 @@ final class DomainCalls {
                     .mapToLong(grid -> grid.getCraftingService().getRequestedAmount(key(args.get(0)))).sum();
             case "ae2.patterns" -> patterns(args.get(0));
             case "ae2.craft" -> craft(key(args.get(0)), (Long) args.get(1), args.get(2));
-            case "ae2.cancel" -> ProgramCrafting.get(server).cancel(owner, key(args.get(0)));
+            // A dry run has no jobs of its own to cancel.
+            case "ae2.cancel" -> !simulate && ProgramCrafting.get(server).cancel(owner, key(args.get(0)));
             case "ae2.import_from" -> importFrom(host, args.get(0), key(args.get(1)), (Long) args.get(2), args.get(3));
             case "ae2.export_to" -> exportTo(host, args.get(0), key(args.get(1)), (Long) args.get(2), args.get(3));
             case "ae2.free_cpus" -> grids(args.get(0)).stream().mapToLong(ProgramCrafting::freeCpus).sum();
@@ -220,7 +225,7 @@ final class DomainCalls {
     private boolean craft(AEKey key, long amount, @Nullable Object network) {
         var crafting = ProgramCrafting.get(server);
         for (var grid : grids(network)) {
-            if (crafting.request(owner, grid, key, amount)) {
+            if (simulate ? crafting.couldRequest(grid, key, amount) : crafting.request(owner, grid, key, amount)) {
                 return true;
             }
         }
@@ -276,13 +281,13 @@ final class DomainCalls {
         return counter;
     }
 
-    /** What the block can give and the place can take, moved for real; what moved. */
-    private static long transfer(MEStorage from, MEStorage to, AEKey key, long amount) {
+    /** What the block can give and the place can take, moved for real unless simulating; what moved. */
+    private long transfer(MEStorage from, MEStorage to, AEKey key, long amount) {
         var source = IActionSource.empty();
         var offered = from.extract(key, amount, Actionable.SIMULATE, source);
         var accepted = offered <= 0 ? 0 : to.insert(key, offered, Actionable.SIMULATE, source);
-        if (accepted <= 0) {
-            return 0;
+        if (accepted <= 0 || simulate) {
+            return accepted;
         }
         var taken = from.extract(key, accepted, Actionable.MODULATE, source);
         var stored = to.insert(key, taken, Actionable.MODULATE, source);
@@ -360,6 +365,9 @@ final class DomainCalls {
                 return false;
             }
         }
+        if (simulate) {
+            return true;
+        }
         if (!level.destroyBlock(place.position(), false)) {
             return false;
         }
@@ -383,6 +391,9 @@ final class DomainCalls {
         var grids = grids(null);
         if (extract(grids, item, 1, Actionable.SIMULATE) < 1) {
             return false;
+        }
+        if (simulate) {
+            return true;
         }
         extract(grids, item, 1, Actionable.MODULATE);
         if (!level.setBlock(place.position(), placed, Block.UPDATE_ALL)) {
@@ -445,6 +456,9 @@ final class DomainCalls {
         if (!mode.allowedFor(key.capability())) {
             throw new RunError("ValueError", "shared power is one pool; it cannot be re-exported");
         }
+        if (simulate) {
+            return true;
+        }
         return applied(PolicyChanges.apply(policies(), key, mode, rule -> rule));
     }
 
@@ -463,6 +477,9 @@ final class DomainCalls {
                 var resource = key(item);
                 entries.add(new PolicyResource(resource.getType().getId(), resource.getId()));
             }
+        }
+        if (simulate) {
+            return true;
         }
         var filter = new PolicyFilter(mode, entries);
         var service = policies();

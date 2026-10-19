@@ -22,9 +22,11 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.automation.AutomationInterfaceBlockEntity;
 import space.controlnet.ae2federation.automation.AutomationInterfaces;
 import space.controlnet.ae2federation.automation.AutomationRegistration;
+import space.controlnet.ae2federation.automation.ProgramDryRun;
 import space.controlnet.ae2federation.automation.ProgramHost;
 import space.controlnet.ae2federation.automation.ProgramRun;
 import space.controlnet.ae2federation.automation.ProgramStore;
+import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.function.Runner;
 import space.controlnet.ae2federation.router.RouterRegistration;
@@ -83,6 +85,64 @@ public final class ProgramHostGameTests {
                     AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
                     automationInterface.setRedstone(0);
                 });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void dryRunReadsTheWorldAndOnlySimulatesActions(GameTestHelper helper) {
+        var fixtures = build(helper, Blocks.CHEST.defaultBlockState());
+        Container chest = helper.getBlockEntity(TARGET);
+        chest.setItem(0, new ItemStack(Items.IRON_INGOT, 10));
+        var file = "host_dry";
+        var text = """
+                def run(port: Interface) -> str:
+                    chest = ae2f.select(port)
+                    moved = ae2.import_from(chest, "minecraft:iron_ingot", 6)
+                    lit = mc.set_redstone(port, 15)
+                    mc.wait(100)
+                    broke = mc.break_block(chest)
+                    return " ".join([str(moved), str(lit), str(broke), str(mc.amount(chest, "minecraft:iron_ingot")),
+                                     str(ae2.amount("minecraft:iron_ingot"))])
+                """;
+        var level = helper.getLevel();
+        var server = level.getServer();
+        var store = ProgramStore.get(server);
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
+                    helper.assertTrue(automationInterface.id() != null, "Waiting for the interface's ID");
+                    var domain = AutomationInterfaces.get(level).domainOf(level, automationInterface.id());
+                    helper.assertTrue(domain.isPresent(), "Waiting for the interface's domain");
+                    var settled = FederationDomainRegistryAccess.get(level).federationDomain(domain.get())
+                            .map(snapshot -> snapshot.memberships().size()).orElse(0);
+                    helper.assertValueEqual(settled, 2, "Waiting for the networks to settle in the domain");
+                })
+                .thenExecute(() -> {
+                    write(store, file, text);
+                    store.reload();
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
+                    var domain = AutomationInterfaces.get(level).domainOf(level, automationInterface.id())
+                            .orElseThrow();
+                    var answer = ProgramSync.get(server).handle(1, "dry", List.of(domain.value(), file, "run",
+                            ProgramSync.version(text), automationInterface.id()));
+                    helper.assertTrue(answer.ok(), "The dry run answered: " + answer.message());
+                    var dry = ProgramDryRun.decode(answer.message());
+                    helper.assertValueEqual(dry.status(), ProgramDryRun.Status.DONE, "The dry run finished");
+                    helper.assertTrue(dry.values().containsValue("'True True True 10 0'"),
+                            "Every action would succeed, and nothing moved: " + dry.values());
+                    helper.assertValueEqual(chest.getItem(0).getCount(), 10, "The chest still holds 10");
+                    helper.assertBlockPresent(Blocks.CHEST, TARGET);
+                    helper.assertValueEqual(level.getBestNeighborSignal(helper.absolutePos(TARGET)), 0,
+                            "The interface emits no redstone");
+                    var stale = ProgramSync.get(server).handle(2, "dry", List.of(domain.value(), file, "run",
+                            "0000000000000000", automationInterface.id()));
+                    helper.assertFalse(stale.ok(), "A dry run of a version other than the saved one is refused");
+                    RouterEvidence.write("hostdry", 1, Map.of("result", answer.message().split("\n")[1]));
+                    delete(store, file);
+                    store.reload();
+                    fixtures.close();
+                })
+                .thenSucceed();
     }
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",

@@ -32,10 +32,10 @@ import space.controlnet.ae2federation.persistence.NetworkNames;
 
 /**
  * The server side of the Automation tab's traffic: the library index the tab shows, file texts on request, uploads
- * put back together from chunks and saved (the last write wins), and the install, push, run, log and stock requests.
- * Players who have the tab open are subscribed and get a new index after every change. The loader's network code
- * registers how the messages travel. Programs are global with no permissions for now (user, 2026-10-18), so any player
- * may do this.
+ * put back together from chunks and saved (the last write wins), and the install, push, run, log, stock and dry
+ * requests. Players who have the tab open are subscribed and get a new index after every change. The loader's network
+ * code registers how the messages travel. Programs are global with no permissions for now (user, 2026-10-18), so any
+ * player may do this.
  */
 public final class ProgramSync {
     /** A function as the tab lists it: its parameters as written ({@code item: Item}), and whether it acts. */
@@ -196,7 +196,8 @@ public final class ProgramSync {
 
     /**
      * A request: {@code push file}, {@code install device file function args...}, {@code uninstall id},
-     * {@code args id args...}, {@code trigger id text}, {@code interval id ticks}, {@code overlap id mode}, {@code run id}, {@code delete file}.
+     * {@code args id args...}, {@code trigger id text}, {@code interval id ticks}, {@code overlap id mode}, {@code run id}, {@code delete file},
+     * {@code dry domain file function version args...} ({@link ProgramDryRun}).
      */
     public void request(ServerPlayer player, int request, String action, List<String> args) {
         answer(player, handle(request, action, args));
@@ -234,6 +235,10 @@ public final class ProgramSync {
             } catch (RunError e) {
                 throw new IllegalArgumentException(e.getMessage());
             }
+        }
+        if (action.equals("dry")) {
+            // The editor's dry run, asked again and again while the graph shows: it changes nothing either.
+            return ProgramDryRun.answer(server, args);
         }
         var message = switch (action) {
             case "push" -> "pushed " + String.join(", ", scheduler.push(arg(args, 0, 1)).keySet());

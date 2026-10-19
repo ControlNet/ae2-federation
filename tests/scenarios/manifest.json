@@ -165,6 +165,7 @@
     {"id":"programs.reload-command","backend":"gametest","testId":"programsreloadcommandreadsthefolder","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"programs.host-items","backend":"gametest","testId":"programmovesitemsbetweenachestandthedomain","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-redstone","backend":"gametest","testId":"programlightsalampthroughtheinterface","structure":"ae2federation_test:harness_native_smoke","assertions":1},
+    {"id":"programs.host-dry-run","backend":"gametest","testId":"dryrunreadstheworldandonlysimulatesactions","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-blocks","backend":"gametest","testId":"programbreaksablockintothedomainandplacesitback","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-rules","backend":"gametest","testId":"programsetsastoragerulebetweenitsnetworks","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-status","backend":"gametest","testId":"programreadscraftingandnetworkstatus","structure":"ae2federation_test:harness_native_smoke","assertions":1},

@@ -33,6 +33,10 @@ public final class Runner {
     /** Receives each value the run computes, by the program node it belongs to; temporaries are not reported. */
     public interface Trace {
         void value(String file, String node, Object value);
+
+        /** A node of the execution graph is about to run, by the program node it came from. */
+        default void ran(String file, String node) {
+        }
     }
 
     private final Workspace workspace;
@@ -74,7 +78,7 @@ public final class Runner {
         this.graphs = graphs;
         this.host = host;
         this.trace = trace;
-        this.evaluator = new Evaluator(workspace, host);
+        this.evaluator = new Evaluator(workspace, host, trace);
         var graph = graphs.get(file).get(function);
         var frame = new Frame(graph);
         var params = graph.function().params();
@@ -99,6 +103,11 @@ public final class Runner {
         return failure;
     }
 
+    /** Ends a {@code mc.wait} early: the next tick goes on at once. */
+    public void wake() {
+        sleeping = 0;
+    }
+
     /** Runs up to {@code budget} nodes in this tick. */
     public Status tick(int budget) {
         if (status == Status.DONE || status == Status.FAILED) {
@@ -115,6 +124,9 @@ public final class Runner {
                 return status = Status.RUNNING;
             }
             try {
+                if (trace != null) {
+                    trace.ran(frame.graph.file(), node.source());
+                }
                 if (node instanceof Node.Action a && !isWait(a)) {
                     acted = true;
                 }

@@ -7,6 +7,7 @@ import java.util.Map;
 import space.controlnet.ae2federation.function.Catalog;
 import space.controlnet.ae2federation.function.Checker;
 import space.controlnet.ae2federation.function.Compiler;
+import space.controlnet.ae2federation.function.DryRun;
 import space.controlnet.ae2federation.function.Evaluator;
 import space.controlnet.ae2federation.function.Graph;
 import space.controlnet.ae2federation.function.Library;
@@ -68,6 +69,28 @@ public final class ProgramRun {
     /** Starts {@code file.function(args)}; throws {@link IllegalArgumentException} with the reason it cannot. */
     public static ProgramRun start(Prepared prepared, Catalog catalog, Evaluator.Host host, String file,
             String function, List<Object> args) {
+        check(prepared, catalog, file, function);
+        return new ProgramRun(prepared, new Runner(new Workspace(prepared.files, catalog), prepared.graphs, host,
+                (where, node, value) -> {
+                }, file, function, args));
+    }
+
+    /**
+     * Dry-runs {@code file.function(args)} from the library as it is now, at once; throws
+     * {@link IllegalArgumentException} with the reason it cannot start, as {@link #start} does.
+     */
+    public static DryRun.Result dryRun(Library library, Catalog catalog, Evaluator.Host host, String file,
+            String function, List<Object> args) {
+        var texts = new LinkedHashMap<String, String>();
+        library.names().forEach(name -> texts.put(name, library.text(name)));
+        var prepared = prepare(texts, catalog);
+        check(prepared, catalog, file, function);
+        return DryRun.run(new Workspace(prepared.files, catalog), prepared.graphs, host, file, function, args,
+                DryRun.BUDGET);
+    }
+
+    /** Throws {@link IllegalArgumentException} unless the file checks clean and has {@code function}. */
+    private static void check(Prepared prepared, Catalog catalog, String file, String function) {
         var parsed = prepared.parsed.get(file);
         if (parsed == null) {
             throw new IllegalArgumentException("there is no program " + file);
@@ -89,9 +112,6 @@ public final class ProgramRun {
         if (parsed.program().functions().stream().noneMatch(f -> f.name().equals(function))) {
             throw new IllegalArgumentException(file + " has no function " + function);
         }
-        return new ProgramRun(prepared, new Runner(new Workspace(prepared.files, catalog), prepared.graphs, host,
-                (where, node, value) -> {
-                }, file, function, args));
     }
 
     public Runner.Status tick(int budget) {

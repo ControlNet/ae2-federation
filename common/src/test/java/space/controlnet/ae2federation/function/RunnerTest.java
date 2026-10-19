@@ -614,8 +614,11 @@ final class RunnerTest {
                 positions.get(node).line() + ":" + positions.get(node).column() + " " + Ops.repr(value)));
         assertEquals("8", finish(runner));
         assertEquals(List.of(
+                "2:12 6",          // n * 2
                 "2:5 6",           // return n * 2
+                "5:9 7",           // 1 + double(3)
                 "5:5 7",           // y = 1 + double(3)
+                "6:8 True",        // y > 5
                 "6:18 True",       // ae2.craft(...)
                 "6:5 True",        // the if
                 "7:9 8",           // y += 1
