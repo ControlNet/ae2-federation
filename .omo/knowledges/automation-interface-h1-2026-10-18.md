@@ -156,5 +156,19 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - Two labels in a row with one `flex: 1` and one `adaptive-width` text from `<lang>` overlapped: one label with a
   coloured appended `Component` is simpler.
 - An empty `<label>` shows LDLib2's default text "Label" until code sets it: clear it at construction.
+- G1c completion: LDLib2 has no completion UI; the popup is a hand-drawn `UIElement` added to the UI root with
+  `TaffyPosition.ABSOLUTE`, placed with `root.worldToLocalLayoutOffset(editor.localToWorld(...))` and kept on screen
+  with `adaptPositionToScreen()` on `LAYOUT_CHANGED`, as LDLib2's `Selector` does.
+- Stamp completions: a result is shown only if the text and caret are unchanged, and accepting checks them again;
+  Enter with a stale or already-typed choice falls through to a new line. A colon must not ask for candidates
+  (`-> bool:` then Enter accepted `int`), except inside a resource ID.
+- **The domain GUI's tree is built on the dedicated server.** A client-only (`@OnlyIn(CLIENT)`) class that the
+  editor passes where a supertype is expected (`root.addChild(popup)`) is loaded by the verifier on the server and
+  the GUI fails to open ("Attempted to load class ... for invalid dist DEDICATED_SERVER"). Mark only the drawing and
+  measuring methods client-only. The integrated UI tests cannot catch this: check on the dedicated check world.
+- A vanilla screen closes on Escape before any element sees the key. `ModularUI.shouldCloseOnEsc(false)` (fluent
+  Lombok setter) while a popup is open lets Escape reach the focused element; restore the old value on hide.
+- In game, a failed GUI open leaves the player in the world: clicks then break blocks (creative). Verify the screen
+  opened before clicking further.
 - In game: `press.py` (scratchpad) sends keysyms (`F2` saves a screenshot to `<client>/screenshots`) or `button3`;
   the check world's mod file is `mods/ae2federation-check.jar` on both sides (copy over it, do not add a second).

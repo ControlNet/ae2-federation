@@ -21,7 +21,8 @@ import space.controlnet.ae2federation.client.automation.ScriptEditor;
  * The Automation tab's edit view (G1a, G1b): the programs the server holds, one opened in the script editor with its
  * functions listed, typing with Python's indentation and comments, the edit reaching the local copy and the server
  * without a save, Push and its refusal, a new program, edits on an older version kept beside the server's, problems
- * checked on the client and cleared by a fix, and the index subscription ending when the screen closes. The programs are sample content written for this scenario;
+ * checked on the client and cleared by a fix, completion of functions and items, and the index subscription ending
+ * when the screen closes. The programs are sample content written for this scenario;
  * {@code smelting} misspells a function so the list shows its problem count and Push refuses it.
  */
 @LDLRegisterClient(name = "ui.automation", group = "ae2federation", registry = UIScenario.REGISTRY,
@@ -165,6 +166,36 @@ public final class AutomationTabScenario implements UIScenario {
                 .waitUntil("the fixed call clears the problems and the list's count", context ->
                         !context.el("#auto_problems").isVisible()
                                 && context.all("#auto_program_smelting .program-problems").isEmpty())
+                // Completion: the namespace's functions after a dot, then items inside a string.
+                .step("put the caret on the empty last line", context -> {
+                    var editor = editor(context);
+                    editor.focus();
+                    editor.setCursor(editor.getLines().size() - 1, 0);
+                })
+                .type("    n = ae2.")
+                .waitUntil("the dot lists ae2's functions", context -> popupLabels(context).size() > 5
+                        && popupLabels(context).get(0).equals("amount") && popupLabels(context).contains("craft"))
+                .frames(2).screenshot("ui-automation-completion")
+                .key(GLFW.GLFW_KEY_ESCAPE)
+                .check("Escape closes the list and leaves the screen open", context ->
+                        !editor(context).isCompleting() && editor(context).isVisible()
+                                && context.all("#tab_automation").size() == 1)
+                .type("cra")
+                .waitUntil("typing narrows the list", context ->
+                        popupLabels(context).equals(java.util.List.of("craft", "craftable", "crafting")))
+                .key(GLFW.GLFW_KEY_DOWN)
+                .key(GLFW.GLFW_KEY_ENTER)
+                .check("Enter puts the chosen function in place of what is typed", context ->
+                        lastLine(context, 0).equals("    n = ae2.craftable") && !editor(context).isCompleting())
+                .key(GLFW.GLFW_KEY_END)
+                .key(GLFW.GLFW_KEY_ENTER)
+                .type("iron: Item = \"minecraft:iron_in")
+                .waitUntil("an item string lists items", context -> !popupLabels(context).isEmpty()
+                        && popupLabels(context).get(0).equals("minecraft:iron_ingot"))
+                .frames(2).screenshot("ui-automation-completion-item")
+                .key(GLFW.GLFW_KEY_ENTER)
+                .check("Enter puts the item in and closes its string", context ->
+                        lastLine(context, 0).equals("    iron: Item = \"minecraft:iron_ingot\""))
                 .closeScreen()
                 .waitUntilServer("closing the screen unsubscribes", context ->
                         !ProgramSync.get(context.server()).subscribed(context.player().getUUID()));
@@ -195,6 +226,19 @@ public final class AutomationTabScenario implements UIScenario {
 
     private static ScriptEditor editor(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
         return context.el(".script-editor").as(ScriptEditor.class);
+    }
+
+    /** The open completion list's candidates, or none. */
+    private static java.util.List<String> popupLabels(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        var editor = editor(context);
+        return editor.isCompleting() ? editor.completionPopup().labels() : java.util.List.of();
+    }
+
+    /** A line counted from the last non-empty one: 0 is that line, 1 the one before. */
+    private static String lastLine(com.lowdragmc.lowdraglib2.uitest.TestContext context, int back) {
+        var lines = new java.util.ArrayList<>(editor(context).getLines());
+        while (!lines.isEmpty() && lines.get(lines.size() - 1).isBlank()) lines.remove(lines.size() - 1);
+        return lines.get(lines.size() - 1 - back);
     }
 
     private static void writePrograms(ServerContext context) {

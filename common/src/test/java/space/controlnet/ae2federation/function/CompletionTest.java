@@ -96,6 +96,21 @@ final class CompletionTest {
         assertEquals("cr", c.prefix());
         assertEquals(new Position(2, 9), new Position(c.line(), c.column()));
         assertEquals("(resource: Resource, amount: int, network: Network = None) -> bool", c.candidates().get(0).detail());
+        assertEquals("Starts a crafting job; False if it could not start.", c.candidates().get(0).doc());
+        assertEquals(List.of(true, false, false), c.candidates().stream().map(Candidate::acts).toList());
+    }
+
+    @Test
+    void aPlayerFunctionCarriesItsDocstring() {
+        var c = at("""
+                def helper() -> int:
+                    \"""Counts the lamps.\"""
+                    return 1
+
+                def f() -> None:
+                    hel|
+                """);
+        assertEquals("Counts the lamps.", c.candidates().get(0).doc());
     }
 
     @Test

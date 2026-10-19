@@ -1221,6 +1221,14 @@ User decisions (2026-10-19):
   the word it is at. "Problems N" lists them under the editor (hidden when there are none); a row puts the caret on
   the problem. The list counts the shown program's problems from the client, the others from the server.
 
+- **Completion** (G1c-i) runs on the same worker. A name, a dot or a quote asks for candidates (a colon only goes on
+  inside a resource ID; Ctrl+Space asks anywhere); they show under the caret: functions with their signature (cut
+  with "..." when long), a purple square when they act and the chosen one's summary below; items and fluids with
+  their icon, name and ID, the expected type below. Up/Down choose, Tab accepts, Enter accepts unless the choice is
+  what is typed already (so Enter after a finished word still breaks the line), Escape closes. Accepting a resource
+  closes its string. The board's "in stock" footer waits for a server request (G1c-iii); the icons inside the script
+  come next (G1c-ii).
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

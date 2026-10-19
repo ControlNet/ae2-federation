@@ -7,11 +7,16 @@ import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
 import com.lowdragmc.lowdraglib2.gui.util.DrawerHelper;
 import java.util.HashSet;
 import java.util.List;
+import java.util.function.Consumer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
+import space.controlnet.ae2federation.function.Candidate;
+import space.controlnet.ae2federation.function.Completions;
 import space.controlnet.ae2federation.function.ScriptProblems;
 
 /**
@@ -19,6 +24,10 @@ import space.controlnet.ae2federation.function.ScriptProblems;
  * line-number gutter in the left padding of its content view, widened to fit the numbers. Python's habits: Tab
  * indents by four spaces, a new line after a colon indents once more, and Ctrl+/ comments lines with {@code #}. It
  * only shows a program until editing is turned on. Problems are marked beside their line number and underlined.
+ *
+ * <p>Typing a name, a dot or a quote asks its {@link Completer} for candidates (Ctrl+Space asks anywhere);
+ * they show in a {@link CompletionPopup} under the caret. Up and Down choose, Tab accepts, Enter accepts unless the
+ * choice is what is typed already, Escape closes. An answer for a text or caret that has since changed is dropped.
  */
 public final class ScriptEditor extends CodeEditor {
     private static final int GUTTER = 0xff17141e;
@@ -34,7 +43,20 @@ public final class ScriptEditor extends CodeEditor {
     private static final String INDENT = "    ";
     private static final String COMMENT = "# ";
 
+    /** Completes at a place in a text (line and column from 1); the answer comes later, on the client thread. */
+    public interface Completer {
+        void complete(String text, int line, int column, Consumer<Completions> done);
+    }
+
     private boolean editing;
+    private @Nullable Completer completer;
+    private @Nullable CompletionPopup popup;
+    /** The text and caret the shown completion was asked for; accepting it needs them unchanged. */
+    private @Nullable String shownText;
+    private int shownLine;
+    private int shownColumn;
+    /** Whether the screen closed on Escape before the list opened: while it is open, Escape only closes the list. */
+    private @Nullable Boolean closedOnEscape;
     private List<ScriptProblems.Mark> problems = List.of();
     /** The content view's left padding as last set: the gutter and the gap after it. */
     private float padding = -1;
@@ -55,18 +77,183 @@ public final class ScriptEditor extends CodeEditor {
         this.problems = List.copyOf(problems);
     }
 
+    public void setCompleter(Completer completer) {
+        this.completer = completer;
+    }
+
+    /** The completion list, once one was shown; for tests. */
+    public @Nullable CompletionPopup completionPopup() {
+        return popup;
+    }
+
+    public boolean isCompleting() {
+        return popup != null && popup.isOpen();
+    }
+
+    public void hideCompletion() {
+        shownText = null;
+        if (popup != null) popup.hide();
+        var modular = getModularUI();
+        if (closedOnEscape != null && modular != null) modular.shouldCloseOnEsc(closedOnEscape);
+        closedOnEscape = null;
+    }
+
     @Override
     public boolean isEditable() {
         return editing && super.isEditable();
     }
 
+    private String text() {
+        return String.join("\n", lines);
+    }
+
+    /** Asks for candidates at the caret; they show when they come, if the text and caret are still the same. */
+    private void requestCompletion() {
+        if (completer == null || !isEditable()) return;
+        var text = text();
+        int line = getCursorLine();
+        int column = getCursorCol();
+        completer.complete(text, line + 1, column + 1, completions -> {
+            if (!text.equals(text()) || line != getCursorLine() || column != getCursorCol()) return;
+            if (completions.candidates().isEmpty()) {
+                hideCompletion();
+                return;
+            }
+            showCompletion(completions, text, line, column);
+        });
+    }
+
+    private void showCompletion(Completions completions, String text, int line, int column) {
+        var modular = getModularUI();
+        if (modular == null) return;
+        var root = modular.ui.rootElement;
+        if (popup == null) {
+            popup = new CompletionPopup(getFont(), getTextAreaStyle().font(), scale(), lineHeight(), this::accept);
+            root.addChild(popup);
+        }
+        shownText = text;
+        shownLine = line;
+        shownColumn = column;
+        popup.show(completions);
+        // The screen sees Escape before any element does: keep it open so Escape reaches the list.
+        if (closedOnEscape == null) closedOnEscape = modular.shouldCloseOnEsc();
+        modular.shouldCloseOnEsc(false);
+        int at = completions.line() - 1;
+        float x = contentView.getContentX() - getScrollX()
+                + getFont().getSplitter().stringWidth(styledLineComponent(at, 0, completions.column() - 1)) * scale()
+                - CompletionPopup.TEXT_INSET;
+        float y = contentView.getContentY() + (at + 1) * lineHeight() - getScrollY() + 1;
+        var position = root.worldToLocalLayoutOffset(localToWorld(new Vector2f(x, y)));
+        popup.layout(layout -> {
+            layout.left(position.x);
+            layout.top(position.y);
+        });
+    }
+
+    private boolean shownIsCurrent() {
+        return shownText != null && shownText.equals(text()) && shownLine == getCursorLine()
+                && shownColumn == getCursorCol();
+    }
+
+    /**
+     * Puts the candidate in place of what is typed of it; a resource closes its string when nothing closes it yet.
+     */
+    private void accept(Candidate candidate) {
+        var completions = popup == null ? null : popup.completions();
+        if (completions == null || !shownIsCurrent()) {
+            hideCompletion();
+            return;
+        }
+        int line = completions.line() - 1;
+        var text = lines.get(line);
+        int from = Math.min(completions.column() - 1, text.length());
+        int to = Math.max(from, getCursorCol());
+        var insert = candidate.label();
+        if (candidate.kind() == Candidate.Kind.VALUE && from > 0) {
+            char quote = text.charAt(from - 1);
+            if ((quote == '"' || quote == '\'') && (to >= text.length() || text.charAt(to) != quote)) insert += quote;
+        }
+        pushHistory();
+        lines.set(line, text.substring(0, from) + insert + text.substring(to));
+        onRawLinesUpdated();
+        setCursor(line, from + insert.length());
+        hideCompletion();
+        focus();
+    }
+
+    /** A name, a dot or a quote asks; a colon only goes on with a list of resources (inside an ID). */
+    private boolean asksForCompletion(char typed) {
+        if (typed == ':') {
+            var completions = isCompleting() ? popup.completions() : null;
+            return completions != null && completions.candidates().get(0).kind() == Candidate.Kind.VALUE;
+        }
+        return Character.isLetterOrDigit(typed) || typed == '_' || typed == '.' || typed == '"' || typed == '\'';
+    }
+
+    @Override
+    protected void onCharTyped(UIEvent event) {
+        boolean asks = asksForCompletion(event.codePoint);
+        super.onCharTyped(event);
+        if (!isEditable()) return;
+        if (asks) {
+            requestCompletion();
+        } else {
+            hideCompletion();
+        }
+    }
+
     @Override
     protected void onKeyDown(UIEvent event) {
+        if (isEditable() && isCompleting() && completionKey(event)) return;
+        if (isEditable() && event.keyCode == GLFW.GLFW_KEY_SPACE && event.isCtrlDown()) {
+            requestCompletion();
+            return;
+        }
         if (isEditable() && event.keyCode == GLFW.GLFW_KEY_TAB) {
             insertText(INDENT);
             return;
         }
+        boolean completing = isCompleting();
         super.onKeyDown(event);
+        if (completing && (event.keyCode == GLFW.GLFW_KEY_BACKSPACE || event.keyCode == GLFW.GLFW_KEY_DELETE)) {
+            requestCompletion();
+        }
+    }
+
+    /** The keys the open completion list takes; false lets the editor have the key as well. */
+    private boolean completionKey(UIEvent event) {
+        switch (event.keyCode) {
+            case GLFW.GLFW_KEY_UP -> popup.move(-1);
+            case GLFW.GLFW_KEY_DOWN -> popup.move(1);
+            case GLFW.GLFW_KEY_PAGE_UP -> popup.move(-CompletionPopup.ROWS);
+            case GLFW.GLFW_KEY_PAGE_DOWN -> popup.move(CompletionPopup.ROWS);
+            case GLFW.GLFW_KEY_TAB -> accept(popup.chosen());
+            case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
+                var completions = popup.completions();
+                if (!shownIsCurrent() || completions == null
+                        || popup.chosen().label().equals(completions.prefix())) {
+                    hideCompletion();
+                    return false;
+                }
+                accept(popup.chosen());
+            }
+            case GLFW.GLFW_KEY_ESCAPE -> hideCompletion();
+            case GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_KEY_HOME, GLFW.GLFW_KEY_END -> {
+                hideCompletion();
+                return false;
+            }
+            default -> {
+                return false;
+            }
+        }
+        event.stopPropagation();
+        return true;
+    }
+
+    @Override
+    protected void onMouseDown(UIEvent event) {
+        hideCompletion();
+        super.onMouseDown(event);
     }
 
     /** Copies the line's indentation, and indents once more after a line that opens a block. */

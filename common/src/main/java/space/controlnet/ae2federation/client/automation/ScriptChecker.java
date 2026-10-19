@@ -13,15 +13,18 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.slf4j.Logger;
 import space.controlnet.ae2federation.function.Catalog;
+import space.controlnet.ae2federation.function.Completion;
+import space.controlnet.ae2federation.function.Completions;
 import space.controlnet.ae2federation.function.Program;
 import space.controlnet.ae2federation.function.ScriptParser;
 import space.controlnet.ae2federation.function.ScriptProblems;
 import space.controlnet.ae2federation.function.Workspace;
 
 /**
- * Checks the shown program off the client thread, so typing never waits for it: one worker thread, and only the
- * latest request is checked when several come while one runs. The caller hands over a snapshot (the text, the other
- * programs' texts and a catalog over fixed lists); the marks come back on the client thread.
+ * Checks and completes the shown program off the client thread, so typing never waits for it: one worker thread,
+ * and only the latest request of each kind is served when several come while one runs. The caller hands over a
+ * snapshot (the text, the other programs' texts and a catalog over fixed lists); the answer comes back on the client
+ * thread.
  */
 @OnlyIn(Dist.CLIENT)
 public final class ScriptChecker {
@@ -32,9 +35,14 @@ public final class ScriptChecker {
         return thread;
     });
     private static final AtomicReference<Job> PENDING = new AtomicReference<>();
+    private static final AtomicReference<Query> QUERY = new AtomicReference<>();
 
     private record Job(String text, Map<String, String> others, Catalog catalog,
             Consumer<List<ScriptProblems.Mark>> done) {
+    }
+
+    private record Query(String text, int line, int column, Map<String, String> others, Catalog catalog,
+            Consumer<Completions> done) {
     }
 
     private ScriptChecker() {
@@ -48,9 +56,40 @@ public final class ScriptChecker {
         }
     }
 
-    /** Drops a request not yet started; one already running still answers. */
+    /**
+     * Completes at {@code line} and {@code column} (from 1) of {@code text}; {@code done} runs on the client thread.
+     */
+    public static void complete(String text, int line, int column, Map<String, String> others, Catalog catalog,
+            Consumer<Completions> done) {
+        if (QUERY.getAndSet(new Query(text, line, column, Map.copyOf(others), catalog, done)) == null) {
+            WORKER.execute(ScriptChecker::completePending);
+        }
+    }
+
+    /** Drops requests not yet started; one already running still answers. */
     public static void cancel() {
         PENDING.set(null);
+        QUERY.set(null);
+    }
+
+    private static Workspace workspace(Map<String, String> others, Catalog catalog) {
+        var files = new LinkedHashMap<String, Program>();
+        others.forEach((name, text) -> files.put(name, ScriptParser.parse(text).program()));
+        return new Workspace(files, catalog);
+    }
+
+    private static void completePending() {
+        var query = QUERY.getAndSet(null);
+        if (query == null) return;
+        Completions completions;
+        try {
+            completions = Completion.complete(query.text(), query.line(), query.column(),
+                    workspace(query.others(), query.catalog()));
+        } catch (RuntimeException e) {
+            LOGGER.error("Completing a program in the Automation tab failed", e);
+            return;
+        }
+        Minecraft.getInstance().execute(() -> query.done().accept(completions));
     }
 
     private static void checkPending() {
@@ -58,9 +97,7 @@ public final class ScriptChecker {
         if (job == null) return;
         List<ScriptProblems.Mark> marks;
         try {
-            var files = new LinkedHashMap<String, Program>();
-            job.others().forEach((name, text) -> files.put(name, ScriptParser.parse(text).program()));
-            marks = ScriptProblems.check(job.text(), new Workspace(files, job.catalog()));
+            marks = ScriptProblems.check(job.text(), workspace(job.others(), job.catalog()));
         } catch (RuntimeException e) {
             LOGGER.error("Checking a program in the Automation tab failed", e);
             return;

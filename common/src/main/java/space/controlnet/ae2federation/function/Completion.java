@@ -136,9 +136,9 @@ public final class Completion {
                     entry.getValue() == null ? "" : entry.getValue().toString()));
         }
         ownFunctions.stream().sorted(Comparator.comparing(FunctionDef::name))
-                .forEach(f -> out.add(new Candidate(f.name(), Candidate.Kind.FUNCTION, Signature.of(f).display())));
+                .forEach(f -> out.add(Candidate.of(Signature.of(f), Candidate.Kind.FUNCTION)));
         ownClasses.stream().sorted(Comparator.comparing(ClassDef::name))
-                .forEach(c -> out.add(new Candidate(c.name(), Candidate.Kind.TYPE, Signature.of(c).display())));
+                .forEach(c -> out.add(Candidate.of(Signature.of(c), Candidate.Kind.TYPE)));
         workspace.files().keySet().stream().sorted()
                 .forEach(file -> out.add(new Candidate(file, Candidate.Kind.FILE, "file")));
         workspace.catalog().namespaces().keySet().stream().sorted()
@@ -153,13 +153,13 @@ public final class Completion {
         var builtIns = workspace.catalog().namespaces().get(qualifier);
         var out = new ArrayList<Candidate>();
         if (builtIns != null) {
-            builtIns.forEach(s -> out.add(new Candidate(s.name(), Candidate.Kind.FUNCTION, s.display())));
+            builtIns.forEach(s -> out.add(Candidate.of(s, Candidate.Kind.FUNCTION)));
         } else if (workspace.files().containsKey(qualifier)) {
             var file = workspace.files().get(qualifier);
             file.functions().stream().filter(f -> !f.name().startsWith("_")).map(Signature::of)
-                    .forEach(s -> out.add(new Candidate(s.name(), Candidate.Kind.FUNCTION, s.display())));
+                    .forEach(s -> out.add(Candidate.of(s, Candidate.Kind.FUNCTION)));
             file.classes().stream().filter(c -> !c.name().startsWith("_"))
-                    .forEach(c -> out.add(new Candidate(c.name(), Candidate.Kind.TYPE, Signature.of(c).display())));
+                    .forEach(c -> out.add(Candidate.of(Signature.of(c), Candidate.Kind.TYPE)));
         } else {
             return List.of();
         }
@@ -188,7 +188,7 @@ public final class Completion {
             fields(t.name()).forEach((name, fieldType) ->
                     out.add(new Candidate(name, Candidate.Kind.FIELD, fieldType.toString())));
         }
-        methods.forEach(m -> out.add(new Candidate(m.name(), Candidate.Kind.METHOD, m.display())));
+        methods.forEach(m -> out.add(Candidate.of(m, Candidate.Kind.METHOD)));
         out.sort(Comparator.comparing(Candidate::label));
         return filter(out, prefix);
     }
@@ -273,7 +273,7 @@ public final class Completion {
     private List<Candidate> types(String prefix) {
         var out = new ArrayList<Candidate>();
         TYPES.forEach(t -> out.add(new Candidate(t, Candidate.Kind.TYPE, "")));
-        ownClasses.forEach(c -> out.add(new Candidate(c.name(), Candidate.Kind.TYPE, Signature.of(c).display())));
+        ownClasses.forEach(c -> out.add(Candidate.of(Signature.of(c), Candidate.Kind.TYPE)));
         return filter(out, prefix);
     }
 

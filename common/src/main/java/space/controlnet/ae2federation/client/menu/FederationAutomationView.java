@@ -96,6 +96,10 @@ final class FederationAutomationView {
         editor.setDisplay(false);
         editor.setEditing(true);
         editor.setLinesResponder(lines -> edited());
+        editor.setCompleter((text, line, column, done) -> {
+            var snapshot = snapshot();
+            if (snapshot != null) ScriptChecker.complete(text, line, column, snapshot.others(), snapshot.catalog(), done);
+        });
         push = element("auto_push", Button.class);
         push.setOnClick(event -> push());
         problemBox = element("auto_problems", UIElement.class);
@@ -140,6 +144,7 @@ final class FederationAutomationView {
             reconciled = false;
             asked.clear();
             ScriptChecker.cancel();
+            editor.hideCompletion();
             return;
         }
         if (copies == null) copies = new LocalCopies(folder());
@@ -348,9 +353,24 @@ final class FederationAutomationView {
      * network on the server. A result for a text the editor no longer holds is dropped.
      */
     private void check() {
+        var snapshot = snapshot();
+        if (snapshot == null) return;
+        var name = selected;
+        var text = text();
+        ScriptChecker.check(text, snapshot.others(), snapshot.catalog(), marks -> {
+            if (name.equals(selected) && reconciled && text.equals(text())) showProblems(marks);
+        });
+    }
+
+    /** What the shown program is checked and completed against, handed to the worker. */
+    private record Snapshot(Map<String, String> others, GameCatalog catalog) {
+    }
+
+    /** The other programs as received so far, and every interface and network on the server; null before then. */
+    private @Nullable Snapshot snapshot() {
         var index = ClientPrograms.get().index().orElse(null);
         var level = net.minecraft.client.Minecraft.getInstance().level;
-        if (!reconciled || selected == null || index == null || level == null) return;
+        if (!reconciled || selected == null || index == null || level == null) return null;
         var programs = ClientPrograms.get();
         var others = new HashMap<String, String>();
         index.files().stream().map(ProgramSync.FileInfo::name).filter(name -> !name.equals(selected))
@@ -358,12 +378,8 @@ final class FederationAutomationView {
         var interfaces = index.interfaces().stream().map(info -> new GameCatalog.Named(info.id(), info.alias()))
                 .toList();
         var networks = index.networks().stream().map(info -> new GameCatalog.Named(info.id(), info.name())).toList();
-        var catalog = new GameCatalog(() -> interfaces, () -> networks, new RegistryResources(level.registryAccess()));
-        var name = selected;
-        var text = text();
-        ScriptChecker.check(text, others, catalog, marks -> {
-            if (name.equals(selected) && reconciled && text.equals(text())) showProblems(marks);
-        });
+        return new Snapshot(others,
+                new GameCatalog(() -> interfaces, () -> networks, new RegistryResources(level.registryAccess())));
     }
 
     /** Marks the problems in the editor, lists them under it, and counts them beside the program. */
@@ -421,6 +437,7 @@ final class FederationAutomationView {
         if (name != null) asked.remove(name);
         problems = null;
         editor.setProblems(List.of());
+        editor.hideCompletion();
         problemBox.setDisplay(false);
         clearAnswer();
         if (name != null) opened.add(name);
