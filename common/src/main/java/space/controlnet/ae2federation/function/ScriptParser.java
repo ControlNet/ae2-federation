@@ -29,6 +29,7 @@ public final class ScriptParser {
     private final List<Token> tokens;
     private final List<ScriptError> errors;
     private final Map<String, Position> positions = new HashMap<>();
+    private final Map<String, Position> ends = new HashMap<>();
     private final Ids ids = new Ids("n");
     private final List<String> pending = new ArrayList<>();
     private int pos;
@@ -51,7 +52,7 @@ public final class ScriptParser {
                 firstPerLine.add(error);
             }
         }
-        return new ParseResult(program, firstPerLine, parser.positions);
+        return new ParseResult(program, firstPerLine, parser.positions, parser.ends);
     }
 
     /** Thrown to abandon the current statement; carries no stack trace. */
@@ -150,6 +151,7 @@ public final class ScriptParser {
         var body = statements();
         var id = ids.next();
         positions.put(id, new Position(first.line(), first.column()));
+        ends.put(id, lastEnd());
         return new FunctionDef(id, new Notes(above, end), nameToken.text(), params, result, docstring, body);
     }
 
@@ -217,6 +219,7 @@ public final class ScriptParser {
         }
         var id = ids.next();
         positions.put(id, new Position(first.line(), first.column()));
+        ends.put(id, lastEnd());
         return new ClassDef(id, new Notes(above, end), nameToken.text(), docstring, fields);
     }
 
@@ -960,7 +963,26 @@ public final class ScriptParser {
     private String id(Token at) {
         var id = ids.next();
         positions.put(id, new Position(at.line(), at.column()));
+        ends.put(id, lastEnd());
         return id;
+    }
+
+    /** Where the last token read ends, line breaks and indentation aside: a node made now ends there. */
+    private Position lastEnd() {
+        for (int i = pos - 1; i >= 0; i--) {
+            var token = tokens.get(i);
+            if (switch (token.kind()) {
+                case NEWLINE, INDENT, DEDENT, COMMENT, END_COMMENT, EOF -> true;
+                default -> false;
+            }) {
+                continue;
+            }
+            int lastBreak = token.text().lastIndexOf('\n');
+            return lastBreak < 0 ? new Position(token.line(), token.column() + token.text().length())
+                    : new Position(token.line() + (int) token.text().chars().filter(c -> c == '\n').count(),
+                            token.text().length() - lastBreak);
+        }
+        return new Position(1, 1);
     }
 
     private Failure unsupportedKeyword(Token token) {
