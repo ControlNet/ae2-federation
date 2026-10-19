@@ -34,6 +34,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.automation.ClientPrograms;
+import space.controlnet.ae2federation.automation.InstallationLog;
 import space.controlnet.ae2federation.automation.ProgramEvents;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.automation.TriggerText;
@@ -63,6 +64,8 @@ final class FederationInstallView {
     private static final float DRAG_THRESHOLD = 3;
     /** How long a dropped wire is drawn dashed while the server's index does not show its installation yet. */
     private static final long PENDING_MILLIS = 5000;
+    /** Ticks between log requests while an installation is shown. */
+    private static final int LOG_PERIOD = 20;
     /** Secondary text in a value field, darker than the theme's muted text to read on the field. */
     private static final int FIELD_MUTED = 0xff575468;
 
@@ -107,6 +110,16 @@ final class FederationInstallView {
     private @Nullable Draft draftInstall;
     /** Wires dropped and sent, by {@code file.function} and device, with when they were sent. */
     private final Map<Wire, Long> pendingWires = new HashMap<>();
+    /** The State row's value and the log box of the shown installation, updated in place by each log answer. */
+    private @Nullable Label stateValue;
+    private @Nullable UIElement stateRow;
+    private @Nullable UIElement logBox;
+    /** The last log answer and whose it is; ticks until the next request, and whether one is on its way. */
+    private @Nullable InstallationLog.Log log;
+    private @Nullable String logId;
+    private int pollTicks;
+    private boolean asking;
+    private int waited;
 
     /** {@code openInEditor} takes a program and one of its functions. */
     FederationInstallView(UI ui, Consumer<ProgramSync.Answer> answer, BiConsumer<String, String> openInEditor) {
@@ -115,6 +128,8 @@ final class FederationInstallView {
         canvasScroll = element(ui, "auto_install_canvas", ScrollerView.class);
         aside = element(ui, "auto_install_aside", ScrollerView.class);
         canvasScroll.addScrollViewChild(canvas);
+        // A hidden element does not tick: the log is asked for only while the Install view is shown.
+        aside.addEventListener(UIEvents.TICK, event -> poll());
         // Any press or release forgets the pressed row, so only its own press drags.
         ui.rootElement.addEventListener(UIEvents.MOUSE_DOWN, event -> pressed = null, true);
         ui.rootElement.addEventListener(UIEvents.MOUSE_UP, event -> pressed = null, true);
@@ -440,6 +455,9 @@ final class FederationInstallView {
     private void rebuildAside() {
         aside.clearAllScrollViewChildren();
         editing = null;
+        stateValue = null;
+        stateRow = null;
+        logBox = null;
         if (draftInstall != null) {
             draftAside(draftInstall);
             if (opening != null) opening.run();
@@ -479,10 +497,18 @@ final class FederationInstallView {
                             .request("overlap", List.of(installation.id(), mode), answer)));
         }
         aside.addScrollViewChild(fact(tr("if_running"), overlap));
-        var running = installation.running() > 0;
-        var state = fact(tr("state"), tr(running ? "running" : "idle"));
-        state.addClass(running ? "running" : "idle");
-        aside.addScrollViewChild(state);
+        stateValue = label("install-value-text", Component.empty());
+        stateValue.setId("auto_install_state");
+        stateRow = fact(tr("state"), stateValue);
+        aside.addScrollViewChild(stateRow);
+        aside.addScrollViewChild(label("install-log-heading", tr("log")));
+        logBox = new UIElement();
+        logBox.addClass("install-log");
+        aside.addScrollViewChild(logBox);
+        // The index's count until the first answer; the last answer at once when the same installation is shown again.
+        showLog(installation.id().equals(logId) && log != null ? log
+                : new InstallationLog.Log(installation.running(), List.of()), !installation.id().equals(logId));
+        pollTicks = 0;
         var actions = new UIElement();
         actions.addClass("install-actions");
         actions.addChild(action("auto_install_uninstall", "uninstall", "danger-action", () -> ClientPrograms.get()
@@ -798,6 +824,55 @@ final class FederationInstallView {
         // On the click, not the press: the answer rebuilds the aside.
         button.addEventListener(UIEvents.CLICK, event -> run.run());
         return button;
+    }
+
+    /** Asks for the shown installation's state and log every second while the Install view is shown. */
+    private void poll() {
+        if (asking) {
+            // Leaving the tab drops the awaited answers: ask again after a while.
+            if (++waited < 5 * LOG_PERIOD) return;
+            asking = false;
+        }
+        if (selected == null || draftInstall != null || --pollTicks > 0) return;
+        pollTicks = LOG_PERIOD;
+        asking = true;
+        waited = 0;
+        var id = selected;
+        ClientPrograms.get().request("log", List.of(id), result -> {
+            asking = false;
+            if (!result.ok() || !id.equals(selected)) return;
+            logId = id;
+            log = InstallationLog.parse(result.message());
+            showLog(log, false);
+        });
+    }
+
+    /** Puts a log answer into the aside's State row and log box, without rebuilding the aside. */
+    private void showLog(InstallationLog.Log shown, boolean waiting) {
+        if (stateValue == null || stateRow == null || logBox == null) return;
+        var running = shown.running() > 0;
+        stateValue.setText(tr(running ? "running" : "idle"));
+        stateRow.removeClass("running");
+        if (running) stateRow.addClass("running");
+        logBox.clearAllChildren();
+        if (shown.lines().isEmpty()) {
+            logBox.addChild(label("install-log-text note", waiting ? Component.empty() : tr("no_log")));
+        }
+        for (var line : shown.lines()) {
+            var row = new UIElement();
+            row.addClass("install-log-row");
+            row.addChild(label("install-log-age", Component.literal(InstallationLog.age(line.age()))));
+            var text = label("install-log-text", Component.literal(line.text()));
+            if (failed(line.text())) text.addClass("failed");
+            row.addChild(text);
+            logBox.addChild(row);
+        }
+    }
+
+    /** Entries the scheduler writes when a run could not start or went wrong. */
+    private static boolean failed(String text) {
+        return text.startsWith("failed") || text.startsWith("not started") || text.startsWith("condition failed")
+                || text.startsWith("event not read");
     }
 
     /** An argument as its field shows it: an item or fluid by its icon and name, an interface by its alias. */

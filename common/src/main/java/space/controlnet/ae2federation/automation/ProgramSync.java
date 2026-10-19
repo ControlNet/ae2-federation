@@ -30,7 +30,7 @@ import space.controlnet.ae2federation.persistence.NetworkNames;
 
 /**
  * The server side of the Automation tab's traffic: the library index the tab shows, file texts on request, uploads
- * put back together from chunks and saved (the last write wins), and the install, push and run requests. Players who
+ * put back together from chunks and saved (the last write wins), and the install, push, run and log requests. Players who
  * have the tab open are subscribed and get a new index after every change. The loader's network code registers how
  * the messages travel. Programs are global with no permissions for now (user, 2026-10-18), so any player may do this.
  */
@@ -211,6 +211,14 @@ public final class ProgramSync {
     /** Performs a request; gives the message of its answer. */
     String perform(String action, List<String> args) {
         var scheduler = ProgramScheduler.get(server);
+        if (action.equals("log")) {
+            // Asked again and again while the tab shows the installation: it changes nothing, so no index is sent.
+            var id = arg(args, 0, 1);
+            if (ComputingDevices.get(server.overworld()).installation(id).isEmpty()) {
+                throw new IllegalArgumentException("no such installation");
+            }
+            return InstallationLog.answer(scheduler.running(id), server.overworld().getGameTime(), scheduler.log(id));
+        }
         var message = switch (action) {
             case "push" -> "pushed " + String.join(", ", scheduler.push(arg(args, 0, 1)).keySet());
             case "install" -> {

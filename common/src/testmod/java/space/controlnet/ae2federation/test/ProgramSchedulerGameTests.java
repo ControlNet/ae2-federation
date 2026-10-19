@@ -35,6 +35,7 @@ import space.controlnet.ae2federation.automation.ComputingDeviceBlockEntity;
 import space.controlnet.ae2federation.automation.ChunkAssembler;
 import space.controlnet.ae2federation.automation.ComputingDevices;
 import space.controlnet.ae2federation.automation.Installation;
+import space.controlnet.ae2federation.automation.InstallationLog;
 import space.controlnet.ae2federation.automation.ProgramScheduler;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
@@ -75,16 +76,28 @@ public final class ProgramSchedulerGameTests {
                     return mc.block_id(ae2f.select(port)) + " " + str(mc.state(ae2f.select(port), "lit"))
                 """);
         helper.setBlock(TARGET, Blocks.REDSTONE_LAMP);
+        var id = new String[1];
         scene.whenReady(() -> {
             var installation = scene.scheduler().install(scene.device(), "sched_lamp", "light",
                     List.of(scene.interfaceId()));
             scene.installed(installation);
+            id[0] = installation.id();
             helper.assertValueEqual(installation.trigger(), new Installation.Trigger.Manual(), "Manual by default");
             scene.scheduler().trigger(installation.id());
-        }).then(10, () -> {
+        }).then(2, () -> {
+            var log = InstallationLog.parse(ProgramSync.get(helper.getLevel().getServer())
+                    .handle(1, "log", List.of(id[0])).message());
+            helper.assertValueEqual(log.running(), 1, "The tab's log request sees the run going");
+        }).then(8, () -> {
             helper.assertBlockProperty(TARGET, BlockStateProperties.LIT, true);
             helper.assertValueEqual(scene.log(0), List.of("started", "done: 'minecraft:redstone_lamp true'"),
                     "Ran once");
+            var sync = ProgramSync.get(helper.getLevel().getServer());
+            var log = InstallationLog.parse(sync.handle(2, "log", List.of(id[0])).message());
+            helper.assertValueEqual(log.running(), 0, "Done");
+            helper.assertValueEqual(log.lines().stream().map(InstallationLog.Line::text).toList(),
+                    List.of("done: 'minecraft:redstone_lamp true'", "started"), "Newest first");
+            helper.assertFalse(sync.handle(3, "log", List.of("install-nothing")).ok(), "An unknown ID is refused");
         }).finish(() -> {
             AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
             automationInterface.setRedstone(0);

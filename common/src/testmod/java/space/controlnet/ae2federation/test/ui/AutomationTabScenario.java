@@ -405,6 +405,18 @@ public final class AutomationTabScenario implements UIScenario {
                                 .equals("stock_changed"))
                 .click("#auto_install_run")
                 .waitUntil("Run now triggers it", context -> context.el("#automation_answer").text().equals("triggered"))
+                .waitUntil("the log box shows the run, newest first, with its age", context -> {
+                    var texts = context.all("#auto_install_aside .install-log-row .install-log-text").stream()
+                            .map(text -> text.text()).toList();
+                    var ages = context.all("#auto_install_aside .install-log-age").stream()
+                            .map(age -> age.text()).toList();
+                    return texts.size() >= 2 && texts.get(texts.size() - 1).equals("started")
+                            && (texts.get(0).startsWith("done") || texts.get(0).startsWith("failed"))
+                            && ages.stream().allMatch(age -> age.equals("now") || age.endsWith(" s"));
+                })
+                .waitUntil("the state reads idle once the run ended", context ->
+                        context.el("#auto_install_state").text().equals("Idle"))
+                .frames(2).screenshot("ui-automation-install-log")
                 .click("#auto_install_open")
                 .waitUntil("Open in editor shows the program in the edit view", context ->
                         context.el("#auto_edit_view").isVisible() && editor(context).getLines().size() > 2

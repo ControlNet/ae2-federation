@@ -251,3 +251,13 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - `ProgramSync` sends the new index before the answer: select an installation named in the answer, then rebuild.
 - In game: `drag_hold.py x0 y0 x1 y1` (scratch helper) presses and moves without releasing, for a screenshot of the
   lit cards; compare `build/automation-install-drag-check/compare.png`.
+
+## G1e-iii: state and log
+
+- `ProgramSync.perform` calls `changed()` after every request, which sends the index to every subscriber: a request
+  polled every second (`log`) must return before that.
+- A request's answer can be dropped (closing the tab clears the awaited callbacks): a poller that waits for its
+  answer needs a way out (the Install view asks again after 100 ticks).
+- `UIEvents.TICK` on the aside polls only while the Install view is shown: hidden elements do not tick.
+- Update the State row and the log box in place; a full `rebuildAside` each second would close an open field.
+- Compare: `build/automation-install-log-check/compare.png`.

@@ -1284,6 +1284,17 @@ User decisions (2026-10-19):
   meanwhile. Once the last one is typed the installation is sent; the new installation is then selected.
   Selecting a row drops the draft. A function without required parameters is installed at once.
 
+### State and log (G1e-iii, 2026-10-19)
+
+- The aside shows Running/Idle and a **Log** box under it: the scheduler's last 20 entries, newest first, each with
+  its age ("now", "12 s", "3 min", "2 h") and its text; failures ("failed: ...", "not started: ...", "condition
+  failed: ...") in red (`AutoInstallCondition`). Logs live in memory only, so a fresh server shows "Nothing logged
+  since the server started".
+- They are not in the index (assistant choice): every run would resend the whole index to every player with the tab
+  open. The tab asks with a `log` request once a second while it shows an installation and its Install view is
+  shown; the request changes nothing, so it sends no index. The answer is `running N` and one line per entry, its
+  age in ticks and its text (`InstallationLog`).
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

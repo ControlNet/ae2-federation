@@ -392,6 +392,8 @@
   "ae2federation.ui.automation.running": "Running",
   "ae2federation.ui.automation.idle": "Idle",
   "ae2federation.ui.automation.install_when_typed": "Installed once every argument is given",
+  "ae2federation.ui.automation.log": "Log",
+  "ae2federation.ui.automation.no_log": "Nothing logged since the server started",
   "ae2federation.ui.automation.uninstall": "Uninstall",
   "ae2federation.ui.automation.open_in_editor": "Open in editor",
   "ae2federation.ui.automation.run_now": "Run now",
