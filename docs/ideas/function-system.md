@@ -1142,6 +1142,28 @@ Assistant choices, to review:
   running, so the program would vanish from the list while still in use).
 - **No permissions** (user, 2026-10-18): any player may do all of this.
 
+### The tab's design checked (G0, 2026-10-19)
+
+The design row 「自动化页签」 gained boards for what the tab needs and the first boards lacked; the user approved them
+all (2026-10-19):
+
+- **Problems** (`AutoScriptErrors`): a red mark beside the line number and a wavy underline, a problem list at the
+  bottom of the editor, the problem count beside the file in the program list, Graph disabled while the script does
+  not parse, and a refused push's answer on the status line (no banner).
+- **Condition trigger, run log and Run now** (`AutoInstallCondition`): the condition list holds only functions that
+  give a bool and do not act, with their arguments below; the last 20 log lines under State, failures in red with
+  the line; Run now starts the installation at once.
+- **Events as built** (`AutoInstallEvent`): the 11 event names without a namespace and no network argument.
+
+User decisions (2026-10-19):
+
+- **Computing devices get an alias**, set in a screen like the interface's (ID with Copy, alias). Without one the tab
+  shows the ID and position, as before.
+- **The Install view lists only the devices of the domain** whose GUI it is in; programs stay global.
+- **Arguments are edited in place** in the installation's aside: a new request changes them and keeps the
+  installation's ID, trigger and log.
+- Dry-run results on graph nodes get their board with the graph editor (assistant proposal, not objected to).
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

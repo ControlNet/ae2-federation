@@ -179,7 +179,8 @@ Next (user, 2026-10-18: the host and the editor screens both): assistant phasing
 | H3 (done) | `Evaluator.Host` for the 30 library functions through AE2's strategies and NeoForge capabilities, outside `function/`; GameTests through a dev-only runner |
 | H4 (done) | Creative Computing Device (placeholder, unlimited); installations in `SavedData`; scheduler with the step budget; triggers, events, rate limit and overlap modes; Push |
 | H5 (done) | Packets: library index, chunked upload, last write wins, install/uninstall/push |
-| G0 | Render the design row "自动化页签" and check it covers the Edit view controls; add boards for what is missing and get the user's nod |
+| G0 (done) | Render the design row "自动化页签" and check it covers the Edit view controls; add boards for what is missing and get the user's nod |
+| H6 | Index follow-ups for the tab (user, 2026-10-19): interfaces in the index, device aliases (screen like the interface's), devices filtered by domain, an `args` request that keeps the installation |
 | G1+ | Automation tab: Edit view (program list, file tabs, script editor with completion, errors, item icons), Graph view from `Canvas`/`Layout`, library panel with the examples, Install view |
 
 Decided (user, 2026-10-18): programs are global with no permissions for now; installations run the version last
