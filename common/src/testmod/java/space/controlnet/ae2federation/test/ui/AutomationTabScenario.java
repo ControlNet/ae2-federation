@@ -96,7 +96,7 @@ public final class AutomationTabScenario implements UIScenario {
                 .server("write two sample programs", AutomationTabScenario::writePrograms)
                 .teardownServer("remove the sample programs", AutomationTabScenario::removePrograms)
                 .teardown("clear the local copies again", context -> clearLocalCopies())
-                .click("#tab_automation")
+                .click("#tab_programs")
                 .waitUntil("the programs are listed", context -> context.all("#auto_program_iron_tools").size() == 1
                         && context.all("#auto_program_smelting").size() == 1)
                 .checkServer("the open tab is subscribed", context ->
@@ -325,6 +325,23 @@ public final class AutomationTabScenario implements UIScenario {
                         && editor(context).isVisible() && String.join("\n", editor(context).getLines()).isEmpty())
                 .checkServer("the new program is saved", context ->
                         ProgramStore.get(context.server()).library().text("scratch").isEmpty())
+                // Delete asks first; Cancel keeps the program.
+                .step("press Delete", context -> pressAndRelease(context, "#auto_delete"))
+                .waitUntil("Delete asks before deleting", context -> context.all("#auto_delete_dialog").size() == 1)
+                .frames(2).screenshot("ui-automation-delete-dialog")
+                .step("press cancel", context -> pressAndRelease(context, "#auto_delete_cancel"))
+                .check("Cancel keeps the program", context -> context.all("#auto_delete_dialog").isEmpty()
+                        && context.all("#auto_program_scratch").size() == 1)
+                .step("press Delete", context -> pressAndRelease(context, "#auto_delete"))
+                .waitUntil("the dialog opens again", context -> context.all("#auto_delete_confirm").size() == 1)
+                .step("press confirm", context -> pressAndRelease(context, "#auto_delete_confirm"))
+                .waitUntil("the confirmed delete removes the program, its tab and its local copy", context ->
+                        context.all("#auto_program_scratch").isEmpty()
+                                && context.el("#automation_answer").text().equals("deleted scratch")
+                                && context.all(".file-tab").stream().noneMatch(tab -> tab.text().equals("scratch"))
+                                && !java.nio.file.Files.exists(localFolder().resolve("scratch.ae2f")))
+                .checkServer("the server no longer holds it", context ->
+                        !ProgramStore.get(context.server()).library().names().contains("scratch"))
                 // Edits made while the server's copy moved on are kept as a program of their own.
                 .step("leave an edit on an older smelting in the local copy", context ->
                         new LocalCopies(localFolder()).edited("smelting", "# mine\n", ProgramSync.version("old\n")))
@@ -467,11 +484,11 @@ public final class AutomationTabScenario implements UIScenario {
                                 && context.all("#auto_library_fn_mc_set_redstone").size() == 1)
                 .frames(2).screenshot("ui-automation-library-search")
                 // The Install view: a device in this domain, beside the Router, with a function installed on it.
-                .click("#auto_mode_install")
-                .check("the install view replaces the edit view and hides Push", context ->
+                .click("#tab_automation")
+                .check("the Automation tab shows the install view, without Push or Delete", context ->
                         context.el("#auto_install_view").isVisible() && !context.el("#auto_edit_view").isVisible()
-                                && !context.el("#auto_push").isVisible()
-                                && context.el("#auto_mode_install").as(UIElement.class).hasClass("selected"))
+                                && !context.el("#header_auto_tools").isVisible()
+                                && context.el("#tab_automation").as(UIElement.class).hasClass("selected"))
                 .check("without a device the view says so", context ->
                         context.all("#auto_install_view .install-note").size() == 1)
                 .server("place a device beside the Router", AutomationTabScenario::placeDevice)
@@ -610,13 +627,27 @@ public final class AutomationTabScenario implements UIScenario {
                 .waitUntil("the state reads idle once the run ended", context ->
                         context.el("#auto_install_state").text().equals("Idle"))
                 .frames(2).screenshot("ui-automation-install-log")
+                .click("#auto_install_run")
+                .waitUntil("a second run is logged", context -> logRows(context) >= 4
+                        && context.el("#auto_install_state").text().equals("Idle"))
+                .click("#auto_install_run")
+                .waitUntil("a third run is logged", context -> logRows(context) >= 6
+                        && context.el("#auto_install_state").text().equals("Idle"))
+                .frames(2).screenshot("ui-automation-install-log-long")
+                .check("a long log scrolls in a box a few lines high, so the actions stay in view", context -> {
+                    var log = context.el("#auto_install_log").bounds();
+                    var run = context.el("#auto_install_run").bounds();
+                    var aside = context.el("#auto_install_aside").bounds();
+                    return log.height() <= 61 && run.y() + run.height() <= aside.y() + aside.height();
+                })
                 .click("#auto_install_open")
-                .waitUntil("Open in editor shows the program in the edit view", context ->
+                .waitUntil("Open in editor shows the program on the Programs tab", context ->
                         context.el("#auto_edit_view").isVisible() && editor(context).getLines().size() > 2
-                                && String.join("\n", editor(context).getLines()).equals(STOCK))
+                                && String.join("\n", editor(context).getLines()).equals(STOCK)
+                                && context.el("#tab_programs").as(UIElement.class).hasClass("selected"))
                 .check("the installed function is marked in the list", context ->
                         context.all(".function-row .program-installed").size() == 1)
-                .click("#auto_mode_install")
+                .click("#tab_automation")
                 .click("#auto_install_view .installation")
                 .click("#auto_install_uninstall")
                 .waitUntil("Uninstall removes the row", context ->
@@ -759,6 +790,17 @@ public final class AutomationTabScenario implements UIScenario {
     }
 
     /** A line counted from the last non-empty one: 0 is that line, 1 the one before. */
+    /** A press and release at a button's centre that may open a dialog over it, as a mouse does. */
+    private static void pressAndRelease(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector) {
+        var bounds = context.el(selector).bounds();
+        context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+        context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
+    }
+
+    private static int logRows(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        return context.all("#auto_install_aside .install-log-row").size();
+    }
+
     private static String lastLine(com.lowdragmc.lowdraglib2.uitest.TestContext context, int back) {
         var lines = new java.util.ArrayList<>(editor(context).getLines());
         while (!lines.isEmpty() && lines.get(lines.size() - 1).isBlank()) lines.remove(lines.size() - 1);

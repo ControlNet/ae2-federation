@@ -113,7 +113,8 @@ final class FederationInstallView {
     /** The State row's value and the log box of the shown installation, updated in place by each log answer. */
     private @Nullable Label stateValue;
     private @Nullable UIElement stateRow;
-    private @Nullable UIElement logBox;
+    /** At most a few lines high (the style sheet's max-height), scrolled within, so the actions stay in view. */
+    private @Nullable ScrollerView logBox;
     /** The last log answer and whose it is; ticks until the next request, and whether one is on its way. */
     private @Nullable InstallationLog.Log log;
     private @Nullable String logId;
@@ -502,7 +503,8 @@ final class FederationInstallView {
         stateRow = fact(tr("state"), stateValue);
         aside.addScrollViewChild(stateRow);
         aside.addScrollViewChild(label("install-log-heading", tr("log")));
-        logBox = new UIElement();
+        logBox = new ScrollerView();
+        logBox.setId("auto_install_log");
         logBox.addClass("install-log");
         aside.addScrollViewChild(logBox);
         // The index's count until the first answer; the last answer at once when the same installation is shown again.
@@ -854,9 +856,9 @@ final class FederationInstallView {
         stateValue.setText(tr(running ? "running" : "idle"));
         stateRow.removeClass("running");
         if (running) stateRow.addClass("running");
-        logBox.clearAllChildren();
+        logBox.clearAllScrollViewChildren();
         if (shown.lines().isEmpty()) {
-            logBox.addChild(label("install-log-text note", waiting ? Component.empty() : tr("no_log")));
+            logBox.addScrollViewChild(label("install-log-text note", waiting ? Component.empty() : tr("no_log")));
         }
         for (var line : shown.lines()) {
             var row = new UIElement();
@@ -865,7 +867,7 @@ final class FederationInstallView {
             var text = label("install-log-text", Component.literal(line.text()));
             if (failed(line.text())) text.addClass("failed");
             row.addChild(text);
-            logBox.addChild(row);
+            logBox.addScrollViewChild(row);
         }
     }
 

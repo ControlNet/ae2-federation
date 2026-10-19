@@ -132,6 +132,20 @@ public final class LocalCopies {
         return candidate;
     }
 
+    /** The program was deleted on the server: its copy and base go too, so the folder does not offer it again. */
+    public void delete(String name) {
+        try {
+            Files.deleteIfExists(file(name));
+            var bases = bases();
+            if (bases.remove(name) == null) return;
+            try (Writer writer = Files.newBufferedWriter(folder.resolve(BASES), StandardCharsets.UTF_8)) {
+                bases.store(writer, "The server version each local copy's edits started from");
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot delete the local copy of " + name, e);
+        }
+    }
+
     private void write(String name, String text, String base) {
         try {
             Files.createDirectories(folder);

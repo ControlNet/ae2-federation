@@ -34,7 +34,7 @@ import space.controlnet.ae2federation.function.ScriptParser;
 import space.controlnet.ae2federation.function.ScriptProblems;
 
 /**
- * The Automation tab, switched at the top between its Edit and Install views ({@link FederationInstallView}). The
+ * The Programs and Automation tabs: the edit view, and the install view ({@link FederationInstallView}). The
  * edit view: the programs on the left with the Library under them
  * ({@link FederationLibraryPanel}), the opened ones as tabs above the script. Programs are
  * global; the header counts this domain's devices and what is installed on them. The page subscribes to the server's
@@ -79,11 +79,13 @@ final class FederationAutomationView {
     private final UIElement problemBox;
     private final ScrollerView problemList;
     private final Button push;
+    private final Button delete;
     private final UIElement editView;
     private final UIElement installView;
-    private final Button modeEdit;
-    private final Button modeInstall;
     private final FederationInstallView install;
+    /** Shows the Programs tab, for Open in editor from an installation. */
+    private Runnable showEditor = () -> {
+    };
     private final FederationGraphView graphs;
     /** A function to put the caret on once its program's text is shown, after Open in editor. */
     private @Nullable String pendingJump;
@@ -137,6 +139,8 @@ final class FederationAutomationView {
         });
         push = element("auto_push", Button.class);
         push.setOnClick(event -> push());
+        delete = element("auto_delete", Button.class);
+        delete.setOnClick(event -> confirmDelete());
         problemBox = element("auto_problems", UIElement.class);
         problemBox.setDisplay(false);
         problemList = element("auto_problem_list", ScrollerView.class);
@@ -164,10 +168,6 @@ final class FederationAutomationView {
                 () -> dryTicks = DRY_TICKS);
         editView = element("auto_edit_view", UIElement.class);
         installView = element("auto_install_view", UIElement.class);
-        modeEdit = element("auto_mode_edit", Button.class);
-        modeInstall = element("auto_mode_install", Button.class);
-        modeEdit.setOnClick(event -> setInstalling(false));
-        modeInstall.setOnClick(event -> setInstalling(true));
         install = new FederationInstallView(ui, this::answer, this::openInEditor);
         setInstalling(false);
         // An empty label would show LDLib2's default text until the first answer.
@@ -176,20 +176,20 @@ final class FederationAutomationView {
         ui.rootElement.addEventListener(UIEvents.TICK, event -> tick());
     }
 
-    /** Shows the Install view, or the Edit view; Push belongs to the Edit view. */
-    private void setInstalling(boolean installing) {
+    /** Shows the install view (the Automation tab), or the edit view (the Programs tab). */
+    void setInstalling(boolean installing) {
         editView.setDisplay(!installing);
         installView.setDisplay(installing);
-        push.setDisplay(!installing);
-        modeEdit.removeClass("selected");
-        modeInstall.removeClass("selected");
-        (installing ? modeInstall : modeEdit).addClass("selected");
         if (installing) editor.hideCompletion();
     }
 
-    /** Open in editor, from an installation: the Edit view with the program shown and the caret on the function. */
+    void onOpenInEditor(Runnable showEditor) {
+        this.showEditor = showEditor;
+    }
+
+    /** Open in editor, from an installation: the Programs tab with the program shown and the caret on the function. */
     private void openInEditor(String file, String function) {
-        setInstalling(false);
+        showEditor.run();
         if (file.equals(selected) && reconciled) {
             jumpTo(function);
             return;
@@ -430,6 +430,61 @@ final class FederationAutomationView {
         ClientPrograms.get().request("push", List.of(selected), this::answer);
     }
 
+    /** Asks before deleting the shown program; the server refuses while it is installed. */
+    private void confirmDelete() {
+        var name = selected;
+        if (name == null) return;
+        var dialog = new com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog()
+                .setTitle("ae2federation.ui.automation.delete_title").darkenBackground();
+        dialog.setId("auto_delete_dialog");
+        dialog.overlay.layout(style -> style.width(Math.min(300, ui.rootElement.getContentWidth() - 12)));
+        dialog.overlay.style(style -> style.backgroundTexture(FederationTheme.FRAME));
+        dialog.titleBar.style(style -> style.backgroundTexture(
+                new com.lowdragmc.lowdraglib2.gui.texture.ColorRectTexture(FederationTheme.INSET)));
+        dialog.contentContainer.style(style -> style.backgroundTexture(
+                new com.lowdragmc.lowdraglib2.gui.texture.ColorRectTexture(FederationTheme.PANEL)));
+        dialog.buttonContainer.style(style -> style.backgroundTexture(
+                new com.lowdragmc.lowdraglib2.gui.texture.ColorRectTexture(FederationTheme.PANEL)));
+        var body = new Label();
+        body.setText(Component.translatable("ae2federation.ui.automation.delete_consequence", name));
+        body.textStyle(style -> style.fontSize(8).textWrap(com.lowdragmc.lowdraglib2.gui.ui.data.TextWrap.WRAP)
+                .adaptiveHeight(true));
+        body.layout(style -> style.widthPercent(100));
+        dialog.addContent(body);
+        var cancel = new Button();
+        cancel.setId("auto_delete_cancel");
+        cancel.setText(Component.translatable("ae2federation.ui.automation.cancel"));
+        cancel.setOnClick(event -> dialog.close());
+        var confirm = new Button();
+        confirm.setId("auto_delete_confirm");
+        confirm.addClass("danger-action");
+        confirm.setText(Component.translatable("ae2federation.ui.automation.delete"));
+        confirm.setOnClick(event -> {
+            dialog.close();
+            delete(name);
+        });
+        cancel.layout(style -> style.flex(1).height(20));
+        confirm.layout(style -> style.flex(1).height(20));
+        dialog.addButton(cancel).addButton(confirm);
+        dialog.show(ui.rootElement);
+    }
+
+    /** Deletes a program on the server; its local copy goes once the server has. Unsent edits go with it. */
+    private void delete(String name) {
+        if (name.equals(selected)) {
+            dirty = false;
+            pushAfterSend = false;
+        }
+        ClientPrograms.get().request("delete", List.of(name), answer -> {
+            answer(answer);
+            if (!answer.ok()) return;
+            if (copies != null) copies.delete(name);
+            opened.remove(name);
+            if (name.equals(selected)) select(opened.stream().findFirst().orElse(null));
+            refresh();
+        });
+    }
+
     /** A new program, named in the field: an empty file the server saves, then opened. */
     private void create() {
         var name = newName.getValue().strip();
@@ -494,6 +549,7 @@ final class FederationAutomationView {
     private void updatePush(List<ProgramSync.FileInfo> files) {
         var file = files.stream().filter(candidate -> candidate.name().equals(selected)).findFirst().orElse(null);
         push.setActive(file != null && (!file.current() || dirty || sending));
+        delete.setActive(file != null);
     }
 
     /**

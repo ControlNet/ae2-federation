@@ -89,6 +89,18 @@ final class LocalCopiesTest {
     }
 
     @Test
+    void aDeletedProgramLeavesNoCopyOrBase() throws IOException {
+        var copies = new LocalCopies(folder);
+        copies.sent("lamps", "a = 1\n");
+        copies.sent("other", "b = 1\n");
+        copies.delete("lamps");
+        assertTrue(copies.read("lamps").isEmpty());
+        assertEquals(java.util.List.of("other"), copies.names());
+        assertFalse(Files.readString(folder.resolve(LocalCopies.BASES)).contains("lamps"));
+        copies.delete("missing");
+    }
+
+    @Test
     void aFolderKeyKeepsOnlySafeCharacters() {
         assertEquals("server-play.example.org_25565", LocalCopies.key("server", "play.example.org:25565"));
         assertEquals("world-New_World", LocalCopies.key("world", "New World"));

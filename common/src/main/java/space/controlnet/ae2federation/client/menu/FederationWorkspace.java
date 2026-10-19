@@ -17,10 +17,10 @@ import net.minecraft.network.chat.Component;
 /** Local navigation and presentation; every business selection still goes through the authorized menu request. */
 final class FederationWorkspace {
     /**
-     * The topology (with each Endpoint's panel), the wires view, the statistics and the programs; an Endpoint's details
-     * are on the topology.
+     * The topology (with each Endpoint's panel), the wires view, the statistics, the programs' editor and their
+     * installations on the devices; an Endpoint's details are on the topology.
      */
-    private static final List<String> PAGES = List.of("overview", "mapping", "statistics", "automation");
+    private static final List<String> PAGES = List.of("overview", "mapping", "statistics", "programs", "automation");
     /** The server's choice groups; the wires view and the topology present them. */
     private static final List<String> CHOICE_GROUPS = List.of("mapping_provider", "slot", "target", "endpoint");
     private final PatternChoices patterns = new PatternChoices();
@@ -29,7 +29,8 @@ final class FederationWorkspace {
     private final Map<String, String> confirmedSelections = new HashMap<>();
     private final Map<String, com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture> icons =
             Map.of("overview", FederationIcons.TOPOLOGY, "mapping", FederationIcons.PROCESSING, "statistics",
-                    FederationIcons.STATISTICS, "automation", FederationIcons.AUTOMATION);
+                    FederationIcons.STATISTICS, "programs", FederationIcons.PROGRAMS, "automation",
+                    FederationIcons.AUTOMATION);
     private final Map<String, List<JsonObject>> choices = new HashMap<>();
     private boolean entranceApplied;
     private String navigationGroup;
@@ -87,7 +88,14 @@ final class FederationWorkspace {
 
     void bindAutomation(FederationAutomationView view) {
         automation = view;
-        view.setOpen("automation".equals(page));
+        view.onOpenInEditor(() -> show("programs"));
+        view.setInstalling("automation".equals(page));
+        view.setOpen(programs(page));
+    }
+
+    /** The two pages of the automation view: the programs' editor and their installations. */
+    private static boolean programs(String page) {
+        return "programs".equals(page) || "automation".equals(page);
     }
 
     void setProcessingEditable(boolean editable) {
@@ -108,11 +116,14 @@ final class FederationWorkspace {
         boolean mapping = "mapping".equals(page);
         element("header_graph_tools", UIElement.class).setDisplay("overview".equals(page));
         element("header_stats_tools", UIElement.class).setDisplay("statistics".equals(page));
-        element("header_auto_tools", UIElement.class).setDisplay("automation".equals(page));
+        element("header_auto_tools", UIElement.class).setDisplay("programs".equals(page));
         if (statistics != null) statistics.setOpen("statistics".equals(page));
-        if (automation != null) automation.setOpen("automation".equals(page));
+        if (automation != null) {
+            automation.setInstalling("automation".equals(page));
+            automation.setOpen(programs(page));
+        }
         // Classes, not setDisplay: the narrow layout's LSS also folds the summary away.
-        boolean programs = "automation".equals(page);
+        boolean programs = programs(page);
         for (var summary : Map.of("members_value", !mapping && !programs, "processing_summary", mapping, "scope_caption",
                 "overview".equals(page), "automation_summary", programs, "automation_answer", programs).entrySet()) {
             var label = element(summary.getKey(), UIElement.class);

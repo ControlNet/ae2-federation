@@ -8,6 +8,7 @@
                 <button id="tab_overview" class="rail-tab" text=""/>
                 <button id="tab_mapping" class="rail-tab" text=""/>
                 <button id="tab_statistics" class="rail-tab" text=""/>
+                <button id="tab_programs" class="rail-tab" text=""/>
                 <button id="tab_automation" class="rail-tab" text=""/>
             </element>
         </element>
@@ -41,9 +42,8 @@
                     <button id="stats_range_DAY" class="range-chip" text="ae2federation.ui.statistics.range.day"/>
                 </element>
                 <element id="header_auto_tools" class="header-tools">
-                    <button id="auto_push" class="auto-push" text="ae2federation.ui.automation.push"/>
-                    <button id="auto_mode_edit" class="range-chip auto-mode" text="ae2federation.ui.automation.edit"/>
-                    <button id="auto_mode_install" class="range-chip auto-mode" text="ae2federation.ui.automation.install"/>
+                    <button id="auto_push" class="range-chip auto-action" text="ae2federation.ui.automation.push"/>
+                    <button id="auto_delete" class="range-chip auto-action" text="ae2federation.ui.automation.delete"/>
                 </element>
                 <text-field id="graph_search" mode="string" value=""/>
                 <button id="return_provider" class="return-provider" text="ae2federation.ui.workspace.back_provider"/>
@@ -164,7 +164,7 @@
                     </element>
                 </element>
             </element>
-            <element id="page_automation" class="workspace-page automation-page">
+            <element id="page_programs" class="workspace-page automation-page">
                 <element id="auto_edit_view" class="auto-view">
                     <element class="auto-side">
                         <element class="auto-box auto-programs">
@@ -208,6 +208,8 @@
                         </element>
                     </element>
                 </element>
+            </element>
+            <element id="page_automation" class="workspace-page automation-page">
                 <element id="auto_install_view" class="auto-view">
                     <scroller-view id="auto_install_canvas" class="auto-box auto-install-canvas"/>
                     <scroller-view id="auto_install_aside" class="auto-install-aside"/>
