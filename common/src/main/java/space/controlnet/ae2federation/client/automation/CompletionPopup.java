@@ -167,7 +167,7 @@ public final class CompletionPopup extends UIElement {
     }
 
     /** An item's icon, or a fluid's bucket; empty for an ID that is neither. */
-    static ItemStack icon(String id) {
+    public static ItemStack icon(String id) {
         var location = ResourceLocation.tryParse(id);
         if (location == null) return ItemStack.EMPTY;
         var item = BuiltInRegistries.ITEM.get(location);

@@ -194,7 +194,10 @@ Next (user, 2026-10-18: the host and the editor screens both): assistant phasing
 | G1e-ii (done) | Editing in the aside: argument fields, min gap, overlap and trigger chips with the Every/Condition/Event editors (`AutoInstall`, `AutoInstallCondition`, `AutoInstallEvent`) |
 | G1e-iv (done) | Installing by drawing a wire from a function to a device (`AutoInstallDrag`); a function with required parameters asks for them in the aside first |
 | G1e-iii (done) | Running state and log in the aside's log box, from a `log` request polled each second while an installation is shown (not in the index) |
-| G1f | Graph view and the Script/Graph switch (Graph disabled while the script does not parse) from `Canvas`/`Layout`, library drag (`AutoGraph`, `AutoLibraryDrag`) |
+| G1f-i (done) | Graph view, read only (assistant phasing, 2026-10-19): Script/Graph switch (Graph inactive while the script does not parse), a tab per function, the Variables strip, cards placed by `Layout` on a `GraphView` that pans and zooms, exec and typed data wires (`AutoGraph`) |
+| G1f-ii | Edits on the cards: literals in their fields, variable chips, through `Edits` and the printer into the script, so upload, checks and local copies stay as they are |
+| G1f-iii | Library drag (`AutoLibraryDrag`): needs a user decision first, since the canvas model has no loose nodes (drop targets only, or a client-side draft) |
+| G1f-iv | Wiring edits: connect values to ports, move and insert statements on the exec chain |
 | G1g | Outside editors: files of the open window synced both ways |
 | G1+ | Automation tab: Edit view (program list, file tabs, script editor with completion, errors, item icons), Graph view from `Canvas`/`Layout`, library panel with the examples, Install view |
 

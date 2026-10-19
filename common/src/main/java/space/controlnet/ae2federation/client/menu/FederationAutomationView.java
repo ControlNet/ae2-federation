@@ -72,6 +72,7 @@ final class FederationAutomationView {
     private final Button modeEdit;
     private final Button modeInstall;
     private final FederationInstallView install;
+    private final FederationGraphView graphs;
     /** A function to put the caret on once its program's text is shown, after Open in editor. */
     private @Nullable String pendingJump;
     private final UIElement newRow;
@@ -133,6 +134,9 @@ final class FederationAutomationView {
             if (show) newName.focus();
         });
         new FederationLibraryPanel(ui);
+        graphs = new FederationGraphView(ui, shown -> {
+            if (shown) editor.hideCompletion();
+        });
         editView = element("auto_edit_view", UIElement.class);
         installView = element("auto_install_view", UIElement.class);
         modeEdit = element("auto_mode_edit", Button.class);
@@ -431,6 +435,10 @@ final class FederationAutomationView {
         ScriptChecker.check(text, snapshot.others(), snapshot.catalog(), marks -> {
             if (name.equals(selected) && reconciled && text.equals(text())) showProblems(marks);
         });
+        // The graph is drawn from the same text, and Graph is offered only while it parses.
+        ScriptChecker.graph(text, snapshot.others(), snapshot.catalog(), answer -> {
+            if (name.equals(selected) && reconciled && text.equals(text())) graphs.show(answer);
+        });
     }
 
     /** What the shown program is checked and completed against, handed to the worker. */
@@ -474,8 +482,10 @@ final class FederationAutomationView {
             message.addClass("program-name");
             message.setText(Component.literal(mark.message()));
             row.addChild(message);
-            row.addEventListener(UIEvents.MOUSE_DOWN, event -> editor.setCursor(mark.line() - 1, Math.max(0,
-                    mark.start() - 1)));
+            row.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+                graphs.setShown(false);
+                editor.setCursor(mark.line() - 1, Math.max(0, mark.start() - 1));
+            });
             problemList.addScrollViewChild(row);
         }
         problemBox.layout(layout -> layout.height(PROBLEM_HEAD + Math.min(marks.size(), PROBLEM_ROWS) * PROBLEM_ROW));
@@ -507,6 +517,7 @@ final class FederationAutomationView {
         pushAfterSend = false;
         if (name != null) asked.remove(name);
         problems = null;
+        graphs.clear();
         editor.setProblems(List.of());
         editor.hideCompletion();
         problemBox.setDisplay(false);
@@ -588,8 +599,12 @@ final class FederationAutomationView {
         return row;
     }
 
-    /** Shows a function's definition, putting the caret at its start. */
+    /** Shows a function's definition, putting the caret at its start; in the graph view, its graph. */
     private void jumpTo(String function) {
+        if (graphs.shown()) {
+            graphs.showFunction(function);
+            return;
+        }
         var definition = Pattern.compile("^\\s*def\\s+" + Pattern.quote(function) + "\\b");
         var lines = editor.getLines();
         for (int line = 0; line < lines.size(); line++) {

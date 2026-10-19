@@ -1297,6 +1297,28 @@ User decisions (2026-10-19):
   shown; the request changes nothing, so it sends no index. The answer is `running N` and one line per entry, its
   age in ticks and its text (`InstallationLog`).
 
+### The graph view as built (G1f-i, 2026-10-19)
+
+- **Script and Graph** sit at the right of the file tabs. Graph is inactive while the script does not parse; a
+  problem row goes back to the script. The graph is drawn from the script on the client worker, so the script stays
+  the only stored form. This step only shows the graph: presses pan the canvas and the wheel zooms.
+- **A tab per function** under the file tabs; clicking a function in the program list shows its graph too.
+- **The Variables strip** lists the parameters first, then the other variables in the order the canvas shows them,
+  each as a chip in its type's colour (assistant choice: the board's function had no parameters).
+- **Cards** as `Layout` places them (layout A, picked by the user: arms below-right; the `AutoGraph` board drew the
+  `then` chain on the if's own row before that choice): titles such as `now = ae2.amount`, a purple head when the
+  card acts, an exec pin in and out, a port per input with the callee's parameter name, a variable as a chip, a
+  literal in a field (an item with its icon and name), and the value's output port. The board's `ae2.stock` and
+  `mc.redstone` are mock names; the real calls are drawn.
+- Assistant choices, open for the user:
+  - **Type colours** beyond the board's (items orange, numbers blue, conditions red): strings and named values green,
+    interfaces and blocks teal, networks purple, a list or Optional in its element's colour, anything else grey.
+  - **Opening zoom**: a function opens from its top left, zoomed out to show it whole, but never below 0.75, where
+    the pixel font starts to blur.
+  - **After an if or a loop** the `next` pin is shown only when a statement follows, as the board draws it.
+  - Python's built-ins (`len`, `int`...) have no parameter names, so their rows have no label.
+- `AutoGraphInline` is option B (short expressions on ports), which the user did not choose; it is not built.
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

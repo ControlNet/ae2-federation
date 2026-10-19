@@ -273,3 +273,19 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - The check world's domain has no networks ("No confirmed Federation Domain membership"), so it reads "in stock: 0";
   the exact amount is checked by the `aStockChangeStartsARun` GameTest (5 ingots inserted, "5" answered).
 - Compare: `build/automation-stock-check/compare.png`.
+
+## G1f-i: the graph view
+
+- LDLib2's `GraphView` (as the Topology page uses it) gives pan, zoom and the grid. It pans only for a press that
+  reaches the view itself: cards that only show take no hits (`setAllowHitTest(false)`).
+- `GraphView.setOffsetX/Y` do not refresh the transform. To open at scale `s` from the top left, call
+  `fit(0, 0, viewWidth / s, viewHeight / s, s)`. A hidden view has no size, so fit on its `TICK`, which only runs
+  once it is shown.
+- Each card is one `UIElement` that draws its face, head, pins, ports, labels, chips and fields itself
+  (`drawBackgroundAdditional`, method-level `@OnlyIn(CLIENT)`), so the sizes handed to `Layout.Metrics` are exactly
+  what is drawn. The wires are a layer behind the cards.
+- `ScriptChecker.graph` runs parse, check, `Canvas.of` and `GraphCards.of` on the worker beside the problem check;
+  an empty answer means the script does not parse, and makes Graph inactive.
+- Test hooks: `.graph-card` (`.acts` when it acts), `.function-tab`, `.auto-variable`, `#auto_view_graph`. The
+  function tabs must not reuse `.file-tab`: a scenario counts the file tabs.
+- Compare: `build/automation-graph-check/compare.png`.

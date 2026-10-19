@@ -117,6 +117,27 @@ public final class AutomationTabScenario implements UIScenario {
                 })
                 .check("the opened file has a tab", context -> context.all(".file-tab").size() == 1)
                 .frames(2).screenshot("ui-automation-script")
+                // The graph view (G1f): a tab per function, the variables, and the cards as Layout places them.
+                .waitUntil("Graph is offered once the script parses", context -> graphOffered(context))
+                .click("#auto_view_graph")
+                .waitUntil("the graph replaces the script, with a tab per function", context ->
+                        !context.el("#auto_script").isVisible() && context.all(".function-tab").stream()
+                                .map(tab -> tab.text()).toList().equals(java.util.List.of("_low", "refill", "low_iron_alarm"))
+                                && context.all(".graph-card").size() > 0)
+                .click("#auto_function_low_iron_alarm")
+                .waitUntil("the alarm's cards: nine, three of them acting", context ->
+                        context.all(".graph-card").size() == 9 && context.all(".graph-card.acts").size() == 3)
+                .check("the strip lists the parameter and the variables with their types", context ->
+                        context.all(".auto-variable").stream().map(chip -> chip.text()).toList()
+                                .equals(java.util.List.of("lamp: Interface", "iron: Item", "now: int")))
+                .frames(2).screenshot("ui-automation-graph")
+                .click("#auto_function_refill")
+                .waitUntil("another tab shows that function", context ->
+                        context.all("#auto_function_refill.selected").size() == 1
+                                && context.all(".graph-card").size() == 8)
+                .click("#auto_view_script")
+                .check("Script shows the script again", context ->
+                        context.el("#auto_script").isVisible() && !context.el("#auto_graph_box").isVisible())
                 // Typing at the end: a colon indents the next line, Tab indents by four, Ctrl+/ comments with #.
                 .step("put the caret on the last line", context -> {
                     var editor = editor(context);
@@ -221,6 +242,7 @@ public final class AutomationTabScenario implements UIScenario {
                 .waitUntil("the chosen item's stock in the domain comes from the server", context ->
                         editor(context).completionPopup().footerText().matches("Item \u00b7 in stock: [0-9,]+"))
                 .frames(2).screenshot("ui-automation-completion-item")
+                .waitUntil("Graph is not offered while the script does not parse", context -> !graphOffered(context))
                 .key(GLFW.GLFW_KEY_ENTER)
                 .check("Enter puts the item in and closes its string", context ->
                         lastLine(context, 0).equals("    iron: Item = \"minecraft:iron_ingot\""))
@@ -483,6 +505,10 @@ public final class AutomationTabScenario implements UIScenario {
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
+    }
+
+    private static boolean graphOffered(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        return context.el("#auto_view_graph").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).isActive();
     }
 
     private static ScriptEditor editor(com.lowdragmc.lowdraglib2.uitest.TestContext context) {

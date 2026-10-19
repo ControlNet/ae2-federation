@@ -188,8 +188,17 @@
                         </element>
                     </element>
                     <element id="auto_editor" class="auto-box auto-editor-box">
-                        <element id="auto_file_tabs" class="auto-file-tabs"/>
+                        <element class="auto-editor-head">
+                            <element id="auto_file_tabs" class="auto-file-tabs"/>
+                            <button id="auto_view_script" class="kind-chip auto-view-chip" text="ae2federation.ui.automation.script"/>
+                            <button id="auto_view_graph" class="kind-chip auto-view-chip" text="ae2federation.ui.automation.graph"/>
+                        </element>
+                        <element id="auto_function_tabs" class="auto-file-tabs"/>
                         <element id="auto_script" class="auto-script"/>
+                        <element id="auto_graph_box" class="auto-graph-box">
+                            <element id="auto_variables" class="auto-variables"/>
+                            <graph-view id="auto_graph" class="auto-graph"/>
+                        </element>
                         <element id="auto_problems" class="auto-problems">
                             <element class="auto-divider"/>
                             <element class="auto-box-head">
