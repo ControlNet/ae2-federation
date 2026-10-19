@@ -115,6 +115,42 @@ public final class GraphCards {
         return Library.splice(text, edited.toFunction());
     }
 
+    /**
+     * A call of a library function dragged from the Library, as written once its draft card is wired: each required
+     * argument takes a plain value of its type to be edited on the card, {@code None} where the type has none.
+     */
+    public static String callText(String namespace, Signature function) {
+        var args = function.args().stream().filter(arg -> arg.defaultValue() == null)
+                .map(arg -> filler(arg.type())).toList();
+        return namespace + "." + function.name() + "(" + String.join(", ", args) + ")";
+    }
+
+    /** {@code text} with a library call ({@link #callText}) put on a port, as {@link #put} puts a typed value. */
+    public static String putCall(String text, Canvas canvas, String node, String port, String namespace,
+            Signature function) {
+        return put(text, canvas, node, port, null, callText(namespace, function));
+    }
+
+    /** {@code text} with a library call ({@link #callText}) as a statement on the exec output {@code output}. */
+    public static String insertCall(String text, Canvas canvas, String from, String output, String namespace,
+            Signature function) {
+        var ids = new Ids("n", ScriptParser.parse(text).positions().keySet());
+        var call = (Expr.Call) ScriptParser.expression(callText(namespace, function), ids);
+        var edited = Edits.insert(canvas, from, output, new Stmt.CallStmt(ids.next(), Notes.NONE, call));
+        return Library.splice(text, edited.toFunction());
+    }
+
+    private static String filler(TypeRef type) {
+        return switch (type.name()) {
+            case "int" -> "0";
+            case "float" -> "0.0";
+            case "bool" -> "False";
+            case "str", "Item", "Fluid", "Resource" -> "\"\"";
+            case "list" -> "[]";
+            default -> "None";
+        };
+    }
+
     /** What a resource port's field shows to be edited: an item's ID without its quotes, anything else as written. */
     public static String editText(Canvas.Input input, TypeRef type) {
         return switch (input) {

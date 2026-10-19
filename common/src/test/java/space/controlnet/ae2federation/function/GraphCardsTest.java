@@ -138,4 +138,38 @@ final class GraphCardsTest {
         org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
                 () -> put("low_iron_alarm", "<", "b", "x = 1"));
     }
+
+    private static Signature library(String namespace, String name) {
+        return StandardLibrary.NAMESPACES.get(namespace).stream().filter(f -> f.name().equals(name)).findFirst()
+                .orElseThrow();
+    }
+
+    @Test
+    void aDroppedFunctionIsCalledWithAValueOfEachRequiredArgumentsType() {
+        assertEquals("ae2.craftable(\"\")", GraphCards.callText("ae2", library("ae2", "craftable")));
+        assertEquals("mc.set_redstone(None, 0)", GraphCards.callText("mc", library("mc", "set_redstone")));
+    }
+
+    @Test
+    void aDraftWiredToAPortIsWrittenAsItsValue() {
+        var row = row("low_iron_alarm", "-", "b");
+        assertEquals(IRON_TOOLS.replace("ae2.craft(iron, 64 - now)", "ae2.craft(iron, 64 - ae2.amount(\"\"))"),
+                GraphCards.putCall(IRON_TOOLS, canvas("low_iron_alarm"), row.node(), row.port(), "ae2",
+                        library("ae2", "amount")));
+    }
+
+    @Test
+    void aDraftWiredToAnExecOutputIsWrittenAsAStatementThere() {
+        var assign = cards("low_iron_alarm").stream().filter(card -> card.title().equals("now = ae2.amount"))
+                .findFirst().orElseThrow();
+        assertEquals(IRON_TOOLS.replace("    now = ae2.amount(iron)\n",
+                        "    now = ae2.amount(iron)\n    mc.set_redstone(None, 0)\n"),
+                GraphCards.insertCall(IRON_TOOLS, canvas("low_iron_alarm"), assign.id(), "next", "mc",
+                        library("mc", "set_redstone")));
+        var branch = cards("low_iron_alarm").stream().filter(card -> card.title().equals("if")).findFirst()
+                .orElseThrow();
+        assertEquals(IRON_TOOLS.replace("    else:\n", "    else:\n        ae2.craftable(\"\")\n"),
+                GraphCards.insertCall(IRON_TOOLS, canvas("low_iron_alarm"), branch.id(), "else", "ae2",
+                        library("ae2", "craftable")));
+    }
 }

@@ -7,6 +7,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
+import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
 import com.lowdragmc.lowdraglib2.gui.util.DrawerHelper;
@@ -25,6 +26,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
+import space.controlnet.ae2federation.automation.LibraryRows;
 import space.controlnet.ae2federation.client.automation.CompletionPopup;
 import space.controlnet.ae2federation.client.automation.ScriptChecker;
 import space.controlnet.ae2federation.client.policy.WireCurve;
@@ -33,6 +35,8 @@ import space.controlnet.ae2federation.function.Expr;
 import space.controlnet.ae2federation.function.GraphCards;
 import space.controlnet.ae2federation.function.Layout;
 import space.controlnet.ae2federation.function.ScriptPrinter;
+import space.controlnet.ae2federation.function.Signature;
+import space.controlnet.ae2federation.function.StandardLibrary;
 import space.controlnet.ae2federation.function.TypeRef;
 
 /**
@@ -43,6 +47,10 @@ import space.controlnet.ae2federation.function.TypeRef;
  *
  * <p>A literal or a variable on a card is edited in place: a click opens a field, and Enter or leaving it writes what
  * is typed into the script ({@link GraphCards#put}), which is checked and drawn again as any edit is.
+ *
+ * <p>A function dragged from the Library becomes a dashed draft card where it is dropped, kept on the client only and
+ * lost with the screen (user decision, 2026-10-19). Dragging its value pin onto a card's input port, or its exec pin
+ * onto a card's exec output, writes the call there ({@link GraphCards#putCall}, {@link GraphCards#insertCall}).
  */
 final class FederationGraphView {
     /** A card's geometry in GUI units, as the board draws it: its head, the first row's centre and the row pitch. */
@@ -73,6 +81,37 @@ final class FederationGraphView {
     private static final int EXEC = FederationTheme.DARK_TITLE;
     private static final int LABEL = FederationTheme.DARK_MUTED;
     private static final int FIELD_TEXT = FederationTheme.TEXT;
+    /** A draft's dashed edge and see-through face, as the {@code AutoLibraryDrag} board draws it. */
+    private static final int DRAFT_EDGE = 0xff9cd3ff;
+    private static final int DRAFT_FACE = 0xb32c2735;
+    private static final int DRAFT_HEAD = 0xb33a3646;
+    /** A pin's square that takes a press or a drop, centred on the card's edge where the pin is drawn. */
+    private static final int PIN = 8;
+    /** How far the pressed pointer moves on a draft's pin before it drags a wire, as on the Install view. */
+    private static final float DRAG_THRESHOLD = 3;
+
+    /** A Library function being dragged onto the canvas. */
+    record LibraryDrag(String namespace, String function) {
+    }
+
+    /** A dropped Library function not yet in the script: its card's top left on the canvas, per shown function. */
+    private record Draft(int number, String namespace, Signature function, float x, float y) {
+        boolean execIn() {
+            return function.effect() || function.result().name().equals("None");
+        }
+
+        boolean valueOut() {
+            return !function.result().name().equals("None");
+        }
+
+        List<Signature.Arg> rows() {
+            return function.args().stream().filter(arg -> arg.defaultValue() == null).toList();
+        }
+    }
+
+    /** A wire dragged from a draft's exec pin or value pin. */
+    private record PinDrag(Draft draft, boolean exec) {
+    }
 
     private final GraphView graph;
     private final UIElement script;
@@ -98,6 +137,13 @@ final class FederationGraphView {
     /** The shown function's canvas size, margins included; zero before one is drawn. */
     private int extentX;
     private int extentY;
+    private final Map<String, List<Draft>> drafts = new HashMap<>();
+    private int drafted;
+    /** The draft pin pressed, which drags a wire once the pointer moves. */
+    private @Nullable UIElement pressed;
+    private @Nullable PinDrag pressedDrag;
+    private float pressX;
+    private float pressY;
 
     FederationGraphView(UI ui, Consumer<Boolean> switched, Supplier<String> text, Consumer<String> write,
             Consumer<String> refuse) {
@@ -116,6 +162,19 @@ final class FederationGraphView {
         graphChip.setOnClick(event -> setShown(true));
         graphChip.setActive(false);
         graph.addEventListener(UIEvents.TICK, event -> recentre());
+        // A Library function dropped anywhere on the canvas, over a card or not, becomes a draft there.
+        graph.addEventListener(UIEvents.DRAG_PERFORM, event -> {
+            if (event.dragHandler.draggingObject instanceof LibraryDrag drag) drop(drag, event.x, event.y);
+        });
+        // Any press or release forgets the pressed pin, so only its own press drags.
+        ui.rootElement.addEventListener(UIEvents.MOUSE_DOWN, event -> pressed = null, true);
+        ui.rootElement.addEventListener(UIEvents.MOUSE_UP, event -> pressed = null, true);
+        ui.rootElement.addEventListener(UIEvents.MOUSE_MOVE, event -> {
+            var pin = pressed;
+            if (pin == null || Math.abs(event.x - pressX) + Math.abs(event.y - pressY) < DRAG_THRESHOLD) return;
+            pressed = null;
+            pin.startDrag(pressedDrag, null);
+        }, true);
         apply();
     }
 
@@ -145,6 +204,7 @@ final class FederationGraphView {
     /** Another program is opened: nothing to draw until its script has been checked. */
     void clear() {
         graphs = Map.of();
+        drafts.clear();
         function = null;
         recentre = true;
         parses = false;
@@ -217,8 +277,9 @@ final class FederationGraphView {
         for (var card : shownGraph.cards()) {
             var place = boxes.get(card.id());
             graph.addContentChild(new CardElement(drawn.get(card.id()), place.x() + MARGIN, place.y() + MARGIN,
-                    (row, typed) -> put(shownGraph, row, typed)));
+                    (row, typed) -> put(shownGraph, row, typed), this::wired));
         }
+        for (var draft : drafts.getOrDefault(function, List.of())) graph.addContentChild(new DraftElement(draft));
         extentX = right + 2 * MARGIN;
         extentY = bottom + 2 * MARGIN;
     }
@@ -239,6 +300,42 @@ final class FederationGraphView {
         if (!text.get().equals(drawnFrom)) return;
         try {
             write.accept(GraphCards.put(drawnFrom, shownGraph.canvas(), row.node(), row.port(), row.type(), typed));
+        } catch (IllegalArgumentException e) {
+            refuse.accept(e.getMessage());
+        }
+    }
+
+    /** A Library function dropped at a point of the screen: a draft card with its head under the pointer. */
+    private void drop(LibraryDrag drag, float mouseX, float mouseY) {
+        var signature = LibraryRows.find(StandardLibrary.NAMESPACES, drag.namespace(), drag.function());
+        if (function == null || signature == null) return;
+        var point = graph.contentRoot.getLocalMouse(mouseX, mouseY);
+        var draft = new Draft(drafted++, drag.namespace(), signature,
+                point.x - graph.contentRoot.getPositionX() - 10, point.y - graph.contentRoot.getPositionY() - 5);
+        drafts.computeIfAbsent(function, name -> new ArrayList<>()).add(draft);
+        graph.addContentChild(new DraftElement(draft));
+    }
+
+    /**
+     * A draft's wire dropped on a card's pin: its value pin on an input row ({@code row}), or its exec pin on an
+     * exec output ({@code output} of {@code card}). The draft leaves the canvas once its call is in the script.
+     */
+    private void wired(UIEvent event, @Nullable GraphCards.Row row, @Nullable String card, @Nullable String output) {
+        if (!(event.dragHandler.draggingObject instanceof PinDrag drag) || drag.exec() != (row == null)) return;
+        var shownGraph = function == null ? null : graphs.get(function);
+        if (shownGraph == null || !text.get().equals(drawnFrom)) return;
+        var draft = drag.draft();
+        try {
+            var edited = row != null
+                    ? GraphCards.putCall(drawnFrom, shownGraph.canvas(), row.node(), row.port(), draft.namespace(),
+                            draft.function())
+                    : GraphCards.insertCall(drawnFrom, shownGraph.canvas(), card, output, draft.namespace(),
+                            draft.function());
+            drafts.getOrDefault(function, new ArrayList<>()).remove(draft);
+            graph.contentRoot.getChildren().stream()
+                    .filter(child -> child instanceof DraftElement element && element.draft == draft).toList()
+                    .forEach(graph::removeContentChild);
+            write.accept(edited);
         } catch (IllegalArgumentException e) {
             refuse.accept(e.getMessage());
         }
@@ -431,11 +528,26 @@ final class FederationGraphView {
         }
     }
 
+    /** A wire dropped on a card's pin: an input row's, or an exec output's of a card. */
+    private interface Wiring {
+        void wired(UIEvent event, @Nullable GraphCards.Row row, @Nullable String card, @Nullable String output);
+    }
+
+    /** A pin's square centred on {@code (x, y)} of its card; it may stick out of the card, as the pin drawn does. */
+    private static UIElement pin(String id, float x, float y) {
+        var pin = new UIElement();
+        pin.setId(id);
+        pin.addClass("graph-pin");
+        pin.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(x - PIN / 2f).top(y - PIN / 2f).width(PIN)
+                .height(PIN));
+        return pin;
+    }
+
     /** One card, drawn whole: face, head and title, its pins and ports, and each row's label and value. */
     private static final class CardElement extends UIElement {
         private final Drawn drawn;
 
-        CardElement(Drawn drawn, int x, int y, BiConsumer<GraphCards.Row, String> put) {
+        CardElement(Drawn drawn, int x, int y, BiConsumer<GraphCards.Row, String> put, Wiring wiring) {
             this.drawn = drawn;
             setId("auto_graph_card_" + drawn.card().id());
             addClass("graph-card");
@@ -445,8 +557,20 @@ final class FederationGraphView {
             // Only its values take presses; a press anywhere else reaches the canvas, which pans.
             setAllowHitTest(false);
             for (int i = 0; i < drawn.card().rows().size(); i++) {
+                var row = drawn.card().rows().get(i);
                 var value = drawn.values().get(i);
-                if (value != null) addChild(editable(drawn.card().rows().get(i), value, drawn.rowY(i), put));
+                if (value != null) addChild(editable(row, value, drawn.rowY(i), put));
+                // Each port and exec output takes a draft's wire.
+                var in = pin("auto_graph_in_" + row.node() + "_" + row.port().replace(':', '_'), 0, drawn.rowY(i));
+                in.addEventListener(UIEvents.DRAG_PERFORM, event -> wiring.wired(event, row, null, null));
+                addChild(in);
+            }
+            var card = drawn.card();
+            for (int i = 0; i < card.outputs().size(); i++) {
+                var output = card.outputs().get(i).name();
+                var out = pin("auto_graph_out_" + card.id() + "_" + output, drawn.width(), drawn.outputY(i));
+                out.addEventListener(UIEvents.DRAG_PERFORM, event -> wiring.wired(event, null, card.id(), output));
+                addChild(out);
             }
         }
 
@@ -546,30 +670,115 @@ final class FederationGraphView {
                 }
             }
         }
+    }
 
-        @OnlyIn(Dist.CLIENT)
-        private static void text(GUIContext context, String text, float x, float y, int color) {
-            context.pose.pushPose();
-            context.pose.translate(x, y, 0);
-            context.graphics.drawString(net.minecraft.client.Minecraft.getInstance().font, text, 0, 0, color, false);
-            context.pose.popPose();
+    /**
+     * A draft: a dropped Library function's card, dashed, with its required arguments' ports, its exec pin when it
+     * acts and its value pin when it gives one. A press on a pin drags a wire, drawn dashed to the pointer.
+     */
+    private final class DraftElement extends UIElement {
+        private final Draft draft;
+        private final int width;
+        private final int height;
+        private final int firstRow;
+
+        DraftElement(Draft draft) {
+            this.draft = draft;
+            var font = net.minecraft.client.Minecraft.getInstance().font;
+            firstRow = draft.execIn() ? 1 : 0;
+            int lines = Math.max(1, firstRow + draft.rows().size());
+            int widest = 4 + font.width(title()) + END;
+            for (var arg : draft.rows()) widest = Math.max(widest, LABEL_X + font.width(arg.name()) + END);
+            width = Math.max(MIN_WIDTH, widest);
+            height = BASE + ROW * lines;
+            setId("auto_graph_draft_" + draft.number());
+            addClass("graph-draft");
+            layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(draft.x()).top(draft.y()).width(width)
+                    .height(height));
+            // Only its pins take presses; a press anywhere else reaches the canvas, which pans.
+            setAllowHitTest(false);
+            if (draft.execIn()) addChild(source(pin(getId() + "_in", 0, FIRST), true));
+            if (draft.valueOut()) addChild(source(pin(getId() + "_out", width, FIRST), false));
         }
 
-        /** An exec pin: a six-pixel triangle pointing right. */
+        private String title() {
+            return draft.namespace() + "." + draft.function().name();
+        }
+
+        private UIElement source(UIElement pin, boolean exec) {
+            pin.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+                if (event.button != 0) return;
+                pressed = pin;
+                pressedDrag = new PinDrag(draft, exec);
+                pressX = event.x;
+                pressY = event.y;
+            });
+            return pin;
+        }
+
+        @Override
         @OnlyIn(Dist.CLIENT)
-        private static void triangle(net.minecraft.client.gui.GuiGraphics graphics, float x, float y) {
-            int[] widths = {1, 3, 5, 5, 3, 1};
-            for (int r = 0; r < widths.length; r++) {
-                DrawerHelper.drawSolidRect(graphics, x, y + r, widths[r], 1, EXEC);
+        public void drawBackgroundAdditional(GUIContext context) {
+            super.drawBackgroundAdditional(context);
+            var graphics = context.graphics;
+            float x = getPositionX();
+            float y = getPositionY();
+            DrawerHelper.drawSolidRect(graphics, x, y, width, height, DRAFT_FACE);
+            DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, width - 2, HEAD, DRAFT_HEAD);
+            // The edge in dashes of two pixels.
+            for (int i = 0; i < width; i += 4) {
+                DrawerHelper.drawSolidRect(graphics, x + i, y, Math.min(2, width - i), 1, DRAFT_EDGE);
+                DrawerHelper.drawSolidRect(graphics, x + i, y + height - 1, Math.min(2, width - i), 1, DRAFT_EDGE);
+            }
+            for (int i = 0; i < height; i += 4) {
+                DrawerHelper.drawSolidRect(graphics, x, y + i, 1, Math.min(2, height - i), DRAFT_EDGE);
+                DrawerHelper.drawSolidRect(graphics, x + width - 1, y + i, 1, Math.min(2, height - i), DRAFT_EDGE);
+            }
+            text(context, title(), x + 4, y + 2, EXEC);
+            if (draft.execIn()) triangle(graphics, x - 3, y + FIRST - 3);
+            if (draft.valueOut()) port(graphics, x + width - 3, y + FIRST - 2, color(draft.function().result()));
+            var rows = draft.rows();
+            for (int i = 0; i < rows.size(); i++) {
+                float cy = y + FIRST + ROW * (firstRow + i);
+                port(graphics, x - 3, cy - 2, color(rows.get(i).type()));
+                text(context, rows.get(i).name(), x + LABEL_X, cy - 4, LABEL);
+            }
+            var ui = getModularUI();
+            if (ui != null && ui.getDragHandler().isDragging()
+                    && ui.getDragHandler().draggingObject instanceof PinDrag drag && drag.draft() == draft) {
+                var mouse = getLocalMouse(ui.getLastMouseX(), ui.getLastMouseY());
+                float fromX = drag.exec() ? x - 1 : x + width + 2;
+                // An exec wire comes into the draft from the output it is dragged to; a value wire leaves it.
+                var curve = drag.exec() ? new WireCurve(mouse.x, mouse.y, fromX, y + FIRST)
+                        : new WireCurve(fromX, y + FIRST, mouse.x, mouse.y);
+                FederationProcessingGraph.dashed(context, FederationProcessingGraph.polyline(curve),
+                        drag.exec() ? EXEC : color(draft.function().result()));
             }
         }
+    }
 
-        /** A data port: a five-pixel square in the value's colour. */
-        @OnlyIn(Dist.CLIENT)
-        private static void port(net.minecraft.client.gui.GuiGraphics graphics, float x, float y, int color) {
-            DrawerHelper.drawSolidRect(graphics, x, y, 5, 5, PORT_EDGE);
-            DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, 3, 3, color);
+    @OnlyIn(Dist.CLIENT)
+    private static void text(GUIContext context, String text, float x, float y, int color) {
+        context.pose.pushPose();
+        context.pose.translate(x, y, 0);
+        context.graphics.drawString(net.minecraft.client.Minecraft.getInstance().font, text, 0, 0, color, false);
+        context.pose.popPose();
+    }
+
+    /** An exec pin: a six-pixel triangle pointing right. */
+    @OnlyIn(Dist.CLIENT)
+    private static void triangle(net.minecraft.client.gui.GuiGraphics graphics, float x, float y) {
+        int[] widths = {1, 3, 5, 5, 3, 1};
+        for (int r = 0; r < widths.length; r++) {
+            DrawerHelper.drawSolidRect(graphics, x, y + r, widths[r], 1, EXEC);
         }
+    }
+
+    /** A data port: a five-pixel square in the value's colour. */
+    @OnlyIn(Dist.CLIENT)
+    private static void port(net.minecraft.client.gui.GuiGraphics graphics, float x, float y, int color) {
+        DrawerHelper.drawSolidRect(graphics, x, y, 5, 5, PORT_EDGE);
+        DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, 3, 3, color);
     }
 
     private static <T> T element(UI ui, String id, Class<T> type) {

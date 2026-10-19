@@ -302,3 +302,23 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   and close a field being typed in, so the view redraws only when the text it was drawn from changes.
 - A UI run that dies at start with `FileSystemNotFoundException` in securejarhandler is flaky; run it again.
 - Compare: `build/automation-graph-edit-check/compare.png`.
+
+## G1f-iii: Library drag and draft cards
+
+- The drag follows the Install view: a row's `MOUSE_DOWN` remembers it, a root capture `MOUSE_MOVE` past 3 pixels
+  calls `row.startDrag(object, null)`, and root capture `MOUSE_DOWN`/`MOUSE_UP` forget it. LDLib2 fires `CLICK` only
+  when the release lands on the pressed element, so a drop elsewhere does not also open the function's page.
+- `GraphView` takes `DRAG_PERFORM` on bubbling, so a drop over a card still reaches it. The drop point on the canvas
+  is `graph.contentRoot.getLocalMouse(x, y)` minus `contentRoot.getPositionX/Y()`; children of the content root use
+  the same space, which is also what a content child's own `getLocalMouse` gives for drawing a wire to the pointer.
+- Pins are 8x8 hit areas centred on the drawn pin, half outside the card: LDLib2 hit-tests children outside their
+  parent while it lets overflow show; an area kept inside the edge missed drops aimed at the pin in game (`#auto_graph_in_<node>_<port>`, `#auto_graph_out_<card>_<output>`,
+  `#auto_graph_draft_<n>_in/_out`); each target listens for `DRAG_PERFORM` and checks the dragged object.
+- `GraphCards.callText` writes the call with a plain value per required argument; `putCall` goes through `put`, and
+  `insertCall` wraps the parsed call in a `Stmt.CallStmt` for `Edits.insert`. A `None` argument still gives a program:
+  only the checker objects.
+- The draft is removed from its list and from the canvas before the edited text is written; the redraw from the new
+  text leaves it out.
+- UI scenario: `.drag("#auto_library_fn_ae2_amount", "#auto_graph")` then `.drag("#auto_graph_draft_0_out", pin)`;
+  only one namespace fits open at 1600x960, so close `ae2` before opening `mc`.
+- Compare: `build/automation-graph-drag-check/compare.png`.

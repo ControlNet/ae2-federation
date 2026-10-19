@@ -1335,6 +1335,21 @@ as a dashed card that is not in the script; it is written into the script only o
 to a port. A draft lives only while the screen is open and is lost when it closes. Not chosen: accepting drops only on
 a wire or a port, or appending the call at the end of the function.
 
+**Drafts as built (G1f-iii, 2026-10-19).** A function row of the Library drags onto the canvas; the draft card is
+dashed and see-through, as `AutoLibraryDrag` draws it, with a port per required argument, an exec pin when the
+function acts and a value pin when it gives a value. Pressing a draft's pin drags a dashed wire: the value pin onto a
+card's input port writes the call on that port; the exec pin onto a card's exec output writes the call as a statement
+there, and what followed moves after it. The draft then leaves the canvas and the card is drawn where the layout puts
+it. Assistant choices, open for the user:
+
+- Each required argument is written with a plain value of its type, to be edited on the card: `0`, `0.0`, `False`,
+  `""` (a string or a resource), `[]`, and `None` for a type that has no literal (an interface, a block, a network).
+  The checker marks what is still missing, such as `unknown resource ''`.
+- Wires are drawn from the draft's pins only. Wiring cards already in the script comes with G1f-iv.
+- A draft has no delete control; it goes with the screen.
+- After an if or a loop, `next` has no pin until a statement follows it, so a draft cannot be placed after the last
+  compound statement yet.
+
 
 ### Example: from one chest to another (asked by the user 2026-10-18)
 

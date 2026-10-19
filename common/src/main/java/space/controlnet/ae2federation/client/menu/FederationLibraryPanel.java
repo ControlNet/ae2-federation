@@ -10,6 +10,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import java.util.HashSet;
 import java.util.Set;
 import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.automation.LibraryRows;
 import space.controlnet.ae2federation.client.automation.CompletionPopup;
 import space.controlnet.ae2federation.client.automation.PythonLanguage;
@@ -21,18 +22,26 @@ import space.controlnet.ae2federation.function.StandardLibrary;
  * The Automation tab's Library panel, under the programs: the standard library's namespaces, opened with a click, and
  * a search over their functions ({@link LibraryRows}). A function opens its page in the same box, with a back chip in
  * the head: its qualified name, its signature, whether it acts, its summary and its example (checked by a test) in a
- * small read-only editor, as the {@code AutoLibraryDoc} board shows it.
+ * small read-only editor, as the {@code AutoLibraryDoc} board shows it. A function's row drags onto the graph, where
+ * it becomes a draft card ({@link FederationGraphView}), as the {@code AutoLibraryDrag} board shows it.
  */
 final class FederationLibraryPanel {
     /** The example's lines, and its box's padding with the editor's, as the style sheet sizes them. */
     private static final float EXAMPLE_LINE = 9;
     private static final float EXAMPLE_PAD = 7;
+    /** How far the pressed pointer moves on a function's row before it drags, as on the Install view. */
+    private static final float DRAG_THRESHOLD = 3;
 
     private final TextField search;
     private final ScrollerView tree;
     private final ScrollerView page;
     private final Button back;
     private final Set<String> open = new HashSet<>();
+    /** The function row pressed, which drags once the pointer moves. */
+    private @Nullable UIElement pressed;
+    private @Nullable FederationGraphView.LibraryDrag pressedDrag;
+    private float pressX;
+    private float pressY;
 
     FederationLibraryPanel(UI ui) {
         search = element(ui, "auto_library_search", TextField.class);
@@ -44,6 +53,15 @@ final class FederationLibraryPanel {
         search.setTextResponder(text -> rebuild());
         // On the click, not the press: the chip hides with the page.
         back.addEventListener(UIEvents.CLICK, event -> showList());
+        // Any press or release forgets the pressed row, so only its own press drags.
+        ui.rootElement.addEventListener(UIEvents.MOUSE_DOWN, event -> pressed = null, true);
+        ui.rootElement.addEventListener(UIEvents.MOUSE_UP, event -> pressed = null, true);
+        ui.rootElement.addEventListener(UIEvents.MOUSE_MOVE, event -> {
+            var row = pressed;
+            if (row == null || Math.abs(event.x - pressX) + Math.abs(event.y - pressY) < DRAG_THRESHOLD) return;
+            pressed = null;
+            row.startDrag(pressedDrag, null);
+        }, true);
         showList();
     }
 
@@ -86,6 +104,13 @@ final class FederationLibraryPanel {
         element.addChild(label("program-name", Component.literal(row.function())));
         if (row.acts()) element.addChild(new UIElement().addClass("library-acts"));
         element.addEventListener(UIEvents.CLICK, event -> showPage(row.namespace(), row.function()));
+        element.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+            if (event.button != 0) return;
+            pressed = element;
+            pressedDrag = new FederationGraphView.LibraryDrag(row.namespace(), row.function());
+            pressX = event.x;
+            pressY = event.y;
+        });
         return element;
     }
 

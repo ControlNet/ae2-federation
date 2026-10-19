@@ -158,6 +158,36 @@ public final class AutomationTabScenario implements UIScenario {
                         String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
                 .check("a written value clears the refusal", context ->
                         context.all("#automation_answer.refused").isEmpty())
+                // A Library function dropped on the graph is a draft until it is wired (G1f-iii).
+                .click("#auto_library_ns_ae2")
+                .drag("#auto_library_fn_ae2_amount", "#auto_graph")
+                .waitUntil("the dropped function is a dashed draft card", context ->
+                        context.all(".graph-draft").size() == 1 && context.all("#auto_graph_draft_0_out").size() == 1
+                                && context.all("#auto_graph_draft_0_in").isEmpty())
+                .check("a draft is not in the script", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                .frames(2).screenshot("ui-automation-graph-draft")
+                .drag("#auto_graph_draft_0_out", alarmPin("in"))
+                .waitUntil("its value wired to a port writes the call there", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS.replace(
+                                "ae2.craft(iron, 64 - now)", "ae2.craft(iron, 64 - ae2.amount(\"\"))"))
+                                && context.all(".graph-draft").isEmpty() && context.all(".graph-card").size() == 10)
+                .frames(2).screenshot("ui-automation-graph-wired")
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9)
+                .click("#auto_library_ns_ae2")
+                .click("#auto_library_ns_mc")
+                .drag("#auto_library_fn_mc_set_redstone", "#auto_graph")
+                .waitUntil("an acting draft has an exec pin", context ->
+                        context.all("#auto_graph_draft_1_in").size() == 1)
+                .drag("#auto_graph_draft_1_in", alarmPin("out"))
+                .waitUntil("its exec pin wired to an output writes the call as a statement there", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS.replace(
+                                "    now = ae2.amount(iron)\n", "    now = ae2.amount(iron)\n    mc.set_redstone(None, 0)\n"))
+                                && context.all(".graph-draft").isEmpty())
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9)
+                .click("#auto_library_ns_mc")
                 .click("#auto_function_refill")
                 .waitUntil("another tab shows that function", context ->
                         context.all("#auto_function_refill.selected").size() == 1
@@ -541,6 +571,20 @@ public final class AutomationTabScenario implements UIScenario {
         var condition = alarm.body().stream().filter(statement -> statement instanceof Stmt.If).map(statement ->
                 ((Stmt.If) statement).condition()).findFirst().orElseThrow();
         return "#auto_graph_value_" + condition.id() + "_right";
+    }
+
+    /**
+     * A pin on the alarm's graph: {@code in} of the amount crafted, {@code - now}'s right port, or {@code out} of the
+     * {@code now =} statement's next.
+     */
+    private static String alarmPin(String kind) {
+        var alarm = ScriptParser.parse(IRON_TOOLS).program().functions().stream()
+                .filter(function -> function.name().equals("low_iron_alarm")).findFirst().orElseThrow();
+        if (kind.equals("out")) return "#auto_graph_out_" + alarm.body().get(1).id() + "_next";
+        var branch = (Stmt.If) alarm.body().stream().filter(statement -> statement instanceof Stmt.If).findFirst()
+                .orElseThrow();
+        var craft = (Stmt.CallStmt) branch.body().get(0);
+        return "#auto_graph_in_" + craft.call().args().get(1).id() + "_right";
     }
 
     private static boolean graphOffered(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
