@@ -65,7 +65,7 @@ public final class DryRun {
             }
         }
         var texts = new LinkedHashMap<String, String>();
-        values.forEach((node, value) -> texts.put(node, cut(Ops.repr(value))));
+        values.forEach((node, value) -> texts.put(node, cut(host.repr(value))));
         boolean finished = status == Runner.Status.DONE || status == Runner.Status.FAILED;
         return new Result(texts, ran, status == Runner.Status.FAILED ? runner.failure() : null, finished);
     }

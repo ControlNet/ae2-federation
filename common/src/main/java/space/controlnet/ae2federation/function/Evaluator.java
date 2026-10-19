@@ -22,6 +22,11 @@ public final class Evaluator {
          */
         Object call(String namespace, String name, List<Object> args);
 
+        /** A value as a dry run shows it; a host writes its own values (a selected block) as it sees them. */
+        default String repr(Object value) {
+            return Ops.repr(value);
+        }
+
         /** A line the program printed; a host with nowhere to write it drops it. */
         default void print(String text) {
         }

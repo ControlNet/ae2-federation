@@ -18,6 +18,7 @@ import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.function.Evaluator;
 import space.controlnet.ae2federation.function.ListValue;
+import space.controlnet.ae2federation.function.Ops;
 import space.controlnet.ae2federation.function.RunError;
 import space.controlnet.ae2federation.function.TypeRef;
 
@@ -87,6 +88,14 @@ public final class ProgramHost implements Evaluator.Host {
     public ProgramHost printTo(java.util.function.Consumer<String> log) {
         this.printed = log;
         return this;
+    }
+
+    /** A selected block shows as the block there now, as {@code Block('minecraft:chest')}. */
+    @Override
+    public String repr(Object value) {
+        return Ops.repr(value, own -> own instanceof Block block ? place(block).map(place -> "Block(" + Ops.repr(
+                BuiltInRegistries.BLOCK.getKey(place.level().getBlockState(place.position()).getBlock()).toString())
+                + ")").orElse(block.toString()) : own.toString());
     }
 
     @Override

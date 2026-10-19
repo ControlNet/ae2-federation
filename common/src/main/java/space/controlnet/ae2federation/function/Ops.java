@@ -574,6 +574,11 @@ public final class Ops {
     }
 
     public static String repr(Object v) {
+        return repr(v, Object::toString);
+    }
+
+    /** As {@link #repr(Object)}, with a host's own values (a selected block) written by {@code own}. */
+    public static String repr(Object v, java.util.function.Function<Object, String> own) {
         return switch (v) {
             case null -> "None";
             case Boolean b -> b ? "True" : "False";
@@ -582,16 +587,16 @@ public final class Ops {
             case String s -> stringRepr(s);
             case ListValue l -> {
                 var parts = new ArrayList<String>();
-                l.items.forEach(item -> parts.add(repr(item)));
+                l.items.forEach(item -> parts.add(repr(item, own)));
                 yield "[" + String.join(", ", parts) + "]";
             }
             case RangeValue r -> "range(" + r.start() + ", " + r.stop() + (r.step() == 1 ? "" : ", " + r.step()) + ")";
             case RecordValue r -> {
                 var parts = new ArrayList<String>();
-                r.fields.forEach((name, value) -> parts.add(name + "=" + repr(value)));
+                r.fields.forEach((name, value) -> parts.add(name + "=" + repr(value, own)));
                 yield typeName(r) + "(" + String.join(", ", parts) + ")";
             }
-            default -> v.toString();
+            default -> own.apply(v);
         };
     }
 

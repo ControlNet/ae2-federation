@@ -86,6 +86,34 @@ final class DryRunTest {
         }
     }
 
+    /** A value of the host's own, such as a selected block, is written as the host describes it, in lists too. */
+    @Test
+    void theHostDescribesItsOwnValues() {
+        var parsed = ScriptParser.parse("""
+                def chests(port: Interface) -> list[Block]:
+                    chest = ae2f.select(port)
+                    return [chest]
+                """);
+        var workspace = new Workspace(Map.of("main", parsed.program()), CompletionTest.CATALOG);
+        assertEquals(List.of(), Checker.check(parsed.program(), workspace).problems(), "the program must check");
+        var graphs = new HashMap<String, Map<String, Graph>>();
+        graphs.put("main", Compiler.compile("main", workspace));
+        var host = new Evaluator.Host() {
+            @Override
+            public Object call(String namespace, String name, List<Object> args) {
+                return new RunnerTest.FakeBlock((String) args.get(0), (Long) args.get(1), (String) args.get(2));
+            }
+
+            @Override
+            public String repr(Object value) {
+                return Ops.repr(value, own -> "Block('minecraft:chest')");
+            }
+        };
+        var result = DryRun.run(workspace, graphs, host, "main", "chests", List.of("north_gate"), DryRun.BUDGET);
+        assertTrue(result.values().containsValue("Block('minecraft:chest')"), result.values().toString());
+        assertTrue(result.values().containsValue("[Block('minecraft:chest')]"), result.values().toString());
+    }
+
     @Test
     void everyValueOfTheBranchThatRanIsShown() {
         var run = dryRun(ALARM, "low_iron_alarm", List.of("north_gate"), DryRun.BUDGET);

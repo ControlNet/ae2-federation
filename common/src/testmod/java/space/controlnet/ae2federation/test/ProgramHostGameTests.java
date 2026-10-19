@@ -134,6 +134,8 @@ public final class ProgramHostGameTests {
                     helper.assertValueEqual(dry.status(), ProgramDryRun.Status.DONE, "The dry run finished");
                     helper.assertTrue(dry.values().containsValue("'True True True 10 0'"),
                             "Every action would succeed, and nothing moved: " + dry.values());
+                    helper.assertTrue(dry.values().containsValue("Block('minecraft:chest')"),
+                            "The selected block shows as the block there: " + dry.values());
                     helper.assertValueEqual(chest.getItem(0).getCount(), 10, "The chest still holds 10");
                     helper.assertBlockPresent(Blocks.CHEST, TARGET);
                     helper.assertValueEqual(level.getBestNeighborSignal(helper.absolutePos(TARGET)), 0,

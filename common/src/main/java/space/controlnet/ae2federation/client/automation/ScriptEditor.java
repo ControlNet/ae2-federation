@@ -43,7 +43,7 @@ import space.controlnet.ae2federation.function.ScriptProblems;
  * choice is what is typed already, Escape closes. An answer for a text or caret that has since changed is dropped.
  *
  * <p>A dry run's values ({@link DryRunNotes}) are written in grey after their lines, an error in red, while the text
- * is the one they were found for.
+ * is the one they were found for; a value naming an item has its icon before it.
  */
 public final class ScriptEditor extends CodeEditor {
     private static final int GUTTER = 0xff17141e;
@@ -601,15 +601,47 @@ public final class ScriptEditor extends CodeEditor {
             var note = notes.get(line + 1);
             if (note == null) continue;
             var end = columnPosition(line, lines.get(line).length());
-            context.pose.pushPose();
-            context.pose.translate(end.x + NOTE_GAP, end.y, 0);
-            context.pose.scale(scale, scale, 1);
-            LDLibFonts.drawText(context.graphics, getFont(), inFont(note.text()), 0, 0,
-                    note.error() ? PROBLEM : NUMBER, false);
-            context.pose.popPose();
+            int color = note.error() ? PROBLEM : NUMBER;
+            var text = note.text();
+            // A value naming an item, as a selected block's Block('minecraft:chest'), has the item's icon before it.
+            var found = note.error() ? List.<ResourceStrings.At>of() : ResourceStrings.find(segments(text),
+                    id -> !CompletionPopup.icon(id).isEmpty());
+            float x = end.x + NOTE_GAP;
+            int at = 0;
+            for (var resource : found) {
+                x = drawNoteText(context, text.substring(at, resource.column()), x, end.y, scale, color);
+                context.pose.pushPose();
+                context.pose.translate(x + ICON_GAP, end.y + (getTextAreaStyle().fontSize() - ICON) / 2, 0);
+                context.pose.scale(ICON / 16, ICON / 16, 1);
+                context.graphics.renderItem(CompletionPopup.icon(resource.id()), 0, 0);
+                context.pose.popPose();
+                x += ICON + 2 * ICON_GAP;
+                at = resource.column();
+            }
+            drawNoteText(context, text.substring(at), x, end.y, scale, color);
         }
         context.graphics.flush();
         context.disableScissor();
+    }
+
+    /** Draws a piece of a note at {@code x}; gives where the next piece starts. */
+    @OnlyIn(Dist.CLIENT)
+    private float drawNoteText(GUIContext context, String text, float x, float y, float scale, int color) {
+        var component = inFont(text);
+        context.pose.pushPose();
+        context.pose.translate(x, y, 0);
+        context.pose.scale(scale, scale, 1);
+        LDLibFonts.drawText(context.graphics, getFont(), component, 0, 0, color, false);
+        context.pose.popPose();
+        return x + getFont().getSplitter().stringWidth(component) * scale;
+    }
+
+    /** A text cut as the editor colours a line, so strings in it are found as in the script. */
+    private static List<String> segments(String text) {
+        var parser = new com.lowdragmc.lowdraglib2.gui.ui.elements.codeeditor.language.SyntaxParser();
+        parser.setLanguageDefinition(PythonLanguage.INSTANCE);
+        return parser.parseLine(text).stream()
+                .map(com.lowdragmc.lowdraglib2.gui.ui.elements.codeeditor.language.Token::text).toList();
     }
 
     /** Each resource's icon, in the room before its string. */
