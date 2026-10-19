@@ -44,6 +44,11 @@ final class RunnerTest {
                 default -> throw new RunError("RuntimeError", "the fake host has no " + namespace + "." + name);
             };
         }
+
+        @Override
+        public void print(String text) {
+            log.add("print: " + text);
+        }
     }
 
     /** A {@code Stack} with its fields in declared order, as the repr shows them. */
@@ -625,5 +630,18 @@ final class RunnerTest {
                 "8:5 'a'",         // for c in "ab"
                 "8:5 'b'",
                 "10:5 8"), seen);  // return y
+    }
+
+    @Test
+    void printSendsOneLineToTheHost() {
+        var host = new FakeHost();
+        assertEquals("None", finish(startMain("""
+                def main() -> None:
+                    print("stock", 64, ["a", "b"], None, True)
+                    print("a", "b", sep="-")
+                    print("c", sep=None)
+                    print()
+                """, host, null)));
+        assertEquals(List.of("print: stock 64 ['a', 'b'] None True", "print: a-b", "print: c", "print: "), host.log);
     }
 }

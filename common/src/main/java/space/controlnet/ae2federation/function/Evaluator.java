@@ -21,6 +21,10 @@ public final class Evaluator {
          * nothing (it holds nothing and must not break itself), the call does nothing and gives False or 0.
          */
         Object call(String namespace, String name, List<Object> args);
+
+        /** A line the program printed; a host with nowhere to write it drops it. */
+        default void print(String text) {
+        }
     }
 
     private final Workspace workspace;
@@ -197,6 +201,12 @@ public final class Evaluator {
                 var keywords = new LinkedHashMap<String, Object>();
                 var args = arguments(file, c, locals);
                 c.keywords().forEach(k -> keywords.put(k.name(), eval(file, k.value(), locals)));
+                if (c.name().equals("print")) {
+                    var separator = keywords.get("sep");
+                    host.print(args.stream().map(Ops::str).collect(java.util.stream.Collectors.joining(
+                            separator == null ? " " : (String) separator)));
+                    return null;
+                }
                 return Ops.builtIn(c.name(), args, keywords);
             }
             var record = findClass(file, c.name());

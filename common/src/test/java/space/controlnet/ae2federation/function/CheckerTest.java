@@ -65,6 +65,23 @@ final class CheckerTest {
     }
 
     @Test
+    void printTakesAnyValuesAndASeparator() {
+        assertEquals(List.of(), problems("""
+                def main() -> None:
+                    print("stock", 64, [1, 2], sep=": ")
+                    print()
+                """));
+        assertEquals(List.of("2: print() end= is not supported; each print is one log line",
+                "3: 'colour' is an invalid keyword argument for print()",
+                "4: sep must be None or a string, not int"), problems("""
+                def main() -> None:
+                    print("a", end="")
+                    print("a", colour=1)
+                    print("a", sep=1)
+                """));
+    }
+
+    @Test
     void theSamplesHaveNoProblems() {
         for (var sample : List.of(ScriptTest.SAMPLE, ScriptTest.LOOPS, ScriptTest.DEFAULTS, ScriptTest.MEMBERSHIP,
                 ScriptTest.RECORDS)) {

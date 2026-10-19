@@ -524,6 +524,7 @@ public final class Completion {
             case "min", "max", "sum" -> c.args().size() == 1 && iterable != null ? Types.iterated(iterable) : first;
             case "abs" -> first;
             case "round" -> c.args().size() == 1 ? Types.INT : first;
+            case "print" -> Types.NONE;
             default -> null;
         };
     }

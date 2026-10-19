@@ -276,8 +276,10 @@ Python's names and meaning (`str()`, `int()`, `range()` ...); everything about t
 `mc`. Assistant proposals, accepted by the user (2026-10-18):
 
 - A first set: `int`, `float`, `str`, `bool` (conversions), `range` (1 to 3 arguments), `len`, `abs`, `min`, `max`,
-  `sum`, `round`, `any`, `all`. `print` is left out for now (user, 2026-10-18): the graph's dry run shows values at
-  each node instead (below). Left out while the subset has no tuples: `enumerate`, `zip`, `dict`;
+  `sum`, `round`, `any`, `all`. `print` was left out at first (user, 2026-10-18), then added once installations
+  had a log (user, 2026-10-19): `print(*values, sep=" ")` writes one line to the installation's log, as `str` gives
+  each value; a dry run prints nowhere. Stricter than Python (assistant choice): `end`, `file` and `flush` are
+  refused, since each print is one log line. Left out while the subset has no tuples: `enumerate`, `zip`, `dict`;
   `isinstance` and `type` are not needed with static types.
 - Results behave exactly as in Python: `int(3.7)` is 3, `round(2.5)` is 2, `-7 // 2` is -4, `-7 % 2` is 1, and a
   failing conversion (`int("abc")`) stops the run with Python's message. B4 can test this against CPython, as B1 tests

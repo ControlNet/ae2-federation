@@ -31,7 +31,7 @@ public final class Checker {
     private static final int MAX_CONSTANT_TEXT = 10_000;
 
     static final List<String> BUILT_INS = List.of("int", "float", "str", "bool", "list", "range", "len", "abs", "min",
-            "max", "sum", "round", "any", "all");
+            "max", "sum", "round", "any", "all", "print");
 
     /** List methods over the element type {@code T}; parameter names are CPython's. */
     static final List<Signature> LIST_METHODS = List.of(
@@ -813,11 +813,37 @@ public final class Checker {
      * The parameters of built-ins that take keyword arguments, as CPython names them; {@code ""} is positional only.
      * {@code min}/{@code max} take {@code default} apart from these.
      */
+    /**
+     * {@code print(*values, sep=" ")}: any values, written as {@code str} gives them. Stricter than Python: each
+     * print is one line of the installation's log, so {@code end}, {@code file} and {@code flush} are refused.
+     */
+    private TypeRef print(Expr.Call c) {
+        c.args().forEach(a -> expr(a, null));
+        for (var keyword : c.keywords()) {
+            var type = expr(keyword.value(), null);
+            switch (keyword.name()) {
+                case "sep" -> {
+                    var t = Types.unwrap(type);
+                    if (t != null && !Types.isStr(t) && !Types.NONE.equals(t)) {
+                        problem(keyword.value().id(), "sep must be None or a string, not " + Types.runtimeName(t));
+                    }
+                }
+                case "end", "file", "flush" -> problem(c.id(),
+                        "print() " + keyword.name() + "= is not supported; each print is one log line");
+                default -> problem(c.id(), "'" + keyword.name() + "' is an invalid keyword argument for print()");
+            }
+        }
+        return Types.NONE;
+    }
+
     static final Map<String, List<String>> BUILT_IN_KEYWORDS = Map.of(
             "round", List.of("number", "ndigits"), "str", List.of("object"), "sum", List.of("", "start"));
 
     private TypeRef builtIn(Expr.Call original) {
         var name = original.name();
+        if (name.equals("print")) {
+            return print(original);
+        }
         Expr defaultValue = null;
         var c = original;
         if (name.equals("min") || name.equals("max")) {

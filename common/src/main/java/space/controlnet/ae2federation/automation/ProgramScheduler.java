@@ -443,7 +443,7 @@ public final class ProgramScheduler {
             log(installation.id(), "not started: " + installation.file() + " was never pushed");
             return Optional.empty();
         }
-        var host = new ProgramHost(server, domain, installation.id());
+        var host = new ProgramHost(server, domain, installation.id()).printTo(text -> log(installation.id(), text));
         try {
             var program = prepared.computeIfAbsent(installation.file(),
                     file -> ProgramRun.prepare(texts.get(), host.catalog()));

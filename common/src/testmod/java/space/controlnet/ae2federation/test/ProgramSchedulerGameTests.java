@@ -174,6 +174,25 @@ public final class ProgramSchedulerGameTests {
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
+    public static void printWritesToTheLog(GameTestHelper helper) {
+        var scene = Scene.build(helper, "sched_print", """
+                def report() -> int:
+                    for i in range(2):
+                        print("pass", i, sep=" #")
+                    return 2
+                """);
+        scene.whenReady(() -> {
+            var installation = scene.scheduler().install(scene.device(), "sched_print", "report", List.of());
+            scene.installed(installation);
+            scene.scheduler().trigger(installation.id());
+        }).then(10, () -> helper.assertValueEqual(scene.log(0), List.of("started", "pass #0", "pass #1", "done: 2"),
+                "Each print is a line of the installation's log, between its start and its end"))
+                .finish(() -> {
+                });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
     public static void runsUseThePushedVersion(GameTestHelper helper) {
         var scene = Scene.build(helper, "sched_push", """
                 def version() -> int:

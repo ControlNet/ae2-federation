@@ -54,6 +54,9 @@ public final class ProgramHost implements Evaluator.Host {
     private final DomainCalls domainCalls;
     /** Whether actions only say what they would do: the editor's dry run. */
     private final boolean simulate;
+    /** Where the program's printed lines go; nowhere until a run's log is given. */
+    private java.util.function.Consumer<String> printed = text -> {
+    };
 
     /** A host for one run; {@code owner} names the run's crafting jobs, so it cancels only its own. */
     public ProgramHost(MinecraftServer server, FederationDomainId domain, String owner) {
@@ -78,6 +81,17 @@ public final class ProgramHost implements Evaluator.Host {
 
     public GameCatalog catalog() {
         return catalog;
+    }
+
+    /** Sends the program's printed lines to {@code log}; a dry run prints nowhere. */
+    public ProgramHost printTo(java.util.function.Consumer<String> log) {
+        this.printed = log;
+        return this;
+    }
+
+    @Override
+    public void print(String text) {
+        if (!simulate) printed.accept(text);
     }
 
     /** The domain's networks now, for the scheduler's network events. */
