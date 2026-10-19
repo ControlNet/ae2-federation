@@ -1324,7 +1324,7 @@ public final class FederationProcessingGraph {
     }
 
     /** A dashed curve: a wire the player made that the server has not confirmed yet, or one being dragged. */
-    private static void dashed(GUIContext context, List<Vector2f> line, int color) {
+    static void dashed(GUIContext context, List<Vector2f> line, int color) {
         for (int index = 1; index < line.size(); index += 2) {
             DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(line.get(index - 1), line.get(index)),
                     color, color, 2f);

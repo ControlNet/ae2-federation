@@ -240,3 +240,14 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   listening to `UIEvents.CLICK` in the aside's flow is simpler to test and survives the rebuild a choice causes.
 - The check world has no `args` command; reset an argument through the GUI. Compare:
   `build/automation-install-edit-check/compare.png`.
+
+## G1e-iv: installing by drawing a wire
+
+- Same drag pattern as the Processing graph: a row's `MOUSE_DOWN` remembers the press, a capture `MOUSE_MOVE` on
+  `ui.rootElement` starts `port.startDrag(object, null)` past 3 px, capture `MOUSE_DOWN`/`MOUSE_UP` forget it;
+  targets listen to `DRAG_ENTER`/`DRAG_LEAVE` (capture) and `DRAG_PERFORM`; `getModularUI().getDragHandler()`
+  tells what is dragged. The UI test's `.drag(from, to)` drives it.
+- A painted texture's lambda is read on every draw, so a card ring can follow the drag state without a rebuild.
+- `ProgramSync` sends the new index before the answer: select an installation named in the answer, then rebuild.
+- In game: `drag_hold.py x0 y0 x1 y1` (scratch helper) presses and moves without releasing, for a screenshot of the
+  lit cards; compare `build/automation-install-drag-check/compare.png`.

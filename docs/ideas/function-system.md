@@ -1273,6 +1273,17 @@ User decisions (2026-10-19):
   under the field rather than over the rows below it (assistant choice). The board's `network` row for
   `ae2.stock_changed` is not shown: the scheduler's events take no network yet.
 
+### Installing by drawing a wire (G1e-iv, 2026-10-19)
+
+- Pressing a function's row in a program card and moving the pointer draws a dashed wire from its port; every
+  device card of the domain lights green while it is dragged (`AutoInstallDrag`), and the wire snaps to the device
+  under the pointer. Dropping it on a device installs the function there.
+- The server refuses an installation that lacks a required argument, so (assistant proposal) a function with
+  required parameters becomes a draft in the aside: "function → device", its signature, a field per parameter
+  opened one after another (defaults filled in), and "Installed once every argument is given". The wire stays dashed
+  meanwhile. Once the last one is typed the installation is sent; the new installation is then selected.
+  Selecting a row drops the draft. A function without required parameters is installed at once.
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

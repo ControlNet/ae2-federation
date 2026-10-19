@@ -35,7 +35,8 @@ import space.controlnet.ae2federation.router.RouterRegistration;
  * checked on the client and cleared by a fix, completion of functions and items, item icons in the script, the
  * Library panel (namespaces, a function's page with its example, search), the Install view (G1e: a device beside
  * the Router, a function installed on it, its row and aside, editing its arguments, gap, overlap mode and trigger
- * in place (Every, Condition, Event), Run now, Open in editor, Uninstall), and the index
+ * in place (Every, Condition, Event), Run now, Open in editor, Uninstall, a wire drawn to install another), and the
+ * index
  * subscription ending when the screen closes. The programs, the device and its installation are sample content
  * written for this scenario;
  * {@code smelting} misspells a function so the list shows its problem count and Push refuses it.
@@ -416,6 +417,32 @@ public final class AutomationTabScenario implements UIScenario {
                 .waitUntil("Uninstall removes the row", context ->
                         context.all("#auto_install_view .installation").isEmpty()
                                 && context.el("#automation_answer").text().equals("uninstalled"))
+                // Drawing a wire (G1e-iv): a function dropped on a device asks for its arguments, then installs.
+                .drag("#auto_install_fn_stock_low", "#auto_install_view .install-device")
+                .check("the drop opens a draft with its first argument", context ->
+                        context.el("#auto_install_aside .install-aside-title").text().startsWith("low \u2192 ")
+                                && context.el("#auto_install_arg_0 text-field").isVisible()
+                                && context.all("#auto_install_view .installation").isEmpty())
+                .step("type the item", context -> context.el("#auto_install_arg_0 text-field")
+                        .as(TextField.class).setText("minecraft:gold_ingot", true))
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("the next argument opens", context ->
+                        context.all("#auto_install_arg_1 text-field").size() == 1
+                                && context.el("#auto_install_arg_1 text-field").isVisible())
+                .frames(2).screenshot("ui-automation-install-drag")
+                .step("type the minimum", context -> context.el("#auto_install_arg_1 text-field")
+                        .as(TextField.class).setText("32", true))
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("the installation is listed and shown", context ->
+                        context.all("#auto_install_view .installation").size() == 1
+                                && context.el("#auto_install_view .install-summary").text()
+                                        .equals("Gold Ingot \u00b7 32")
+                                && context.all("#auto_install_aside .install-aside-title").size() == 1
+                                && context.el("#auto_install_aside .install-aside-title").text()
+                                        .startsWith("low \u2192 "))
+                .checkServer("the server installed it with its arguments", context ->
+                        installation(context).function().equals("low") && installation(context).args()
+                                .equals(java.util.List.of("minecraft:gold_ingot", 32L)))
                 .closeScreen()
                 .waitUntilServer("closing the screen unsubscribes", context ->
                         !ProgramSync.get(context.server()).subscribed(context.player().getUUID()));

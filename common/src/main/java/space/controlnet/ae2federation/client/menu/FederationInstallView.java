@@ -59,6 +59,10 @@ final class FederationInstallView {
     private static final int CARD_SHADOW = 0xff121016;
     private static final int PORT_FILL = 0xff17141e;
     private static final int PORT = 4;
+    /** How far the pressed pointer moves on a function's row before it drags a wire, as on the Processing graph. */
+    private static final float DRAG_THRESHOLD = 3;
+    /** How long a dropped wire is drawn dashed while the server's index does not show its installation yet. */
+    private static final long PENDING_MILLIS = 5000;
     /** Secondary text in a value field, darker than the theme's muted text to read on the field. */
     private static final int FIELD_MUTED = 0xff575468;
 
@@ -87,6 +91,23 @@ final class FederationInstallView {
     private record Wire(String function, String device, String installation, int color) {
     }
 
+    /** A function's wire being dragged, by {@code file.function}. */
+    private record FunctionDrag(String file, String function) {
+    }
+
+    /** An installation dropped on a device whose required arguments are still being typed. */
+    private record Draft(String device, String file, String function, List<String> args) {
+    }
+
+    /** The function row pressed, which drags once the pointer moves. */
+    private @Nullable FunctionDrag pressed;
+    private float pressX;
+    private float pressY;
+    private String hoverDevice = "";
+    private @Nullable Draft draftInstall;
+    /** Wires dropped and sent, by {@code file.function} and device, with when they were sent. */
+    private final Map<Wire, Long> pendingWires = new HashMap<>();
+
     /** {@code openInEditor} takes a program and one of its functions. */
     FederationInstallView(UI ui, Consumer<ProgramSync.Answer> answer, BiConsumer<String, String> openInEditor) {
         this.answer = answer;
@@ -94,6 +115,17 @@ final class FederationInstallView {
         canvasScroll = element(ui, "auto_install_canvas", ScrollerView.class);
         aside = element(ui, "auto_install_aside", ScrollerView.class);
         canvasScroll.addScrollViewChild(canvas);
+        // Any press or release forgets the pressed row, so only its own press drags.
+        ui.rootElement.addEventListener(UIEvents.MOUSE_DOWN, event -> pressed = null, true);
+        ui.rootElement.addEventListener(UIEvents.MOUSE_UP, event -> pressed = null, true);
+        ui.rootElement.addEventListener(UIEvents.MOUSE_MOVE, event -> {
+            var drag = pressed;
+            if (drag == null || dragged() != null) return;
+            if (Math.abs(event.x - pressX) + Math.abs(event.y - pressY) < DRAG_THRESHOLD) return;
+            var port = functionPorts.get(drag.file() + "." + drag.function());
+            pressed = null;
+            if (port != null) port.startDrag(drag, null);
+        }, true);
     }
 
     /** Shows {@code index} as seen from {@code domain}: its devices and their installations. */
@@ -152,8 +184,10 @@ final class FederationInstallView {
         wires = installations.stream().map(installation -> new Wire(installation.file() + "."
                 + installation.function(), installation.device(), installation.id(), color(installation.file())))
                 .toList();
+        pendingWires.keySet().removeIf(pending -> wires.stream().anyMatch(wire ->
+                wire.function().equals(pending.function()) && wire.device().equals(pending.device())));
         // A refresh would drop what is being typed; the aside is rebuilt once the field is left.
-        if (editing == null || !editing.isFocused() || selected == null) rebuildAside();
+        if (editing == null || !editing.isFocused()) rebuildAside();
     }
 
     private UIElement column(String type, String heading) {
@@ -165,11 +199,16 @@ final class FederationInstallView {
     }
 
     private static UIElement card() {
+        return card(() -> CARD_RING);
+    }
+
+    /** A card whose ring colour is read when drawn: a device's lights up while a wire is dragged. */
+    private static UIElement card(java.util.function.IntSupplier ring) {
         var card = new UIElement();
         card.addClass("install-card");
         card.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) -> {
             pen.rect(x - 1, y - 1, width + 2, height + 2, CARD_SHADOW);
-            pen.rect(x, y, width, height, CARD_RING);
+            pen.rect(x, y, width, height, ring.getAsInt());
             pen.rect(x + 1, y + 1, width - 2, height - 2, CARD_FACE);
         })));
         return card;
@@ -203,9 +242,19 @@ final class FederationInstallView {
             }
             var port = new UIElement();
             port.addClass("install-port");
+            var drag = new FunctionDrag(file.name(), function.name());
             port.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) ->
-                    FederationProcessingGraph.round(pen, x + width + 1, y + height / 2, PORT, color, PORT_FILL))));
+                    FederationProcessingGraph.round(pen, x + width + 1, y + height / 2, PORT, color,
+                            drag.equals(dragged()) ? color : PORT_FILL))));
             row.addChild(port);
+            row.setId("auto_install_fn_" + file.name() + "_" + function.name());
+            // The row drags its function's wire to a device once the pressed pointer moves.
+            row.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+                if (event.button != 0) return;
+                pressed = drag;
+                pressX = event.x;
+                pressY = event.y;
+            });
             functionPorts.put(file.name() + "." + function.name(), port);
             card.addChild(row);
         }
@@ -213,8 +262,21 @@ final class FederationInstallView {
     }
 
     private UIElement deviceCard(ProgramSync.DeviceInfo device, List<ProgramSync.InstallationInfo> installations) {
-        var card = card();
+        // Every device of the domain takes a dragged wire: lit while one is dragged (AutoInstallDrag).
+        var card = card(() -> dragged() != null ? FederationTheme.OK : CARD_RING);
         card.setId("auto_install_device_" + device.id());
+        card.addClass("install-device");
+        card.addEventListener(UIEvents.DRAG_ENTER, event -> {
+            if (dragged() != null) hoverDevice = device.id();
+        }, true);
+        card.addEventListener(UIEvents.DRAG_LEAVE, event -> {
+            if (hoverDevice.equals(device.id())) hoverDevice = "";
+        }, true);
+        card.addEventListener(UIEvents.DRAG_PERFORM, event -> {
+            var drag = dragged();
+            hoverDevice = "";
+            if (drag != null) drop(drag, device.id());
+        });
         var head = new UIElement();
         head.addClass("install-device-head");
         var port = new UIElement();
@@ -236,6 +298,83 @@ final class FederationInstallView {
         card.addChild(head);
         for (var installation : installations) card.addChild(installationRow(installation));
         return card;
+    }
+
+    @Nullable
+    private FunctionDrag dragged() {
+        var ui = canvas.getModularUI();
+        if (ui == null || !ui.getDragHandler().isDragging()) return null;
+        return ui.getDragHandler().draggingObject instanceof FunctionDrag drag ? drag : null;
+    }
+
+    /**
+     * A function dropped on a device: installed at once when it needs no arguments, else a draft in the aside whose
+     * fields open one by one; the installation is sent once every required argument is typed (assistant proposal).
+     */
+    private void drop(FunctionDrag drag, String device) {
+        var function = function(drag.file(), drag.function());
+        if (function == null) return;
+        var args = new ArrayList<String>();
+        for (var param : function.params()) {
+            args.add(param.contains("=") ? param.substring(param.indexOf('=') + 1).strip() : "");
+        }
+        draftInstall = new Draft(device, drag.file(), drag.function(), args);
+        selected = null;
+        draftTrigger = null;
+        sendInstallWhenComplete();
+    }
+
+    private @Nullable ProgramSync.FunctionInfo function(String file, String name) {
+        var info = file(file);
+        return info == null ? null
+                : info.functions().stream().filter(found -> found.name().equals(name)).findFirst().orElse(null);
+    }
+
+    private void sendInstallWhenComplete() {
+        var draft = draftInstall;
+        if (draft == null) return;
+        if (draft.args().stream().anyMatch(String::isEmpty)) {
+            rebuildAside();
+            return;
+        }
+        draftInstall = null;
+        var request = new ArrayList<>(List.of(draft.device(), draft.file(), draft.function()));
+        request.addAll(draft.args());
+        pendingWires.put(new Wire(draft.file() + "." + draft.function(), draft.device(), "",
+                color(draft.file())), System.currentTimeMillis());
+        rebuildAside();
+        // The answer names the new installation, and comes after the index that lists it: select it and show it.
+        ClientPrograms.get().request("install", request, result -> {
+            if (result.ok() && result.message().startsWith("installed ")) {
+                selected = result.message().substring("installed ".length());
+                rebuild();
+            }
+            if (!result.ok()) pendingWires.clear();
+            answer.accept(result);
+        });
+    }
+
+    /** The aside for an installation being dropped: its arguments, typed before it is sent. */
+    private void draftAside(Draft draft) {
+        var device = devices().stream().filter(found -> found.id().equals(draft.device())).findFirst().orElse(null);
+        aside.addScrollViewChild(label("install-aside-title", Component.literal(draft.function())
+                .withStyle(ChatFormatting.BOLD).append(Component.literal(" → " + (device == null
+                        ? draft.device() : deviceName(device))).withStyle(style -> style.withBold(false)))));
+        var function = function(draft.file(), draft.function());
+        var params = function == null ? List.<String>of() : function.params();
+        aside.addScrollViewChild(label("install-aside-caption", Component.literal(draft.file() + "."
+                + draft.function() + "(" + String.join(", ", params) + ")")));
+        for (int i = 0; i < params.size() && i < draft.args().size(); i++) {
+            var arg = draft.args().get(i);
+            int index = i;
+            aside.addScrollViewChild(fact(Component.literal(params.get(i).split(":")[0].strip()),
+                    editable("auto_install_arg_" + i, argument(arg), arg, numeric(params.get(i)),
+                            opening == null && arg.isEmpty(), text -> {
+                                draft.args().set(index, text);
+                                sendInstallWhenComplete();
+                            })));
+        }
+        aside.addScrollViewChild(label("install-aside-caption", tr("install_when_typed")));
     }
 
     private static String deviceName(ProgramSync.DeviceInfo device) {
@@ -273,6 +412,7 @@ final class FederationInstallView {
         row.addChild(label("install-muted install-summary", Component.literal(String.join(" · ", summary))));
         row.addEventListener(UIEvents.CLICK, event -> {
             if (!installation.id().equals(selected)) draftTrigger = null;
+            draftInstall = null;
             selected = installation.id();
             rebuild();
         });
@@ -300,6 +440,12 @@ final class FederationInstallView {
     private void rebuildAside() {
         aside.clearAllScrollViewChildren();
         editing = null;
+        if (draftInstall != null) {
+            draftAside(draftInstall);
+            if (opening != null) opening.run();
+            opening = null;
+            return;
+        }
         var installation = installations().stream().filter(found -> found.id().equals(selected)).findFirst()
                 .orElse(null);
         if (installation == null) return;
@@ -736,6 +882,36 @@ final class FederationInstallView {
                 DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), FederationProcessingGraph
                         .polyline(new WireCurve(start.x, start.y, end.x, end.y)), wire.color(), wire.color(),
                         chosen ? 3f : 1.5f);
+            }
+            // A dropped wire is dashed until the index lists its installation; a draft's while it is typed.
+            long now = System.currentTimeMillis();
+            var dashed = new ArrayList<Wire>();
+            pendingWires.forEach((wire, sent) -> {
+                if (now - sent < PENDING_MILLIS) dashed.add(wire);
+            });
+            var draft = draftInstall;
+            if (draft != null) {
+                dashed.add(new Wire(draft.file() + "." + draft.function(), draft.device(), "", color(draft.file())));
+            }
+            for (var wire : dashed) {
+                var from = functionPorts.get(wire.function());
+                var to = devicePorts.get(wire.device());
+                if (from == null || to == null) continue;
+                FederationProcessingGraph.dashed(context, FederationProcessingGraph.polyline(new WireCurve(
+                        from.getPositionX() + from.getSizeWidth() + 1, from.getPositionY() + from.getSizeHeight() / 2,
+                        to.getPositionX() - 1, to.getPositionY() + to.getSizeHeight() / 2)), wire.color());
+            }
+            var drag = dragged();
+            var ui = getModularUI();
+            var from = drag == null ? null : functionPorts.get(drag.file() + "." + drag.function());
+            if (from != null && ui != null) {
+                float startX = from.getPositionX() + from.getSizeWidth() + 1;
+                float startY = from.getPositionY() + from.getSizeHeight() / 2;
+                var to = devicePorts.get(hoverDevice);
+                float endX = to == null ? ui.getLastMouseX() : to.getPositionX() - 1;
+                float endY = to == null ? ui.getLastMouseY() : to.getPositionY() + to.getSizeHeight() / 2;
+                FederationProcessingGraph.dashed(context, FederationProcessingGraph.polyline(
+                        new WireCurve(startX, startY, endX, endY)), 0xffefeaf8);
             }
         }
     }

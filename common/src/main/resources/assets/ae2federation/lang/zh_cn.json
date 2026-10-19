@@ -391,6 +391,7 @@
   "ae2federation.ui.automation.ticks": "%s 刻",
   "ae2federation.ui.automation.running": "运行中",
   "ae2federation.ui.automation.idle": "空闲",
+  "ae2federation.ui.automation.install_when_typed": "填完所有参数后安装",
   "ae2federation.ui.automation.uninstall": "卸载",
   "ae2federation.ui.automation.open_in_editor": "在编辑器中打开",
   "ae2federation.ui.automation.run_now": "立即运行",
