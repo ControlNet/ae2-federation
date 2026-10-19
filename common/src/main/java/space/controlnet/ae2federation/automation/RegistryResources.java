@@ -84,35 +84,28 @@ public final class RegistryResources implements GameCatalog.Resources {
         return path.isEmpty() ? path : path.substring(0, 1).toUpperCase(Locale.ROOT) + path.substring(1);
     }
 
+    /** Items and fluids whose ID or shown name {@code prefix} finds, ranked by {@link NameMatch#rank}. */
     @Override
     public List<Candidate> values(String type, String prefix) {
-        var typed = prefix.toLowerCase(Locale.ROOT);
         var found = new ArrayList<Candidate>();
         if (type.equals("Item") || type.equals("Resource")) {
             BuiltInRegistries.ITEM.entrySet().forEach(entry -> {
-                var id = entry.getKey().location().toString();
-                if (entry.getValue() != Items.AIR && id.contains(typed)) {
-                    found.add(new Candidate(id, Candidate.Kind.VALUE, entry.getValue().getDescription().getString()));
+                if (entry.getValue() != Items.AIR) {
+                    found.add(new Candidate(entry.getKey().location().toString(), Candidate.Kind.VALUE,
+                            entry.getValue().getDescription().getString()));
                 }
             });
         }
         if (type.equals("Fluid") || type.equals("Resource")) {
             BuiltInRegistries.FLUID.entrySet().forEach(entry -> {
                 var fluid = entry.getValue();
-                var id = entry.getKey().location().toString();
-                if (fluid != Fluids.EMPTY && fluid.defaultFluidState().isSource() && id.contains(typed)) {
-                    found.add(new Candidate(id, Candidate.Kind.VALUE,
+                if (fluid != Fluids.EMPTY && fluid.defaultFluidState().isSource()) {
+                    found.add(new Candidate(entry.getKey().location().toString(), Candidate.Kind.VALUE,
                             fluid.getFluidType().getDescription().getString()));
                 }
             });
         }
-        // Path matches first ("iron" finds minecraft:iron_ingot before minecraft:raw_iron), then by ID.
-        found.sort(Comparator.comparing((Candidate candidate) -> !path(candidate.label()).startsWith(typed))
-                .thenComparing(Candidate::label));
-        return found.size() > MAX_VALUES ? List.copyOf(found.subList(0, MAX_VALUES)) : found;
-    }
-
-    private static String path(String id) {
-        return id.substring(id.indexOf(':') + 1);
+        var ranked = NameMatch.rank(found, prefix);
+        return ranked.size() > MAX_VALUES ? List.copyOf(ranked.subList(0, MAX_VALUES)) : ranked;
     }
 }
