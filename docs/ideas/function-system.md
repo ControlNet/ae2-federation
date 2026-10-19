@@ -1177,6 +1177,8 @@ User decisions (2026-10-19):
 - Setting an alias in either screen sends the tab a new index.
 - A condition must be a public function: the scheduler refuses a `_private` one, so the condition list in the tab
   shows public functions only.
+- **Arguments in the index** (H8) come one by one, as the text a request takes back: numbers and strings as they
+  are (an item ID without quotes), `True`/`False`, nothing for `None`.
 
 ### The tab's first step as built (G1a, 2026-10-19)
 

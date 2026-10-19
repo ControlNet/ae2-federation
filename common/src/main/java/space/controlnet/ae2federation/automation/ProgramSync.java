@@ -55,8 +55,11 @@ public final class ProgramSync {
     public record NetworkInfo(String id, String name, String domain) {
     }
 
-    /** An installation, with its arguments as Python prints them and its trigger as {@link TriggerText} writes it. */
-    public record InstallationInfo(String id, String device, String file, String function, String args,
+    /**
+     * An installation, with each argument as the text a request takes back ({@link Installation#text}) and its trigger
+     * as {@link TriggerText} writes it.
+     */
+    public record InstallationInfo(String id, String device, String file, String function, List<String> args,
             String trigger, int interval, String overlap, int running) {
     }
 
@@ -331,7 +334,7 @@ public final class ProgramSync {
                         names.name(network).orElse(""), snapshot.federationDomainId().value()))));
         var installations = devices.installations().stream().map(installation -> new InstallationInfo(
                 installation.id(), installation.device(), installation.file(), installation.function(),
-                Ops.repr(new ListValue(installation.args())), TriggerText.format(installation.trigger()),
+                installation.args().stream().map(Installation::text).toList(), TriggerText.format(installation.trigger()),
                 installation.interval(), installation.overlap().name().toLowerCase(Locale.ROOT),
                 scheduler.running(installation.id()))).toList();
         return new Index(List.copyOf(files), List.copyOf(deviceInfos), List.copyOf(interfaceInfos),

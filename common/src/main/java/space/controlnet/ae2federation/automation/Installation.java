@@ -65,6 +65,16 @@ public record Installation(String id, String device, String file, String functio
         }
     }
 
+    /**
+     * An argument as the text an {@code install} or {@code args} request takes back: numbers and strings as they are,
+     * {@code True} and {@code False}, and nothing for {@code None}.
+     */
+    public static String text(Object value) {
+        if (value == null) return "";
+        if (value instanceof Boolean flag) return flag ? "True" : "False";
+        return String.valueOf(value);
+    }
+
     /** A copy that keeps {@code None} arguments, which {@link List#copyOf} refuses. */
     private static List<Object> values(List<Object> args) {
         return Collections.unmodifiableList(new ArrayList<>(args));

@@ -368,7 +368,7 @@ public final class ProgramSchedulerGameTests {
             helper.assertFalse(sync.handle(8, "delete", List.of("sched_sync")).ok(), "Installed files stay");
             var listed = sync.index().installations().stream().filter(info -> info.id().equals(id)).findFirst()
                     .orElseThrow();
-            helper.assertValueEqual(listed.args(), "['" + scene.interfaceId() + "']", "Arguments as Python prints");
+            helper.assertValueEqual(listed.args(), java.util.List.of(scene.interfaceId()), "Arguments as typed");
             helper.assertTrue(sync.index().devices().stream().anyMatch(device -> device.id().equals(scene.device())
                     && !device.domain().isEmpty()), "The device and its domain are listed");
         }).then(10, () -> helper.assertBlockProperty(TARGET, BlockStateProperties.LIT, true)).finish(() -> {

@@ -170,7 +170,7 @@ public final class ProgramPayloads {
             out.writeUtf(installation.device());
             out.writeUtf(installation.file());
             out.writeUtf(installation.function());
-            out.writeUtf(installation.args());
+            out.writeCollection(installation.args(), FriendlyByteBuf::writeUtf);
             out.writeUtf(installation.trigger());
             out.writeVarInt(installation.interval());
             out.writeUtf(installation.overlap());
@@ -186,8 +186,8 @@ public final class ProgramPayloads {
         var interfaces = buffer.readList(ProgramPayloads::readDevice);
         var networks = buffer.readList(in -> new ProgramSync.NetworkInfo(in.readUtf(), in.readUtf(), in.readUtf()));
         var installations = buffer.readList(in -> new ProgramSync.InstallationInfo(in.readUtf(), in.readUtf(),
-                in.readUtf(), in.readUtf(), in.readUtf(), in.readUtf(), in.readVarInt(), in.readUtf(),
-                in.readVarInt()));
+                in.readUtf(), in.readUtf(), List.copyOf(in.readList(FriendlyByteBuf::readUtf)), in.readUtf(),
+                in.readVarInt(), in.readUtf(), in.readVarInt()));
         return new ProgramSync.Index(List.copyOf(files), List.copyOf(devices), List.copyOf(interfaces),
                 List.copyOf(networks), List.copyOf(installations));
     }

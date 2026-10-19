@@ -27,7 +27,7 @@ final class ProgramPayloadsTest {
                 List.of(new ProgramSync.NetworkInfo("network-x4k9pa", "Main base", "physical:4"),
                         new ProgramSync.NetworkInfo("network-r2m7dw", "", "physical:9")),
                 List.of(new ProgramSync.InstallationInfo("install-abcdef", "device-k7m2qx", "iron_tools", "keep",
-                        "['minecraft:iron_ingot', 64]", "every 40", 20, "ignore", 1)));
+                        List.of("minecraft:iron_ingot", "64"), "every 40", 20, "ignore", 1)));
         var buffer = new FriendlyByteBuf(Unpooled.buffer());
         ProgramPayloads.write(buffer, index);
         assertEquals(index, ProgramPayloads.readIndex(buffer));
