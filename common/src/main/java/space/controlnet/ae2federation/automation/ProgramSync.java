@@ -22,9 +22,11 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.function.ListValue;
 import space.controlnet.ae2federation.function.Ops;
 import space.controlnet.ae2federation.function.ScriptParser;
+import space.controlnet.ae2federation.persistence.NetworkNames;
 
 /**
  * The server side of the Automation tab's traffic: the library index the tab shows, file texts on request, uploads
@@ -49,17 +51,21 @@ public final class ProgramSync {
     public record DeviceInfo(String id, String alias, String dimension, BlockPos position, String domain) {
     }
 
+    /** A network a program can name: its short ID, its name (empty when it has none) and its domain. */
+    public record NetworkInfo(String id, String name, String domain) {
+    }
+
     /** An installation, with its arguments as Python prints them and its trigger as {@link TriggerText} writes it. */
     public record InstallationInfo(String id, String device, String file, String function, String args,
             String trigger, int interval, String overlap, int running) {
     }
 
     /**
-     * Every program, computing device, Automation Interface and installation on the server; the tab shows the devices
-     * and interfaces of its own domain.
+     * Every program, computing device, Automation Interface, domain network and installation on the server; the tab
+     * shows the devices and interfaces of its own domain, and checks programs against every interface and network.
      */
     public record Index(List<FileInfo> files, List<DeviceInfo> devices, List<DeviceInfo> interfaces,
-            List<InstallationInfo> installations) {
+            List<NetworkInfo> networks, List<InstallationInfo> installations) {
     }
 
     /** A file's text, in chunks of {@link ChunkAssembler#CHUNK} characters. */
@@ -283,7 +289,7 @@ public final class ProgramSync {
         subscribers.forEach(id -> toClient.index(server.getPlayerList().getPlayer(id), index));
     }
 
-    /** What the tab lists: every program, computing device, Automation Interface and installation. */
+    /** What the tab lists: every program, computing device, Automation Interface, domain network and installation. */
     public Index index() {
         var library = ProgramStore.get(server).library();
         var devices = ComputingDevices.get(server.overworld());
@@ -317,12 +323,19 @@ public final class ProgramSync {
             var domain = level == null ? "" : interfaces.domainOf(level, id).map(found -> found.value()).orElse("");
             interfaceInfos.add(new DeviceInfo(id, entry.alias(), entry.dimension(), entry.position(), domain));
         });
+        var shortIds = NetworkShortIds.get(server);
+        var names = NetworkNames.get(server.overworld());
+        var networks = new ArrayList<NetworkInfo>();
+        FederationDomainRegistryAccess.get(server.overworld()).federationDomains().forEach(snapshot ->
+                snapshot.memberships().keySet().forEach(network -> networks.add(new NetworkInfo(shortIds.id(network),
+                        names.name(network).orElse(""), snapshot.federationDomainId().value()))));
         var installations = devices.installations().stream().map(installation -> new InstallationInfo(
                 installation.id(), installation.device(), installation.file(), installation.function(),
                 Ops.repr(new ListValue(installation.args())), TriggerText.format(installation.trigger()),
                 installation.interval(), installation.overlap().name().toLowerCase(Locale.ROOT),
                 scheduler.running(installation.id()))).toList();
-        return new Index(List.copyOf(files), List.copyOf(deviceInfos), List.copyOf(interfaceInfos), installations);
+        return new Index(List.copyOf(files), List.copyOf(deviceInfos), List.copyOf(interfaceInfos),
+                List.copyOf(networks), installations);
     }
 
     private @Nullable ServerLevel level(String dimension) {

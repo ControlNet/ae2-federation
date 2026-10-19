@@ -160,6 +160,11 @@ public final class ProgramPayloads {
         });
         buffer.writeCollection(index.devices(), ProgramPayloads::writeDevice);
         buffer.writeCollection(index.interfaces(), ProgramPayloads::writeDevice);
+        buffer.writeCollection(index.networks(), (out, network) -> {
+            out.writeUtf(network.id());
+            out.writeUtf(network.name());
+            out.writeUtf(network.domain());
+        });
         buffer.writeCollection(index.installations(), (out, installation) -> {
             out.writeUtf(installation.id());
             out.writeUtf(installation.device());
@@ -179,11 +184,12 @@ public final class ProgramPayloads {
                         fin.readList(FriendlyByteBuf::readUtf), fin.readUtf(), fin.readBoolean()))));
         var devices = buffer.readList(ProgramPayloads::readDevice);
         var interfaces = buffer.readList(ProgramPayloads::readDevice);
+        var networks = buffer.readList(in -> new ProgramSync.NetworkInfo(in.readUtf(), in.readUtf(), in.readUtf()));
         var installations = buffer.readList(in -> new ProgramSync.InstallationInfo(in.readUtf(), in.readUtf(),
                 in.readUtf(), in.readUtf(), in.readUtf(), in.readUtf(), in.readVarInt(), in.readUtf(),
                 in.readVarInt()));
         return new ProgramSync.Index(List.copyOf(files), List.copyOf(devices), List.copyOf(interfaces),
-                List.copyOf(installations));
+                List.copyOf(networks), List.copyOf(installations));
     }
 
     private static void writeDevice(FriendlyByteBuf buffer, ProgramSync.DeviceInfo device) {

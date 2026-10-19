@@ -18,6 +18,7 @@ import space.controlnet.ae2federation.automation.AutomationInterfaceBook.AliasRe
 import space.controlnet.ae2federation.automation.AutomationInterfaces;
 import space.controlnet.ae2federation.automation.AutomationRegistration;
 import space.controlnet.ae2federation.automation.NetworkShortIds;
+import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.function.Checker;
@@ -78,7 +79,13 @@ public final class ProgramStoreGameTests {
                     helper.assertValueEqual(NetworkShortIds.get(server).id(networks.get(0)), shortId,
                             "A network keeps its short ID");
                     helper.assertTrue(catalog.exists(type("Network"), shortId), "Programs name it by that ID");
-                    RouterEvidence.write("programsarecheckedagainsttheserver", 9, Map.of("network", shortId));
+                    var domain = FederationDomainRegistryAccess.get(helper.getLevel()).federationDomainOf(
+                            FederationDomainRegistryAccess.nodeId(helper.getLevel(), helper.absolutePos(CENTER)))
+                            .orElseThrow().federationDomainId().value();
+                    helper.assertTrue(ProgramSync.get(server).index().networks().stream().anyMatch(network ->
+                            network.id().equals(shortId) && network.domain().equals(domain)),
+                            "The tab's index lists the network in its domain");
+                    RouterEvidence.write("programsarecheckedagainsttheserver", 10, Map.of("network", shortId));
                     AutomationInterfaces.get(helper.getLevel()).setAlias(helper.getLevel(), id(helper), "");
                     delete(store, "store_check");
                     fixtures.close();

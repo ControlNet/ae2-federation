@@ -24,6 +24,8 @@ final class ProgramPayloadsTest {
                                 new BlockPos(-8, 70, 2), "")),
                 List.of(new ProgramSync.DeviceInfo("interface-q2w8rt", "north_gate", "minecraft:overworld",
                         new BlockPos(2, -60, 3), "physical:4")),
+                List.of(new ProgramSync.NetworkInfo("network-x4k9pa", "Main base", "physical:4"),
+                        new ProgramSync.NetworkInfo("network-r2m7dw", "", "physical:9")),
                 List.of(new ProgramSync.InstallationInfo("install-abcdef", "device-k7m2qx", "iron_tools", "keep",
                         "['minecraft:iron_ingot', 64]", "every 40", 20, "ignore", 1)));
         var buffer = new FriendlyByteBuf(Unpooled.buffer());

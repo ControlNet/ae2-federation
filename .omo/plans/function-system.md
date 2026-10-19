@@ -183,7 +183,7 @@ Next (user, 2026-10-18: the host and the editor screens both): assistant phasing
 | H6 (done) | Index follow-ups for the tab (user, 2026-10-19): interfaces in the index, device aliases (screen like the interface's), devices filtered by domain, an `args` request that keeps the installation |
 | G1a (done) | Automation tab shell (assistant phasing, 2026-10-19): fourth rail tab, program list with functions and problem counts from the index, file tabs, the script shown read-only in LDLib2's `CodeEditor` with Python colouring from our lexer and a line-number gutter; subscribe on open, unsubscribe on close; UI scenario screenshots against `AutoScript`. Controls that would do nothing yet come with their steps: New and Push with G1b, Library with G1d, the Edit/Install switch with G1e, the Script/Graph switch with G1f |
 | G1b-i (done) | Editing: local copy, automatic chunked upload after a pause (no save button, no sync indicator), New program, Push with the answer on the status line (`AutoScriptErrors`); Tab inserts 4 spaces, `#` comment toggle, indent after `:` |
-| H7 | Networks of every domain in the index (ID, name, domain), so the client checks against what the server checks against |
+| H7 (done) | Networks of every domain in the index (`NetworkInfo`: short ID, name, domain), so the client checks against what the server checks against |
 | G1b-ii | Problems checked on a client worker (gutter mark, underline, problem list, count in the list), against every program's text and a client catalogue (`AutoScriptErrors`) |
 | G1c | Completion from the B2 engine with item icons (`AutoScript`, `AutoScriptItem`) |
 | G1d | Library panel: namespaces, docs with the checked example, search (`AutoLibraryDoc`) |
