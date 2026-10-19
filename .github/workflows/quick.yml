@@ -40,7 +40,7 @@ jobs:
       - name: Archive tuple, license and contamination checks
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_artifact_verify.py -v
       - name: Package development JAR
-        if: github.ref == 'refs/heads/dev'
+        if: github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/feature/')
         id: development
         run: |
           python3 - <<'PY'
@@ -63,7 +63,7 @@ jobs:
               stream.write(f'name={name}\n')
           PY
       - name: Upload development JAR (7 days)
-        if: github.ref == 'refs/heads/dev'
+        if: github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/feature/')
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.development.outputs.name }}-${{ github.run_attempt }}
