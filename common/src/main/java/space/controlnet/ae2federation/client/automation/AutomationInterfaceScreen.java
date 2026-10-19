@@ -55,7 +55,7 @@ public final class AutomationInterfaceScreen extends Screen {
             sent = answer.alias();
             alias.setValue(answer.alias());
         }
-        alias.setTextColor(answer.refused() ? FederationTheme.ERROR : FederationTheme.TEXT);
+        alias.setTextColor(answer.refused() ? FederationTheme.ERROR : FederationTheme.HIGHLIGHT);
     }
 
     private int left() {
@@ -74,9 +74,11 @@ public final class AutomationInterfaceScreen extends Screen {
                 Component.translatable("ae2federation.automation_interface.alias"));
         alias.setBordered(false);
         alias.setMaxLength(NetworkNameBook.MAX_CODE_POINTS);
-        alias.setTextColor(FederationTheme.TEXT);
+        // Light and flat on AE2's dark field, as the Domain screen's text fields draw.
+        alias.setTextShadow(false);
+        alias.setTextColor(FederationTheme.HIGHLIGHT);
         alias.setValue(current);
-        alias.setResponder(text -> alias.setTextColor(FederationTheme.TEXT));
+        alias.setResponder(text -> alias.setTextColor(FederationTheme.HIGHLIGHT));
         addRenderableWidget(alias);
         setInitialFocus(alias);
         var copyWidth = ALIAS_W - ID_W - 4;
