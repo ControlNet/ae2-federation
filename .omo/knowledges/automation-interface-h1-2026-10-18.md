@@ -136,3 +136,25 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - In game, `type_text.py` sends real keys and presses Return; a remote client's copies are under
   `<client>/ae2federation/programs/server-127.0.0.1_<port>/`.
 - `pixi run ... python` re-parses its arguments as a shell line: quotes inside an argument break it.
+
+## G1b-ii: problems on the client
+
+- The parser records where each node ends (`ParseResult.ends`: just after its last token). Java evaluates
+  constructor arguments left to right, so `new Expr.Binary(id(start), op, left, sum())` draws its ID before the
+  right operand is read: such sites wrap the node in `ended(...)`. Do not reorder the arguments: IDs are drawn in
+  sequence and would change.
+- `ScriptProblems.check(text, workspace)` gives line and column spans; a call's span is its function name (found with
+  `Effects.calls`), as the `AutoScriptErrors` board underlines `amout` only.
+- `ScriptChecker` runs one daemon thread with a latest-wins slot (`AtomicReference` swapped on submit; a drain task is
+  queued only when the slot was empty). The view hands it a snapshot: the editor text, the other programs' received
+  texts and a `GameCatalog` over fixed lists from the index plus `RegistryResources(level.registryAccess())`. A result
+  is dropped unless the editor still holds the checked text.
+- The catalogue's scope must match the server's index count: `ProgramStore.library()` checks with
+  `catalog(server, null)` (every interface and network), so the client does too.
+- Underline x: `contentView.getContentX() - getScrollX() + stringWidth(styledLineComponent(line, 0, column)) * scale`.
+  Draw it after the content view (its drawing is scissored), under its own scissor of the content box.
+- Two labels in a row with one `flex: 1` and one `adaptive-width` text from `<lang>` overlapped: one label with a
+  coloured appended `Component` is simpler.
+- An empty `<label>` shows LDLib2's default text "Label" until code sets it: clear it at construction.
+- In game: `press.py` (scratchpad) sends keysyms (`F2` saves a screenshot to `<client>/screenshots`) or `button3`;
+  the check world's mod file is `mods/ae2federation-check.jar` on both sides (copy over it, do not add a second).

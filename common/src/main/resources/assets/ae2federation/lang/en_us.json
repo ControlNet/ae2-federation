@@ -374,6 +374,7 @@
   "ae2federation.ui.automation.no_programs": "No programs yet",
   "ae2federation.ui.automation.new": "+ New",
   "ae2federation.ui.automation.push": "Push",
+  "ae2federation.ui.automation.problems": "Problems",
   "ae2federation.ui.automation.moved": "Edits made on an older version are kept as %s",
   "ae2federation.ui.statistics.range.seconds": "2 min",
   "ae2federation.ui.statistics.range.five_seconds": "10 min",

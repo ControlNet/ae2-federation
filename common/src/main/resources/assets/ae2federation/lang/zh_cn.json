@@ -374,6 +374,7 @@
   "ae2federation.ui.automation.no_programs": "还没有程序",
   "ae2federation.ui.automation.new": "+ 新建",
   "ae2federation.ui.automation.push": "推送",
+  "ae2federation.ui.automation.problems": "问题",
   "ae2federation.ui.automation.moved": "基于旧版本的修改已另存为 %s",
   "ae2federation.ui.statistics.range.seconds": "2 分钟",
   "ae2federation.ui.statistics.range.five_seconds": "10 分钟",

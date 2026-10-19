@@ -9,8 +9,10 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -19,10 +21,14 @@ import net.minecraft.world.level.storage.LevelResource;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.automation.ClientPrograms;
+import space.controlnet.ae2federation.automation.GameCatalog;
 import space.controlnet.ae2federation.automation.LocalCopies;
 import space.controlnet.ae2federation.automation.ProgramSync;
+import space.controlnet.ae2federation.automation.RegistryResources;
+import space.controlnet.ae2federation.client.automation.ScriptChecker;
 import space.controlnet.ae2federation.client.automation.ScriptEditor;
 import space.controlnet.ae2federation.function.ScriptParser;
+import space.controlnet.ae2federation.function.ScriptProblems;
 
 /**
  * The Automation tab's edit view: the programs on the left, the opened ones as tabs above the script. Programs are
@@ -32,16 +38,30 @@ import space.controlnet.ae2federation.function.ScriptParser;
  * <p>Edits go to a local copy at once ({@link LocalCopies}) and to the server after a pause in typing, on switching
  * program and on closing, with no save button or sync indicator. The script is replaced from the server only while
  * it holds nothing unsent.
+ *
+ * <p>Every program's text is fetched, so the shown one is checked on the client ({@link ScriptChecker}) against the
+ * others and every interface and network the server knows, as the server checks it. Its problems are marked in the
+ * editor and listed under it; the other programs show the server's count.
  */
 final class FederationAutomationView {
     /** Ticks without a key before an edit is uploaded. */
     private static final int UPLOAD_PAUSE = 20;
+
+    /** Problem rows shown before the list scrolls. */
+    private static final int PROBLEM_ROWS = 4;
+    /** The problem count's colour, as the program list's. */
+    private static final int PROBLEM_COLOR = 0xff6a75;
+    /** The problem box's head and padding, and a row, as the style sheet sizes them. */
+    private static final float PROBLEM_HEAD = 17;
+    private static final float PROBLEM_ROW = 13;
 
     private final UI ui;
     private final boolean client;
     private final ScrollerView list;
     private final UIElement tabs;
     private final ScriptEditor editor = new ScriptEditor();
+    private final UIElement problemBox;
+    private final ScrollerView problemList;
     private final Button push;
     private final UIElement newRow;
     private final TextField newName;
@@ -52,8 +72,10 @@ final class FederationAutomationView {
     private boolean reconciled;
     /** The server version the editor's text started from. */
     private String base = "";
-    /** The version last asked for, so an index does not ask again while the text is on its way. */
-    private @Nullable String fetching;
+    /** The version last asked for, by program, so an index does not ask again while the text is on its way. */
+    private final Map<String, String> asked = new HashMap<>();
+    /** The shown program's problems, once checked: the client's count replaces the server's in the list. */
+    private @Nullable List<ScriptProblems.Mark> problems;
     /** Edits not yet sent, an upload awaiting its answer, ticks since the last edit, and a push waiting for both. */
     private boolean dirty;
     private boolean sending;
@@ -68,7 +90,7 @@ final class FederationAutomationView {
         this.client = client;
         list = element("auto_programs", ScrollerView.class);
         tabs = element("auto_file_tabs", UIElement.class);
-        element("auto_editor", UIElement.class).addChild(editor);
+        element("auto_script", UIElement.class).addChild(editor);
         // A new program is empty: it shows nothing in place of LDLib2's placeholder.
         editor.textAreaStyle(style -> style.placeholder(Component.empty()));
         editor.setDisplay(false);
@@ -76,6 +98,9 @@ final class FederationAutomationView {
         editor.setLinesResponder(lines -> edited());
         push = element("auto_push", Button.class);
         push.setOnClick(event -> push());
+        problemBox = element("auto_problems", UIElement.class);
+        problemBox.setDisplay(false);
+        problemList = element("auto_problem_list", ScrollerView.class);
         newRow = element("auto_new_row", UIElement.class);
         newRow.setDisplay(false);
         newName = element("auto_new_field", TextField.class);
@@ -88,6 +113,8 @@ final class FederationAutomationView {
             newName.setText("", false);
             if (show) newName.focus();
         });
+        // An empty label would show LDLib2's default text until the first answer.
+        clearAnswer();
         // The root always ticks; the editor does not while another page hides it.
         ui.rootElement.addEventListener(UIEvents.TICK, event -> tick());
     }
@@ -111,7 +138,8 @@ final class FederationAutomationView {
             sending = false;
             pushAfterSend = false;
             reconciled = false;
-            fetching = null;
+            asked.clear();
+            ScriptChecker.cancel();
             return;
         }
         if (copies == null) copies = new LocalCopies(folder());
@@ -151,6 +179,7 @@ final class FederationAutomationView {
         dirty = true;
         idle = 0;
         copies.edited(selected, text(), base);
+        check();
     }
 
     /** Uploads the shown program's unsent edits, if there are any and no upload is awaiting its answer. */
@@ -228,7 +257,9 @@ final class FederationAutomationView {
         opened.retainAll(names);
         if (selected != null && !names.contains(selected)) select(opened.stream().findFirst().orElse(null));
         updateSummary(index);
+        fetchAll(files);
         showText(files);
+        if (reconciled) check();
         updatePush(files);
         rebuildList(files);
         rebuildTabs();
@@ -268,7 +299,7 @@ final class FederationAutomationView {
         boolean arrived = received != null && received.version().equals(latest);
         if (!reconciled) {
             if (!arrived) {
-                fetch(latest);
+                fetch(selected, latest);
                 return;
             }
             var opening = copies.open(selected, latest, received.text(), files.stream()
@@ -289,7 +320,7 @@ final class FederationAutomationView {
         }
         if (dirty || sending) return;
         if (!arrived) {
-            fetch(latest);
+            fetch(selected, latest);
             return;
         }
         editor.setValue(received.text().split("\n", -1), false);
@@ -297,10 +328,74 @@ final class FederationAutomationView {
         copies.sent(selected, received.text());
     }
 
-    private void fetch(String version) {
-        if (version.equals(fetching)) return;
-        fetching = version;
-        ClientPrograms.get().fetch(selected);
+    private void fetch(String name, String version) {
+        if (version.equals(asked.get(name))) return;
+        asked.put(name, version);
+        ClientPrograms.get().fetch(name);
+    }
+
+    /** Asks for every program whose text here is not the server's version: the shown one is checked against them. */
+    private void fetchAll(List<ProgramSync.FileInfo> files) {
+        var programs = ClientPrograms.get();
+        for (var file : files) {
+            var received = programs.text(file.name()).orElse(null);
+            if (received == null || !received.version().equals(file.version())) fetch(file.name(), file.version());
+        }
+    }
+
+    /**
+     * Checks the shown program on the worker against the other programs as received so far and every interface and
+     * network on the server. A result for a text the editor no longer holds is dropped.
+     */
+    private void check() {
+        var index = ClientPrograms.get().index().orElse(null);
+        var level = net.minecraft.client.Minecraft.getInstance().level;
+        if (!reconciled || selected == null || index == null || level == null) return;
+        var programs = ClientPrograms.get();
+        var others = new HashMap<String, String>();
+        index.files().stream().map(ProgramSync.FileInfo::name).filter(name -> !name.equals(selected))
+                .forEach(name -> programs.text(name).ifPresent(received -> others.put(name, received.text())));
+        var interfaces = index.interfaces().stream().map(info -> new GameCatalog.Named(info.id(), info.alias()))
+                .toList();
+        var networks = index.networks().stream().map(info -> new GameCatalog.Named(info.id(), info.name())).toList();
+        var catalog = new GameCatalog(() -> interfaces, () -> networks, new RegistryResources(level.registryAccess()));
+        var name = selected;
+        var text = text();
+        ScriptChecker.check(text, others, catalog, marks -> {
+            if (name.equals(selected) && reconciled && text.equals(text())) showProblems(marks);
+        });
+    }
+
+    /** Marks the problems in the editor, lists them under it, and counts them beside the program. */
+    private void showProblems(List<ScriptProblems.Mark> marks) {
+        boolean recount = problems == null || problems.size() != marks.size();
+        problems = marks;
+        editor.setProblems(marks);
+        problemBox.setDisplay(!marks.isEmpty());
+        element("auto_problems_title", Label.class).setText(Component.translatable("ae2federation.ui.automation.problems")
+                .append(" ").append(Component.literal(String.valueOf(marks.size())).withColor(PROBLEM_COLOR)));
+        problemList.clearAllScrollViewChildren();
+        for (var mark : marks) {
+            var row = new UIElement();
+            row.addClass("program-row");
+            row.addClass("problem-row");
+            var line = new Label();
+            line.addClass("problem-line");
+            line.setText(Component.literal(String.valueOf(mark.line())));
+            row.addChild(line);
+            var message = new Label();
+            message.addClass("program-name");
+            message.setText(Component.literal(mark.message()));
+            row.addChild(message);
+            row.addEventListener(UIEvents.MOUSE_DOWN, event -> editor.setCursor(mark.line() - 1, Math.max(0,
+                    mark.start() - 1)));
+            problemList.addScrollViewChild(row);
+        }
+        problemBox.layout(layout -> layout.height(PROBLEM_HEAD + Math.min(marks.size(), PROBLEM_ROWS) * PROBLEM_ROW));
+        if (recount) {
+            var index = ClientPrograms.get().index().orElse(null);
+            if (index != null) rebuildList(index.files());
+        }
     }
 
     /** Edits made on a version the server no longer holds become a program of their own, beside the server's. */
@@ -323,7 +418,10 @@ final class FederationAutomationView {
         reconciled = false;
         dirty = false;
         pushAfterSend = false;
-        fetching = null;
+        if (name != null) asked.remove(name);
+        problems = null;
+        editor.setProblems(List.of());
+        problemBox.setDisplay(false);
         clearAnswer();
         if (name != null) opened.add(name);
         editor.setValue(new String[] {""}, false);
@@ -346,11 +444,12 @@ final class FederationAutomationView {
             });
             row.setId("auto_program_" + file.name());
             if (chosen) row.addClass("selected");
-            if (file.problems() > 0) {
-                var problems = new Label();
-                problems.addClass("program-problems");
-                problems.setText(Component.literal(String.valueOf(file.problems())));
-                row.addChild(problems);
+            int count = chosen && problems != null ? problems.size() : file.problems();
+            if (count > 0) {
+                var label = new Label();
+                label.addClass("program-problems");
+                label.setText(Component.literal(String.valueOf(count)));
+                row.addChild(label);
             }
             list.addScrollViewChild(row);
             if (!chosen) continue;

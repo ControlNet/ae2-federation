@@ -2,12 +2,14 @@ package space.controlnet.ae2federation.function;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * A script's problems as the editor marks them: its parse errors, or, when it parses, what the checker finds. A
- * checker problem covers its node from where it starts to where it ends, on its first line; a parse error covers the
- * word it is at, or one column.
+ * checker problem covers its node from where it starts to where it ends, on its first line, except that a call covers
+ * the name of the function it calls; a parse error covers the word it is at, or one column.
  */
 public final class ScriptProblems {
     /** A problem: its line, the columns it covers (from 1, the end excluded) and its message. */
@@ -27,11 +29,24 @@ public final class ScriptProblems {
                     wordEnd(lines, error.line(), error.column()), error.message())));
             return marks;
         }
+        var calls = new HashMap<String, Expr.Call>();
+        parsed.program().functions().forEach(function -> Effects.calls(function.body(),
+                call -> calls.put(call.id(), call)));
         for (var problem : Checker.check(parsed.program(), workspace).problems()) {
             var start = parsed.positions().get(problem.node());
             if (start == null) {
                 marks.add(new Mark(1, 1, 1, problem.message()));
                 continue;
+            }
+            var call = calls.get(problem.node());
+            if (call != null) {
+                var name = Pattern.compile("\\b" + Pattern.quote(call.name()) + "\\s*\\(")
+                        .matcher(line(lines, start.line()));
+                if (name.find(start.column() - 1)) {
+                    marks.add(new Mark(start.line(), name.start() + 1, name.start() + 1 + call.name().length(),
+                            problem.message()));
+                    continue;
+                }
             }
             var end = parsed.ends().get(problem.node());
             int to;

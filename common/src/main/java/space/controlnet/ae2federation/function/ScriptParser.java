@@ -558,7 +558,7 @@ public final class ScriptParser {
         var left = and();
         while (isKeyword(peek(), "or")) {
             advance();
-            left = new Expr.Binary(id(start), BinaryOp.OR, left, and());
+            left = ended(new Expr.Binary(id(start), BinaryOp.OR, left, and()));
         }
         return left;
     }
@@ -568,7 +568,7 @@ public final class ScriptParser {
         var left = not();
         while (isKeyword(peek(), "and")) {
             advance();
-            left = new Expr.Binary(id(start), BinaryOp.AND, left, not());
+            left = ended(new Expr.Binary(id(start), BinaryOp.AND, left, not()));
         }
         return left;
     }
@@ -577,7 +577,7 @@ public final class ScriptParser {
         var token = peek();
         if (isKeyword(token, "not")) {
             advance();
-            return new Expr.Unary(id(token), UnaryOp.NOT, not());
+            return ended(new Expr.Unary(id(token), UnaryOp.NOT, not()));
         }
         return comparison();
     }
@@ -593,7 +593,7 @@ public final class ScriptParser {
         if (op == BinaryOp.NOT_IN || op == BinaryOp.IS_NOT) {
             advance();
         }
-        var result = new Expr.Binary(id(start), op, left, sum());
+        var result = ended(new Expr.Binary(id(start), op, left, sum()));
         if (comparisonOperator() != null) {
             throw fail(peek(), "chained comparisons (a < b < c) are not supported; join them with 'and'");
         }
@@ -623,7 +623,7 @@ public final class ScriptParser {
         var left = product();
         while (checkOp("+") || checkOp("-")) {
             var op = advance().text().equals("+") ? BinaryOp.ADD : BinaryOp.SUB;
-            left = new Expr.Binary(id(start), op, left, product());
+            left = ended(new Expr.Binary(id(start), op, left, product()));
         }
         return left;
     }
@@ -640,7 +640,7 @@ public final class ScriptParser {
                 return left;
             }
             var op = BinaryOp.ofSymbol(advance().text()).orElseThrow();
-            left = new Expr.Binary(id(start), op, left, unary());
+            left = ended(new Expr.Binary(id(start), op, left, unary()));
         }
     }
 
@@ -648,7 +648,7 @@ public final class ScriptParser {
         var token = peek();
         if (token.is(Kind.OP, "-")) {
             advance();
-            return new Expr.Unary(id(token), UnaryOp.NEG, unary());
+            return ended(new Expr.Unary(id(token), UnaryOp.NEG, unary()));
         }
         if (token.is(Kind.OP, "+")) {
             throw fail(token, "unary '+' is not supported");
@@ -965,6 +965,12 @@ public final class ScriptParser {
         positions.put(id, new Position(at.line(), at.column()));
         ends.put(id, lastEnd());
         return id;
+    }
+
+    /** An operation's ID is drawn before its right operand is read: it ends after that operand. */
+    private Expr ended(Expr e) {
+        ends.put(e.id(), lastEnd());
+        return e;
     }
 
     /** Where the last token read ends, line breaks and indentation aside: a node made now ends there. */

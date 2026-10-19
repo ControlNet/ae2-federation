@@ -177,6 +177,14 @@
                 </element>
                 <element id="auto_editor" class="auto-box auto-editor-box">
                     <element id="auto_file_tabs" class="auto-file-tabs"/>
+                    <element id="auto_script" class="auto-script"/>
+                    <element id="auto_problems" class="auto-problems">
+                        <element class="auto-divider"/>
+                        <element class="auto-box-head">
+                            <label id="auto_problems_title" class="auto-box-title"/>
+                        </element>
+                        <scroller-view id="auto_problem_list" class="auto-list"/>
+                    </element>
                 </element>
             </element>
             <element id="domain_footer" class="domain-footer">

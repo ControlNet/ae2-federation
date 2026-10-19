@@ -1214,8 +1214,12 @@ User decisions (2026-10-19):
 - **Push** sits at the top right. It is inactive while the devices run the server's version. It sends unsent edits
   first, then pushes; the server's answer shows on the status line after the counts, a refusal in red (as on
   `AutoScriptErrors`, "smelting line 3: ae2 has no function 'amout'"). Saves are never reported.
-- Problems are still the server's count in the list; checking on the client comes next (G1b-ii), after the index
-  carries the networks (H7).
+- **Problems are checked on the client** (G1b-ii), on a worker thread so typing never waits: the shown program
+  against every other program's text (all are fetched) and every interface and network on the server, as the server
+  checks it (the index carries the networks, H7). A problem gets a red square and a red number in the gutter and a
+  wave under its text: a call's function name, otherwise its node to the end of its first line; a parse error covers
+  the word it is at. "Problems N" lists them under the editor (hidden when there are none); a row puts the caret on
+  the problem. The list counts the shown program's problems from the client, the others from the server.
 
 ### Example: from one chest to another (asked by the user 2026-10-18)
 

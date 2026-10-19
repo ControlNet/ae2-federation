@@ -20,8 +20,8 @@ import space.controlnet.ae2federation.client.automation.ScriptEditor;
 /**
  * The Automation tab's edit view (G1a, G1b): the programs the server holds, one opened in the script editor with its
  * functions listed, typing with Python's indentation and comments, the edit reaching the local copy and the server
- * without a save, Push and its refusal, a new program, edits on an older version kept beside the server's, and the
- * index subscription ending when the screen closes. The programs are sample content written for this scenario;
+ * without a save, Push and its refusal, a new program, edits on an older version kept beside the server's, problems
+ * checked on the client and cleared by a fix, and the index subscription ending when the screen closes. The programs are sample content written for this scenario;
  * {@code smelting} misspells a function so the list shows its problem count and Push refuses it.
  */
 @LDLRegisterClient(name = "ui.automation", group = "ae2federation", registry = UIScenario.REGISTRY,
@@ -74,6 +74,8 @@ public final class AutomationTabScenario implements UIScenario {
                         ProgramSync.get(context.server()).subscribed(context.player().getUUID()))
                 .check("the header counts the programs", context ->
                         context.el("#automation_summary").text().startsWith("Programs 2 "))
+                .check("the status line is empty before any answer", context ->
+                        context.el("#automation_answer").text().isEmpty())
                 .check("the misspelt program shows its problem count", context ->
                         context.el("#auto_program_smelting .program-problems").text().equals("1"))
                 .check("no script is shown before a program is opened", context ->
@@ -146,6 +148,23 @@ public final class AutomationTabScenario implements UIScenario {
                         ProgramStore.get(context.server()).library().text("smelting_local").equals("# mine\n"))
                 .check("smelting shows the server's text", context ->
                         String.join("\n", editor(context).getLines()).equals(SMELTING))
+                // Problems are checked on the client: marked in the editor and listed under it.
+                .waitUntil("the misspelt call is listed under the editor", context ->
+                        context.el("#auto_problems").isVisible()
+                                && context.el("#auto_problems_title").text().equals("Problems 1")
+                                && context.el("#auto_problem_list .problem-line").text().equals("3")
+                                && context.el("#auto_problem_list .program-name").text()
+                                        .equals("ae2 has no function 'amout'"))
+                .frames(2).screenshot("ui-automation-problems")
+                .step("put the caret inside the misspelt name", context -> {
+                    var editor = editor(context);
+                    editor.focus();
+                    editor.setCursor(2, 19);
+                })
+                .type("n")
+                .waitUntil("the fixed call clears the problems and the list's count", context ->
+                        !context.el("#auto_problems").isVisible()
+                                && context.all("#auto_program_smelting .program-problems").isEmpty())
                 .closeScreen()
                 .waitUntilServer("closing the screen unsubscribes", context ->
                         !ProgramSync.get(context.server()).subscribed(context.player().getUUID()));

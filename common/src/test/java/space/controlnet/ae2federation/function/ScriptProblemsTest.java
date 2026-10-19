@@ -13,9 +13,17 @@ final class ScriptProblemsTest {
     }
 
     @Test
-    void aCallIsUnderlinedFromItsStartToItsClosingBracket() {
-        assertEquals(List.of(new ScriptProblems.Mark(2, 12, 26, "ae2 has no function 'amout'")),
+    void aCallIsUnderlinedOverTheFunctionsName() {
+        assertEquals(List.of(new ScriptProblems.Mark(2, 16, 21, "ae2 has no function 'amout'")),
                 marks("def f() -> int:\n    return ae2.amout('x')\n"));
+        assertEquals(List.of(new ScriptProblems.Mark(2, 5, 10, "name 'shout' is not defined")),
+                marks("def f() -> None:\n    shout('x')\n"));
+    }
+
+    @Test
+    void anOperationIsUnderlinedFromItsStartToItsEnd() {
+        assertEquals(List.of(new ScriptProblems.Mark(2, 12, 19, "unsupported operand type(s) for +: 'int' and 'str'")),
+                marks("def f() -> int:\n    return 1 + 'x'\n"));
     }
 
     @Test
@@ -26,8 +34,9 @@ final class ScriptProblemsTest {
 
     @Test
     void aNodeOverSeveralLinesIsUnderlinedToTheEndOfItsFirstLine() {
-        var text = "def f() -> int:\n    return ae2.amout(\n        'x')\n";
-        assertEquals(List.of(new ScriptProblems.Mark(2, 12, 22, "ae2 has no function 'amout'")), marks(text));
+        var text = "def f() -> int:\n    return 1 + (\n        'x')\n";
+        assertEquals(List.of(new ScriptProblems.Mark(2, 12, 17, "unsupported operand type(s) for +: 'int' and 'str'")),
+                marks(text));
     }
 
     @Test
