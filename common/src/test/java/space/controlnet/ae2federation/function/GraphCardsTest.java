@@ -203,4 +203,33 @@ final class GraphCardsTest {
         org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> GraphCards.relocate(
                 IRON_TOOLS, canvas("low_iron_alarm"), branch.id(), lamp.id(), "next"));
     }
+
+    @Test
+    void aRemovedStatementTakesWhatIsInsideItAndTheRestClosesUp() {
+        var lamp = card("low_iron_alarm", "mc.set_redstone", 0);
+        assertEquals(IRON_TOOLS.replace("        mc.set_redstone(lamp, 15)\n", ""),
+                GraphCards.remove(IRON_TOOLS, canvas("low_iron_alarm"), lamp.id()));
+        var branch = card("low_iron_alarm", "if", 0);
+        assertEquals(IRON_TOOLS.replace("""
+                    if now < 64:
+                        ae2.craft(iron, 64 - now)
+                        mc.set_redstone(lamp, 15)
+                    else:
+                        mc.set_redstone(lamp, 0)
+                """, ""), GraphCards.remove(IRON_TOOLS, canvas("low_iron_alarm"), branch.id()));
+    }
+
+    @Test
+    void aRemovedValueLeavesAPlainValueOfItsTypeOnItsPort() {
+        var minus = card("low_iron_alarm", "-", 0);
+        assertEquals(IRON_TOOLS.replace("ae2.craft(iron, 64 - now)", "ae2.craft(iron, 0)"),
+                GraphCards.remove(IRON_TOOLS, canvas("low_iron_alarm"), minus.id()));
+    }
+
+    @Test
+    void theLastStatementOfABranchLeavesPass() {
+        var lamp = card("low_iron_alarm", "mc.set_redstone", 1);
+        var text = GraphCards.remove(IRON_TOOLS, canvas("low_iron_alarm"), lamp.id());
+        assertEquals(IRON_TOOLS.replace("        mc.set_redstone(lamp, 0)\n", "        pass\n"), text);
+    }
 }

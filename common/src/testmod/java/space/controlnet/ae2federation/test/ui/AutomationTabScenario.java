@@ -204,6 +204,32 @@ public final class AutomationTabScenario implements UIScenario {
                 .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
                 .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
                         && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                // The × in a card's head removes it (G1f-v, user decision): a value leaves a plain value behind.
+                .check("every card but the function's own has an ×", context ->
+                        context.all(".graph-remove").size() == 8)
+                .click(alarmPin("remove minus"))
+                .waitUntil("a removed value leaves a plain value on its port", context ->
+                        String.join("\n", editor(context).getLines()).equals(
+                                IRON_TOOLS.replace("ae2.craft(iron, 64 - now)", "ae2.craft(iron, 0)")))
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
+                        && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                .click(alarmPin("remove now"))
+                .waitUntil("a removed statement goes and the rest closes up", context ->
+                        String.join("\n", editor(context).getLines()).equals(
+                                IRON_TOOLS.replace("    now = ae2.amount(iron)\n", "")))
+                .frames(2).screenshot("ui-automation-graph-removed")
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
+                        && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                .click("#auto_library_ns_ae2")
+                .drag("#auto_library_fn_ae2_amount", "#auto_graph")
+                .waitUntil("another draft", context -> context.all("#auto_graph_draft_2").size() == 1)
+                .click("#auto_graph_draft_2_remove")
+                .waitUntil("its × discards the draft", context -> context.all(".graph-draft").isEmpty())
+                .check("and the script is as it was", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                .click("#auto_library_ns_ae2")
                 .click("#auto_library_ns_mc")
                 .click("#auto_function_refill")
                 .waitUntil("another tab shows that function", context ->
@@ -629,7 +655,8 @@ public final class AutomationTabScenario implements UIScenario {
     /**
      * A pin on the alarm's graph: {@code in}, the right port of {@code 64 - now}; {@code out}, the {@code now =}
      * statement's next; {@code now}, the exec pin of the {@code now =} statement; {@code after if}, the if's
-     * next; {@code minus}, the value pin of {@code 64 - now}; {@code bound}, the right port of {@code now < 64}.
+     * next; {@code minus}, the value pin of {@code 64 - now}; {@code bound}, the right port of {@code now < 64};
+     * {@code remove minus} and {@code remove now}, the × of {@code 64 - now} and of the {@code now =} statement.
      */
     private static String alarmPin(String kind) {
         var alarm = ScriptParser.parse(IRON_TOOLS).program().functions().stream()
@@ -644,6 +671,8 @@ public final class AutomationTabScenario implements UIScenario {
             case "after if" -> "#auto_graph_out_" + branch.id() + "_next";
             case "minus" -> "#auto_graph_result_" + minus;
             case "bound" -> "#auto_graph_in_" + branch.condition().id() + "_right";
+            case "remove minus" -> "#auto_graph_remove_" + minus;
+            case "remove now" -> "#auto_graph_remove_" + alarm.body().get(1).id();
             default -> throw new IllegalArgumentException(kind);
         };
     }

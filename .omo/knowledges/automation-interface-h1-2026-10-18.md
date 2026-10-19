@@ -349,3 +349,13 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - Test helper `writeLocal` writes only the file, as an outside editor does; `.waitUntilServer` conditions get a
   `ServerContext`, so editor checks go in a separate `.waitUntil`.
 - Compare: `build/automation-outside-editor-check/compare.png`.
+
+## G1f-v: the × on the cards
+
+- `#auto_graph_remove_<card>` (class `graph-remove`) is a 9x9 child in the head's right end, acting on `CLICK`; the
+  card's measured width keeps 9 more units after the title for it. Drafts have `#auto_graph_draft_<n>_remove`.
+- `GraphCards.remove`: a statement card (as `Layout.cards` marks it) goes through `Edits.remove`; a value card is
+  replaced on the port that holds it by the type's filler through `put`. Removing a branch's last statement prints
+  `pass`.
+- Hover colour comes from the hit element's `isHover()` during the card's own draw.
+- Compare: `build/automation-graph-remove-check/compare.png`.

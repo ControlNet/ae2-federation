@@ -52,7 +52,8 @@ import space.controlnet.ae2federation.function.TypeRef;
  * lost with the screen (user decision, 2026-10-19). Dragging its value pin onto a card's input port, or its exec pin
  * onto a card's exec output, writes the call there ({@link GraphCards#putCall}, {@link GraphCards#insertCall}). A
  * card's own pins drag the same way: a value onto another port ({@link GraphCards#move}), a statement onto another
- * exec output ({@link GraphCards#relocate}).
+ * exec output ({@link GraphCards#relocate}). The × in a card's head removes it ({@link GraphCards#remove}; user
+ * decision, 2026-10-19), and a draft's discards the draft.
  */
 final class FederationGraphView {
     /** A card's geometry in GUI units, as the board draws it: its head, the first row's centre and the row pitch. */
@@ -89,6 +90,9 @@ final class FederationGraphView {
     private static final int DRAFT_HEAD = 0xb33a3646;
     /** A pin's square that takes a press or a drop, centred on the card's edge where the pin is drawn. */
     private static final int PIN = 8;
+    /** The remove button in a card's head: its square, and the room it takes after the title. */
+    private static final int CLOSE = 9;
+    private static final int CLOSE_ROOM = 9;
     /** How far the pressed pointer moves on a draft's pin before it drags a wire, as on the Install view. */
     private static final float DRAG_THRESHOLD = 3;
 
@@ -282,7 +286,7 @@ final class FederationGraphView {
         for (var card : shownGraph.cards()) {
             var place = boxes.get(card.id());
             graph.addContentChild(new CardElement(drawn.get(card.id()), place.x() + MARGIN, place.y() + MARGIN,
-                    (row, typed) -> put(shownGraph, row, typed)));
+                    (row, typed) -> put(shownGraph, row, typed), () -> remove(shownGraph, card.id())));
         }
         for (var draft : drafts.getOrDefault(function, List.of())) graph.addContentChild(new DraftElement(draft));
         extentX = right + 2 * MARGIN;
@@ -305,6 +309,16 @@ final class FederationGraphView {
         if (!text.get().equals(drawnFrom)) return;
         try {
             write.accept(GraphCards.put(drawnFrom, shownGraph.canvas(), row.node(), row.port(), row.type(), typed));
+        } catch (IllegalArgumentException e) {
+            refuse.accept(e.getMessage());
+        }
+    }
+
+    /** Removes a card from the script, or says on the status line why it cannot be. */
+    private void remove(ScriptChecker.Graph shownGraph, String card) {
+        if (!text.get().equals(drawnFrom)) return;
+        try {
+            write.accept(GraphCards.remove(drawnFrom, shownGraph.canvas(), card));
         } catch (IllegalArgumentException e) {
             refuse.accept(e.getMessage());
         }
@@ -447,7 +461,8 @@ final class FederationGraphView {
         boolean execIn = card.statement() && card.card().node().kind() != Canvas.Kind.ENTRY;
         int firstRow = execIn ? 1 : 0;
         int lines = Math.max(1, Math.max(firstRow + card.rows().size(), card.outputs().size()));
-        int width = Math.max(MIN_WIDTH, 4 + font.width(card.title()) + END);
+        boolean entry = card.card().node().kind() == Canvas.Kind.ENTRY;
+        int width = Math.max(MIN_WIDTH, 4 + font.width(card.title()) + END + (entry ? 0 : CLOSE_ROOM));
         // Each line holds an input on the left (the exec pin, or a row) and an output's label on the right.
         for (int line = 0; line < lines; line++) {
             int row = line - firstRow;
@@ -588,13 +603,38 @@ final class FederationGraphView {
                 && ui.getDragHandler().draggingObject instanceof PinDrag drag && drag.exec();
     }
 
+    /** The × in the head of a card {@code width} wide, which removes it on a click. */
+    private static UIElement closer(String id, int width, Runnable remove) {
+        var close = new UIElement();
+        close.setId(id);
+        close.addClass("graph-remove");
+        close.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(width - CLOSE - 1).top(1).width(CLOSE)
+                .height(CLOSE));
+        // On the click, not the press: the card goes with it.
+        close.addEventListener(UIEvents.CLICK, event -> remove.run());
+        return close;
+    }
+
+    /** An × of five pixels at {@code (x, y)}, red while {@code close} is hovered. */
+    @OnlyIn(Dist.CLIENT)
+    private static void cross(net.minecraft.client.gui.GuiGraphics graphics, @Nullable UIElement close, float x,
+            float y) {
+        if (close == null) return;
+        int color = close.isHover() ? FederationTheme.ERROR : LABEL;
+        for (int i = 0; i < 5; i++) {
+            DrawerHelper.drawSolidRect(graphics, x + i, y + i, 1, 1, color);
+            DrawerHelper.drawSolidRect(graphics, x + 4 - i, y + i, 1, 1, color);
+        }
+    }
+
     /** One card, drawn whole: face, head and title, its pins and ports, and each row's label and value. */
     private final class CardElement extends UIElement {
         private final Drawn drawn;
+        private final @Nullable UIElement close;
         /** After an if or a loop with nothing after it, its {@code next}: shown only while an exec wire is dragged. */
         private final boolean openNext;
 
-        CardElement(Drawn drawn, int x, int y, BiConsumer<GraphCards.Row, String> put) {
+        CardElement(Drawn drawn, int x, int y, BiConsumer<GraphCards.Row, String> put, Runnable remove) {
             this.drawn = drawn;
             setId("auto_graph_card_" + drawn.card().id());
             addClass("graph-card");
@@ -632,6 +672,9 @@ final class FederationGraphView {
                 addChild(source(pin("auto_graph_result_" + card.id(), drawn.width(), FIRST),
                         new PinDrag(null, card.id(), false, color(card.result()))));
             }
+            // Every card but the function's own can be removed.
+            close = kind == Canvas.Kind.ENTRY ? null : closer("auto_graph_remove_" + card.id(), drawn.width(), remove);
+            if (close != null) addChild(close);
         }
 
         /** The value's place on the card: a click opens a field over it, and Enter or leaving it writes it. */
@@ -693,6 +736,7 @@ final class FederationGraphView {
             DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, getSizeHeight() - 2, FACE);
             DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, HEAD, card.acts() ? ACTS : TITLE);
             text(context, card.title(), x + 4, y + 2, EXEC);
+            cross(graphics, close, x + w - CLOSE + 1, y + 3);
             if (drawn.execIn()) triangle(graphics, x - 3, y + FIRST - 3);
             for (int i = 0; i < card.outputs().size(); i++) {
                 float cy = y + drawn.outputY(i);
@@ -745,6 +789,7 @@ final class FederationGraphView {
      */
     private final class DraftElement extends UIElement {
         private final Draft draft;
+        private final UIElement close;
         private final int width;
         private final int height;
         private final int firstRow;
@@ -754,7 +799,7 @@ final class FederationGraphView {
             var font = net.minecraft.client.Minecraft.getInstance().font;
             firstRow = draft.execIn() ? 1 : 0;
             int lines = Math.max(1, firstRow + draft.rows().size());
-            int widest = 4 + font.width(title()) + END;
+            int widest = 4 + font.width(title()) + END + CLOSE_ROOM;
             for (var arg : draft.rows()) widest = Math.max(widest, LABEL_X + font.width(arg.name()) + END);
             width = Math.max(MIN_WIDTH, widest);
             height = BASE + ROW * lines;
@@ -764,6 +809,11 @@ final class FederationGraphView {
                     .height(height));
             // Only its pins take presses; a press anywhere else reaches the canvas, which pans.
             setAllowHitTest(false);
+            close = closer(getId() + "_remove", width, () -> {
+                drafts.getOrDefault(function, new ArrayList<>()).remove(draft);
+                graph.removeContentChild(this);
+            });
+            addChild(close);
             if (draft.execIn()) addChild(source(pin(getId() + "_in", 0, FIRST), new PinDrag(draft, null, true, EXEC)));
             if (draft.valueOut()) {
                 addChild(source(pin(getId() + "_out", width, FIRST),
@@ -794,6 +844,7 @@ final class FederationGraphView {
                 DrawerHelper.drawSolidRect(graphics, x + width - 1, y + i, 1, Math.min(2, height - i), DRAFT_EDGE);
             }
             text(context, title(), x + 4, y + 2, EXEC);
+            cross(graphics, close, x + width - CLOSE + 1, y + 3);
             if (draft.execIn()) triangle(graphics, x - 3, y + FIRST - 3);
             if (draft.valueOut()) port(graphics, x + width - 3, y + FIRST - 2, color(draft.function().result()));
             var rows = draft.rows();

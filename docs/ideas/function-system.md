@@ -1356,7 +1356,7 @@ it. Assistant choices, open for the user:
 - Each required argument is written with a plain value of its type, to be edited on the card: `0`, `0.0`, `False`,
   `""` (a string or a resource), `[]`, and `None` for a type that has no literal (an interface, a block, a network).
   The checker marks what is still missing, such as `unknown resource ''`.
-- A draft has no delete control; it is lost when the screen closes or another program is opened.
+- A draft is lost when the screen closes or another program is opened, or with its × (G1f-v).
 - After an if or a loop, `next` has no pin until a statement follows it, so a draft cannot be placed after the last
   compound statement yet (G1f-iv lifts this).
 
@@ -1369,8 +1369,13 @@ status line. Assistant choices, open for the user:
 
 - After an if or a loop with nothing after it, `next` appears below its outputs only while an exec wire is dragged,
   so the cards keep the board's look at rest and a statement can still be placed at the end of the function.
-- Removing a statement or a value, and turning a value into a variable (`Edits.remove`, `Edits.extract`), have no
-  control yet.
+- Turning a value into a variable (`Edits.extract`) has no control yet.
+
+**Removing cards (G1f-v, 2026-10-19).** An × in the top right of each card removes it (user decision 2026-10-19);
+the function's own card has none. A statement goes with what is inside it and the statements after it close up; a
+branch left empty gets `pass`. A value goes with the values that feed it, and its port takes a plain value of its
+type, as a moved value leaves behind. A draft's × discards the draft. The × turns red under the pointer (assistant
+choice).
 
 
 ### Example: from one chest to another (asked by the user 2026-10-18)

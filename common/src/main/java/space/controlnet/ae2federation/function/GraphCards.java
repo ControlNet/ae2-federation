@@ -155,6 +155,27 @@ public final class GraphCards {
         return Library.splice(text, Edits.relocate(canvas, statement, from, output).toFunction());
     }
 
+    /**
+     * {@code text} without the card {@code card}: a statement with what is inside it ({@link Edits#remove}), or a
+     * value, whose port takes a plain value of its type in its place.
+     */
+    public static String remove(String text, Canvas canvas, String card) {
+        var node = canvas.nodes().stream().filter(n -> n.id().equals(card)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("no card " + card));
+        if (Layout.cards(canvas).stream().anyMatch(c -> c.id().equals(card) && c.statement())) {
+            return Library.splice(text, Edits.remove(canvas, card).toFunction());
+        }
+        for (var holder : canvas.nodes()) {
+            for (var input : holder.inputs().entrySet()) {
+                if (input.getValue() instanceof Canvas.Input.Wire wire && wire.node().equals(node.id())) {
+                    return put(text, canvas, holder.id(), input.getKey(), null,
+                            filler(canvas.types().get(node.id())));
+                }
+            }
+        }
+        throw new IllegalArgumentException(card + " feeds no port");
+    }
+
     private static String filler(TypeRef type) {
         if (type == null) return "None";
         return switch (type.name()) {
