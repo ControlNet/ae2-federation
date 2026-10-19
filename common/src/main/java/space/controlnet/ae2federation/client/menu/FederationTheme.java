@@ -130,6 +130,8 @@ public final class FederationTheme {
     public static final IGuiTexture KIND_CHIP = outlined(WELL, 0xff4a4655);
     public static final IGuiTexture KIND_CHIP_HOVER = outlined(0xff2c2735, 0xff6d6a82);
     public static final IGuiTexture KIND_CHIP_SELECTED = outlined(0xff2c2735, SELECT);
+    /** The Automation tab's dark boxes: the program list and the editor. */
+    public static final IGuiTexture CANVAS_BOX = outlined(CANVAS, 0xff121016);
     /** AE2's empty upgrade slot icon ({@code Icon.BACKGROUND_UPGRADE}), at the 40% AE2 draws slot icons with. */
     public static final IGuiTexture UPGRADE_SLOT = tinted(AE2_STATES, 240, 208, 16, 16, 0x66ffffff);
 
@@ -214,6 +216,7 @@ public final class FederationTheme {
         provider.addResource("KIND_CHIP", KIND_CHIP);
         provider.addResource("KIND_CHIP_HOVER", KIND_CHIP_HOVER);
         provider.addResource("KIND_CHIP_SELECTED", KIND_CHIP_SELECTED);
+        provider.addResource("CANVAS_BOX", CANVAS_BOX);
         provider.addResource("TOOLBAR", TOOLBAR);
         provider.addResource("TOOLBAR_HOVER", TOOLBAR_HOVER);
         provider.addResource("TOOLBAR_ACTIVE", TOOLBAR_ACTIVE);

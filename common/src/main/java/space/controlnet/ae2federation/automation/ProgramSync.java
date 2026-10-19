@@ -130,6 +130,11 @@ public final class ProgramSync {
         }
     }
 
+    /** Whether the player has the tab open. */
+    public boolean subscribed(UUID player) {
+        return subscribers.contains(player);
+    }
+
     /** Sends a program's text, in chunks. */
     public void fetch(ServerPlayer player, String name) {
         var library = ProgramStore.get(server).library();

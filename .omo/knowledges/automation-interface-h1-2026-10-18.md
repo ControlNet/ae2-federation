@@ -93,3 +93,29 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - Index gaps the boards expose (H5 follow-ups for G1): no interfaces in `ProgramSync.Index` (the aside names them),
   installation arguments are one repr string with no `args` request, devices are listed server-wide while the tab
   lives in a domain's GUI, `FunctionInfo` drops `_` names (the client can parse the fetched text itself).
+
+## G1a: the Automation tab shell
+
+- A fourth workspace page follows the statistics pattern: a `rail-tab` button and `page_<name>` in `domain.xml`,
+  the name in `FederationWorkspace.PAGES` with an icon from `FederationIcons`, `bind<Page>(view)` and
+  `view.setOpen(...)` in `show()`, the lang keys `ui.workspace.<name>` and `ui.workspace.tab_title.<name>`. A header
+  caption that belongs to one page goes in `header-status` with `off-page` and is toggled in `show()`.
+- `createUI` builds the tree on both sides; anything that talks to `ClientPrograms` must be gated on the client
+  (`session == null`). `ClientPrograms.open(false)` clears every listener, so listen again after each `open(true)`;
+  close the subscription in `FederationModularUI.onRemoved` too, or closing the screen on the tab leaks it.
+- LDLib2's `TextArea` content view scissors its own drawing to its content box (`UIElement.drawContents`), so a
+  gutter drawn there is invisible. `ScriptEditor` widens the content view's left padding and draws the gutter in
+  `drawBackgroundOverlay`, which runs after the children; the caret and selection keep using the content X.
+- `CodeEditor` never calls `ILanguageDefinition.shouldIncreaseIndentation`, its comment toggle is a private `//`,
+  and Tab inserts two spaces: G1b has to override `insertNewLine`, `toggleCommentAtBol` and `onKeyDown`. Read-only
+  without looking disabled: override `isEditable()`.
+- The editor's placeholder defaults to "Empty"; clear it with `textAreaStyle(style -> style.placeholder(...))`.
+- `ldlib2.uitest.run` takes `name`, `a,b,c`, `group:<g>` or `tag:<t>`; a bare group name selects nothing and
+  still passes. All federation scenarios: `-PfederationUiSelection=group:ae2federation`.
+- `:neoforge-1.21.1:build` checks the release jar for test registrations; `RegisterCommandsEvent` is allowed only
+  in the reviewed command classes listed in `neoforge-1.21.1/build.gradle` (`ProgramCommands` added in G1a; it had
+  failed the check since H4).
+- The check world (`build/automation-interface-check`): the Switch at 0,-60,10 opens the domain GUI from
+  `tp VisualProbe 0.5 -59 13.5 180 30` + right click; GUI clicks need pointer motion (XTEST `MotionNotify`) before
+  the button press. Its domain reads "No confirmed Federation Domain membership" (pre-existing); the original
+  computing device at 8,-60,8 is on a network outside that domain, a second one was placed at 1,-60,11.

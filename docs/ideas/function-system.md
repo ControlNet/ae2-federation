@@ -1178,6 +1178,23 @@ User decisions (2026-10-19):
 - A condition must be a public function: the scheduler refuses a `_private` one, so the condition list in the tab
   shows public functions only.
 
+### The tab's first step as built (G1a, 2026-10-19)
+
+- **A fourth rail tab, Automation**, with a play mark between brackets. While it is shown the client subscribes to
+  the program index; switching to another tab or closing the screen ends the subscription.
+- **The header** reads "Programs 3 · Devices 1 · Installed 0": every program (they are global), and the computing
+  devices of this domain and what is installed on them.
+- **The program list**: every program, with its problem count in red when it has any. The opened program lists its
+  functions below it, private ones greyed; clicking one puts the caret on its definition.
+- **File tabs** for the programs opened since the screen opened, above the script.
+- **The script** is shown read-only in LDLib2's code editor with the design's colours and a line-number gutter, in
+  LDLib2's JetBrains Mono (Python needs a monospaced font; the design's pixel font is a stand-in). A newer version on
+  the server replaces it. Nothing is shown until a program is opened.
+- Not shown yet, because they would do nothing: New and Push (with editing), the library panel, the Edit/Install
+  switch (with the Install view) and the Script/Graph switch (with the graph view). The coloured marks beside
+  functions on the design board have no agreed meaning yet (assistant reading: installed, green when the devices run
+  the current version); they come with the Install view.
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

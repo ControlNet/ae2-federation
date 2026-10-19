@@ -303,6 +303,14 @@ public final class FederationDomainPolicySession {
         return endpoint.id().value() + ":" + endpoint.instanceEpoch().value();
     }
 
+    /**
+     * The domain's ID, as {@link space.controlnet.ae2federation.automation.ProgramSync.DeviceInfo#domain} gives it;
+     * empty when the entrance has no domain (a disabled Bridge).
+     */
+    public String domainId() {
+        return context == null ? "" : context.federationDomainId().value();
+    }
+
     /** Presentation choices are independent of the graph wire format and retain stable server identities. */
     public String workspaceChoices() {
         refreshPreparedRelease();

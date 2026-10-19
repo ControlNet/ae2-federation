@@ -125,6 +125,14 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         statisticsSync.addClass("state-sync");
         ui.rootElement.addChild(statisticsSync);
         workspace.bindStatistics(statistics);
+        // The programs are global; the domain picks the devices the tab counts and lists.
+        var automation = new FederationAutomationView(ui, session == null);
+        var domain = new BindableValue<String>("");
+        domain.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : session.domainId()).initialValue("")
+                .remoteSetter(automation::setDomain).build());
+        domain.addClass("state-sync");
+        ui.rootElement.addChild(domain);
+        workspace.bindAutomation(automation);
         element(ui, "return_provider", Button.class).setOnClick(event ->
                 FederationDomainPolicyActionSink.returnToProvider(player.containerMenu.containerId));
         var graphState = new FederationTopologyView(ui, target -> send(FederationDomainPolicyAction.SET_POLICY, target),
@@ -213,6 +221,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             @Override
             public void onRemoved() {
                 observation.ifPresent(value -> session.closeObservation(value));
+                automation.close();
                 super.onRemoved();
             }
         }

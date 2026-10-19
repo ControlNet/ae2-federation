@@ -63,6 +63,25 @@ final class FederationIcons {
             ".##############.",
             "................");
 
+    /** Automation: a play mark between two brackets. */
+    static final IGuiTexture AUTOMATION = glyph(
+            "................",
+            ".####......####.",
+            ".#............#.",
+            ".#............#.",
+            ".#....#.......#.",
+            ".#....##......#.",
+            ".#....###.....#.",
+            ".#....####....#.",
+            ".#....####....#.",
+            ".#....###.....#.",
+            ".#....##......#.",
+            ".#....#.......#.",
+            ".#............#.",
+            ".#............#.",
+            ".####......####.",
+            "................");
+
     /** This domain only: three networks inside a dashed boundary. */
     static final IGuiTexture SCOPE_DOMAIN = glyph(
             "##.###.##.###.##",

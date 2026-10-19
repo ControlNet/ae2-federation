@@ -8,6 +8,7 @@
                 <button id="tab_overview" class="rail-tab" text=""/>
                 <button id="tab_mapping" class="rail-tab" text=""/>
                 <button id="tab_statistics" class="rail-tab" text=""/>
+                <button id="tab_automation" class="rail-tab" text=""/>
             </element>
         </element>
         <element id="domain_window" class="domain-panel">
@@ -22,6 +23,7 @@
                         <label id="members_value" class="domain-caption members-caption"/>
                         <label id="processing_summary" class="domain-caption members-caption"/>
                         <label id="scope_caption" class="domain-caption members-caption"/>
+                        <label id="automation_summary" class="domain-caption members-caption off-page"/>
                     </element>
                 </element>
                 <element id="header_graph_tools" class="header-tools">
@@ -154,6 +156,17 @@
                             </element>
                         </element>
                     </element>
+                </element>
+            </element>
+            <element id="page_automation" class="workspace-page automation-page">
+                <element class="auto-side">
+                    <element class="auto-box auto-programs">
+                        <label class="auto-box-title"><lang key="ae2federation.ui.automation.programs"/></label>
+                        <scroller-view id="auto_programs" class="auto-list"/>
+                    </element>
+                </element>
+                <element id="auto_editor" class="auto-box auto-editor-box">
+                    <element id="auto_file_tabs" class="auto-file-tabs"/>
                 </element>
             </element>
             <element id="domain_footer" class="domain-footer">

@@ -181,6 +181,13 @@ Next (user, 2026-10-18: the host and the editor screens both): assistant phasing
 | H5 (done) | Packets: library index, chunked upload, last write wins, install/uninstall/push |
 | G0 (done) | Render the design row "自动化页签" and check it covers the Edit view controls; add boards for what is missing and get the user's nod |
 | H6 (done) | Index follow-ups for the tab (user, 2026-10-19): interfaces in the index, device aliases (screen like the interface's), devices filtered by domain, an `args` request that keeps the installation |
+| G1a (done) | Automation tab shell (assistant phasing, 2026-10-19): fourth rail tab, program list with functions and problem counts from the index, file tabs, the script shown read-only in LDLib2's `CodeEditor` with Python colouring from our lexer and a line-number gutter; subscribe on open, unsubscribe on close; UI scenario screenshots against `AutoScript`. Controls that would do nothing yet come with their steps: New and Push with G1b, Library with G1d, the Edit/Install switch with G1e, the Script/Graph switch with G1f |
+| G1b | Editing: local copy, automatic chunked upload after a pause (no save button, no sync indicator), New program, problems checked on a client worker (gutter mark, underline, problem list, count), Push with the answer on the status line (`AutoScriptErrors`); Tab inserts 4 spaces, `#` comment toggle, indent after `:` |
+| G1c | Completion from the B2 engine with item icons (`AutoScript`, `AutoScriptItem`) |
+| G1d | Library panel: namespaces, docs with the checked example, search (`AutoLibraryDoc`) |
+| G1e | Install view and the Edit/Install switch: programs and this domain's devices, wires to install, aside with arguments, trigger, interval, overlap, log, Run now, Uninstall, Open in editor; installed functions marked in the program list (`AutoInstall*`) |
+| G1f | Graph view and the Script/Graph switch (Graph disabled while the script does not parse) from `Canvas`/`Layout`, library drag (`AutoGraph`, `AutoLibraryDrag`) |
+| G1g | Outside editors: files of the open window synced both ways |
 | G1+ | Automation tab: Edit view (program list, file tabs, script editor with completion, errors, item icons), Graph view from `Canvas`/`Layout`, library panel with the examples, Install view |
 
 Decided (user, 2026-10-18): programs are global with no permissions for now; installations run the version last

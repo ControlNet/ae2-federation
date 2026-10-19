@@ -22,7 +22,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 // The tab rail's background wraps its tabs and ends under the last one, not at the window's bottom.
                 .check("the tab rail ends under its last tab", context -> {
                     var rail = context.el("#workspace_rail").bounds();
-                    var last = context.el("#tab_statistics").bounds();
+                    var last = context.el("#tab_automation").bounds();
                     var root = context.el("#domain_root").bounds();
                     float bottom = last.y() + last.height();
                     return rail.y() + rail.height() >= bottom && rail.y() + rail.height() <= bottom + 8
