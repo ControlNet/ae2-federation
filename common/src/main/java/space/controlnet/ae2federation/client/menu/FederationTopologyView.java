@@ -76,6 +76,7 @@ final class FederationTopologyView {
     private UIElement linkLayer;
     private final Consumer<String> setPolicy;
     private Consumer<String> setEndpointEnergy = target -> { };
+    private Consumer<String> keepNetwork = target -> { };
     private final Consumer<String> rename;
     private final BiConsumer<String, String> openObject;
     private final Label title;
@@ -104,6 +105,11 @@ final class FederationTopologyView {
     private final Label locationNote;
     private final Label locationLegend;
     private final Button highlight;
+    /** Settles a pending merge on the selected network, after the player confirms. */
+    private final Button keep;
+    private final UI ui;
+    /** The other networks of the selected pending merge, by name, for the confirmation. */
+    private List<String> keepOthers = List.of();
     private List<space.controlnet.ae2federation.client.policy.BlockMarks.Mark> highlightBlocks = List.of();
     /** The parts of a network whose identity is in doubt, each outlined in its own colour. */
     private List<space.controlnet.ae2federation.client.WorldHighlight.Group> highlightParts = List.of();
@@ -205,6 +211,7 @@ final class FederationTopologyView {
         this.setPolicy = setPolicy;
         this.rename = rename;
         this.openObject = openObject;
+        this.ui = ui;
         graph = element(ui, "domain_graph", GraphView.class);
         // GraphView pans and zooms only for a press or a wheel turn that reaches the bare canvas. Cards, link labels and
         // Endpoint nodes cover most of it, so they hand theirs on, in the capture phase before anything under them can
@@ -338,6 +345,9 @@ final class FederationTopologyView {
         locationNote = element(ui, "network_location_note", Label.class);
         locationLegend = element(ui, "network_location_legend", Label.class);
         highlight = element(ui, "network_highlight", Button.class);
+        keep = element(ui, "network_keep", Button.class);
+        keep.setOnClick(event -> confirmKeep(network(selectedNetwork)));
+        keep.setDisplay(false);
         element(ui, "network_preview", UIElement.class).addChild(preview);
         preview.setModeButtons(element(ui, "network_view_map", Button.class), element(ui, "network_view_3d", Button.class));
         // The button stays pressed while its blocks are outlined; pressing it again ends the outline early.
@@ -613,6 +623,50 @@ final class FederationTopologyView {
     /** Where an Endpoint's energy switch sends its {@code EndpointEnergyTarget}. */
     void onEndpointEnergy(Consumer<String> sender) {
         setEndpointEnergy = sender;
+    }
+
+    /** Where Keep sends the id of the network a pending merge settles on. */
+    void onKeepNetwork(Consumer<String> sender) {
+        keepNetwork = sender;
+    }
+
+    /** Asks before a merge is settled: the other networks' names and rules are deleted. */
+    private void confirmKeep(Network network) {
+        if (network == null) return;
+        var name = name(network).getString();
+        var dialog = new com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog().setTitle(tr("keep_title", name).getString())
+                .darkenBackground();
+        dialog.setId("keep_dialog");
+        dialog.overlay.layout(style -> style.width(Math.min(300, ui.rootElement.getContentWidth() - 12)));
+        dialog.overlay.style(style -> style.backgroundTexture(FederationTheme.FRAME));
+        dialog.titleBar.style(style -> style.backgroundTexture(
+                new com.lowdragmc.lowdraglib2.gui.texture.ColorRectTexture(FederationTheme.INSET)));
+        dialog.contentContainer.style(style -> style.backgroundTexture(
+                new com.lowdragmc.lowdraglib2.gui.texture.ColorRectTexture(FederationTheme.PANEL)));
+        dialog.buttonContainer.style(style -> style.backgroundTexture(
+                new com.lowdragmc.lowdraglib2.gui.texture.ColorRectTexture(FederationTheme.PANEL)));
+        var body = new Label();
+        body.setId("keep_consequence");
+        body.setText(tr("keep_consequence", String.join(" · ", keepOthers), name));
+        body.textStyle(style -> style.fontSize(8).textWrap(TextWrap.WRAP).adaptiveHeight(true));
+        body.layout(style -> style.widthPercent(100));
+        dialog.addContent(body);
+        var cancel = new Button();
+        cancel.setId("keep_cancel");
+        cancel.setText(tr("rename_cancel"));
+        cancel.setOnClick(event -> dialog.close());
+        var confirm = new Button();
+        confirm.setId("keep_confirm");
+        confirm.addClass("danger-action");
+        confirm.setText(tr("keep_confirm", name));
+        confirm.setOnClick(event -> {
+            dialog.close();
+            keepNetwork.accept(network.id());
+        });
+        cancel.layout(style -> style.flex(1).height(20));
+        confirm.layout(style -> style.flex(1).height(20));
+        dialog.addButton(cancel).addButton(confirm);
+        dialog.show(ui.rootElement);
     }
 
     void setEditable(boolean value) {
@@ -1677,6 +1731,7 @@ final class FederationTopologyView {
         pairEditor.setDisplay(pairEnds != null);
         var endpoint = endpointNodes.stream().filter(node -> node.id().equals(selectedEndpoint)).findFirst().orElse(null);
         endpointDetail.setDisplay(pairEnds == null && endpoint != null);
+        keep.setDisplay(false);
         if (pairEnds != null) renderPair(network(pairEnds[0]), network(pairEnds[1]));
         else if (endpoint != null) renderEndpoint(endpoint);
         else renderNetwork(network(selectedNetwork));
@@ -1725,12 +1780,15 @@ final class FederationTopologyView {
             var parts = facts != null && facts.has("identityParts") ? facts.getAsJsonArray("identityParts") : null;
             if (state == NetworkIdentityState.MERGE && parts != null) {
                 var names = new ArrayList<String>();
+                var others = new ArrayList<String>();
                 parts.forEach(part -> {
                     var id = part.getAsJsonObject().has("network") ? part.getAsJsonObject().get("network").getAsString() : "";
                     var known = network(id);
                     names.add(known != null ? name(known).getString() : id.length() >= 8
                             ? tr("network_name", id.substring(0, 8).toUpperCase(Locale.ROOT)).getString() : id);
+                    if (!id.equals(network.id())) others.add(names.getLast());
                 });
+                keepOthers = List.copyOf(others);
                 explanation.append("\n").append(tr("identity.merge.contains", String.join(" · ", names)));
             } else if (state == NetworkIdentityState.SPLIT && parts != null) {
                 explanation.append("\n").append(tr("identity.split.parts", parts.size()));
@@ -1751,6 +1809,10 @@ final class FederationTopologyView {
         devices.setText(tr("devices", providers(network).size() + endpoints(network).size()));
         devices.style(style -> style.tooltips(tr("devices_help", providers(network).size(), endpoints(network).size())));
         devices.setActive(!providers(network).isEmpty() || !endpoints(network).isEmpty());
+        // A pending merge has no devices of its own; its row offers Keep instead.
+        var merging = !network.foreign() && identityState.equals("merge");
+        keep.setDisplay(merging);
+        devices.setDisplay(!merging);
         // Linked networks first, as the design's "Connections (N)"; the others follow so rules can still be created.
         var others = shown().stream().filter(other -> !other.id().equals(network.id()) && discovers(network, other)).toList();
         var linked = others.stream().filter(other -> !linkSummary(network, other).getString().isEmpty()).toList();

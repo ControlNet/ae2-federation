@@ -549,6 +549,51 @@ public final class IdentityGameTests {
                 space.controlnet.ae2federation.policy.PolicyCapability.STORAGE);
     }
 
+    /**
+     * A player keeps the smaller of two differently named pieces: its id survives with its name, the other's name is
+     * deleted. Keeping an id the Grid does not hold changes nothing.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void identityPlayerKeepsOne(GameTestHelper helper) {
+        var small = new BlockPos(1, 1, 1);
+        var large = new BlockPos(3, 1, 1);
+        mergePiece(helper, small, 1);
+        mergePiece(helper, large, 4);
+        var names = space.controlnet.ae2federation.persistence.NetworkNames.get(helper.getLevel());
+        var phase = new int[1];
+        var ids = new space.controlnet.ae2federation.identity.NetworkId[2];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                var smallNode = relativeNode(helper, small);
+                var largeNode = relativeNode(helper, large);
+                helper.assertValueEqual(service(smallNode).settlement().status(), IdentityStatus.SETTLED, "Small settles");
+                helper.assertValueEqual(service(largeNode).settlement().status(), IdentityStatus.SETTLED, "Large settles");
+                ids[0] = service(smallNode).lineage(smallNode).networkId();
+                ids[1] = service(largeNode).lineage(largeNode).networkId();
+                names.rename(ids[0], "Merge Small");
+                names.rename(ids[1], "Merge Large");
+                linkCable(helper, small.east());
+                phase[0] = 1;
+            }
+            var node = relativeNode(helper, large);
+            if (phase[0] == 1) {
+                helper.assertValueEqual(service(node).settlement().status(), IdentityStatus.AMBIGUOUS_MERGE,
+                        "Two differently named pieces wait for the player");
+                helper.assertTrue(!service(node).keep(new space.controlnet.ae2federation.identity.NetworkId(
+                        java.util.UUID.randomUUID())), "An id the Grid does not hold is refused");
+                helper.assertTrue(service(node).keep(ids[0]), "The smaller piece's id can be kept");
+                phase[0] = 2;
+            }
+            helper.assertValueEqual(service(node).settlement().networkId(), java.util.Optional.of(ids[0]),
+                    "The kept id survives although fewer nodes held it");
+            helper.assertValueEqual(names.name(ids[0]).orElse(""), "Merge Small", "It keeps its name");
+            helper.assertTrue(names.name(ids[1]).isEmpty(), "The other id's name is deleted");
+            names.rename(ids[0], "");
+            writeEvidence("identityplayerkeepsone", 6, ids[0].toString(), "settled");
+        });
+    }
+
     /** An ME Chest with {@code cells} creative energy cells stacked on it: a piece of 1 + cells nodes. */
     private static void mergePiece(GameTestHelper helper, BlockPos chest, int cells) {
         helper.setBlock(chest, AEBlocks.ME_CHEST.block());

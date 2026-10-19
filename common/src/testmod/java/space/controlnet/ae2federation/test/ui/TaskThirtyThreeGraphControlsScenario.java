@@ -533,7 +533,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitForTextContains("#graph_selection", "Merge pending")
                 .check("the merge names both histories and how to recover", context -> {
                     var text = context.el("#graph_selection").text();
-                    return text.contains("Contains: ") && text.contains(" · ") && text.contains("Disconnect them to recover.");
+                    return text.contains("Contains: ") && text.contains(" · ") && text.contains("Keep one of them, or disconnect them.");
                 })
                 .waitForTextContains("#network_highlight", "Highlight both parts")
                 .step("end earlier highlights", context -> space.controlnet.ae2federation.client.WorldHighlight.clear())

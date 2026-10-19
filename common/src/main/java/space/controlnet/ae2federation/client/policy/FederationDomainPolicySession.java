@@ -79,6 +79,8 @@ public final class FederationDomainPolicySession {
     private java.util.Set<space.controlnet.ae2federation.identity.NetworkId> relatedNetworks = java.util.Set.of();
     private long overviewTick;
     private List<NetworkId> pendingMerges = List.of();
+    /** The game time a Keep was accepted at, until the screen has followed the domain it rebuilt; -1 otherwise. */
+    private long keptAt = -1;
     private long pendingMergesTick = Long.MIN_VALUE / 2;
     private List<NetworkId> overviewMembers = List.of();
     private @org.jetbrains.annotations.Nullable space.controlnet.ae2federation.processing.provider.ProviderMappingController.ReleaseConfirmation pendingRelease;
@@ -1244,6 +1246,60 @@ public final class FederationDomainPolicySession {
         if (!NetworkIdentityState.of(target.network(), settlements).renamable()) return false;
         space.controlnet.ae2federation.persistence.NetworkNames.get(level).rename(target.network(), target.name());
         return true;
+    }
+
+    /**
+     * Settles a pending merge shown in this domain on {@code encoded}, one of its network ids: the other ids' names and
+     * rules are deleted. False when the network is not shown here or its Grid is no pending merge.
+     */
+    public boolean keepNetwork(String encoded) {
+        NetworkId network;
+        try {
+            network = NetworkId.parse(encoded);
+        } catch (IllegalArgumentException malformed) {
+            return false;
+        }
+        if (!pendingMerges().contains(network) && !members().contains(network)) return false;
+        for (var grid : NetworkOverview.gridsByNetwork(level).getOrDefault(network, List.of())) {
+            if (grid.getService(space.controlnet.ae2federation.identity.NetworkIdentityService.class).keep(network)) {
+                pendingMergesTick = Long.MIN_VALUE / 2;
+                overviewText = "";
+                keptAt = level.getGameTime();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether a Keep has rebuilt the domain this screen shows: the opened domain is gone and the entrance now sits in
+     * one with a member, so the screen should open again there. True once; gives up after five seconds.
+     */
+    public boolean takeReopen() {
+        if (keptAt < 0) return false;
+        var entranceNode = FederationDomainRegistryAccess.nodeId(level, entrance.position());
+        var rebuilt = !contextCurrent() && FederationDomainRegistryAccess.get(level).federationDomains().stream()
+                .anyMatch(domain -> domain.nodes().contains(entranceNode) && !domain.memberships().isEmpty());
+        if (rebuilt || level.getGameTime() - keptAt > 100) keptAt = -1;
+        return rebuilt;
+    }
+
+    /** Whether this screen was opened from a Router or Switch. */
+    public boolean openedFromRouter() {
+        return entrance instanceof RouterPolicyEntrance;
+    }
+
+    /** Whether this screen was opened from a Provider or Endpoint. */
+    public boolean openedFromDevice() {
+        return entrance instanceof DevicePolicyEntrance;
+    }
+
+    public BlockPos entrancePosition() {
+        return entrance.position();
+    }
+
+    public ServerPlayer player() {
+        return player;
     }
 
     /** Session, distance and domain authority without the selected rule's revision; switches carry their own. */

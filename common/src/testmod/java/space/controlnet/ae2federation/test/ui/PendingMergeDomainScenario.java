@@ -20,7 +20,9 @@ import space.controlnet.ae2federation.persistence.NetworkNames;
 
 /**
  * The pieces of {@link MergedNetworkDomainScenario}, each named first, so the merge stays pending. The joined network is
- * no member of the Switch's domain, yet its topology shows both ids as cards that say the merge is pending.
+ * no member of the Switch's domain, yet its topology shows both ids as cards that say the merge is pending. Keep on
+ * one card, once confirmed, settles the merge on it and deletes the other's name; the open screen follows to the
+ * rebuilt domain.
  */
 @LDLRegisterClient(name = "ui.pending-merge", group = "ae2federation", registry = UIScenario.REGISTRY,
         environment = RegistrationEnvironment.DEV_ONLY)
@@ -58,8 +60,22 @@ public final class PendingMergeDomainScenario implements UIScenario {
                 .step("select the first id", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(context,
                         context.<List<String>>get(IDS).getFirst()))
                 .waitForTextContains("#graph_selection", "Merge pending")
+                .waitUntil("Keep is offered instead of Devices", context -> context.el("#network_keep").isVisible()
+                        && !context.el("#graph_open").isVisible())
                 .frames(5)
                 .screenshot("ui-pending-merge-topology")
+                .step("press Keep", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_keep"))
+                .waitUntil("the confirmation names what is deleted", context -> !context.all("#keep_dialog").isEmpty()
+                        && context.el("#keep_consequence").text().contains("Annex"))
+                .frames(5)
+                .screenshot("ui-pending-merge-keep-confirm")
+                .step("confirm", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#keep_confirm"))
+                .waitUntilServer("the merge settles on the kept network", PendingMergeDomainScenario::kept)
+                .awaitScreen(ModularUIContainerScreen.class)
+                .awaitModularUI()
+                .waitUntil("the open screen follows the kept network", context -> context.all(".graph-node-member").size() == 1)
+                .frames(10)
+                .screenshot("ui-pending-merge-kept")
                 .closeScreen();
     }
 
@@ -74,6 +90,18 @@ public final class PendingMergeDomainScenario implements UIScenario {
             ids.add(network.value().toString());
         }
         context.put(IDS, ids);
+    }
+
+    /** Base, the selected card, survives with its name; Annex's name is gone. */
+    private static boolean kept(ServerContext context) {
+        BlockPos at = context.get(MergedNetworkDomainScenario.SWITCH);
+        List<String> ids = context.get(IDS);
+        var base = new NetworkId(java.util.UUID.fromString(ids.get(0)));
+        var annex = new NetworkId(java.util.UUID.fromString(ids.get(1)));
+        var names = NetworkNames.get(context.level());
+        return MergedNetworkDomainScenario.grid(context, at.west()).getService(NetworkIdentityService.class).settlement()
+                .networkId().filter(base::equals).isPresent()
+                && names.name(base).orElse("").equals("Base") && names.name(annex).isEmpty();
     }
 
     private static boolean pending(ServerContext context) {
