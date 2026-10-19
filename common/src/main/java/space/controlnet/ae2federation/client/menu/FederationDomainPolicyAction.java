@@ -21,7 +21,9 @@ public enum FederationDomainPolicyAction {
     /** Sets one pattern-to-Endpoint wire to an explicit state; the target is a {@code MappingWireTarget}. */
     SET_MAPPING(15),
     /** Turns one Endpoint's energy sharing on or off; the target is an {@code EndpointEnergyTarget}. */
-    SET_ENDPOINT_ENERGY(16);
+    SET_ENDPOINT_ENERGY(16),
+    /** Settles a pending merge on one of its networks; the target is that network's id. */
+    KEEP_NETWORK(17);
 
     private final int wireId;
 
@@ -35,7 +37,7 @@ public enum FederationDomainPolicyAction {
 
     public boolean takesTarget() {
         return this == SELECT_TARGET || this == SET_POLICY || this == RENAME_NETWORK || this == SET_MAPPING
-                || this == SET_ENDPOINT_ENERGY;
+                || this == SET_ENDPOINT_ENERGY || this == KEEP_NETWORK;
     }
 
     public static FederationDomainPolicyAction fromWireId(int wireId) {

@@ -311,8 +311,22 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
             return;
         }
         var candidates = configured.isEmpty() ? networkCounts.keySet() : configured;
-        var survivor = candidates.stream().max(java.util.Comparator.<NetworkId>comparingInt(networkCounts::get)
-                .thenComparing(network -> network.value().toString(), java.util.Comparator.reverseOrder())).orElseThrow();
+        settleOn(level, candidates.stream().max(java.util.Comparator.<NetworkId>comparingInt(networkCounts::get)
+                .thenComparing(network -> network.value().toString(), java.util.Comparator.reverseOrder())).orElseThrow());
+    }
+
+    @Override
+    public boolean keep(NetworkId survivor) {
+        if (registry == null || !provisional.isEmpty() || !networkCounts.containsKey(survivor)
+                || settlement().status() != IdentityStatus.AMBIGUOUS_MERGE) {
+            return false;
+        }
+        settleOn(nodes.keySet().iterator().next().getLevel(), survivor);
+        return true;
+    }
+
+    /** Folds every other id into {@code survivor} ({@link NetworkSettings#fold}) and gives every node its id. */
+    private void settleOn(net.minecraft.server.level.ServerLevel level, NetworkId survivor) {
         for (var network : java.util.List.copyOf(networkCounts.keySet())) {
             if (!network.equals(survivor)) NetworkSettings.fold(level, network, survivor);
         }

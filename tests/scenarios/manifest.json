@@ -67,6 +67,7 @@
     {"id":"identity.configured-merge-wins","backend":"gametest","testId":"identityconfiguredmergewins","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"identity.configured-merge-stays-pending","backend":"gametest","testId":"identityconfiguredmergestayspending","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"identity.identical-settings-merge","backend":"gametest","testId":"identityidenticalsettingsmerge","structure":"ae2federation_test:harness_native_smoke","assertions":6},
+    {"id":"identity.player-keeps-one","backend":"gametest","testId":"identityplayerkeepsone","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"ports.bridge-cable-device","backend":"gametest","testId":"portsbridgecabledevice","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"ports.router-six-grids","backend":"gametest","testId":"portsroutersixgrids","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"ports.router-repeated-grid","backend":"gametest","testId":"portsrouterrepeatedgrid","structure":"ae2federation_test:harness_native_smoke","assertions":7},

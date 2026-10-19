@@ -42,8 +42,9 @@ reason.
   Switch face or a Bridge on each network.
 * **"Too many storage links in this world to work out."** Remove some storage rules or links.
 * **"Merge pending": two networks with different names or rules were joined.** Names and cross-network rules pause,
-  because neither side is picked automatically. Disconnect them to recover. A network with no name or rules, or with
-  exactly the same ones, is simply taken into the other one when joined.
+  because neither side is picked automatically. Select one of them in the topology and press **Keep this one**: the
+  other's name and rules are deleted. Or disconnect them. A network with no name or rules, or with exactly the same
+  ones, is simply taken into the other one when joined.
 * **"Split pending": a network was cut in two.** Both halves pause cross-network rules. Reconnect them, or remove one
   half, to recover.
 

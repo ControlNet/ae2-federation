@@ -60,6 +60,8 @@ Only `SETTLED` may inherit existing Policy. `PARTIAL_LOAD`, `COPIED_LIVE_IDENTIT
   - Every node takes the survivor's id and keeps its node UUID and revision.
   - Differing settings stay `AMBIGUOUS_MERGE` and are looked at again every 20 ticks, so making them match or
     clearing one side resolves the merge.
+  - A player may also settle such a merge on one of its ids with **Keep this one** in the Domain screen
+    (`NetworkIdentityService.keep`). The other ids' names and rules are deleted, as when they are interchangeable.
 
 ### Initialization and established lineage
 
@@ -130,6 +132,8 @@ Task cases:
   settles the merge on the other.
 - `identity.identical-settings-merge`: two Grids with the same name and the same rule to a third network settle on the
   larger one's id; the smaller one's name and rule are deleted.
+- `identity.player-keeps-one`: two differently named Grids stay pending until a player keeps one; the kept id stays
+  with its name and the other's name is deleted.
 
 - `identity.single-established-merge`: a standalone node has persisted Policy, reloads legacy provisional NBT without
   losing lineage, and retains but cannot inherit that Policy after a real merge.
