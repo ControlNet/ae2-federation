@@ -313,8 +313,8 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         var candidates = configured.isEmpty() ? networkCounts.keySet() : configured;
         var survivor = candidates.stream().max(java.util.Comparator.<NetworkId>comparingInt(networkCounts::get)
                 .thenComparing(network -> network.value().toString(), java.util.Comparator.reverseOrder())).orElseThrow();
-        for (var network : configured) {
-            if (!network.equals(survivor)) NetworkSettings.forget(level, network);
+        for (var network : java.util.List.copyOf(networkCounts.keySet())) {
+            if (!network.equals(survivor)) NetworkSettings.fold(level, network, survivor);
         }
         for (var node : java.util.List.copyOf(nodes.keySet())) {
             var current = nodes.get(node);
