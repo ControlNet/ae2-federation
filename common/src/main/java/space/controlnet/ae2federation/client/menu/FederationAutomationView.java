@@ -56,6 +56,8 @@ final class FederationAutomationView {
     /** The problem box's head and padding, and a row, as the style sheet sizes them. */
     private static final float PROBLEM_HEAD = 17;
     private static final float PROBLEM_ROW = 13;
+    /** How long a stock answer is shown before it is asked for again. */
+    private static final long STOCK_MILLIS = 5000;
 
     private final UI ui;
     private final boolean client;
@@ -92,6 +94,9 @@ final class FederationAutomationView {
     private boolean pushAfterSend;
     private @Nullable LocalCopies copies;
     private String domain = "";
+    /** The domain's stock of resources chosen in the completion list, and when each was asked for. */
+    private final Map<String, Long> stock = new HashMap<>();
+    private final Map<String, Long> stockAsked = new HashMap<>();
     private boolean open;
 
     FederationAutomationView(UI ui, boolean client) {
@@ -105,6 +110,7 @@ final class FederationAutomationView {
         editor.setDisplay(false);
         editor.setEditing(true);
         editor.setLinesResponder(lines -> edited());
+        editor.setResourceNote(this::stockNote);
         editor.setCompleter((text, line, column, done) -> {
             var snapshot = snapshot();
             if (snapshot != null) ScriptChecker.complete(text, line, column, snapshot.others(), snapshot.catalog(), done);
@@ -168,7 +174,28 @@ final class FederationAutomationView {
     void setDomain(String domain) {
         if (this.domain.equals(domain)) return;
         this.domain = domain;
+        stock.clear();
+        stockAsked.clear();
         refresh();
+    }
+
+    /**
+     * "in stock: 1,284" under a resource chosen in the completion list: how much this domain holds, asked of the
+     * server when the resource is first chosen and again once the answer is a few seconds old.
+     */
+    private String stockNote(String resource) {
+        if (domain.isEmpty()) return "";
+        long now = System.currentTimeMillis();
+        var asked = stockAsked.get(resource);
+        if (asked == null || now - asked > STOCK_MILLIS) {
+            stockAsked.put(resource, now);
+            ClientPrograms.get().request("stock", List.of(domain, resource), result -> {
+                if (result.ok()) stock.put(resource, Long.parseLong(result.message()));
+            });
+        }
+        var amount = stock.get(resource);
+        return amount == null ? "" : Component.translatable("ae2federation.ui.automation.in_stock",
+                String.format(java.util.Locale.ROOT, "%,d", amount)).getString();
     }
 
     /** Subscribes to the index while the page is shown, on the client; leaving the page sends what is unsent. */

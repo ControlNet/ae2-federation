@@ -22,17 +22,20 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.function.ListValue;
 import space.controlnet.ae2federation.function.Ops;
+import space.controlnet.ae2federation.function.RunError;
 import space.controlnet.ae2federation.function.ScriptParser;
 import space.controlnet.ae2federation.persistence.NetworkNames;
 
 /**
  * The server side of the Automation tab's traffic: the library index the tab shows, file texts on request, uploads
- * put back together from chunks and saved (the last write wins), and the install, push, run and log requests. Players who
- * have the tab open are subscribed and get a new index after every change. The loader's network code registers how
- * the messages travel. Programs are global with no permissions for now (user, 2026-10-18), so any player may do this.
+ * put back together from chunks and saved (the last write wins), and the install, push, run, log and stock requests.
+ * Players who have the tab open are subscribed and get a new index after every change. The loader's network code
+ * registers how the messages travel. Programs are global with no permissions for now (user, 2026-10-18), so any player
+ * may do this.
  */
 public final class ProgramSync {
     /** A function as the tab lists it: its parameters as written ({@code item: Item}), and whether it acts. */
@@ -218,6 +221,19 @@ public final class ProgramSync {
                 throw new IllegalArgumentException("no such installation");
             }
             return InstallationLog.answer(scheduler.running(id), server.overworld().getGameTime(), scheduler.log(id));
+        }
+        if (action.equals("stock")) {
+            // The completion list's footer: how much of a resource the domain holds. It changes nothing either.
+            var domain = arg(args, 0, 2);
+            if (domain.isBlank()) {
+                throw new IllegalArgumentException("no domain");
+            }
+            try {
+                return String.valueOf(new ProgramHost(server, new FederationDomainId(domain), "tab").call("ae2",
+                        "amount", java.util.Arrays.asList(args.get(1), null)));
+            } catch (RunError e) {
+                throw new IllegalArgumentException(e.getMessage());
+            }
         }
         var message = switch (action) {
             case "push" -> "pushed " + String.join(", ", scheduler.push(arg(args, 0, 1)).keySet());

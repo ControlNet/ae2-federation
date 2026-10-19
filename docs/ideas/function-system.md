@@ -1228,7 +1228,9 @@ User decisions (2026-10-19):
   with "..." when long), a purple square when they act and the chosen one's summary below; items and fluids with
   their icon, name and ID, the expected type below. Up/Down choose, Tab accepts, Enter accepts unless the choice is
   what is typed already (so Enter after a finished word still breaks the line), Escape closes. Accepting a resource
-  closes its string. The board's "in stock" footer waits for a server request (G1c-iii).
+  closes its string. The chosen item or fluid's footer adds the domain's stock (G1c-iii), "Item · in stock:
+  1,284", as `ae2.amount` counts it; the tab asks with a `stock` request, which sends no index, and asks again
+  after five seconds (assistant choice).
 - **Library panel** (G1d) under the programs: `ae2`, `ae2f` and `mc` with their function counts, opened with a click;
   a function opens its page in the same box (qualified name, signature, "action: one per tick" when it acts, summary,
   its checked example in a small read-only editor) with a back chip in the head. Assistant proposal for the search

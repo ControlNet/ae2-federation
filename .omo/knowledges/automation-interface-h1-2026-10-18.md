@@ -261,3 +261,15 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - `UIEvents.TICK` on the aside polls only while the Install view is shown: hidden elements do not tick.
 - Update the State row and the log box in place; a full `rebuildAside` each second would close an open field.
 - Compare: `build/automation-install-log-check/compare.png`.
+
+## G1c-iii: stock in the completion footer
+
+- `ProgramSync.perform` answers `stock [domain, resource]` before `changed()`, like `log`: it calls the host's
+  `ae2.amount` through a throwaway `ProgramHost(server, domain, "tab")`. A `RunError` (unknown resource) must be
+  rethrown as `IllegalArgumentException`, or it escapes the request handler.
+- The popup asks `ScriptEditor`'s resource note on every draw; the tab caches answers per resource and asks again
+  after 5 s, so the note fills in on a later frame without any repaint call.
+- Completion lists resources only where the type is known: type `iron: Item = "minecraft:iron_in`, not `x = "...`.
+- The check world's domain has no networks ("No confirmed Federation Domain membership"), so it reads "in stock: 0";
+  the exact amount is checked by the `aStockChangeStartsARun` GameTest (5 ingots inserted, "5" answered).
+- Compare: `build/automation-stock-check/compare.png`.

@@ -394,6 +394,7 @@
   "ae2federation.ui.automation.install_when_typed": "填完所有参数后安装",
   "ae2federation.ui.automation.log": "日志",
   "ae2federation.ui.automation.no_log": "服务器启动后还没有记录",
+  "ae2federation.ui.automation.in_stock": "库存：%s",
   "ae2federation.ui.automation.uninstall": "卸载",
   "ae2federation.ui.automation.open_in_editor": "在编辑器中打开",
   "ae2federation.ui.automation.run_now": "立即运行",

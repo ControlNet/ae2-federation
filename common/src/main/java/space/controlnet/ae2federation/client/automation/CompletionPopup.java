@@ -55,6 +55,7 @@ public final class CompletionPopup extends UIElement {
     private final float row;
     private final Consumer<Candidate> accept;
     private @Nullable Completions completions;
+    private java.util.function.Function<String, String> resourceNote = id -> "";
     private int chosen;
     private int top;
 
@@ -102,6 +103,10 @@ public final class CompletionPopup extends UIElement {
         setDisplay(true);
     }
 
+    void setResourceNote(java.util.function.Function<String, String> note) {
+        resourceNote = note;
+    }
+
     void hide() {
         completions = null;
         setDisplay(false);
@@ -146,13 +151,17 @@ public final class CompletionPopup extends UIElement {
         return width(candidate.label()) + width(candidate.detail()) + (candidate.acts() ? MARKER : 0);
     }
 
-    /** What sits under the rows: the chosen function's summary, or the type a value must have. */
+    /**
+     * What sits under the rows: the chosen function's summary, or the type a value must have, with what the editor
+     * notes for a chosen resource ("Item · in stock: 1,284" on {@code AutoScriptItem}).
+     */
     private String footer() {
         var candidate = chosen();
         if (candidate == null) return "";
         if (!candidate.doc().isEmpty()) return candidate.doc().lines().findFirst().orElse("");
         if (candidate.kind() == Candidate.Kind.VALUE && completions.expected() != null) {
-            return completions.expected().toString();
+            var note = isResource(candidate) ? resourceNote.apply(candidate.label()) : "";
+            return completions.expected() + (note.isEmpty() ? "" : " \u00b7 " + note);
         }
         return "";
     }
@@ -237,6 +246,11 @@ public final class CompletionPopup extends UIElement {
         context.pose.scale(scale, scale, 1);
         LDLibFonts.drawText(context.graphics, font, text(text), 0, 0, color, false);
         context.pose.popPose();
+    }
+
+    /** The text under the rows; for tests. */
+    public String footerText() {
+        return footer();
     }
 
     /** The candidates' labels, for tests. */

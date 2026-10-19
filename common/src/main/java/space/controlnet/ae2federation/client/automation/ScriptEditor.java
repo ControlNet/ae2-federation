@@ -66,6 +66,7 @@ public final class ScriptEditor extends CodeEditor {
     private String @Nullable [] readOnly;
     private @Nullable Completer completer;
     private @Nullable CompletionPopup popup;
+    private java.util.function.Function<String, String> resourceNote = id -> "";
     /** The text and caret the shown completion was asked for; accepting it needs them unchanged. */
     private @Nullable String shownText;
     private int shownLine;
@@ -128,6 +129,12 @@ public final class ScriptEditor extends CodeEditor {
         this.completer = completer;
     }
 
+    /** What the completion list adds under a chosen resource, such as its stock; empty while unknown. */
+    public void setResourceNote(java.util.function.Function<String, String> note) {
+        this.resourceNote = note;
+        if (popup != null) popup.setResourceNote(note);
+    }
+
     /** The completion list, once one was shown; for tests. */
     public @Nullable CompletionPopup completionPopup() {
         return popup;
@@ -176,6 +183,7 @@ public final class ScriptEditor extends CodeEditor {
         var root = modular.ui.rootElement;
         if (popup == null) {
             popup = new CompletionPopup(getFont(), getTextAreaStyle().font(), scale(), lineHeight(), this::accept);
+            popup.setResourceNote(resourceNote);
             root.addChild(popup);
         }
         shownText = text;

@@ -218,6 +218,8 @@ public final class AutomationTabScenario implements UIScenario {
                 .type("iron: Item = \"minecraft:iron_in")
                 .waitUntil("an item string lists items", context -> !popupLabels(context).isEmpty()
                         && popupLabels(context).get(0).equals("minecraft:iron_ingot"))
+                .waitUntil("the chosen item's stock in the domain comes from the server", context ->
+                        editor(context).completionPopup().footerText().matches("Item \u00b7 in stock: [0-9,]+"))
                 .frames(2).screenshot("ui-automation-completion-item")
                 .key(GLFW.GLFW_KEY_ENTER)
                 .check("Enter puts the item in and closes its string", context ->

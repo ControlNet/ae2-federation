@@ -324,8 +324,17 @@ public final class ProgramSchedulerGameTests {
             helper.assertValueEqual(scene.log(0), List.of(), "The first reading only sets the baseline");
             helper.assertValueEqual(chest.getMainNode().getGrid().getStorageService().getInventory().insert(
                     AEItemKey.of(Items.IRON_INGOT), 5, Actionable.MODULATE, IActionSource.empty()), 5L, "Stocked");
-        }).then(20, () -> helper.assertValueEqual(scene.log(0), List.of("started", "done: 'ping'"),
-                "The stock changed once")).finish(fixtures::close);
+        }).then(20, () -> {
+            helper.assertValueEqual(scene.log(0), List.of("started", "done: 'ping'"), "The stock changed once");
+            // The tab's stock request, as the completion list's footer asks it.
+            var level = helper.getLevel();
+            var domain = ComputingDevices.get(level).domainOf(level, scene.device()).orElseThrow().value();
+            var sync = ProgramSync.get(level.getServer());
+            helper.assertValueEqual(sync.handle(1, "stock", List.of(domain, "minecraft:iron_ingot")).message(), "5",
+                    "The domain's stock");
+            helper.assertFalse(sync.handle(2, "stock", List.of(domain, "minecraft:nothing")).ok(),
+                    "An unknown resource is refused, not thrown");
+        }).finish(fixtures::close);
     }
 
     /** The Automation tab's traffic, without the network: uploads in chunks, push, install, run, the index. */
