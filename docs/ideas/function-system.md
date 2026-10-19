@@ -1195,6 +1195,28 @@ User decisions (2026-10-19):
   functions on the design board have no agreed meaning yet (assistant reading: installed, green when the devices run
   the current version); they come with the Install view.
 
+### Editing as built (G1b, 2026-10-19)
+
+- **The script is editable.** Tab indents by four spaces, a new line keeps the indentation and adds a level after a
+  line ending in a colon, Ctrl+/ comments or uncomments the line or the selected lines with `# `.
+- **Local copies.** Every edit goes at once to `<game folder>/ae2federation/programs/<server or world>/<name>.ae2f`
+  (`server-<address>` or `world-<folder>`), with the server version the edits started from in `.bases.properties`
+  beside them. Nothing is cached, so an outside editor's writes are seen at once.
+- **Uploads** happen a second after the last key, on switching program and on leaving the tab or closing the screen;
+  there is no save button and no sync indicator. The script is replaced from the server (another player's save) only
+  while it holds nothing unsent.
+- **Opening a program** compares the local copy with the server: a copy holding the server's text is in sync; edits
+  made on the server's current version are shown and uploaded; edits made on an older version (assistant proposal)
+  become a program of their own, `<name>_local` (then `_local2`...), uploaded beside the server's, and the status
+  line says so.
+- **New** opens a name field under the Programs title; Enter creates an empty program and opens it. The server
+  checks the name; a refusal shows on the status line.
+- **Push** sits at the top right. It is inactive while the devices run the server's version. It sends unsent edits
+  first, then pushes; the server's answer shows on the status line after the counts, a refusal in red (as on
+  `AutoScriptErrors`, "smelting line 3: ae2 has no function 'amout'"). Saves are never reported.
+- Problems are still the server's count in the list; checking on the client comes next (G1b-ii), after the index
+  carries the networks (H7).
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

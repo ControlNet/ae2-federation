@@ -8,14 +8,21 @@ import com.lowdragmc.lowdraglib2.uitest.ServerContext;
 import com.lowdragmc.lowdraglib2.uitest.UIScenario;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import net.minecraft.world.level.storage.LevelResource;
+import org.lwjgl.glfw.GLFW;
+import space.controlnet.ae2federation.automation.LocalCopies;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.client.automation.ScriptEditor;
 
 /**
- * The Automation tab's edit view (G1a): the programs the server holds, one opened in the script editor with its
- * functions listed, and the index subscription ending when the screen closes. The two programs are sample content
- * written for this scenario; {@code smelting} misspells a function so the list shows its problem count.
+ * The Automation tab's edit view (G1a, G1b): the programs the server holds, one opened in the script editor with its
+ * functions listed, typing with Python's indentation and comments, the edit reaching the local copy and the server
+ * without a save, Push and its refusal, a new program, edits on an older version kept beside the server's, and the
+ * index subscription ending when the screen closes. The programs are sample content written for this scenario;
+ * {@code smelting} misspells a function so the list shows its problem count and Push refuses it.
  */
 @LDLRegisterClient(name = "ui.automation", group = "ae2federation", registry = UIScenario.REGISTRY,
         environment = RegistrationEnvironment.DEV_ONLY)
@@ -56,8 +63,10 @@ public final class AutomationTabScenario implements UIScenario {
     @Override
     public void define(ScenarioBuilder scenario) {
         TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.ROUTER)
+                .step("clear the local copies", context -> clearLocalCopies())
                 .server("write two sample programs", AutomationTabScenario::writePrograms)
                 .teardownServer("remove the sample programs", AutomationTabScenario::removePrograms)
+                .teardown("clear the local copies again", context -> clearLocalCopies())
                 .click("#tab_automation")
                 .waitUntil("the programs are listed", context -> context.all("#auto_program_iron_tools").size() == 1
                         && context.all("#auto_program_smelting").size() == 1)
@@ -79,9 +88,90 @@ public final class AutomationTabScenario implements UIScenario {
                 })
                 .check("the opened file has a tab", context -> context.all(".file-tab").size() == 1)
                 .frames(2).screenshot("ui-automation-script")
+                // Typing at the end: a colon indents the next line, Tab indents by four, Ctrl+/ comments with #.
+                .step("put the caret on the last line", context -> {
+                    var editor = editor(context);
+                    editor.focus();
+                    editor.setCursor(editor.getLines().size() - 1, 0);
+                })
+                .type("def ping() -> bool:\nreturn True\n")
+                .key(GLFW.GLFW_KEY_TAB).type("x = 1")
+                .key(GLFW.GLFW_KEY_SLASH, GLFW.GLFW_MOD_CONTROL)
+                .check("the editor indents and comments as Python does", context -> {
+                    var lines = editor(context).getLines();
+                    return lines.subList(lines.size() - 3, lines.size())
+                            .equals(java.util.List.of("def ping() -> bool:", "    return True", "        # x = 1"));
+                })
+                .step("note the edited text", context -> context.put("edited", String.join("\n", editor(context).getLines())))
+                .waitUntilServer("the edit reaches the server without a save", context -> {
+                    var library = ProgramStore.get(context.server()).library();
+                    return library.text("iron_tools").contains("def ping() -> bool:\n    return True\n");
+                })
+                .check("the local copy holds the edit", context ->
+                        readLocal("iron_tools").equals(context.<String>get("edited")))
+                .waitUntil("the new function is listed", context -> context.all(".function-row .program-name").stream()
+                        .anyMatch(row -> row.text().equals("ping")))
+                .click("#auto_push")
+                .waitUntil("Push answers on the status line", context ->
+                        context.el("#automation_answer").text().equals("pushed iron_tools"))
+                .click("#auto_program_smelting")
+                .waitUntil("smelting opens", context -> String.join("\n", editor(context).getLines()).equals(SMELTING))
+                .click("#auto_push")
+                .waitUntil("a refused push says why, in red", context -> {
+                    var answer = context.el("#automation_answer");
+                    return answer.text().equals("smelting line 3: ae2 has no function 'amout'")
+                            && answer.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("refused");
+                })
+                .frames(2).screenshot("ui-automation-refused-push")
+                .click("#auto_new")
+                .typeInto("#auto_new_field", "ae2")
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("a reserved name is refused", context ->
+                        context.el("#automation_answer").text().equals("'ae2' is a standard namespace"))
+                .click("#auto_new")
+                .typeInto("#auto_new_field", "scratch")
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("the new program opens empty", context -> context.all("#auto_program_scratch.selected").size() == 1
+                        && editor(context).isVisible() && String.join("\n", editor(context).getLines()).isEmpty())
+                .checkServer("the new program is saved", context ->
+                        ProgramStore.get(context.server()).library().text("scratch").isEmpty())
+                // Edits made while the server's copy moved on are kept as a program of their own.
+                .step("leave an edit on an older smelting in the local copy", context ->
+                        new LocalCopies(localFolder()).edited("smelting", "# mine\n", ProgramSync.version("old\n")))
+                .click("#auto_program_smelting")
+                .waitUntil("the older edits become smelting_local", context ->
+                        context.all("#auto_program_smelting_local").size() == 1 && context.el("#automation_answer").text()
+                                .equals("Edits made on an older version are kept as smelting_local"))
+                .checkServer("smelting_local holds them", context ->
+                        ProgramStore.get(context.server()).library().text("smelting_local").equals("# mine\n"))
+                .check("smelting shows the server's text", context ->
+                        String.join("\n", editor(context).getLines()).equals(SMELTING))
                 .closeScreen()
                 .waitUntilServer("closing the screen unsubscribes", context ->
                         !ProgramSync.get(context.server()).subscribed(context.player().getUUID()));
+    }
+
+    /** The local copies of the test world, as the tab finds them. */
+    private static Path localFolder() {
+        var minecraft = net.minecraft.client.Minecraft.getInstance();
+        var world = minecraft.getSingleplayerServer().getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize()
+                .getFileName().toString();
+        return minecraft.gameDirectory.toPath().resolve("ae2federation").resolve("programs")
+                .resolve(LocalCopies.key("world", world));
+    }
+
+    private static String readLocal(String name) {
+        return new LocalCopies(localFolder()).read(name).map(LocalCopies.Copy::text).orElse("");
+    }
+
+    private static void clearLocalCopies() {
+        var folder = localFolder();
+        if (!Files.isDirectory(folder)) return;
+        try (var files = Files.list(folder)) {
+            for (var file : files.toList()) Files.delete(file);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
     }
 
     private static ScriptEditor editor(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
@@ -102,7 +192,7 @@ public final class AutomationTabScenario implements UIScenario {
     private static void removePrograms(ServerContext context) {
         var library = ProgramStore.get(context.server()).library();
         try {
-            for (var name : new String[] {"iron_tools", "smelting"}) {
+            for (var name : new String[] {"iron_tools", "smelting", "smelting_local", "scratch"}) {
                 if (library.names().contains(name)) library.delete(name);
             }
         } catch (IOException exception) {

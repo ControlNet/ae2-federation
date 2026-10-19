@@ -2,17 +2,20 @@ package space.controlnet.ae2federation.client.automation;
 
 import com.lowdragmc.lowdraglib2.gui.LDLibFonts;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.codeeditor.CodeEditor;
+import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
 import com.lowdragmc.lowdraglib2.gui.util.DrawerHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * The Automation tab's script editor: LDLib2's code editor with the scripts' colours ({@link PythonLanguage}) and a
- * line-number gutter in the left padding of its content view, widened to fit the numbers. It only shows a program
- * until editing is turned on.
+ * line-number gutter in the left padding of its content view, widened to fit the numbers. Python's habits: Tab
+ * indents by four spaces, a new line after a colon indents once more, and Ctrl+/ comments lines with {@code #}. It
+ * only shows a program until editing is turned on.
  */
 public final class ScriptEditor extends CodeEditor {
     private static final int GUTTER = 0xff17141e;
@@ -21,6 +24,8 @@ public final class ScriptEditor extends CodeEditor {
     private static final float MIN_GUTTER = 16;
     private static final float NUMBER_GAP = 3;
     private static final float TEXT_GAP = 4;
+    private static final String INDENT = "    ";
+    private static final String COMMENT = "# ";
 
     private boolean editing;
     /** The content view's left padding as last set: the gutter and the gap after it. */
@@ -40,6 +45,55 @@ public final class ScriptEditor extends CodeEditor {
     @Override
     public boolean isEditable() {
         return editing && super.isEditable();
+    }
+
+    @Override
+    protected void onKeyDown(UIEvent event) {
+        if (isEditable() && event.keyCode == GLFW.GLFW_KEY_TAB) {
+            insertText(INDENT);
+            return;
+        }
+        super.onKeyDown(event);
+    }
+
+    /** Copies the line's indentation, and indents once more after a line that opens a block. */
+    @Override
+    protected void insertNewLine() {
+        var opener = lines.get(getCursorLine()).substring(0, getCursorCol()).strip();
+        super.insertNewLine();
+        if (getLanguage().shouldIncreaseIndentation(opener)) insertText(INDENT);
+    }
+
+    /** Comments the caret's line, or the selected lines, with {@code #}; uncomments them when all already are. */
+    @Override
+    protected void toggleCommentAtBol() {
+        pushHistory();
+        int first = hasSelection() ? Math.min(getSelStartLine(), getSelEndLine()) : getCursorLine();
+        int last = hasSelection() ? Math.max(getSelStartLine(), getSelEndLine()) : getCursorLine();
+        boolean commented = true;
+        for (int line = first; line <= last; line++) {
+            if (!lines.get(line).isBlank() && !lines.get(line).stripLeading().startsWith("#")) commented = false;
+        }
+        int caretShift = 0;
+        for (int line = first; line <= last; line++) {
+            var text = lines.get(line);
+            int indent = text.length() - text.stripLeading().length();
+            String changed;
+            if (commented) {
+                var rest = text.substring(indent);
+                if (!rest.startsWith("#")) continue;
+                changed = text.substring(0, indent) + rest.substring(rest.startsWith(COMMENT) ? COMMENT.length() : 1);
+            } else {
+                if (text.isBlank()) continue;
+                changed = text.substring(0, indent) + COMMENT + text.substring(indent);
+            }
+            if (line == getCursorLine() && getCursorCol() > indent) caretShift = changed.length() - text.length();
+            lines.set(line, changed);
+        }
+        int caretLine = getCursorLine();
+        int caretCol = getCursorCol();
+        onRawLinesUpdated();
+        setCursor(caretLine, Math.max(0, caretCol + caretShift));
     }
 
     private MutableComponent inFont(String text) {

@@ -108,12 +108,13 @@ final class FederationWorkspace {
         boolean mapping = "mapping".equals(page);
         element("header_graph_tools", UIElement.class).setDisplay("overview".equals(page));
         element("header_stats_tools", UIElement.class).setDisplay("statistics".equals(page));
+        element("header_auto_tools", UIElement.class).setDisplay("automation".equals(page));
         if (statistics != null) statistics.setOpen("statistics".equals(page));
         if (automation != null) automation.setOpen("automation".equals(page));
         // Classes, not setDisplay: the narrow layout's LSS also folds the summary away.
         boolean programs = "automation".equals(page);
         for (var summary : Map.of("members_value", !mapping && !programs, "processing_summary", mapping, "scope_caption",
-                "overview".equals(page), "automation_summary", programs).entrySet()) {
+                "overview".equals(page), "automation_summary", programs, "automation_answer", programs).entrySet()) {
             var label = element(summary.getKey(), UIElement.class);
             label.removeClass("off-page");
             if (!summary.getValue()) label.addClass("off-page");

@@ -24,6 +24,7 @@
                         <label id="processing_summary" class="domain-caption members-caption"/>
                         <label id="scope_caption" class="domain-caption members-caption"/>
                         <label id="automation_summary" class="domain-caption members-caption off-page"/>
+                        <label id="automation_answer" class="domain-caption automation-answer off-page"/>
                     </element>
                 </element>
                 <element id="header_graph_tools" class="header-tools">
@@ -38,6 +39,9 @@
                     <button id="stats_range_FIVE_SECONDS" class="range-chip" text="ae2federation.ui.statistics.range.five_seconds"/>
                     <button id="stats_range_MINUTES" class="range-chip" text="ae2federation.ui.statistics.range.minutes"/>
                     <button id="stats_range_DAY" class="range-chip" text="ae2federation.ui.statistics.range.day"/>
+                </element>
+                <element id="header_auto_tools" class="header-tools">
+                    <button id="auto_push" class="auto-push" text="ae2federation.ui.automation.push"/>
                 </element>
                 <text-field id="graph_search" mode="string" value=""/>
                 <button id="return_provider" class="return-provider" text="ae2federation.ui.workspace.back_provider"/>
@@ -161,7 +165,13 @@
             <element id="page_automation" class="workspace-page automation-page">
                 <element class="auto-side">
                     <element class="auto-box auto-programs">
-                        <label class="auto-box-title"><lang key="ae2federation.ui.automation.programs"/></label>
+                        <element class="auto-box-head">
+                            <label class="auto-box-title"><lang key="ae2federation.ui.automation.programs"/></label>
+                            <button id="auto_new" class="kind-chip auto-new" text="ae2federation.ui.automation.new"/>
+                        </element>
+                        <element id="auto_new_row" class="auto-new-row">
+                            <text-field id="auto_new_field" mode="string" value=""/>
+                        </element>
                         <scroller-view id="auto_programs" class="auto-list"/>
                     </element>
                 </element>

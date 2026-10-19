@@ -5,7 +5,9 @@ import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -13,8 +15,11 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.storage.LevelResource;
 import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.automation.ClientPrograms;
+import space.controlnet.ae2federation.automation.LocalCopies;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.client.automation.ScriptEditor;
 import space.controlnet.ae2federation.function.ScriptParser;
@@ -23,18 +28,38 @@ import space.controlnet.ae2federation.function.ScriptParser;
  * The Automation tab's edit view: the programs on the left, the opened ones as tabs above the script. Programs are
  * global; the header counts this domain's devices and what is installed on them. The page subscribes to the server's
  * program index while it is open ({@link ClientPrograms}), on the client only, since the tree is built on both sides.
+ *
+ * <p>Edits go to a local copy at once ({@link LocalCopies}) and to the server after a pause in typing, on switching
+ * program and on closing, with no save button or sync indicator. The script is replaced from the server only while
+ * it holds nothing unsent.
  */
 final class FederationAutomationView {
+    /** Ticks without a key before an edit is uploaded. */
+    private static final int UPLOAD_PAUSE = 20;
+
     private final UI ui;
     private final boolean client;
     private final ScrollerView list;
     private final UIElement tabs;
     private final ScriptEditor editor = new ScriptEditor();
+    private final Button push;
+    private final UIElement newRow;
+    private final TextField newName;
     /** The files opened this time, in the order they were opened, and the one shown. */
     private final Set<String> opened = new LinkedHashSet<>();
     private @Nullable String selected;
-    /** The version of the text in the editor, so a newer one from the server replaces it. */
-    private @Nullable String shownVersion;
+    /** Whether the shown program's local copy has been compared with the server's version. */
+    private boolean reconciled;
+    /** The server version the editor's text started from. */
+    private String base = "";
+    /** The version last asked for, so an index does not ask again while the text is on its way. */
+    private @Nullable String fetching;
+    /** Edits not yet sent, an upload awaiting its answer, ticks since the last edit, and a push waiting for both. */
+    private boolean dirty;
+    private boolean sending;
+    private int idle;
+    private boolean pushAfterSend;
+    private @Nullable LocalCopies copies;
     private String domain = "";
     private boolean open;
 
@@ -47,6 +72,24 @@ final class FederationAutomationView {
         // A new program is empty: it shows nothing in place of LDLib2's placeholder.
         editor.textAreaStyle(style -> style.placeholder(Component.empty()));
         editor.setDisplay(false);
+        editor.setEditing(true);
+        editor.setLinesResponder(lines -> edited());
+        push = element("auto_push", Button.class);
+        push.setOnClick(event -> push());
+        newRow = element("auto_new_row", UIElement.class);
+        newRow.setDisplay(false);
+        newName = element("auto_new_field", TextField.class);
+        newName.addEventListener(UIEvents.KEY_DOWN, event -> {
+            if (event.keyCode == GLFW.GLFW_KEY_ENTER || event.keyCode == GLFW.GLFW_KEY_KP_ENTER) create();
+        });
+        element("auto_new", Button.class).setOnClick(event -> {
+            boolean show = !newRow.isDisplayed();
+            newRow.setDisplay(show);
+            newName.setText("", false);
+            if (show) newName.focus();
+        });
+        // The root always ticks; the editor does not while another page hides it.
+        ui.rootElement.addEventListener(UIEvents.TICK, event -> tick());
     }
 
     /** The domain whose GUI this is; its devices and installations are the ones counted. */
@@ -56,22 +99,125 @@ final class FederationAutomationView {
         refresh();
     }
 
-    /** Subscribes to the index while the page is shown, on the client. */
+    /** Subscribes to the index while the page is shown, on the client; leaving the page sends what is unsent. */
     void setOpen(boolean open) {
         if (!client || this.open == open) return;
         this.open = open;
         var programs = ClientPrograms.get();
-        programs.open(open);
-        if (open) {
-            programs.listen(this::refresh);
-            if (selected != null) programs.fetch(selected);
-            refresh();
+        if (!open) {
+            send();
+            // Closing drops the answers still awaited: the next opening compares versions again instead.
+            programs.open(false);
+            sending = false;
+            pushAfterSend = false;
+            reconciled = false;
+            fetching = null;
+            return;
         }
+        if (copies == null) copies = new LocalCopies(folder());
+        programs.open(true);
+        programs.listen(this::refresh);
+        refresh();
     }
 
     /** The screen closed. */
     void close() {
         setOpen(false);
+    }
+
+    /** Where this server's or world's local copies live, under the game folder. */
+    private static Path folder() {
+        var minecraft = net.minecraft.client.Minecraft.getInstance();
+        var root = minecraft.gameDirectory.toPath().resolve("ae2federation").resolve("programs");
+        var local = minecraft.getSingleplayerServer();
+        if (local != null) {
+            var world = local.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize().getFileName();
+            return root.resolve(LocalCopies.key("world", world == null ? "world" : world.toString()));
+        }
+        var server = minecraft.getCurrentServer();
+        return root.resolve(LocalCopies.key("server", server == null ? "unknown" : server.ip));
+    }
+
+    private void tick() {
+        if (open && dirty && !sending && ++idle >= UPLOAD_PAUSE) send();
+    }
+
+    private String text() {
+        return String.join("\n", editor.getLines());
+    }
+
+    private void edited() {
+        if (!reconciled || selected == null || copies == null) return;
+        dirty = true;
+        idle = 0;
+        copies.edited(selected, text(), base);
+    }
+
+    /** Uploads the shown program's unsent edits, if there are any and no upload is awaiting its answer. */
+    private void send() {
+        if (!dirty || sending || selected == null) return;
+        var name = selected;
+        var text = text();
+        dirty = false;
+        sending = true;
+        ClientPrograms.get().upload(name, base, text, answer -> {
+            sending = false;
+            if (!answer.ok()) {
+                answer(answer);
+                pushAfterSend = false;
+                return;
+            }
+            if (name.equals(selected)) {
+                base = ProgramSync.version(text);
+                if (copies != null) {
+                    if (dirty) copies.edited(name, text(), base);
+                    else copies.sent(name, text);
+                }
+            }
+            if (pushAfterSend && name.equals(selected) && !dirty) {
+                pushAfterSend = false;
+                ClientPrograms.get().request("push", List.of(name), this::answer);
+            }
+        });
+    }
+
+    /** Pushes the shown program, once its edits have reached the server. */
+    private void push() {
+        if (selected == null) return;
+        if (dirty || sending) {
+            pushAfterSend = true;
+            send();
+            return;
+        }
+        ClientPrograms.get().request("push", List.of(selected), this::answer);
+    }
+
+    /** A new program, named in the field: an empty file the server saves, then opened. */
+    private void create() {
+        var name = newName.getValue().strip();
+        newRow.setDisplay(false);
+        if (name.isEmpty()) return;
+        ClientPrograms.get().upload(name, "", "", answer -> {
+            // The server sends the new index before the answer, so the program is listed by now.
+            if (answer.ok()) {
+                select(name);
+                refresh();
+            } else {
+                answer(answer);
+            }
+        });
+    }
+
+    /** A server answer on the status line: refusals in red. Saves are silent and never shown. */
+    private void answer(ProgramSync.Answer answer) {
+        var label = element("automation_answer", Label.class);
+        label.removeClass("refused");
+        if (!answer.ok()) label.addClass("refused");
+        label.setText(Component.literal(answer.message()));
+    }
+
+    private void clearAnswer() {
+        element("automation_answer", Label.class).setText(Component.empty());
     }
 
     private void refresh() {
@@ -83,6 +229,7 @@ final class FederationAutomationView {
         if (selected != null && !names.contains(selected)) select(opened.stream().findFirst().orElse(null));
         updateSummary(index);
         showText(files);
+        updatePush(files);
         rebuildList(files);
         rebuildTabs();
     }
@@ -100,32 +247,85 @@ final class FederationAutomationView {
                 installed));
     }
 
-    /** Puts the selected file's text in the editor once it arrives, and asks again when the index has a newer one. */
+    /** Push is offered while the devices run another version than the server's, or edits are on their way. */
+    private void updatePush(List<ProgramSync.FileInfo> files) {
+        var file = files.stream().filter(candidate -> candidate.name().equals(selected)).findFirst().orElse(null);
+        push.setActive(file != null && (!file.current() || dirty || sending));
+    }
+
+    /**
+     * Shows the selected program: once its text has arrived, compared with the local copy; after that, replaced
+     * from the server only while nothing is unsent.
+     */
     private void showText(List<ProgramSync.FileInfo> files) {
         // Until a program is opened the box stays empty.
         editor.setDisplay(selected != null);
-        if (selected == null) {
-            if (shownVersion != null) editor.setValue(new String[] {""}, false);
-            shownVersion = null;
-            return;
-        }
-        var received = ClientPrograms.get().text(selected).orElse(null);
+        if (selected == null || copies == null) return;
         var latest = files.stream().filter(file -> file.name().equals(selected)).map(ProgramSync.FileInfo::version)
                 .findFirst().orElse(null);
-        if (received != null && !received.version().equals(shownVersion)) {
-            editor.setValue(received.text().split("\n", -1), false);
-            shownVersion = received.version();
+        if (latest == null) return;
+        var received = ClientPrograms.get().text(selected).orElse(null);
+        boolean arrived = received != null && received.version().equals(latest);
+        if (!reconciled) {
+            if (!arrived) {
+                fetch(latest);
+                return;
+            }
+            var opening = copies.open(selected, latest, received.text(), files.stream()
+                    .map(ProgramSync.FileInfo::name).collect(Collectors.toSet()));
+            editor.setValue(opening.text().split("\n", -1), false);
+            base = latest;
+            reconciled = true;
+            if (opening.upload()) {
+                dirty = true;
+                idle = UPLOAD_PAUSE;
+            }
+            opening.movedTo().ifPresent(this::uploadMoved);
+            return;
         }
-        if (latest != null && (received == null || !received.version().equals(latest))) ClientPrograms.get().fetch(selected);
+        if (latest.equals(ProgramSync.version(text()))) {
+            base = latest;
+            return;
+        }
+        if (dirty || sending) return;
+        if (!arrived) {
+            fetch(latest);
+            return;
+        }
+        editor.setValue(received.text().split("\n", -1), false);
+        base = latest;
+        copies.sent(selected, received.text());
+    }
+
+    private void fetch(String version) {
+        if (version.equals(fetching)) return;
+        fetching = version;
+        ClientPrograms.get().fetch(selected);
+    }
+
+    /** Edits made on a version the server no longer holds become a program of their own, beside the server's. */
+    private void uploadMoved(String name) {
+        var copy = copies.read(name).orElseThrow();
+        ClientPrograms.get().upload(name, "", copy.text(), answer -> {
+            if (answer.ok()) {
+                copies.sent(name, copy.text());
+                answer(new ProgramSync.Answer(answer.request(), true,
+                        Component.translatable("ae2federation.ui.automation.moved", name).getString()));
+            } else {
+                answer(answer);
+            }
+        });
     }
 
     private void select(@Nullable String name) {
+        send();
         selected = name;
-        shownVersion = null;
-        if (name != null) {
-            opened.add(name);
-            if (client) ClientPrograms.get().fetch(name);
-        }
+        reconciled = false;
+        dirty = false;
+        pushAfterSend = false;
+        fetching = null;
+        clearAnswer();
+        if (name != null) opened.add(name);
         editor.setValue(new String[] {""}, false);
     }
 
@@ -162,15 +362,11 @@ final class FederationAutomationView {
         }
     }
 
-    /**
-     * The open file's functions, private ones included, from its text once it arrived; until then the index's public
-     * ones.
-     */
+    /** The open file's functions, private ones included, from the editor once it shows it; until then the index's. */
     private List<String> functions(ProgramSync.FileInfo file) {
-        var received = ClientPrograms.get().text(file.name()).orElse(null);
-        if (received == null) return file.functions().stream().map(ProgramSync.FunctionInfo::name).toList();
+        if (!reconciled) return file.functions().stream().map(ProgramSync.FunctionInfo::name).toList();
         var names = new ArrayList<String>();
-        ScriptParser.parse(received.text()).program().functions().forEach(function -> names.add(function.name()));
+        ScriptParser.parse(text()).program().functions().forEach(function -> names.add(function.name()));
         return names;
     }
 

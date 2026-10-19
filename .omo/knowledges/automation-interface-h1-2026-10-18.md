@@ -119,3 +119,20 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   `tp VisualProbe 0.5 -59 13.5 180 30` + right click; GUI clicks need pointer motion (XTEST `MotionNotify`) before
   the button press. Its domain reads "No confirmed Federation Domain membership" (pre-existing); the original
   computing device at 8,-60,8 is on a network outside that domain, a second one was placed at 1,-60,11.
+
+## G1b-i: editing
+
+- `TextArea.setValue` resets the caret, selection and scroll to the start: replace the text from the server only
+  while the editor holds nothing unsent, or typing is lost. Compare `ProgramSync.version(editorText)` with the index
+  version instead of waiting for answers: closing the tab drops the awaited callbacks (`ClientPrograms.open(false)`).
+- Edits reach listeners through `onRawLinesUpdated` (`setLinesResponder`); `setValue(..., false)` does not notify.
+- The upload countdown runs on the root's TICK listener: a hidden element does not tick.
+- The server answers an upload after sending the new index, so the answer callback can select a just-created file.
+- `LocalCopies` must not cache its bases: a second writer (another instance, an outside editor) would be missed and
+  an old copy uploaded over the server's text. The UI scenario caught this.
+- UI tests: `.type("a:\nb")` presses Enter for `\n`; `.key(GLFW_KEY_SLASH, GLFW_MOD_CONTROL)` holds real Ctrl, so
+  `KeyState.isCtrlDown()` sees it; `.typeInto(selector, text)` focuses and replaces a field's text. Clear the
+  client's local copies before and after a scenario, or the next run opens an old copy.
+- In game, `type_text.py` sends real keys and presses Return; a remote client's copies are under
+  `<client>/ae2federation/programs/server-127.0.0.1_<port>/`.
+- `pixi run ... python` re-parses its arguments as a shell line: quotes inside an argument break it.
