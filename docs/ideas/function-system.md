@@ -303,6 +303,15 @@ Python's names and meaning (`str()`, `int()`, `range()` ...); everything about t
   - Implementation note: `Runner.Trace` reports statement values only (assignments, actions, branch decisions,
     loop items, returns). Value cards (`<`, `-`, reads inside an expression) need the evaluator to report each
     computed sub-expression by its ID too.
+  - As built (2026-10-19): the server runs the function at once within 4096 steps, waits skipped, with the
+    saved text of the version the editor shows; actions only simulate (a transfer answers what would be accepted,
+    a craft whether it could be planned, blocks only checked, rules and filters validated). The editor asks again
+    every second while its text is saved and at once after a parameter's value is typed; an answer for an older
+    text is dropped, and the cards are not redrawn while a field is open or a button is held. Values longer than
+    48 characters end in "...". The script view runs the function the caret is in and writes after each line
+    that ran its values in grey: the parameters on the `def` line, then each value computed inside a statement as
+    `text = value` in the order computed, then the statement's own value (an assignment of a literal shows
+    nothing); the line that stopped the run shows the error in red. The notes hide as soon as the text changes.
 - **List and string methods are needed** (user, 2026-10-18). Assistant proposals:
   - Lists: `append`, `extend`, `insert`, `pop`, `remove`, `index`, `count`, `reverse`, `sort` (no `key=`, no
     lambdas), `clear`, `copy`. Strings: `startswith`, `endswith`, `lower`, `upper`, `strip`, `split`, `join`,

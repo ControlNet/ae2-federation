@@ -394,6 +394,7 @@
   "ae2federation.ui.automation.install_when_typed": "Installed once every argument is given",
   "ae2federation.ui.automation.log": "Log",
   "ae2federation.ui.automation.no_log": "Nothing logged since the server started",
+  "ae2federation.ui.automation.dry_stopped": "Dry run stopped after %s steps",
   "ae2federation.ui.automation.in_stock": "in stock: %s",
   "ae2federation.ui.automation.script": "Script",
   "ae2federation.ui.automation.graph": "Graph",

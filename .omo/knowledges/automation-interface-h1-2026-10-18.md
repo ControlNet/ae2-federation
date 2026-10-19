@@ -359,3 +359,25 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   `pass`.
 - Hover colour comes from the hit element's `isHover()` during the card's own draw.
 - Compare: `build/automation-graph-remove-check/compare.png`.
+
+## G1h: dry run
+
+- A suspending call statement (an action, a player call) runs as its call node only, so `Trace.ran` and its value
+  come by `card.card().call().id()`, not the statement's ID. The implicit return reports under the function's ID.
+- The evaluator reports every computed sub-expression by `e.id()` but not literals and names, which would only
+  repeat what the card already shows.
+- A missing parameter default is `Canvas.Input.Empty.INSTANCE`, never null.
+- `ProgramDryRun.Answer` carries the version; compare answers without it, or every save redraws the cards even when
+  no value changed.
+- A redraw between a press and its release loses the click: the release lands on a new element and no `CLICK`
+  fires. The view therefore keeps a `held` flag from root capture `MOUSE_DOWN`/`MOUSE_UP` and holds dry-run
+  redraws while it is set or while a `TextField` is open in the content root; the next answer (every 20 ticks)
+  shows them. Found as a flaky UI step ("the value goes back").
+- The dry run's failure goes on the status line through the same `answer` as refusals, and is shown only when its
+  text changes, so it does not overwrite a refusal every second.
+- The script view (G1h-iv): `DryRunNotes.of` turns the answer into notes by line, walking the function's
+  statements (inner values first, each as `ScriptPrinter.expr(e) + " = " + value`); `functionAt` picks the function
+  by the caret's line. `Runner` now reports each entry parameter's value under `Param.id()`, so the def line can
+  show them. `ScriptEditor.setDryNotes(lines, notes)` keeps the lines they were found for and draws nothing once
+  `lines` differ, so no edit path has to clear them; `shownNotes()` is the test hook.
+- Compare: `build/automation-graph-dryrun-check/compare.png`.

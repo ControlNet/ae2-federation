@@ -84,8 +84,9 @@ public final class Runner {
         var params = graph.function().params();
         for (int i = 0; i < params.size(); i++) {
             var param = params.get(i);
-            frame.locals.put(param.name(), i < args.size() ? args.get(i)
-                    : evaluator.eval(file, param.defaultValue(), Map.of()));
+            var value = i < args.size() ? args.get(i) : evaluator.eval(file, param.defaultValue(), Map.of());
+            frame.locals.put(param.name(), value);
+            if (trace != null) trace.value(file, param.id(), value);
         }
         frames.push(frame);
     }

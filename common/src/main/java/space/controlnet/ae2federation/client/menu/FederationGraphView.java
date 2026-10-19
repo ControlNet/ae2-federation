@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -27,6 +28,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.automation.LibraryRows;
+import space.controlnet.ae2federation.automation.ProgramDryRun;
 import space.controlnet.ae2federation.client.automation.CompletionPopup;
 import space.controlnet.ae2federation.client.automation.ScriptChecker;
 import space.controlnet.ae2federation.client.policy.WireCurve;
@@ -54,6 +56,12 @@ import space.controlnet.ae2federation.function.TypeRef;
  * card's own pins drag the same way: a value onto another port ({@link GraphCards#move}), a statement onto another
  * exec output ({@link GraphCards#relocate}). The × in a card's head removes it ({@link GraphCards#remove}; user
  * decision, 2026-10-19), and a draft's discards the draft.
+ *
+ * <p>While a function is shown its dry run is asked for again and again ({@link #showDry}): each card shows its value
+ * on its output's line, beside the pin, cards the run did not reach are dimmed with their wires, and the card where it
+ * stopped has a red edge and the error's type. The function's card has a row per parameter with the value the dry run
+ * takes: its installation's argument where it is installed, else what is typed there, kept until the screen closes
+ * (user decisions, 2026-10-19, board {@code AutoDryRunPortIn}).
  */
 final class FederationGraphView {
     /** A card's geometry in GUI units, as the board draws it: its head, the first row's centre and the row pitch. */
@@ -95,6 +103,12 @@ final class FederationGraphView {
     private static final int CLOSE_ROOM = 9;
     /** How far the pressed pointer moves on a draft's pin before it drags a wire, as on the Install view. */
     private static final float DRAG_THRESHOLD = 3;
+    /** A dry-run value's well: its height, and the room an item icon takes before the text. */
+    private static final int DRY_HEIGHT = 9;
+    private static final int DRY_ICON = 10;
+    /** Laid over a card the dry run did not reach, and the colour its wires take. */
+    private static final int SKIPPED = 0x99201e27;
+    private static final int SKIPPED_WIRE = 0xff4a4655;
 
     /** A Library function being dragged onto the canvas. */
     record LibraryDrag(String namespace, String function) {
@@ -153,13 +167,23 @@ final class FederationGraphView {
     private @Nullable PinDrag pressedDrag;
     private float pressX;
     private float pressY;
+    /** A button is held: a press and its release must meet the same cards for the click. */
+    private boolean held;
+    /** The shown function's last dry run, and the values typed for its parameters, by function. */
+    private @Nullable ProgramDryRun.Answer dry;
+    private final Map<String, Map<String, String>> typed = new HashMap<>();
+    /** An installed function's arguments as text, or none; and what asks for a dry run at once. */
+    private final Function<String, Optional<List<String>>> installed;
+    private final Runnable rerun;
 
     FederationGraphView(UI ui, Consumer<Boolean> switched, Supplier<String> text, Consumer<String> write,
-            Consumer<String> refuse) {
+            Consumer<String> refuse, Function<String, Optional<List<String>>> installed, Runnable rerun) {
         this.switched = switched;
         this.text = text;
         this.write = write;
         this.refuse = refuse;
+        this.installed = installed;
+        this.rerun = rerun;
         graph = element(ui, "auto_graph", GraphView.class);
         script = element(ui, "auto_script", UIElement.class);
         box = element(ui, "auto_graph_box", UIElement.class);
@@ -176,8 +200,14 @@ final class FederationGraphView {
             if (event.dragHandler.draggingObject instanceof LibraryDrag drag) drop(drag, event.x, event.y);
         });
         // Any press or release forgets the pressed pin, so only its own press drags.
-        ui.rootElement.addEventListener(UIEvents.MOUSE_DOWN, event -> pressed = null, true);
-        ui.rootElement.addEventListener(UIEvents.MOUSE_UP, event -> pressed = null, true);
+        ui.rootElement.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+            pressed = null;
+            held = true;
+        }, true);
+        ui.rootElement.addEventListener(UIEvents.MOUSE_UP, event -> {
+            pressed = null;
+            held = false;
+        }, true);
         ui.rootElement.addEventListener(UIEvents.MOUSE_MOVE, event -> {
             var pin = pressed;
             if (pin == null || Math.abs(event.x - pressX) + Math.abs(event.y - pressY) < DRAG_THRESHOLD) return;
@@ -214,6 +244,8 @@ final class FederationGraphView {
     void clear() {
         graphs = Map.of();
         drafts.clear();
+        dry = null;
+        typed.clear();
         function = null;
         recentre = true;
         parses = false;
@@ -243,9 +275,87 @@ final class FederationGraphView {
     /** Shows {@code name}'s graph, as clicking its tab does. */
     void showFunction(String name) {
         if (!graphs.containsKey(name)) return;
-        if (!name.equals(function)) recentre = true;
+        if (!name.equals(function)) {
+            recentre = true;
+            dry = null;
+        }
         function = name;
         redraw();
+        rerun.run();
+    }
+
+    /** The function shown, whose dry run the cards show. */
+    @Nullable String function() {
+        return function;
+    }
+
+    /**
+     * A dry run of {@code name}: shown on its cards if it is the function shown and shows something else than the
+     * last. A field open on a card, or a button held, keeps the cards as they are until the next one.
+     */
+    void showDry(String name, ProgramDryRun.Answer answer) {
+        if (!name.equals(function) || held || editing(graph.contentRoot)) return;
+        if (dry != null && answer.status() == dry.status() && answer.failureNode().equals(dry.failureNode())
+                && answer.failure().equals(dry.failure()) && answer.values().equals(dry.values())
+                && answer.ran().equals(dry.ran())) {
+            return;
+        }
+        dry = answer;
+        if (shown) redraw();
+    }
+
+    /** Whether a field is open on a card. */
+    private static boolean editing(UIElement element) {
+        return element instanceof TextField || element.getChildren().stream().anyMatch(FederationGraphView::editing);
+    }
+
+    /**
+     * The dry-run arguments of {@code name} as a request takes them, one per parameter: what is typed for it, else
+     * its installation's, else its default; a parameter with none takes its type's plain value. Trailing defaults
+     * are left out. None when the script does not parse or has no such function.
+     */
+    @Nullable List<String> dryArgs(String name) {
+        var shownGraph = parses ? graphs.get(name) : null;
+        if (shownGraph == null) return null;
+        var params = shownGraph.canvas().nodes().get(0).params();
+        var args = new ArrayList<String>();
+        int needed = 0;
+        for (int i = 0; i < params.size(); i++) {
+            var argument = argument(name, params, i);
+            args.add(argument.text());
+            if (!argument.fromDefault()) needed = i + 1;
+        }
+        return List.copyOf(args.subList(0, needed));
+    }
+
+    /** A parameter's dry-run value as text, and whether it is only its default. */
+    private record Argument(String text, boolean fromDefault) {
+    }
+
+    private Argument argument(String name, List<Canvas.Param> params, int index) {
+        var param = params.get(index);
+        var own = typed.getOrDefault(name, Map.of()).get(param.name());
+        if (own != null) return new Argument(own, false);
+        var install = installed.apply(name).orElse(List.of());
+        if (index < install.size()) return new Argument(install.get(index), false);
+        if (!(param.defaultValue() instanceof Canvas.Input.Empty)) {
+            return new Argument(param.defaultValue() instanceof Canvas.Input.Literal literal
+                    && literal.value() instanceof Expr.StrLit string ? string.value()
+                    : GraphCards.editText(param.defaultValue(), param.type()), true);
+        }
+        return new Argument(switch (param.type().name()) {
+            case "int" -> "0";
+            case "float" -> "0.0";
+            case "bool" -> "False";
+            default -> "";
+        }, false);
+    }
+
+    /** A value typed for a parameter of the shown function: the dry run runs again with it at once. */
+    private void type(String param, String value) {
+        typed.computeIfAbsent(function, name -> new HashMap<>()).put(param, value);
+        redraw();
+        rerun.run();
     }
 
     private void redraw() {
@@ -256,8 +366,12 @@ final class FederationGraphView {
         extentX = 0;
         if (shownGraph == null) return;
         var font = net.minecraft.client.Minecraft.getInstance().font;
+        var params = params(shownGraph);
         var drawn = new HashMap<String, Drawn>();
-        for (var card : shownGraph.cards()) drawn.put(card.id(), measure(card, font));
+        for (var card : shownGraph.cards()) {
+            drawn.put(card.id(), measure(card, font, dryValue(card, font), dryState(card),
+                    card.card().node().kind() == Canvas.Kind.ENTRY ? params : List.of()));
+        }
         var boxes = Layout.of(shownGraph.canvas(), new Layout.Metrics() {
             public int width(Layout.Card card) {
                 return drawn.get(card.id()).width();
@@ -286,11 +400,68 @@ final class FederationGraphView {
         for (var card : shownGraph.cards()) {
             var place = boxes.get(card.id());
             graph.addContentChild(new CardElement(drawn.get(card.id()), place.x() + MARGIN, place.y() + MARGIN,
-                    (row, typed) -> put(shownGraph, row, typed), () -> remove(shownGraph, card.id())));
+                    (row, value) -> put(shownGraph, row, value), () -> remove(shownGraph, card.id())));
         }
         for (var draft : drafts.getOrDefault(function, List.of())) graph.addContentChild(new DraftElement(draft));
         extentX = right + 2 * MARGIN;
         extentY = bottom + 2 * MARGIN;
+    }
+
+    /** The function's parameters with their dry-run values, for its card's rows. */
+    private List<ParamRow> params(ScriptChecker.Graph shownGraph) {
+        var params = shownGraph.canvas().nodes().get(0).params();
+        var font = net.minecraft.client.Minecraft.getInstance().font;
+        var rows = new ArrayList<ParamRow>();
+        for (int i = 0; i < params.size(); i++) {
+            var param = params.get(i);
+            var text = argument(function, params, i).text();
+            var icon = resource(param.type()) ? CompletionPopup.icon(text) : ItemStack.EMPTY;
+            var shownText = icon.isEmpty() ? cut(text) : cut(icon.getHoverName().getString());
+            rows.add(new ParamRow(param.name(), param.type(), text, shownText, icon,
+                    font.width(shownText) + 6 + (icon.isEmpty() ? 0 : 10)));
+        }
+        return rows;
+    }
+
+    /**
+     * The value the dry run gave a card: a value's own, a statement's or its merged call's, as its repr; an item
+     * or fluid ID with its icon and name. None for the function's card and for an if or a loop, whose branch taken
+     * shows by what is dimmed; the error's type where the run stopped.
+     */
+    private @Nullable DryValue dryValue(GraphCards.Card card, net.minecraft.client.gui.Font font) {
+        if (dry == null) return null;
+        var kind = card.card().node().kind();
+        if (kind == Canvas.Kind.ENTRY || kind == Canvas.Kind.IF || kind == Canvas.Kind.WHILE
+                || kind == Canvas.Kind.FOR) {
+            return null;
+        }
+        if (failed(card)) {
+            var type = dry.failure().split(":", 2)[0];
+            return new DryValue(type, ItemStack.EMPTY, font.width(type) + 4, true);
+        }
+        var value = dry.values().get(card.id());
+        if (value == null && card.card().call() != null) value = dry.values().get(card.card().call().id());
+        if (value == null) return null;
+        var icon = value.length() > 2 && value.startsWith("'") && value.endsWith("'")
+                ? CompletionPopup.icon(value.substring(1, value.length() - 1)) : ItemStack.EMPTY;
+        var text = icon.isEmpty() ? cut(value) : cut(icon.getHoverName().getString());
+        return new DryValue(text, icon, font.width(text) + 4 + (icon.isEmpty() ? 0 : DRY_ICON), false);
+    }
+
+    private boolean failed(GraphCards.Card card) {
+        if (dry == null || dry.status() != ProgramDryRun.Status.FAILED) return false;
+        var node = dry.failureNode();
+        return node.equals(card.id()) || card.card().call() != null && node.equals(card.card().call().id());
+    }
+
+    /** Whether the dry run reached the card: a statement that ran, a value it computed, or where it stopped. */
+    private DryState dryState(GraphCards.Card card) {
+        if (dry == null || card.card().node().kind() == Canvas.Kind.ENTRY) return DryState.NONE;
+        if (failed(card)) return DryState.FAILED;
+        var call = card.card().call();
+        boolean reached = dry.ran().contains(card.id()) || dry.values().containsKey(card.id())
+                || call != null && (dry.ran().contains(call.id()) || dry.values().containsKey(call.id()));
+        return reached ? DryState.RAN : DryState.SKIPPED;
     }
 
     /** Opens a newly shown function whole, from its top left, once the view has its size: it has none while hidden. */
@@ -434,6 +605,22 @@ final class FederationGraphView {
         pen.rect(x + 1, y + 2, w - 2, h - 4, TITLE);
     }
 
+    /** How the dry run met a card: not asked yet, reached, not reached, or stopped there. */
+    private enum DryState {
+        NONE,
+        RAN,
+        SKIPPED,
+        FAILED
+    }
+
+    /** A dry-run value on a card: its text, an item's icon, its well's width, and whether it is the error. */
+    private record DryValue(String text, ItemStack icon, int width, boolean error) {
+    }
+
+    /** A parameter's row on the function's card: the dry run's value as text, and as shown. */
+    private record ParamRow(String name, TypeRef type, String text, String shown, ItemStack icon, int width) {
+    }
+
     /** What a row shows after its label: a variable's chip, or a literal in a field; nothing for a wire. */
     private record Value(String text, ItemStack icon, boolean chip, int color, int width) {
     }
@@ -443,9 +630,12 @@ final class FederationGraphView {
         return LABEL_X + net.minecraft.client.Minecraft.getInstance().font.width(row.label()) + GAP;
     }
 
-    /** A card measured for drawing: its rows' values, its size, and where its first input row is. */
+    /**
+     * A card measured for drawing: its rows' values, its size, where its first input row is, its dry-run value and
+     * state, and the function's parameters on its own card.
+     */
     private record Drawn(GraphCards.Card card, List<Value> values, int width, int height, int firstRow,
-            boolean execIn) {
+            boolean execIn, @Nullable DryValue dry, DryState state, List<ParamRow> params) {
         int rowY(int row) {
             return FIRST + ROW * (firstRow + row);
         }
@@ -455,26 +645,34 @@ final class FederationGraphView {
         }
     }
 
-    private static Drawn measure(GraphCards.Card card, net.minecraft.client.gui.Font font) {
+    private static Drawn measure(GraphCards.Card card, net.minecraft.client.gui.Font font, @Nullable DryValue dry,
+            DryState state, List<ParamRow> params) {
         var values = new ArrayList<Value>();
         for (var row : card.rows()) values.add(value(row, font));
         boolean execIn = card.statement() && card.card().node().kind() != Canvas.Kind.ENTRY;
         int firstRow = execIn ? 1 : 0;
-        int lines = Math.max(1, Math.max(firstRow + card.rows().size(), card.outputs().size()));
+        int rows = card.rows().size() + params.size();
+        int lines = Math.max(1, Math.max(firstRow + rows, card.outputs().size()));
         boolean entry = card.card().node().kind() == Canvas.Kind.ENTRY;
         int width = Math.max(MIN_WIDTH, 4 + font.width(card.title()) + END + (entry ? 0 : CLOSE_ROOM));
-        // Each line holds an input on the left (the exec pin, or a row) and an output's label on the right.
+        // Each line holds an input on the left (the exec pin, a row or a parameter) and an output's label on the
+        // right; the dry-run value sits on the first line, beside the output.
         for (int line = 0; line < lines; line++) {
             int row = line - firstRow;
             int left = 0;
             if (row >= 0 && row < card.rows().size()) {
                 var value = values.get(row);
                 left = LABEL_X + font.width(card.rows().get(row).label()) + (value == null ? 0 : GAP + value.width());
+            } else if (row >= card.rows().size() && row < rows) {
+                var param = params.get(row - card.rows().size());
+                left = LABEL_X + font.width(param.name()) + GAP + param.width();
             }
             var output = line < card.outputs().size() ? card.outputs().get(line).label() : "";
-            width = Math.max(width, left + (output.isEmpty() ? 0 : (left == 0 ? GAP : APART) + font.width(output)) + END);
+            int right = output.isEmpty() ? 0 : font.width(output);
+            if (line == 0 && dry != null) right = Math.max(right, dry.width());
+            width = Math.max(width, left + (right == 0 ? 0 : (left == 0 ? GAP : APART) + right) + END);
         }
-        return new Drawn(card, values, width, BASE + ROW * lines, firstRow, execIn);
+        return new Drawn(card, values, width, BASE + ROW * lines, firstRow, execIn, dry, state, params);
     }
 
     private static @Nullable Value value(GraphCards.Row row, net.minecraft.client.gui.Font font) {
@@ -518,8 +716,9 @@ final class FederationGraphView {
             int output = from.card().outputs().stream().map(GraphCards.Output::name).toList().indexOf(link.output());
             if (output < 0) continue;
             var start = boxes.get(link.from());
+            boolean skipped = drawn.get(link.to()) != null && drawn.get(link.to()).state() == DryState.SKIPPED;
             wires.add(new Wire(start.right() + MARGIN + 3, start.y() + MARGIN + from.outputY(output),
-                    to.x() + MARGIN - 3, to.y() + MARGIN + FIRST, EXEC, 1.6f));
+                    to.x() + MARGIN - 3, to.y() + MARGIN + FIRST, skipped ? SKIPPED_WIRE : EXEC, 1.6f));
         }
         for (var card : shownGraph.cards()) {
             var d = drawn.get(card.id());
@@ -528,8 +727,10 @@ final class FederationGraphView {
                 if (!(card.rows().get(i).input() instanceof Canvas.Input.Wire wire)) continue;
                 var source = boxes.get(wire.node());
                 if (source == null) continue;
+                boolean skipped = drawn.get(wire.node()) != null && drawn.get(wire.node()).state() == DryState.SKIPPED;
                 wires.add(new Wire(source.right() + MARGIN + 2, source.y() + MARGIN + FIRST, place.x() + MARGIN - 3,
-                        place.y() + MARGIN + d.rowY(i), color(card.rows().get(i).type()), 1.2f));
+                        place.y() + MARGIN + d.rowY(i), skipped ? SKIPPED_WIRE : color(card.rows().get(i).type()),
+                        1.2f));
             }
         }
         return wires;
@@ -675,6 +876,51 @@ final class FederationGraphView {
             // Every card but the function's own can be removed.
             close = kind == Canvas.Kind.ENTRY ? null : closer("auto_graph_remove_" + card.id(), drawn.width(), remove);
             if (close != null) addChild(close);
+            for (int i = 0; i < drawn.params().size(); i++) {
+                var param = drawn.params().get(i);
+                addChild(parameter(param, drawn.rowY(card.rows().size() + i)));
+            }
+            if (drawn.dry() != null) addChild(dryLabel(card.id(), drawn.dry(), drawn.width(), drawn.outputY(0)));
+        }
+
+        /** A parameter's value on the function's card: a click opens a field, and Enter or leaving it keeps it. */
+        private UIElement parameter(ParamRow param, int rowY) {
+            var area = new UIElement();
+            area.setId("auto_graph_param_" + param.name());
+            area.addClass("graph-value");
+            float left = LABEL_X + net.minecraft.client.Minecraft.getInstance().font.width(param.name()) + GAP;
+            area.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(left).top(rowY - 6)
+                    .width(param.width()).height(11));
+            area.addEventListener(UIEvents.CLICK, event -> {
+                if (area.getChildren().isEmpty()) open(area, param.text(), param.width(), value -> type(param.name(), value));
+            });
+            return area;
+        }
+
+        /** The dry run's value at the card's output, right-aligned before the pin: a label the tests can read. */
+        private static Label dryLabel(String card, DryValue value, int width, int outputY) {
+            var label = new Label() {
+                @Override
+                @OnlyIn(Dist.CLIENT)
+                public void drawBackgroundAdditional(GUIContext context) {
+                    super.drawBackgroundAdditional(context);
+                    if (value.icon().isEmpty()) return;
+                    context.pose.pushPose();
+                    context.pose.translate(getPositionX() + 2, getPositionY() + 0.5f, 0);
+                    context.pose.scale(0.5f, 0.5f, 1);
+                    context.graphics.renderItem(value.icon(), 0, 0);
+                    context.pose.popPose();
+                }
+            };
+            label.setId("auto_graph_dry_" + card);
+            label.addClass("graph-dry");
+            if (value.error()) label.addClass("error");
+            if (!value.icon().isEmpty()) label.addClass("item");
+            label.setText(Component.literal(value.text()));
+            label.setAllowHitTest(false);
+            label.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(width - END - value.width())
+                    .top(outputY - 5).width(value.width()).height(DRY_HEIGHT));
+            return label;
         }
 
         /** The value's place on the card: a click opens a field over it, and Enter or leaving it writes it. */
@@ -732,7 +978,8 @@ final class FederationGraphView {
             float x = getPositionX();
             float y = getPositionY();
             float w = getSizeWidth();
-            DrawerHelper.drawSolidRect(graphics, x, y, w, getSizeHeight(), EDGE);
+            DrawerHelper.drawSolidRect(graphics, x, y, w, getSizeHeight(),
+                    drawn.state() == DryState.FAILED ? FederationTheme.ERROR : EDGE);
             DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, getSizeHeight() - 2, FACE);
             DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, HEAD, card.acts() ? ACTS : TITLE);
             text(context, card.title(), x + 4, y + 2, EXEC);
@@ -780,6 +1027,34 @@ final class FederationGraphView {
                     text(context, value.text(), tx, vy + 2, FIELD_TEXT);
                 }
             }
+            for (int i = 0; i < drawn.params().size(); i++) {
+                var param = drawn.params().get(i);
+                float cy = y + drawn.rowY(card.rows().size() + i);
+                text(context, param.name(), x + LABEL_X, cy - 4, LABEL);
+                float vx = x + LABEL_X + font.width(param.name()) + GAP;
+                float vy = cy - 6;
+                FederationTheme.FIELD.draw(graphics, 0, 0, vx, vy, param.width(), 11, 0);
+                float tx = vx + 3;
+                if (!param.icon().isEmpty()) {
+                    context.pose.pushPose();
+                    context.pose.translate(tx, vy + 1.5f, 0);
+                    context.pose.scale(0.5f, 0.5f, 1);
+                    graphics.renderItem(param.icon(), 0, 0);
+                    context.pose.popPose();
+                    tx += 10;
+                }
+                text(context, param.shown(), tx, vy + 2, FIELD_TEXT);
+            }
+        }
+
+        /** A card the dry run did not reach is dimmed, its value well and all. */
+        @Override
+        @OnlyIn(Dist.CLIENT)
+        public void drawBackgroundOverlay(GUIContext context) {
+            super.drawBackgroundOverlay(context);
+            if (drawn.state() != DryState.SKIPPED) return;
+            DrawerHelper.drawSolidRect(context.graphics, getPositionX() - 3, getPositionY(), getSizeWidth() + 6,
+                    getSizeHeight(), SKIPPED);
         }
     }
 

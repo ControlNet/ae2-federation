@@ -23,10 +23,13 @@ import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.automation.ClientPrograms;
 import space.controlnet.ae2federation.automation.GameCatalog;
 import space.controlnet.ae2federation.automation.LocalCopies;
+import space.controlnet.ae2federation.automation.ProgramDryRun;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.automation.RegistryResources;
 import space.controlnet.ae2federation.client.automation.ScriptChecker;
 import space.controlnet.ae2federation.client.automation.ScriptEditor;
+import space.controlnet.ae2federation.function.DryRun;
+import space.controlnet.ae2federation.function.DryRunNotes;
 import space.controlnet.ae2federation.function.ScriptParser;
 import space.controlnet.ae2federation.function.ScriptProblems;
 
@@ -45,6 +48,10 @@ import space.controlnet.ae2federation.function.ScriptProblems;
  * <p>Every program's text is fetched, so the shown one is checked on the client ({@link ScriptChecker}) against the
  * others and every interface and network the server knows, as the server checks it. Its problems are marked in the
  * editor and listed under it; the other programs show the server's count.
+ *
+ * <p>While the graph shows a function, the server dry-runs it every second once its text there is the editor's
+ * ({@link ProgramDryRun}), and at once after an upload or a parameter typed on the graph; the graph shows each node's
+ * value, and the status line says where the run stopped.
  */
 final class FederationAutomationView {
     /** Ticks without a key before an edit is uploaded. */
@@ -61,6 +68,8 @@ final class FederationAutomationView {
     private static final float PROBLEM_ROW = 13;
     /** How long a stock answer is shown before it is asked for again. */
     private static final long STOCK_MILLIS = 5000;
+    /** Ticks between dry runs of the function the graph shows. */
+    private static final int DRY_TICKS = 20;
 
     private final UI ui;
     private final boolean client;
@@ -105,6 +114,10 @@ final class FederationAutomationView {
     private final Map<String, Long> stock = new HashMap<>();
     private final Map<String, Long> stockAsked = new HashMap<>();
     private boolean open;
+    /** Ticks since the last dry run was asked for, whether its answer is awaited, and what it last said. */
+    private int dryTicks;
+    private boolean dryWaiting;
+    private String dryMessage = "";
 
     FederationAutomationView(UI ui, boolean client) {
         this.ui = ui;
@@ -147,7 +160,8 @@ final class FederationAutomationView {
             clearAnswer();
             editor.setValue(edited.split("\n", -1), false);
             edited();
-        }, refusal -> answer(new ProgramSync.Answer(0, false, refusal)));
+        }, refusal -> answer(new ProgramSync.Answer(0, false, refusal)), this::installedArgs,
+                () -> dryTicks = DRY_TICKS);
         editView = element("auto_edit_view", UIElement.class);
         installView = element("auto_install_view", UIElement.class);
         modeEdit = element("auto_mode_edit", Button.class);
@@ -256,10 +270,77 @@ final class FederationAutomationView {
 
     private void tick() {
         if (open && dirty && !sending && ++idle >= UPLOAD_PAUSE) send();
+        if (open && editView.isDisplayed() && ++dryTicks >= DRY_TICKS) {
+            dryTicks = 0;
+            dryRun();
+        }
         if (open && ++watched >= WATCH_TICKS) {
             watched = 0;
             watch();
         }
+    }
+
+    /**
+     * Asks the server to dry-run the function the graph shows, or in the script the one the caret is in, once its
+     * saved text is the editor's; an answer for a text the editor no longer holds is dropped.
+     */
+    private void dryRun() {
+        var name = selected;
+        if (dryWaiting || name == null || !reconciled || dirty || sending || domain.isEmpty()
+                || !base.equals(ProgramSync.version(text()))) {
+            return;
+        }
+        var parsed = ScriptParser.parse(text());
+        var function = graphs.shown() ? graphs.function()
+                : DryRunNotes.functionAt(parsed, editor.getCursorLine() + 1).orElse(null);
+        var args = function == null ? null : graphs.dryArgs(function);
+        if (args == null) return;
+        var request = new ArrayList<String>(List.of(domain, name, function, base));
+        request.addAll(args);
+        dryWaiting = true;
+        ClientPrograms.get().request("dry", request, result -> {
+            dryWaiting = false;
+            if (!name.equals(selected)) return;
+            if (!result.ok()) {
+                // A save on its way: the next one asks for the new version.
+                if (!result.message().startsWith("the saved version is")) dryMessage(result.message());
+                return;
+            }
+            var answer = ProgramDryRun.decode(result.message());
+            if (!answer.version().equals(ProgramSync.version(text()))) return;
+            graphs.showDry(function, answer);
+            editor.setDryNotes(editor.getLines(), DryRunNotes.of(parsed, function, answer.values(),
+                    answer.failureNode(), answer.failure()));
+            dryMessage(switch (answer.status()) {
+                case DONE -> "";
+                case FAILED -> answer.failure();
+                case STOPPED -> Component.translatable("ae2federation.ui.automation.dry_stopped",
+                        DryRun.BUDGET).getString();
+            });
+        });
+    }
+
+    /** What the dry run says on the status line, shown when it changes; nothing clears its own last message. */
+    private void dryMessage(String message) {
+        if (message.equals(dryMessage)) return;
+        var label = element("automation_answer", Label.class);
+        if (message.isEmpty()) {
+            if (label.getText().getString().equals(dryMessage)) clearAnswer();
+        } else {
+            answer(new ProgramSync.Answer(0, false, message));
+        }
+        dryMessage = message;
+    }
+
+    /** The arguments of {@code function} of the shown program as installed on this domain's devices, if it is. */
+    private java.util.Optional<List<String>> installedArgs(String function) {
+        var index = ClientPrograms.get().index().orElse(null);
+        if (index == null || selected == null) return java.util.Optional.empty();
+        var devices = index.devices().stream().filter(device -> device.domain().equals(domain))
+                .map(ProgramSync.DeviceInfo::id).collect(Collectors.toSet());
+        return index.installations().stream().filter(installation -> installation.file().equals(selected)
+                && installation.function().equals(function) && devices.contains(installation.device()))
+                .map(ProgramSync.InstallationInfo::args).findFirst();
     }
 
     /** An outside editor's writes: the shown program takes them as if typed; a file it created is listed. */
@@ -325,6 +406,7 @@ final class FederationAutomationView {
             }
             if (name.equals(selected)) {
                 base = ProgramSync.version(text);
+                dryTicks = DRY_TICKS;
                 if (copies != null) {
                     if (dirty) copies.edited(name, text(), base);
                     else copies.sent(name, text);
@@ -564,6 +646,7 @@ final class FederationAutomationView {
     private void select(@Nullable String name) {
         send();
         selected = name;
+        dryMessage = "";
         reconciled = false;
         dirty = false;
         pushAfterSend = false;

@@ -10,6 +10,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
 import com.lowdragmc.lowdraglib2.gui.util.DrawerHelper;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
@@ -24,6 +25,7 @@ import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.automation.ResourceStrings;
 import space.controlnet.ae2federation.function.Candidate;
 import space.controlnet.ae2federation.function.Completions;
+import space.controlnet.ae2federation.function.DryRunNotes;
 import space.controlnet.ae2federation.function.ScriptProblems;
 
 /**
@@ -37,6 +39,9 @@ import space.controlnet.ae2federation.function.ScriptProblems;
  * <p>Typing a name, a dot or a quote asks its {@link Completer} for candidates (Ctrl+Space asks anywhere);
  * they show in a {@link CompletionPopup} under the caret. Up and Down choose, Tab accepts, Enter accepts unless the
  * choice is what is typed already, Escape closes. An answer for a text or caret that has since changed is dropped.
+ *
+ * <p>A dry run's values ({@link DryRunNotes}) are written in grey after their lines, an error in red, while the text
+ * is the one they were found for.
  */
 public final class ScriptEditor extends CodeEditor {
     private static final int GUTTER = 0xff17141e;
@@ -52,6 +57,8 @@ public final class ScriptEditor extends CodeEditor {
     private static final float MIN_GUTTER = 16;
     private static final float NUMBER_GAP = 3;
     private static final float TEXT_GAP = 4;
+    /** Between a line's end and its dry-run note. */
+    private static final float NOTE_GAP = 8;
     private static final String INDENT = "    ";
     private static final String COMMENT = "# ";
 
@@ -74,6 +81,9 @@ public final class ScriptEditor extends CodeEditor {
     /** Whether the screen closed on Escape before the list opened: while it is open, Escape only closes the list. */
     private @Nullable Boolean closedOnEscape;
     private List<ScriptProblems.Mark> problems = List.of();
+    /** The dry run's notes by line from 1, and the lines they were found for. */
+    private Map<Integer, DryRunNotes.Note> notes = Map.of();
+    private List<String> notedLines = List.of();
     /** The content view's left padding as last set: the gutter and the gap after it. */
     private float padding = -1;
 
@@ -123,6 +133,17 @@ public final class ScriptEditor extends CodeEditor {
     /** The problems to mark, for the text as it is now. */
     public void setProblems(List<ScriptProblems.Mark> problems) {
         this.problems = List.copyOf(problems);
+    }
+
+    /** A dry run's notes of {@code lines}, by line from 1; shown while the text is those lines. */
+    public void setDryNotes(List<String> lines, Map<Integer, DryRunNotes.Note> notes) {
+        this.notedLines = List.copyOf(lines);
+        this.notes = Map.copyOf(notes);
+    }
+
+    /** The dry-run notes shown now: none once the text is no longer what they were found for. */
+    public Map<Integer, DryRunNotes.Note> shownNotes() {
+        return lines.equals(notedLines) ? notes : Map.of();
     }
 
     public void setCompleter(Completer completer) {
@@ -473,6 +494,7 @@ public final class ScriptEditor extends CodeEditor {
             }
             drawUnderlines(context, first, last);
             drawIcons(context, first, last);
+            drawNotes(context, first, last);
             return;
         }
         float width = Math.max(MIN_GUTTER, MARK + font.getSplitter().stringWidth(
@@ -504,6 +526,31 @@ public final class ScriptEditor extends CodeEditor {
         context.disableScissor();
         drawUnderlines(context, first, last);
         drawIcons(context, first, last);
+        drawNotes(context, first, last);
+    }
+
+    /** Each line's dry-run note after its end. */
+    @OnlyIn(Dist.CLIENT)
+    private void drawNotes(GUIContext context, int first, int last) {
+        var notes = shownNotes();
+        if (notes.isEmpty()) return;
+        float scale = scale();
+        context.graphics.flush();
+        context.enableScissor(contentView.getContentX(), contentView.getContentY(), contentView.getContentWidth(),
+                contentView.getContentHeight());
+        for (int line = first; line <= last && line < lines.size(); line++) {
+            var note = notes.get(line + 1);
+            if (note == null) continue;
+            var end = columnPosition(line, lines.get(line).length());
+            context.pose.pushPose();
+            context.pose.translate(end.x + NOTE_GAP, end.y, 0);
+            context.pose.scale(scale, scale, 1);
+            LDLibFonts.drawText(context.graphics, getFont(), inFont(note.text()), 0, 0,
+                    note.error() ? PROBLEM : NUMBER, false);
+            context.pose.popPose();
+        }
+        context.graphics.flush();
+        context.disableScissor();
     }
 
     /** Each resource's icon, in the room before its string. */

@@ -201,6 +201,10 @@ Next (user, 2026-10-18: the host and the editor screens both): assistant phasing
 | G1f-v (done) | An × in the top right of every card but the function's own removes it (user decision 2026-10-19): a statement with what is inside it (`Edits.remove`), a value with a plain value left on its port; a draft's × discards it |
 | G1f-vi | Turning a value into a variable (`Edits.extract`): control not chosen yet |
 | G1g (done) | Outside editors: while the tab is open the local folder is looked at every second; the shown program takes an outside write as if typed (CRLF made LF), and a new `.ae2f` there is listed and uploaded once opened |
+| G1h-i (done) | Dry-run core: `Runner.Trace.ran` and the evaluator's sub-expression values; `DryRun` runs a function at once within a step budget, waits skipped, each node's last value as a cut repr |
+| G1h-ii (done) | The server's dry run: `ProgramHost.dryRun` reads the world and only simulates actions (simulate transfers, `couldRequest` for crafts, checks only for blocks); request `dry` answers a version's run as text |
+| G1h-iii (done) | The graph shows the dry run (board `AutoDryRunPortIn`, user decision 2026-10-19): each card's value at its output, an item with its icon; cards not reached dimmed; the stopping card red with the error's type, the message on the status line; the entry card's parameter rows, prefilled from the installation and editable for the dry run only; asked every second while the saved text is the editor's |
+| G1h-iv (done) | The script view shows the dry run of the function the caret is in after its lines (user decision 2026-10-19, `DryRunNotes`): parameters on the def line, intermediate values as `text = value` before the statement's own, the error in red; hidden as soon as the text changes |
 | G1+ | Automation tab: Edit view (program list, file tabs, script editor with completion, errors, item icons), Graph view from `Canvas`/`Layout`, library panel with the examples, Install view |
 
 Decided (user, 2026-10-18): programs are global with no permissions for now; installations run the version last

@@ -133,6 +133,32 @@ public final class AutomationTabScenario implements UIScenario {
                         context.all(".auto-variable").stream().map(chip -> chip.text()).toList()
                                 .equals(java.util.List.of("lamp: Interface", "iron: Item", "now: int")))
                 .frames(2).screenshot("ui-automation-graph")
+                // The dry run (G1h): the server runs the shown function with its actions simulated, and each card
+                // shows its value at its output. The lamp is left empty, so lighting it stops the run.
+                .waitUntil("the dry run shows the stock read on its card", context ->
+                        context.all(alarmDry("now")).size() == 1)
+                .waitUntil("the run stops at the lamp, in red on its card and on the status line", context -> {
+                    long now = Long.parseLong(context.el(alarmDry("now")).text());
+                    var lamp = alarmDry(now < 64 ? "lamp on" : "lamp off");
+                    return context.all(lamp).size() == 1 && context.el(lamp).text().equals("ValueError")
+                            && context.all(lamp + ".error").size() == 1
+                            && context.el("#automation_answer").text().equals("ValueError: no interface '' in this domain");
+                })
+                .check("the value taken from the stock is on its own card when that branch runs", context -> {
+                    long now = Long.parseLong(context.el(alarmDry("now")).text());
+                    return now >= 64 ? context.all(alarmDry("minus")).isEmpty()
+                            : context.el(alarmDry("minus")).text().equals(String.valueOf(64 - now));
+                })
+                .check("the function's card has a row for its parameter", context ->
+                        context.all("#auto_graph_param_lamp").size() == 1)
+                .frames(2).screenshot("ui-automation-graph-dry")
+                .click("#auto_graph_param_lamp")
+                .type("lamp9")
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("a value typed for the parameter runs it again with that value", context ->
+                        context.el("#automation_answer").text().equals("ValueError: no interface 'lamp9' in this domain"))
+                .check("the script is untouched by a parameter's value", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
                 // Values are edited on the cards (G1f-ii) and written into the script.
                 .click(alarmBound())
                 .check("a click opens a field over the value, its text selected", context ->
@@ -238,6 +264,18 @@ public final class AutomationTabScenario implements UIScenario {
                 .click("#auto_view_script")
                 .check("Script shows the script again", context ->
                         context.el("#auto_script").isVisible() && !context.el("#auto_graph_box").isVisible())
+                // The script view shows the dry run of the function the caret is in after its lines (G1h-iv).
+                .step("put the caret in the alarm", context -> editor(context).setCursor(alarmLine("now =") - 1, 0))
+                .waitUntil("the alarm's lines show its dry run, the typed parameter on its def line", context -> {
+                    var notes = editor(context).shownNotes();
+                    var def = notes.get(alarmLine("def low_iron_alarm"));
+                    return def != null && def.text().equals("lamp = 'lamp9'") && notes.values().stream()
+                            .anyMatch(note -> note.error()
+                                    && note.text().equals("ValueError: no interface 'lamp9' in this domain"));
+                })
+                .check("the value read from the stock is after its line", context ->
+                        editor(context).shownNotes().get(alarmLine("now =")).text().matches("\\d+"))
+                .frames(2).screenshot("ui-automation-script-dry")
                 // Typing at the end: a colon indents the next line, Tab indents by four, Ctrl+/ comments with #.
                 .step("put the caret on the last line", context -> {
                     var editor = editor(context);
@@ -252,6 +290,8 @@ public final class AutomationTabScenario implements UIScenario {
                     return lines.subList(lines.size() - 3, lines.size())
                             .equals(java.util.List.of("def ping() -> bool:", "    return True", "        # x = 1"));
                 })
+                .check("an edited text hides the notes until it is run again", context ->
+                        editor(context).shownNotes().isEmpty())
                 .step("note the edited text", context -> context.put("edited", String.join("\n", editor(context).getLines())))
                 .waitUntilServer("the edit reaches the server without a save", context -> {
                     var library = ProgramStore.get(context.server()).library();
@@ -677,8 +717,32 @@ public final class AutomationTabScenario implements UIScenario {
         };
     }
 
+    /** The dry-run value of a card of {@code low_iron_alarm}. */
+    private static String alarmDry(String kind) {
+        var alarm = ScriptParser.parse(IRON_TOOLS).program().functions().stream()
+                .filter(function -> function.name().equals("low_iron_alarm")).findFirst().orElseThrow();
+        var branch = (Stmt.If) alarm.body().stream().filter(statement -> statement instanceof Stmt.If).findFirst()
+                .orElseThrow();
+        return "#auto_graph_dry_" + switch (kind) {
+            case "now" -> alarm.body().get(1).id();
+            case "minus" -> ((Stmt.CallStmt) branch.body().get(0)).call().args().get(1).id();
+            case "lamp on" -> branch.body().get(1).id();
+            case "lamp off" -> branch.orElse().body().get(0).id();
+            default -> throw new IllegalArgumentException(kind);
+        };
+    }
+
     private static boolean graphOffered(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
         return context.el("#auto_view_graph").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).isActive();
+    }
+
+    /** The line, from 1, of IRON_TOOLS that starts with {@code start} after its indentation. */
+    private static int alarmLine(String start) {
+        var lines = IRON_TOOLS.split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i].strip().startsWith(start)) return i + 1;
+        }
+        throw new IllegalArgumentException("no line " + start);
     }
 
     private static ScriptEditor editor(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
