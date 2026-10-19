@@ -672,9 +672,11 @@ def verifyReleaseArchive = { File archive, Boolean sources ->
     def leaked = entries.findAll { name, bytes ->
         def text = new String(bytes, sources ? StandardCharsets.UTF_8 : StandardCharsets.ISO_8859_1)
         forbiddenPaths.any(name::contains) || forbiddenSymbols.any { symbol ->
-            // Reviewed production recovery commands are intentional. All other command registrations remain forbidden.
+            // Reviewed production commands (recovery, programs) are intentional. All other command registrations
+            // remain forbidden.
             def recoveryRegistration = symbol == 'RegisterCommandsEvent' && [
                     'space/controlnet/ae2federation/crafting/projection/ReturnRecoveryCommands',
+                    'space/controlnet/ae2federation/automation/ProgramCommands',
                     'space/controlnet/ae2federation/neoforge/NeoForgeEntrypoint'
             ].any { type -> name == type + '.class' || name == type + '.java' }
             text.contains(symbol) && !recoveryRegistration
