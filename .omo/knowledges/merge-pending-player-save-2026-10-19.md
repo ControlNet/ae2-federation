@@ -49,8 +49,10 @@
     no crafting returns. The most-nodes id survives, and `NetworkSettings.forget` deletes the others' name and rules.
   - Differing ids stay pending and are rechecked every 20 ticks.
   - This save's three ids carry no settings, so the save heals on load.
-  - The function branch must add program references (short ids actually used in programs or args) to
-    `NetworkSettings`. Do not add every minted short id, or C never applies.
+  - Every folded id goes through `NetworkSettings.fold(level, folded, survivor)`. On the function branch it also folds
+    the short id, so a program naming `network-xxxxxx` reaches the joined network: the folded id's short id
+    becomes the survivor's when the survivor has none, else an alias (saved under `aliases`). That is why short ids
+    are not counted as settings.
 - **A, done.** `FederationDomainPolicySession.pendingMerges` adds the ids of an `AMBIGUOUS_MERGE` Grid that touches one
   of the domain's Switch faces (`RouterFacePort` owner node) to the shown networks and to the overview.
   - These ids are shown read-only: they are not in `members()`, so no rule editing applies to them.

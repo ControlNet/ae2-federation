@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.automation;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
@@ -38,5 +39,36 @@ final class NetworkShortIdBookTest {
         assertFalse(book.put(FARM, "farm"), "not an ID");
         assertEquals("network-abcdef", book.id(MAIN, new Random(3)));
         assertEquals(1, book.entries().size());
+    }
+
+    @Test
+    void aFoldedNetworksIdNamesTheSurvivor() {
+        var book = new NetworkShortIdBook();
+        var main = book.id(MAIN, new Random(3));
+        var farm = book.id(FARM, new Random(4));
+        book.fold(FARM, MAIN);
+        assertEquals(Optional.of(MAIN), book.network(farm), "a program naming the folded network reaches the survivor");
+        assertEquals(main, book.id(MAIN, new Random(5)), "the survivor keeps its own ID");
+        assertEquals(Map.of(MAIN, main), book.entries());
+        assertEquals(Map.of(farm, MAIN), book.aliases());
+    }
+
+    @Test
+    void aSurvivorWithoutAnIdTakesTheFoldedOne() {
+        var book = new NetworkShortIdBook();
+        var farm = book.id(FARM, new Random(4));
+        book.fold(FARM, MAIN);
+        assertEquals(farm, book.id(MAIN, new Random(5)));
+        assertEquals(Map.of(), book.aliases());
+    }
+
+    @Test
+    void loadedAliasesNameTheirNetworkAndAClashIsRefused() {
+        var book = new NetworkShortIdBook();
+        assertTrue(book.put(MAIN, "network-abcdef"));
+        assertTrue(book.alias("network-ghjkmn", MAIN));
+        assertFalse(book.alias("network-abcdef", FARM), "an ID already taken");
+        assertEquals(Optional.of(MAIN), book.network("network-ghjkmn"));
+        assertEquals("network-abcdef", book.id(MAIN, new Random(3)));
     }
 }

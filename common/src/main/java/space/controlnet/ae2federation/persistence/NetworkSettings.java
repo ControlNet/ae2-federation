@@ -58,6 +58,7 @@ public record NetworkSettings(Optional<String> name, Map<Side, PolicyRule> rules
      * repeat the survivor's, so nothing is lost. Anything else that names networks by id follows the survivor here.
      */
     public static void fold(ServerLevel level, NetworkId network, NetworkId survivor) {
+        space.controlnet.ae2federation.automation.NetworkShortIds.get(level.getServer()).fold(network, survivor);
         NetworkNames.get(level).rename(network, "");
         var policies = PolicyService.get(level);
         for (var record : PolicySavedData.get(level).snapshot().entries().values()) {

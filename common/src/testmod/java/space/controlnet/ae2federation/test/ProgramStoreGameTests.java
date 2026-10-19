@@ -38,6 +38,49 @@ public final class ProgramStoreGameTests {
     private ProgramStoreGameTests() {
     }
 
+    /**
+     * A program names a network by its short ID. When a merge folds that network into a larger one, the ID names the
+     * joined network, so the program keeps working.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void aFoldedNetworksShortIdNamesTheJoinedNetwork(GameTestHelper helper) {
+        var small = new BlockPos(1, 1, 1);
+        var large = new BlockPos(3, 1, 1);
+        helper.setBlock(small, appeng.core.definitions.AEBlocks.ME_CHEST.block());
+        helper.setBlock(small.above(), appeng.core.definitions.AEBlocks.CREATIVE_ENERGY_CELL.block());
+        helper.setBlock(large, appeng.core.definitions.AEBlocks.ME_CHEST.block());
+        for (var cell = 1; cell <= 4; cell++) {
+            helper.setBlock(large.above(cell), appeng.core.definitions.AEBlocks.CREATIVE_ENERGY_CELL.block());
+        }
+        var shortIds = NetworkShortIds.get(helper.getLevel().getServer());
+        var folded = new String[1];
+        var survivor = new space.controlnet.ae2federation.identity.NetworkId[1];
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    var smallId = FederationDomainRegistryAccess.confirmedNetworkId(chestGrid(helper, small));
+                    var largeId = FederationDomainRegistryAccess.confirmedNetworkId(chestGrid(helper, large));
+                    helper.assertTrue(smallId.isPresent() && largeId.isPresent(), "Waiting for both pieces to settle");
+                    folded[0] = shortIds.id(smallId.get());
+                    survivor[0] = largeId.get();
+                })
+                .thenExecute(() -> appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(small.east()),
+                        null, null, appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT)))
+                .thenWaitUntil(() -> helper.assertValueEqual(
+                        FederationDomainRegistryAccess.confirmedNetworkId(chestGrid(helper, small)),
+                        java.util.Optional.of(survivor[0]), "Waiting for the merge to settle on the larger piece"))
+                .thenExecute(() -> helper.assertValueEqual(shortIds.network(folded[0]), java.util.Optional.of(survivor[0]),
+                        "The folded network's short ID names the joined network"))
+                .thenSucceed();
+    }
+
+    private static appeng.api.networking.IGrid chestGrid(GameTestHelper helper, BlockPos chest) {
+        var host = (appeng.blockentity.storage.MEChestBlockEntity) helper.getBlockEntity(chest);
+        var node = host.getMainNode().getNode();
+        helper.assertTrue(node != null, "Waiting for the chest's node");
+        return node.getGrid();
+    }
+
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 300, required = true, manualOnly = true)
     public static void programsAreCheckedAgainstTheServer(GameTestHelper helper) {

@@ -33,11 +33,20 @@ public final class NetworkShortIds extends SavedData {
         return book.network(id);
     }
 
+    /** See {@link NetworkShortIdBook#fold}. */
+    public void fold(NetworkId folded, NetworkId survivor) {
+        book.fold(folded, survivor);
+        setDirty();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         var entries = new CompoundTag();
         book.entries().forEach((network, id) -> entries.putString(id, network.value().toString()));
         tag.put("networks", entries);
+        var aliases = new CompoundTag();
+        book.aliases().forEach((id, network) -> aliases.putString(id, network.value().toString()));
+        tag.put("aliases", aliases);
         return tag;
     }
 
@@ -49,6 +58,14 @@ public final class NetworkShortIds extends SavedData {
                 loaded.book.put(new NetworkId(UUID.fromString(entries.getString(id))), id);
             } catch (IllegalArgumentException ignored) {
                 // A malformed record is dropped rather than failing the whole save.
+            }
+        }
+        var aliases = tag.getCompound("aliases");
+        for (var id : aliases.getAllKeys()) {
+            try {
+                loaded.book.alias(id, new NetworkId(UUID.fromString(aliases.getString(id))));
+            } catch (IllegalArgumentException ignored) {
+                // As above.
             }
         }
         return loaded;
