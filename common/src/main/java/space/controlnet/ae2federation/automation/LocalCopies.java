@@ -7,6 +7,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -68,6 +69,30 @@ public final class LocalCopies {
         } catch (IOException e) {
             throw new UncheckedIOException("cannot read " + file, e);
         }
+    }
+
+    /** The programs in the folder: its {@code .ae2f} files, by name, in order. */
+    public List<String> names() {
+        if (!Files.isDirectory(folder)) return List.of();
+        try (var files = Files.list(folder)) {
+            return files.map(path -> path.getFileName().toString()).filter(name -> name.endsWith(Library.EXTENSION))
+                    .map(name -> name.substring(0, name.length() - Library.EXTENSION.length())).sorted().toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot list " + folder, e);
+        }
+    }
+
+    /**
+     * The copy of {@code name} when another writer (an outside editor) has changed it from {@code shown}, the text the
+     * game shows, with CRLF and CR line ends made LF; empty while they agree or there is no copy.
+     */
+    public Optional<String> outside(String name, String shown) {
+        return read(name).map(copy -> plain(copy.text())).filter(text -> !text.equals(shown));
+    }
+
+    /** {@code text} with CRLF and CR line ends, as outside editors may write them, made LF. */
+    public static String plain(String text) {
+        return text.replace("\r\n", "\n").replace('\r', '\n');
     }
 
     /** Stores an edit that has not reached the server; {@code base} is the server version it started from. */

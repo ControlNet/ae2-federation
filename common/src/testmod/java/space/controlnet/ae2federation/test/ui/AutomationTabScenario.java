@@ -270,6 +270,32 @@ public final class AutomationTabScenario implements UIScenario {
                         ProgramStore.get(context.server()).library().text("smelting_local").equals("# mine\n"))
                 .check("smelting shows the server's text", context ->
                         String.join("\n", editor(context).getLines()).equals(SMELTING))
+                // An outside editor writes the same local files (G1g): the shown program takes its edits as if typed.
+                .step("an outside editor saves smelting with CRLF line ends", context ->
+                        writeLocal("smelting", SMELTING.replace("< 64", "< 32").replace("\n", "\r\n")))
+                .waitUntil("the script takes the outside edit, with plain line ends", context ->
+                        String.join("\n", editor(context).getLines()).equals(SMELTING.replace("< 64", "< 32")))
+                .waitUntilServer("the outside edit reaches the server as if typed", context ->
+                        ProgramStore.get(context.server()).library().text("smelting")
+                                .equals(SMELTING.replace("< 64", "< 32")))
+                .check("the local copy now has plain line ends", context ->
+                        readLocal("smelting").equals(SMELTING.replace("< 64", "< 32")))
+                .step("the outside editor puts smelting back", context -> writeLocal("smelting", SMELTING))
+                .waitUntil("the script has it back", context ->
+                        String.join("\n", editor(context).getLines()).equals(SMELTING))
+                .waitUntilServer("and so has the server", context ->
+                        ProgramStore.get(context.server()).library().text("smelting").equals(SMELTING))
+                .step("an outside editor creates a program in the folder", context ->
+                        writeLocal("pinger", "def ping() -> bool:\n    return True\n"))
+                .waitUntil("the new file is listed", context -> context.all("#auto_program_pinger").size() == 1)
+                .click("#auto_program_pinger")
+                .waitUntil("opening it shows it", context -> context.all("#auto_program_pinger.selected").size() == 1
+                        && String.join("\n", editor(context).getLines()).equals("def ping() -> bool:\n    return True\n"))
+                .checkServer("and uploads it", context -> ProgramStore.get(context.server()).library().text("pinger")
+                        .equals("def ping() -> bool:\n    return True\n"))
+                .click("#auto_program_smelting")
+                .waitUntil("smelting opens again", context ->
+                        String.join("\n", editor(context).getLines()).equals(SMELTING))
                 // Problems are checked on the client: marked in the editor and listed under it.
                 .waitUntil("the misspelt call is listed under the editor", context ->
                         context.el("#auto_problems").isVisible()
@@ -571,6 +597,16 @@ public final class AutomationTabScenario implements UIScenario {
         return new LocalCopies(localFolder()).read(name).map(LocalCopies.Copy::text).orElse("");
     }
 
+    /** Writes a local copy as an outside editor does: the file only, its base left as it was. */
+    private static void writeLocal(String name, String text) {
+        try {
+            Files.createDirectories(localFolder());
+            Files.writeString(localFolder().resolve(name + ".ae2f"), text);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
     private static void clearLocalCopies() {
         var folder = localFolder();
         if (!Files.isDirectory(folder)) return;
@@ -685,7 +721,7 @@ public final class AutomationTabScenario implements UIScenario {
     private static void removePrograms(ServerContext context) {
         var library = ProgramStore.get(context.server()).library();
         try {
-            for (var name : new String[] {"iron_tools", "smelting", "smelting_local", "scratch", "stock"}) {
+            for (var name : new String[] {"iron_tools", "smelting", "smelting_local", "scratch", "stock", "pinger"}) {
                 if (library.names().contains(name)) library.delete(name);
             }
         } catch (IOException exception) {

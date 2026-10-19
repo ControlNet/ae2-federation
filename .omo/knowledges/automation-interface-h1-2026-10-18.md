@@ -337,3 +337,15 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   its own copy as `<name>_local` on the next join (its base no longer matches). Restore through the GUI instead.
 - `pixi run ... --title "a; b"` splits at the semicolon: pixi tasks run through a shell. Keep titles free of `;`.
 - Compare: `build/automation-graph-wiring-check/compare.png`.
+
+## G1g: outside editors
+
+- The view keeps the local copy equal to the editor's text: every edit, upload answer and server replacement writes
+  it. So any difference found by `LocalCopies.outside(name, shown)` on the once-a-second look is an outside write.
+- `LocalCopies.plain` makes CRLF and CR into LF; taking the outside text through `edited()` writes it back as LF,
+  which also stops the next look from seeing a difference again.
+- A local-only file is uploaded with base `""` and then recorded with `sent`, so opening it finds the copy in sync
+  instead of moving it to `<name>_local`.
+- Test helper `writeLocal` writes only the file, as an outside editor does; `.waitUntilServer` conditions get a
+  `ServerContext`, so editor checks go in a separate `.waitUntil`.
+- Compare: `build/automation-outside-editor-check/compare.png`.

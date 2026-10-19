@@ -39,7 +39,8 @@ import space.controlnet.ae2federation.function.ScriptProblems;
  *
  * <p>Edits go to a local copy at once ({@link LocalCopies}) and to the server after a pause in typing, on switching
  * program and on closing, with no save button or sync indicator. The script is replaced from the server only while
- * it holds nothing unsent.
+ * it holds nothing unsent. While the page is open the folder is looked at every second: an outside editor's write to
+ * the shown program is taken as if typed, and a file it creates there is listed, uploaded once opened.
  *
  * <p>Every program's text is fetched, so the shown one is checked on the client ({@link ScriptChecker}) against the
  * others and every interface and network the server knows, as the server checks it. Its problems are marked in the
@@ -48,6 +49,8 @@ import space.controlnet.ae2federation.function.ScriptProblems;
 final class FederationAutomationView {
     /** Ticks without a key before an edit is uploaded. */
     private static final int UPLOAD_PAUSE = 20;
+    /** Ticks between looks at the local copies for an outside editor's writes. */
+    private static final int WATCH_TICKS = 20;
 
     /** Problem rows shown before the list scrolls. */
     private static final int PROBLEM_ROWS = 4;
@@ -94,6 +97,9 @@ final class FederationAutomationView {
     private int idle;
     private boolean pushAfterSend;
     private @Nullable LocalCopies copies;
+    private int watched;
+    /** Programs in the local folder that the server does not hold: created there by an outside editor. */
+    private List<String> localOnly = List.of();
     private String domain = "";
     /** The domain's stock of resources chosen in the completion list, and when each was asked for. */
     private final Map<String, Long> stock = new HashMap<>();
@@ -250,6 +256,45 @@ final class FederationAutomationView {
 
     private void tick() {
         if (open && dirty && !sending && ++idle >= UPLOAD_PAUSE) send();
+        if (open && ++watched >= WATCH_TICKS) {
+            watched = 0;
+            watch();
+        }
+    }
+
+    /** An outside editor's writes: the shown program takes them as if typed; a file it created is listed. */
+    private void watch() {
+        if (copies == null) return;
+        if (reconciled && selected != null) {
+            var outside = copies.outside(selected, text()).orElse(null);
+            if (outside != null) {
+                editor.setValue(outside.split("\n", -1), false);
+                edited();
+            }
+        }
+        var index = ClientPrograms.get().index().orElse(null);
+        if (index == null) return;
+        var names = index.files().stream().map(ProgramSync.FileInfo::name).collect(Collectors.toSet());
+        var local = copies.names().stream().filter(name -> !names.contains(name)).toList();
+        if (local.equals(localOnly)) return;
+        localOnly = local;
+        rebuildList(index.files());
+    }
+
+    /** A program an outside editor created in the folder: uploaded as a new program, then opened. */
+    private void openLocal(String name) {
+        var copy = copies == null ? null : copies.read(name).orElse(null);
+        if (copy == null) return;
+        var text = LocalCopies.plain(copy.text());
+        ClientPrograms.get().upload(name, "", text, answer -> {
+            if (!answer.ok()) {
+                answer(answer);
+                return;
+            }
+            copies.sent(name, text);
+            select(name);
+            refresh();
+        });
     }
 
     private String text() {
@@ -535,7 +580,9 @@ final class FederationAutomationView {
 
     private void rebuildList(List<ProgramSync.FileInfo> files) {
         list.clearAllScrollViewChildren();
-        if (files.isEmpty()) {
+        var names = files.stream().map(ProgramSync.FileInfo::name).collect(Collectors.toSet());
+        var local = localOnly.stream().filter(name -> !names.contains(name)).toList();
+        if (files.isEmpty() && local.isEmpty()) {
             var empty = new Label();
             empty.addClass("program-empty");
             empty.setText(Component.translatable("ae2federation.ui.automation.no_programs"));
@@ -573,6 +620,12 @@ final class FederationAutomationView {
                 }
                 list.addScrollViewChild(line);
             }
+        }
+        // A file an outside editor created is listed after the server's programs, and uploaded once opened.
+        for (var name : local) {
+            var row = row(name, "program-row", () -> openLocal(name));
+            row.setId("auto_program_" + name);
+            list.addScrollViewChild(row);
         }
     }
 

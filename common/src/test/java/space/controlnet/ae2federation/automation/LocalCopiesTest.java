@@ -93,4 +93,25 @@ final class LocalCopiesTest {
         assertEquals("server-play.example.org_25565", LocalCopies.key("server", "play.example.org:25565"));
         assertEquals("world-New_World", LocalCopies.key("world", "New World"));
     }
+
+    @Test
+    void anOutsideEditorsWriteIsFoundWithItsLineEndsMadePlain() throws IOException {
+        var copies = new LocalCopies(folder);
+        copies.sent("lamps", "a = 1\n");
+        assertEquals(Optional.empty(), copies.outside("lamps", "a = 1\n"));
+        Files.writeString(folder.resolve("lamps.ae2f"), "a = 2\r\nb = 3\r\n");
+        assertEquals(Optional.of("a = 2\nb = 3\n"), copies.outside("lamps", "a = 1\n"));
+        assertEquals(Optional.empty(), copies.outside("lamps", "a = 2\nb = 3\n"));
+        assertEquals(Optional.empty(), copies.outside("missing", "a = 1\n"));
+    }
+
+    @Test
+    void theProgramsInTheFolderAreItsAe2fFiles() throws IOException {
+        var copies = new LocalCopies(folder);
+        assertEquals(java.util.List.of(), new LocalCopies(folder.resolve("none")).names());
+        copies.sent("lamps", "a = 1\n");
+        Files.writeString(folder.resolve("alarm.ae2f"), "b = 1\n");
+        Files.writeString(folder.resolve("notes.txt"), "not a program\n");
+        assertEquals(java.util.List.of("alarm", "lamps"), copies.names());
+    }
 }

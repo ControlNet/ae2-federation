@@ -1197,6 +1197,17 @@ User decisions (2026-10-19):
   functions on the design board have no agreed meaning yet (assistant reading: installed, green when the devices run
   the current version); they come with the Install view.
 
+### Outside editors as built (G1g, 2026-10-19)
+
+- While the Automation tab is open, the client looks at the local folder every second (assistant choice: a look each
+  second rather than a file watcher thread). A change an outside editor saved to the shown program replaces the
+  script and is taken as if typed: the graph is drawn again, and the upload follows after the usual pause. CRLF and
+  CR line ends become LF, and the local file is written back that way.
+- A `.ae2f` file created in the folder for a name the server does not hold is listed after the server's programs;
+  opening it uploads it as a new program (the server checks the name). Programs open in other tabs pick up outside
+  edits when they are opened again, under the rules for local copies below.
+- Last write wins between the game and the outside editor, as decided; nothing is merged.
+
 ### Editing as built (G1b, 2026-10-19)
 
 - **The script is editable.** Tab indents by four spaces, a new line keeps the indentation and adds a level after a
