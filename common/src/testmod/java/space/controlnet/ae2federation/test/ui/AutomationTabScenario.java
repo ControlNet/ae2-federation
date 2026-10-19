@@ -389,6 +389,7 @@ public final class AutomationTabScenario implements UIScenario {
                 .waitUntil("the dot lists ae2's functions", context -> popupLabels(context).size() > 5
                         && popupLabels(context).get(0).equals("amount") && popupLabels(context).contains("craft"))
                 .frames(2).screenshot("ui-automation-completion")
+                .waitUntil("Graph is not offered while the script does not parse", context -> !graphOffered(context))
                 .key(GLFW.GLFW_KEY_ESCAPE)
                 .check("Escape closes the list and leaves the screen open", context ->
                         !editor(context).isCompleting() && editor(context).isVisible()
@@ -403,15 +404,17 @@ public final class AutomationTabScenario implements UIScenario {
                 .key(GLFW.GLFW_KEY_END)
                 .key(GLFW.GLFW_KEY_ENTER)
                 .type("iron: Item = \"minecraft:iron_in")
+                .check("the typed quote brought its closing one", context ->
+                        lastLine(context, 0).equals("    iron: Item = \"minecraft:iron_in\""))
                 .waitUntil("an item string lists items", context -> !popupLabels(context).isEmpty()
                         && popupLabels(context).get(0).equals("minecraft:iron_ingot"))
                 .waitUntil("the chosen item's stock in the domain comes from the server", context ->
                         editor(context).completionPopup().footerText().matches("Item \u00b7 in stock: [0-9,]+"))
                 .frames(2).screenshot("ui-automation-completion-item")
-                .waitUntil("Graph is not offered while the script does not parse", context -> !graphOffered(context))
                 .key(GLFW.GLFW_KEY_ENTER)
-                .check("Enter puts the item in and closes its string", context ->
-                        lastLine(context, 0).equals("    iron: Item = \"minecraft:iron_ingot\""))
+                .check("Enter puts the item in, with the caret after its string", context ->
+                        lastLine(context, 0).equals("    iron: Item = \"minecraft:iron_ingot\"")
+                                && editor(context).getCursorCol() == lastLine(context, 0).length())
                 // The item's icon sits before its string; clicks still find each column after it.
                 .frames(2).screenshot("ui-automation-item-icon")
                 .check("a click finds each column of a line with an item's icon", context -> {

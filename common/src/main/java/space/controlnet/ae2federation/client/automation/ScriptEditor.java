@@ -36,6 +36,8 @@ import space.controlnet.ae2federation.function.ScriptProblems;
  * A string naming an item or a fluid has its icon before it, in room the editor makes there: the caret, the
  * selection and clicks measure the line with that room ({@link #styledLineComponent}).
  *
+ * <p>Brackets and quotes come in pairs ({@link Pairs}).
+ *
  * <p>Typing a name, a dot or a quote asks its {@link Completer} for candidates (Ctrl+Space asks anywhere);
  * they show in a {@link CompletionPopup} under the caret. Up and Down choose, Tab accepts, Enter accepts unless the
  * choice is what is typed already, Escape closes. An answer for a text or caret that has since changed is dropped.
@@ -86,6 +88,8 @@ public final class ScriptEditor extends CodeEditor {
     private List<String> notedLines = List.of();
     /** The content view's left padding as last set: the gutter and the gap after it. */
     private float padding = -1;
+    /** When the caret last moved; it blinks from then, so a moved caret shows at once. */
+    private long caretMoved;
 
     public ScriptEditor() {
         setLanguage(PythonLanguage.INSTANCE);
@@ -174,6 +178,25 @@ public final class ScriptEditor extends CodeEditor {
     }
 
     @Override
+    public void setCursor(int line, int col) {
+        super.setCursor(line, col);
+        caretMoved = System.currentTimeMillis();
+    }
+
+    /** LDLib2's caret, blinking from the caret's last move instead of from the clock's second. */
+    @Override
+    @OnlyIn(Dist.CLIENT)
+    protected void drawCursor(GUIContext context, Font font, ResourceLocation textFont, float scale, float x,
+            float y) {
+        if (!isVisible() || !isFocused() || !isDisplayed()) return;
+        if (isActive() && !CaretBlink.shown(System.currentTimeMillis(), caretMoved)) return;
+        float caretX = font.getSplitter().stringWidth(styledLineComponent(getCursorLine(), 0, getCursorCol())) * scale;
+        DrawerHelper.drawSolidRect(context.graphics, x + caretX - getScrollX(),
+                y + getCursorLine() * lineHeight() - getScrollY(), 1, getTextAreaStyle().fontSize(),
+                getTextAreaStyle().cursorColor());
+    }
+
+    @Override
     public boolean isEditable() {
         return editing && super.isEditable();
     }
@@ -242,14 +265,23 @@ public final class ScriptEditor extends CodeEditor {
         int from = Math.min(completions.column() - 1, text.length());
         int to = Math.max(from, getCursorCol());
         var insert = candidate.label();
+        // A resource ends its string: the caret goes after the closing quote, added when there is none yet.
+        int after = 0;
         if (candidate.kind() == Candidate.Kind.VALUE && from > 0) {
             char quote = text.charAt(from - 1);
-            if ((quote == '"' || quote == '\'') && (to >= text.length() || text.charAt(to) != quote)) insert += quote;
+            if (quote == '"' || quote == '\'') {
+                if (to >= text.length() || text.charAt(to) != quote) {
+                    insert += quote;
+                } else {
+                    after = 1;
+                }
+            }
         }
         pushHistory();
         lines.set(line, text.substring(0, from) + insert + text.substring(to));
         onRawLinesUpdated();
-        setCursor(line, from + insert.length());
+        setCursor(line, from + insert.length() + after);
+        collapseSelectionToCursor();
         hideCompletion();
         focus();
     }
@@ -266,7 +298,22 @@ public final class ScriptEditor extends CodeEditor {
     @Override
     protected void onCharTyped(UIEvent event) {
         boolean asks = asksForCompletion(event.codePoint);
-        super.onCharTyped(event);
+        var typed = isEditable() && !hasSelection() && Character.isBmpCodePoint(event.codePoint)
+                ? Pairs.typed(lines.get(getCursorLine()), getCursorCol(), (char) event.codePoint) : Pairs.Typed.PLAIN;
+        switch (typed) {
+            case STEP -> {
+                setCursor(getCursorLine(), getCursorCol() + 1);
+                collapseSelectionToCursor();
+                asks = false;
+            }
+            case PAIR -> {
+                char opening = (char) event.codePoint;
+                insertText(String.valueOf(opening) + Pairs.closing(opening));
+                setCursor(getCursorLine(), getCursorCol() - 1);
+                collapseSelectionToCursor();
+            }
+            case PLAIN -> super.onCharTyped(event);
+        }
         if (!isEditable()) return;
         if (asks) {
             requestCompletion();
@@ -287,7 +334,19 @@ public final class ScriptEditor extends CodeEditor {
             return;
         }
         boolean completing = isCompleting();
+        boolean pair = isEditable() && event.keyCode == GLFW.GLFW_KEY_BACKSPACE && !hasSelection()
+                && Pairs.emptyPairAt(lines.get(getCursorLine()), getCursorCol());
         super.onKeyDown(event);
+        if (pair) {
+            // Backspace took the opening character in one undo step; the closing one goes with it.
+            var text = lines.get(getCursorLine());
+            lines.set(getCursorLine(), text.substring(0, getCursorCol()) + text.substring(getCursorCol() + 1));
+            int line = getCursorLine();
+            int column = getCursorCol();
+            onRawLinesUpdated();
+            setCursor(line, column);
+            collapseSelectionToCursor();
+        }
         if (completing && (event.keyCode == GLFW.GLFW_KEY_BACKSPACE || event.keyCode == GLFW.GLFW_KEY_DELETE)) {
             requestCompletion();
         }

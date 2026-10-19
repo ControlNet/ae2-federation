@@ -39,4 +39,12 @@ final class PythonLanguageTest {
         assertEquals(List.of("keyword:if", "constant:True", "operator::", "name:é", "operator:$"),
                 kinds("if True: é $"));
     }
+
+    /** Typing "1" then "a" left "1a", which no kind matched: the editor drew only the "a". */
+    @Test
+    void aNumberRunIntoLettersStillDraws() {
+        assertEquals(List.of("number:1", "name:a"), kinds("1a"));
+        assertEquals(List.of("name:x", "operator:=", "number:12", "name:ab", "operator:+", "operator:²"),
+                kinds("x = 12ab + ²"));
+    }
 }

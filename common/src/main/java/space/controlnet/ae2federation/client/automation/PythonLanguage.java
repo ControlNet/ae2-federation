@@ -38,7 +38,8 @@ public final class PythonLanguage implements ILanguageDefinition {
         types.addAll(StandardLibrary.RECORDS.keySet());
         kind("comment", 0x6f6a7a, "#.*");
         kind("string", 0xf7b13a, "(?:[rRbBfFuU]{1,2})?(?:\"(?:[^\"\\\\]|\\\\.)*\"?|'(?:[^'\\\\]|\\\\.)*'?)");
-        kind("number", 0xffb86c, "\\b\\d[\\d_]*(?:\\.\\d[\\d_]*)?(?:[eE][+-]?\\d+)?\\b|\\.\\d[\\d_]*");
+        // No boundary after a number: "1a" is a number and a name, or the "1" would match nothing and not be drawn.
+        kind("number", 0xffb86c, "\\b\\d[\\d_]*(?:\\.\\d[\\d_]*)?(?:[eE][+-]?\\d+)?|\\.\\d[\\d_]*");
         kind("definition", 0x9cd3ff, "(?<=\\bdef |\\bclass )[\\p{L}_][\\p{L}\\p{N}_]*");
         kind("keyword", 0xb37bea, words(KEYWORDS));
         kind("constant", 0xffb86c, words(CONSTANTS));
@@ -46,7 +47,7 @@ public final class PythonLanguage implements ILanguageDefinition {
         kind("namespace", NAMESPACE, words(StandardLibrary.NAMESPACES.keySet().stream().toList()) + "(?=\\s*\\.)");
         kind("call", 0x9cd3ff, "(?<![.\\p{L}\\p{N}_])[\\p{L}_][\\p{L}\\p{N}_]*(?=\\s*\\()");
         kind("name", 0xd6d0e0, "[\\p{L}_][\\p{L}\\p{N}_]*");
-        kind("operator", 0xd6d0e0, "->|[^\\s\\p{L}\\p{N}_]");
+        kind("operator", 0xd6d0e0, "->|[^\\s\\p{L}_]");
         kind("space", 0xd6d0e0, "\\s+");
     }
 
