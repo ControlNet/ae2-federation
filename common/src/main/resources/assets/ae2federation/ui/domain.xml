@@ -42,6 +42,8 @@
                 </element>
                 <element id="header_auto_tools" class="header-tools">
                     <button id="auto_push" class="auto-push" text="ae2federation.ui.automation.push"/>
+                    <button id="auto_mode_edit" class="range-chip auto-mode" text="ae2federation.ui.automation.edit"/>
+                    <button id="auto_mode_install" class="range-chip auto-mode" text="ae2federation.ui.automation.install"/>
                 </element>
                 <text-field id="graph_search" mode="string" value=""/>
                 <button id="return_provider" class="return-provider" text="ae2federation.ui.workspace.back_provider"/>
@@ -163,37 +165,43 @@
                 </element>
             </element>
             <element id="page_automation" class="workspace-page automation-page">
-                <element class="auto-side">
-                    <element class="auto-box auto-programs">
-                        <element class="auto-box-head">
-                            <label class="auto-box-title"><lang key="ae2federation.ui.automation.programs"/></label>
-                            <button id="auto_new" class="kind-chip auto-new" text="ae2federation.ui.automation.new"/>
+                <element id="auto_edit_view" class="auto-view">
+                    <element class="auto-side">
+                        <element class="auto-box auto-programs">
+                            <element class="auto-box-head">
+                                <label class="auto-box-title"><lang key="ae2federation.ui.automation.programs"/></label>
+                                <button id="auto_new" class="kind-chip auto-new" text="ae2federation.ui.automation.new"/>
+                            </element>
+                            <element id="auto_new_row" class="auto-new-row">
+                                <text-field id="auto_new_field" mode="string" value=""/>
+                            </element>
+                            <scroller-view id="auto_programs" class="auto-list"/>
                         </element>
-                        <element id="auto_new_row" class="auto-new-row">
-                            <text-field id="auto_new_field" mode="string" value=""/>
+                        <element id="auto_library" class="auto-box auto-library">
+                            <element class="auto-box-head">
+                                <label class="auto-box-title"><lang key="ae2federation.ui.automation.library"/></label>
+                                <button id="auto_library_back" class="kind-chip auto-library-back" text="&#8249;"/>
+                            </element>
+                            <text-field id="auto_library_search" class="auto-library-search" mode="string" value=""/>
+                            <scroller-view id="auto_library_tree" class="auto-list"/>
+                            <scroller-view id="auto_library_doc" class="auto-list auto-library-doc"/>
                         </element>
-                        <scroller-view id="auto_programs" class="auto-list"/>
                     </element>
-                    <element id="auto_library" class="auto-box auto-library">
-                        <element class="auto-box-head">
-                            <label class="auto-box-title"><lang key="ae2federation.ui.automation.library"/></label>
-                            <button id="auto_library_back" class="kind-chip auto-library-back" text="&#8249;"/>
+                    <element id="auto_editor" class="auto-box auto-editor-box">
+                        <element id="auto_file_tabs" class="auto-file-tabs"/>
+                        <element id="auto_script" class="auto-script"/>
+                        <element id="auto_problems" class="auto-problems">
+                            <element class="auto-divider"/>
+                            <element class="auto-box-head">
+                                <label id="auto_problems_title" class="auto-box-title"/>
+                            </element>
+                            <scroller-view id="auto_problem_list" class="auto-list"/>
                         </element>
-                        <text-field id="auto_library_search" class="auto-library-search" mode="string" value=""/>
-                        <scroller-view id="auto_library_tree" class="auto-list"/>
-                        <scroller-view id="auto_library_doc" class="auto-list auto-library-doc"/>
                     </element>
                 </element>
-                <element id="auto_editor" class="auto-box auto-editor-box">
-                    <element id="auto_file_tabs" class="auto-file-tabs"/>
-                    <element id="auto_script" class="auto-script"/>
-                    <element id="auto_problems" class="auto-problems">
-                        <element class="auto-divider"/>
-                        <element class="auto-box-head">
-                            <label id="auto_problems_title" class="auto-box-title"/>
-                        </element>
-                        <scroller-view id="auto_problem_list" class="auto-list"/>
-                    </element>
+                <element id="auto_install_view" class="auto-view">
+                    <scroller-view id="auto_install_canvas" class="auto-box auto-install-canvas"/>
+                    <scroller-view id="auto_install_aside" class="auto-install-aside"/>
                 </element>
             </element>
             <element id="domain_footer" class="domain-footer">

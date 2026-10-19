@@ -1260,7 +1260,8 @@ public final class FederationProcessingGraph {
     }
 
     /** A round port of radius {@code r} centred on {@code (cx, cy)}: a ring in {@code edge} around {@code fill}. */
-    private static void round(FederationTheme.Pen pen, float cx, float cy, int r, int edge, int fill) {
+    /** A port's ring of radius {@code r} around {@code (cx, cy)}; the Install view draws its ports alike. */
+    static void round(FederationTheme.Pen pen, float cx, float cy, int r, int edge, int fill) {
         for (int row = -r; row < r; row++) {
             float half = (float) Math.floor(Math.sqrt(r * r - (row + 0.5f) * (row + 0.5f)) + 0.5f);
             pen.rect(cx - half, cy + row, half * 2, 1, edge);
@@ -1334,7 +1335,7 @@ public final class FederationProcessingGraph {
         return new space.controlnet.ae2federation.client.policy.WireCurve(ends[0].x, ends[0].y, ends[1].x, ends[1].y);
     }
 
-    private static List<Vector2f> polyline(space.controlnet.ae2federation.client.policy.WireCurve curve) {
+    static List<Vector2f> polyline(space.controlnet.ae2federation.client.policy.WireCurve curve) {
         var points = curve.points(CURVE_SEGMENTS);
         var line = new ArrayList<Vector2f>(CURVE_SEGMENTS + 1);
         for (int index = 0; index < points.length; index += 2) line.add(new Vector2f(points[index], points[index + 1]));

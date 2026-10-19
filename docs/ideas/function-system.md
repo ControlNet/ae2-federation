@@ -1237,6 +1237,24 @@ User decisions (2026-10-19):
 - **Item icons** (G1c-ii): a string naming a registered item or fluid has its icon just before its opening quote, in
   room the editor leaves there; the caret, the selection, clicks and underlines all measure the line with that room.
 
+### The Install view as built (G1e-i, 2026-10-19)
+
+- **Edit / Install** chips at the top right switch the tab's two views; Push belongs to the Edit view.
+- **Program cards** on the left, every program with its functions and parameters, a colour per program (index
+  order) and "→ N" for the installations of a function; **device cards** on the right, this domain's computing
+  devices only (decided 2026-10-19), titled by the alias or, without one, by the ID with the position below
+  (decided 2026-10-19). Wires join a function's port to each device it is installed on.
+- **An installation row** in its device card: a status square, the function, the first item's icon and its
+  arguments shortened (item names, interface aliases, numbers). The square: green when the devices run the
+  program's current version, yellow while the server's text waits for Push (assistant proposal); the same mark
+  stands beside an installed function in the Edit view's list.
+- **The aside**, for the selected row: "function → device", the signature, each argument in a field (an item by icon
+  and name, an interface by alias and ID), trigger, min gap, what a trigger does while it runs, and Running/Idle;
+  Uninstall, Open in editor (the Edit view with the program shown and the caret on the function) and Run now. The
+  fields are read-only until G1e-ii edits them in place (decided 2026-10-19); the log box comes with G1e-iii.
+- "Creative" is the only device kind, so every device card says it; the index needs a device kind when a second
+  kind comes.
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

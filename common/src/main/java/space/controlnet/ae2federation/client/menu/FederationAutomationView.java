@@ -31,7 +31,8 @@ import space.controlnet.ae2federation.function.ScriptParser;
 import space.controlnet.ae2federation.function.ScriptProblems;
 
 /**
- * The Automation tab's edit view: the programs on the left with the Library under them
+ * The Automation tab, switched at the top between its Edit and Install views ({@link FederationInstallView}). The
+ * edit view: the programs on the left with the Library under them
  * ({@link FederationLibraryPanel}), the opened ones as tabs above the script. Programs are
  * global; the header counts this domain's devices and what is installed on them. The page subscribes to the server's
  * program index while it is open ({@link ClientPrograms}), on the client only, since the tree is built on both sides.
@@ -64,6 +65,13 @@ final class FederationAutomationView {
     private final UIElement problemBox;
     private final ScrollerView problemList;
     private final Button push;
+    private final UIElement editView;
+    private final UIElement installView;
+    private final Button modeEdit;
+    private final Button modeInstall;
+    private final FederationInstallView install;
+    /** A function to put the caret on once its program's text is shown, after Open in editor. */
+    private @Nullable String pendingJump;
     private final UIElement newRow;
     private final TextField newName;
     /** The files opened this time, in the order they were opened, and the one shown. */
@@ -119,10 +127,41 @@ final class FederationAutomationView {
             if (show) newName.focus();
         });
         new FederationLibraryPanel(ui);
+        editView = element("auto_edit_view", UIElement.class);
+        installView = element("auto_install_view", UIElement.class);
+        modeEdit = element("auto_mode_edit", Button.class);
+        modeInstall = element("auto_mode_install", Button.class);
+        modeEdit.setOnClick(event -> setInstalling(false));
+        modeInstall.setOnClick(event -> setInstalling(true));
+        install = new FederationInstallView(ui, this::answer, this::openInEditor);
+        setInstalling(false);
         // An empty label would show LDLib2's default text until the first answer.
         clearAnswer();
         // The root always ticks; the editor does not while another page hides it.
         ui.rootElement.addEventListener(UIEvents.TICK, event -> tick());
+    }
+
+    /** Shows the Install view, or the Edit view; Push belongs to the Edit view. */
+    private void setInstalling(boolean installing) {
+        editView.setDisplay(!installing);
+        installView.setDisplay(installing);
+        push.setDisplay(!installing);
+        modeEdit.removeClass("selected");
+        modeInstall.removeClass("selected");
+        (installing ? modeInstall : modeEdit).addClass("selected");
+        if (installing) editor.hideCompletion();
+    }
+
+    /** Open in editor, from an installation: the Edit view with the program shown and the caret on the function. */
+    private void openInEditor(String file, String function) {
+        setInstalling(false);
+        if (file.equals(selected) && reconciled) {
+            jumpTo(function);
+            return;
+        }
+        select(file);
+        pendingJump = function;
+        refresh();
     }
 
     /** The domain whose GUI this is; its devices and installations are the ones counted. */
@@ -270,6 +309,7 @@ final class FederationAutomationView {
         updatePush(files);
         rebuildList(files);
         rebuildTabs();
+        install.show(index, domain);
     }
 
     private void updateSummary(@Nullable ProgramSync.Index index) {
@@ -314,6 +354,8 @@ final class FederationAutomationView {
             editor.setValue(opening.text().split("\n", -1), false);
             base = latest;
             reconciled = true;
+            if (pendingJump != null) jumpTo(pendingJump);
+            pendingJump = null;
             if (opening.upload()) {
                 dirty = true;
                 idle = UPLOAD_PAUSE;
@@ -472,12 +514,32 @@ final class FederationAutomationView {
             }
             list.addScrollViewChild(row);
             if (!chosen) continue;
+            var installed = installed(file.name());
             for (var function : functions(file)) {
                 var line = row(function, "program-row function-row", () -> jumpTo(function));
                 if (function.startsWith("_")) line.addClass("private");
+                // Installed on this domain's devices: green when they run the current version, yellow until Push.
+                if (installed.contains(function)) {
+                    var mark = new UIElement();
+                    mark.addClass("program-installed");
+                    mark.style(style -> style.backgroundTexture(FederationTheme.solid(file.current()
+                            ? FederationTheme.OK : FederationTheme.WARN)));
+                    line.addChild(mark);
+                }
                 list.addScrollViewChild(line);
             }
         }
+    }
+
+    /** The functions of {@code file} installed on this domain's devices. */
+    private Set<String> installed(String file) {
+        var index = ClientPrograms.get().index().orElse(null);
+        if (index == null) return Set.of();
+        var devices = index.devices().stream().filter(device -> device.domain().equals(domain))
+                .map(ProgramSync.DeviceInfo::id).collect(Collectors.toSet());
+        return index.installations().stream().filter(installation -> installation.file().equals(file)
+                && devices.contains(installation.device())).map(ProgramSync.InstallationInfo::function)
+                .collect(Collectors.toSet());
     }
 
     /** The open file's functions, private ones included, from the editor once it shows it; until then the index's. */

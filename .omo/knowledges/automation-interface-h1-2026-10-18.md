@@ -207,3 +207,19 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   the font) so a line's end can be reached; `scrollX` has no setter, so the range cannot be fixed otherwise.
 - `editor(context)` in the scenario must select `#auto_script .script-editor`: the library's example is another
   `.script-editor`, earlier in the tree.
+
+## G1e-i: the Install view
+
+- Style sheet `justify-content: space-between` did not spread a row's children inside a `ScrollerView`; setting
+  it in code (`layout(style -> style.widthPercent(100).flexDirection(ROW).justifyContent(AlignContent.SPACE_BETWEEN))`,
+  as `FederationProcessingGraph` does) works. Without it the two columns sat side by side with no room for wires.
+- Wires are drawn in the canvas element's `drawBackgroundAdditional` between the ports' `getPositionX/Y` (screen
+  positions), with `FederationProcessingGraph.polyline(new WireCurve(...))`, so the cards paint over them.
+- The aside's argument fields use AE2's `text_field.png` (`FIELD`): in game it is a mid grey, so dark text
+  (`#413f54`) reads better than the light text the domain's text fields use; the board draws them lighter.
+- A Computing Device beside the UI test's Router: a federation cable at `routerPosition().east()` and the device at
+  `.east(2)` join the Router's domain; wait for `ComputingDevices.domainOf` before installing.
+- Check world: `ae2federation programs install <device> <file> <function> <args>` takes the arguments separated
+  by spaces (`"minecraft:iron_ingot" 256 "interface-bk8hty"`), not commas. Device `device-w7c47q` at 1,-60,11 is in
+  the Switch's domain; the Install chip is at (1852,47), the first installation row at (960,205), the aside's
+  actions at y=397 (Uninstall 1390, Open in editor 1590, Run now 1792). Compare: `build/automation-install-check/`.

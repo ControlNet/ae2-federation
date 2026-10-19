@@ -190,7 +190,9 @@ Next (user, 2026-10-18: the host and the editor screens both): assistant phasing
 | G1c-ii (done) | Item icons beside item strings in the script (`AutoScript` line 14): room before the string in the measured line, so caret, selection and clicks stay aligned |
 | G1c-iii | Stock in the item popup's footer ("Item · in stock: 1,284" on `AutoScriptItem`): needs a server request for the amount in the domain |
 | G1d (done) | Library panel under the programs: namespaces with counts, a function's page (signature, action, summary, the checked example in a small read-only editor with item icons), search (`AutoScript`, `AutoLibraryDoc`) |
-| G1e | Install view and the Edit/Install switch: programs and this domain's devices, wires to install, aside with arguments, trigger, interval, overlap, log, Run now, Uninstall, Open in editor; installed functions marked in the program list (`AutoInstall*`) |
+| G1e-i (done) | Install view and the Edit/Install switch: program cards and this domain's device cards with the installations as wires, the selected installation's aside (arguments, trigger, min gap, overlap, state) with Uninstall, Open in editor and Run now; installed functions marked in the program list (`AutoInstall`) |
+| G1e-ii | Editing in the aside: argument fields, min gap, overlap and trigger chips with the Every/Condition/Event editors (`AutoInstall`, `AutoInstallCondition`, `AutoInstallEvent`); installing by drawing a wire from a function to a device (`AutoInstallDrag`) |
+| G1e-iii | Running state and log in the index and the aside's log box |
 | G1f | Graph view and the Script/Graph switch (Graph disabled while the script does not parse) from `Canvas`/`Layout`, library drag (`AutoGraph`, `AutoLibraryDrag`) |
 | G1g | Outside editors: files of the open window synced both ways |
 | G1+ | Automation tab: Edit view (program list, file tabs, script editor with completion, errors, item icons), Graph view from `Canvas`/`Layout`, library panel with the examples, Install view |

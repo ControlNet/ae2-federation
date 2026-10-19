@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.test.ui;
 
+import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.lowdraglib2.registry.RegistrationEnvironment;
 import com.lowdragmc.lowdraglib2.registry.annotation.LDLRegisterClient;
@@ -11,22 +12,30 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.LevelResource;
 import org.lwjgl.glfw.GLFW;
+import space.controlnet.ae2federation.automation.AutomationRegistration;
+import space.controlnet.ae2federation.automation.ComputingDevices;
 import space.controlnet.ae2federation.automation.LibraryRows;
 import space.controlnet.ae2federation.automation.LocalCopies;
+import space.controlnet.ae2federation.automation.ProgramScheduler;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.client.automation.ScriptEditor;
 import space.controlnet.ae2federation.function.StandardLibrary;
+import space.controlnet.ae2federation.router.RouterRegistration;
 
 /**
  * The Automation tab's edit view (G1a, G1b): the programs the server holds, one opened in the script editor with its
  * functions listed, typing with Python's indentation and comments, the edit reaching the local copy and the server
  * without a save, Push and its refusal, a new program, edits on an older version kept beside the server's, problems
  * checked on the client and cleared by a fix, completion of functions and items, item icons in the script, the
- * Library panel (namespaces, a function's page with its example, search), and the index subscription ending
- * when the screen closes. The programs are sample content written for this scenario;
+ * Library panel (namespaces, a function's page with its example, search), the Install view (G1e: a device beside
+ * the Router, a function installed on it, its row and aside, Run now, Open in editor, Uninstall), and the index
+ * subscription ending when the screen closes. The programs, the device and its installation are sample content
+ * written for this scenario;
  * {@code smelting} misspells a function so the list shows its problem count and Push refuses it.
  */
 @LDLRegisterClient(name = "ui.automation", group = "ae2federation", registry = UIScenario.REGISTRY,
@@ -54,6 +63,13 @@ public final class AutomationTabScenario implements UIScenario {
                 else:
                     mc.set_redstone(lamp, 0)
             """;
+    private static final String STOCK = """
+            def keep(item: Item, min: int) -> None:
+                if ae2.amount(item) < min:
+                    ae2.craft(item, min - ae2.amount(item))
+            """;
+    /** The sample device's ID, once it has claimed one. */
+    private static String device = "";
     private static final String SMELTING = """
             # Keep a stack of raw iron ready.
             def raw_iron_low() -> bool:
@@ -251,6 +267,62 @@ public final class AutomationTabScenario implements UIScenario {
                                 && context.all("#auto_library_fn_mc_redstone").size() == 1
                                 && context.all("#auto_library_fn_mc_set_redstone").size() == 1)
                 .frames(2).screenshot("ui-automation-library-search")
+                // The Install view: a device in this domain, beside the Router, with a function installed on it.
+                .click("#auto_mode_install")
+                .check("the install view replaces the edit view and hides Push", context ->
+                        context.el("#auto_install_view").isVisible() && !context.el("#auto_edit_view").isVisible()
+                                && !context.el("#auto_push").isVisible()
+                                && context.el("#auto_mode_install").as(UIElement.class).hasClass("selected"))
+                .check("without a device the view says so", context ->
+                        context.all("#auto_install_view .install-note").size() == 1)
+                .server("place a device beside the Router", AutomationTabScenario::placeDevice)
+                .teardownServer("remove the device", AutomationTabScenario::removeDevice)
+                .waitUntilServer("the device joins the Router's domain", context -> {
+                    var devices = ComputingDevices.get(context.level());
+                    device = devices.entries().entrySet().stream()
+                            .filter(entry -> entry.getValue().position().equals(devicePosition(context)))
+                            .map(java.util.Map.Entry::getKey).findFirst().orElse("");
+                    return !device.isEmpty() && devices.domainOf(context.level(), device).isPresent();
+                })
+                .server("install keep on the device", context -> {
+                    ProgramScheduler.get(context.server()).install(device, "stock", "keep",
+                            java.util.List.of("minecraft:iron_ingot", "256"));
+                    ProgramSync.get(context.server()).changed();
+                })
+                .waitUntil("the device and its installation are listed", context ->
+                        context.all("#auto_install_device_" + device).size() == 1
+                                && context.all("#auto_install_view .installation").size() == 1)
+                .check("the program card counts the installation and the row names the item", context ->
+                        context.el("#auto_install_program_stock .install-count").text().equals("\u2192 1")
+                                && context.el("#auto_install_view .installation .install-function").text().equals("keep")
+                                && context.el("#auto_install_view .install-summary").text().equals("Iron Ingot \u00b7 256"))
+                .check("an unnamed device shows its ID and position", context ->
+                        context.el("#auto_install_device_" + device + " .install-title").text().equals(device)
+                                && context.el("#auto_install_device_" + device + " .install-device-lines .install-muted").text()
+                                        .startsWith("Creative \u00b7 "))
+                .click("#auto_install_view .installation")
+                .check("the aside shows the arguments, trigger, gap, overlap and state", context -> {
+                    var texts = context.all("#auto_install_aside .install-value-text").stream()
+                            .map(text -> text.text()).toList();
+                    return context.el("#auto_install_view .installation").as(UIElement.class).hasClass("selected")
+                            && texts.equals(java.util.List.of("Iron Ingot", "256", "Manual", "20 ticks", "Ignore",
+                                    "Idle"));
+                })
+                .frames(2).screenshot("ui-automation-install")
+                .click("#auto_install_run")
+                .waitUntil("Run now triggers it", context -> context.el("#automation_answer").text().equals("triggered"))
+                .click("#auto_install_open")
+                .waitUntil("Open in editor shows the program in the edit view", context ->
+                        context.el("#auto_edit_view").isVisible() && editor(context).getLines().size() > 2
+                                && String.join("\n", editor(context).getLines()).equals(STOCK))
+                .check("the installed function is marked in the list", context ->
+                        context.all(".function-row .program-installed").size() == 1)
+                .click("#auto_mode_install")
+                .click("#auto_install_view .installation")
+                .click("#auto_install_uninstall")
+                .waitUntil("Uninstall removes the row", context ->
+                        context.all("#auto_install_view .installation").isEmpty()
+                                && context.el("#automation_answer").text().equals("uninstalled"))
                 .closeScreen()
                 .waitUntilServer("closing the screen unsubscribes", context ->
                         !ProgramSync.get(context.server()).subscribed(context.player().getUUID()));
@@ -307,10 +379,38 @@ public final class AutomationTabScenario implements UIScenario {
         ProgramSync.get(context.server()).changed();
     }
 
+    private static BlockPos devicePosition(ServerContext context) {
+        return TaskFifteenWorldFixture.routerPosition(context).east(2);
+    }
+
+    /** A third program, and a Creative Computing Device joined to the Router by a federation cable. */
+    private static void placeDevice(ServerContext context) {
+        try {
+            ProgramStore.get(context.server()).library().save("stock", STOCK);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+        ProgramSync.get(context.server()).changed();
+        var router = TaskFifteenWorldFixture.routerPosition(context);
+        context.level().setBlockAndUpdate(router.east(), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
+        context.level().setBlockAndUpdate(devicePosition(context), AutomationRegistration.DEVICE.get().defaultBlockState());
+    }
+
+    private static void removeDevice(ServerContext context) {
+        var scheduler = ProgramScheduler.get(context.server());
+        for (var installation : ComputingDevices.get(context.level()).installations()) {
+            if (installation.device().equals(device)) scheduler.uninstall(installation.id());
+        }
+        var router = TaskFifteenWorldFixture.routerPosition(context);
+        context.level().setBlockAndUpdate(devicePosition(context), Blocks.AIR.defaultBlockState());
+        context.level().setBlockAndUpdate(router.east(), Blocks.AIR.defaultBlockState());
+        device = "";
+    }
+
     private static void removePrograms(ServerContext context) {
         var library = ProgramStore.get(context.server()).library();
         try {
-            for (var name : new String[] {"iron_tools", "smelting", "smelting_local", "scratch"}) {
+            for (var name : new String[] {"iron_tools", "smelting", "smelting_local", "scratch", "stock"}) {
                 if (library.names().contains(name)) library.delete(name);
             }
         } catch (IOException exception) {
