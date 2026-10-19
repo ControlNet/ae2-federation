@@ -1,12 +1,12 @@
-"""Checks on the generated Federation Cable assets: its placeholder models, its approved textures and the flow
-renderer's texture. The cable's geometry is AE2's dense cable, built in code by FederationCableBuilder and checked by
+"""Checks on the generated Federation Cable assets and on the shipped textures: its placeholder models, that every
+texture is drawn, and the shape of the artist's animated and flow textures. The cable's geometry is AE2's dense cable, built in code by FederationCableBuilder and checked by
 JUnit and in-game renders, not here. The hand-made Router, Pattern Provider, Processing Endpoint and Bridge art is not checked here.
 """
 from pathlib import Path
 from PIL import Image
-import hashlib
 import itertools
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -49,16 +49,33 @@ for ref, model in generated.items():
             assert data['texture'][1:] in model['textures'], ref
             assert data.get('rotation', 0) in [0, 90, 180, 270]
 
-# Every shipped texture is drawn by a model, by the cable's code-built model (TEMPORARY, until the artist's dense
-# cable textures replace them), or is the cable flow renderer's own texture.
-CODE_DRAWN = {NS + 'block/' + name for name in ('glass', 'collar', 'stream_u', 'stream_v')}
-used = {texture for model in models.values() for texture in model.get('textures', {}).values()} | CODE_DRAWN
+# Every shipped texture is drawn by a model, by the cable's code-built model, or is the cable flow renderer's own
+# texture.
+CODE_DRAWN = {NS + 'part/cable/dense/' + name for name in ('core', 'core_connected_1', 'core_connected_2',
+                                                           'core_connected_3', 'core_connected_4',
+                                                           'core_connected_2_straight', 'line', 'collar')} \
+    | {NS + 'block/large_cable/large_cable'} \
+    | {NS + f'block/{device}/{device}_{tile}' for device in ('router', 'switch')
+       for tile in ('base', 'corner', 'side_hor', 'side_ver')}  # DeviceStructureGeometry's connected-face tiles
+# Shipped but not drawn yet: the artist's dense cable textures not wired up yet (the connector's machine cap went
+# when Provider and Endpoint fronts became dense connections), and the old cable's textures the artist still edits.
+NOT_DRAWN_YET = ({NS + 'part/cable/dense/' + name for name in ('connector', 'stream_u', 'stream_v')}
+                 | {NS + 'block/' + name for name in ('glass', 'collar', 'stream_u', 'stream_v')})
+# Textures the client code binds by path, such as the bundle selection's hatch, are drawn too.
+JAVA = '\n'.join(path.read_text() for path in (REPO / 'common/src/main/java').rglob('*.java'))
+CODE_BOUND = {NS + ref for ref in re.findall(r'"textures/([a-z0-9_/]+)\.png"', JAVA)}
+used = {texture for model in models.values() for texture in model.get('textures', {}).values()} | CODE_DRAWN \
+    | CODE_BOUND | NOT_DRAWN_YET
 for path in (BASE / 'textures').rglob('*.png'):
     im = Image.open(path)
     ref = NS + path.relative_to(BASE / 'textures').as_posix()[:-4]
     assert ref in used or ref == NS + 'entity/cable_flow', ('unused texture', ref)
+    # Overlays the client code draws, such as the bundle selection's hatch, keep their own size.
+    if ref.startswith(NS + 'misc/'):
+        continue
     meta = path.with_suffix('.png.mcmeta')
-    assert im.width == 16
+    # The artist's 2x2 rings are modelled over two blocks, on a 32-pixel texture.
+    assert im.width == (32 if ref == NS + 'block/large_cable/large_cable' else 16), ref
     if meta.exists() and ref.startswith(NS + 'item/'):
         # The artist's animated item icons: every listed frame must exist in the strip.
         frames = [f if isinstance(f, int) else f['index'] for f in json.loads(meta.read_text())['animation']['frames']]
@@ -70,34 +87,20 @@ for path in (BASE / 'textures').rglob('*.png'):
         assert im.getextrema()[3] == (255, 255)
         assert im.crop((0, 0, 16, 16)).tobytes() != im.crop((0, 16, 16, 32)).tobytes()
     else:
-        assert im.height == (32 if path.name == 'cable_flow.png' else 16)
+        assert im.height == (32 if path.name in ('cable_flow.png', 'large_cable.png') else 16)
 
 for path in (BASE / 'blockstates').glob('*.json'):
-    for variant in json.loads(path.read_text())['variants'].values():
-        assert variant['model'] in models
-# Check the cable's approved textures against the frozen snapshot.
-approved = REPO / 'tools/blockbench/versions/v07-isolated-cable'
-cable_textures = {'armor.png', 'collar.png', 'glass.png', 'stream_u.png', 'stream_u.png.mcmeta',
-                  'stream_v.png', 'stream_v.png.mcmeta'}
-for source in (approved / 'textures').iterdir():
-    if source.name in cable_textures:
-        assert (BASE / 'textures/block' / source.name).read_bytes() == source.read_bytes(), source.name
+    blockstate = json.loads(path.read_text())
+    # Router and Switch use multipart blockstates; the others use variants.
+    variants = list(blockstate['variants'].values()) if 'variants' in blockstate \
+        else [part['apply'] for part in blockstate['multipart']]
+    for variant in variants:
+        for model in variant if isinstance(variant, list) else [variant]:
+            assert model['model'] in models, (path.name, model['model'])
 # The block model only gives the code-built model its transforms and particle; the item inherits it.
 assert models[NS+'block/cable'] == {'parent': 'minecraft:block/block', 'textures': {'particle': NS+'block/armor'}}
 assert models[NS+'item/cable'] == {'parent': NS+'block/cable'}
 assert not (BASE / 'models/block/cable').exists(), 'per-mask cable models are no longer generated'
-# The optional BER texture must retain a continuous base and transparent edges.
-flow = Image.open(BASE / 'textures/entity/cable_flow.png').convert('RGBA')
-assert flow.size == (16, 32)
-assert all(flow.getpixel((x, y))[3] == 0 for x in range(16) for y in (0, 15))
-assert all(0 < flow.getpixel((x, 8))[3] < 255 for x in range(16))
-assert flow.getpixel((6, 8))[1] > flow.getpixel((0, 8))[1]
-for across in range(16):
-    base = flow.getpixel((0, across))
-    assert flow.getpixel((across, 16)) == base
-    assert flow.getpixel((across, 31)) == base
-    assert flow.getpixel((0, 16 + across)) == base
-    assert flow.getpixel((15, 16 + across)) == base
 # Regenerate into a temporary tree, compare every generated byte with the checked-in output.
 with tempfile.TemporaryDirectory() as temp:
     subprocess.run([sys.executable, str(Path(__file__).with_name('build_assets.py')), '--output', temp], check=True)

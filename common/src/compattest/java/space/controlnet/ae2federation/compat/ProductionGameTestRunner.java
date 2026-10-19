@@ -37,6 +37,7 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.gametest.GameTestHooks;
 import org.slf4j.Logger;
+import space.controlnet.ae2federation.power.OperatingPowerRule;
 
 /**
  * Runs the selected compatibility GameTests in an ordinary (production) dedicated server, then stops it.
@@ -84,6 +85,8 @@ final class ProductionGameTestRunner {
 
     private void onServerStarted(ServerStartedEvent event) {
         var server = event.getServer();
+        // The compat tests build domains without Beam Converters; the power tests turn the requirement on themselves.
+        OperatingPowerRule.set(false, OperatingPowerRule.DEFAULT_MULTIPLIER);
         try {
             var functions = select(CompatTestClasses.groups());
             var level = server.overworld();
@@ -93,7 +96,8 @@ final class ProductionGameTestRunner {
             rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
             level.setWeatherParameters(20_000_000, 20_000_000, false, false);
             var runner = GameTestRunner.Builder.fromBatches(batches(functions, level), level)
-                    .newStructureSpawner(new CellGridSpawner(ORIGIN, 8)).build();
+                    .newStructureSpawner(new CellGridSpawner(ORIGIN.offset(
+                            Integer.getInteger("ae2federation.compat.originX", 0), 0, 0), 8)).build();
             infos = List.copyOf(runner.getTestInfos());
             tracker = new MultipleTestTracker(infos);
             started = System.nanoTime();

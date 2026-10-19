@@ -33,18 +33,22 @@ final class GuidePagesContractTest {
     private static final Path RESOURCES = ROOT.resolve("common/src/main/resources");
     private static final Path GUIDE = RESOURCES.resolve("assets/ae2federation/ae2guide");
     private static final Set<String> BASE_NAMESPACES = Set.of("minecraft", "ae2", "ae2federation");
-    private static final Set<String> FEDERATION_ITEMS = Set.of("printed_nexus_circuit", "nexus_processor", "nexus_core",
-            "bridge", "router", "cable", "pattern_provider", "processing_endpoint", "federation_p2p_tunnel");
+    private static final Set<String> FEDERATION_ITEMS = Set.of("nexus_processor_press", "printed_nexus_circuit", "nexus_processor", "nexus_core",
+            "bridge", "router", "switch", "cable", "pattern_provider", "processing_endpoint", "federation_p2p_tunnel",
+            "beam_converter", "creative_beam_converter", "beam_former", "quantum_cube");
+    /** Recipes a page shows by id with {@code <Recipe>} whose id is not an item's: the second recipe for an item. */
+    private static final Set<String> FEDERATION_RECIPES = Set.of("nexus_processor_press_from_iron");
     /** The AE2 19.2.17 guide pages and items the pages name; the client check opens them for real. */
     private static final Set<String> AE2_PAGES = Set.of("ae2-mechanics/channels.md",
-            "items-blocks-machines/p2p_tunnels.md");
+            "items-blocks-machines/p2p_tunnels.md", "items-blocks-machines/quantum_bridge.md");
     private static final Set<String> AE2_ITEMS = Set.of("inscriber", "ender_dust", "printed_silicon", "quartz_fiber",
-            "logic_processor_press", "fluix_crystal",
+            "logic_processor_press", "engineering_processor_press", "fluix_crystal",
             "pattern_provider", "fluix_glass_cable", "network_tool", "molecular_assembler", "drive", "storage_bus",
-            "1k_crafting_storage", "energy_acceptor", "me_p2p_tunnel", "memory_card");
+            "1k_crafting_storage", "energy_acceptor", "me_p2p_tunnel", "memory_card", "quantum_ring",
+            "quantum_link", "quantum_entangled_singularity", "spatial_anchor");
     /** Other mods' items the optional examples name, by mod; only a pack that requires the mod may name them. */
     private static final Map<String, Set<String>> MOD_ITEMS = Map.ofEntries(
-            Map.entry("mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer", "enrichment_chamber",
+            Map.entry("mekanism", Set.of("crusher", "basic_energy_cube", "enrichment_chamber", "dynamic_tank", "dynamic_valve",
                     "energized_smelter", "induction_casing", "induction_port", "basic_induction_cell",
                     "basic_induction_provider", "configurator")),
             Map.entry("appmek", Set.of("chemical_storage_cell_1k")),
@@ -54,7 +58,7 @@ final class GuidePagesContractTest {
             Map.entry("createaddition", Set.of("electric_motor")),
             Map.entry("enderio", Set.of("sag_mill", "basic_capacitor")),
             Map.entry("industrialforegoing", Set.of("resourceful_furnace")),
-            Map.entry("extendedae", Set.of("assembler_matrix_frame")),
+            Map.entry("extendedae", Set.of("ex_pattern_provider")),
             Map.entry("extendedae_plus", Set.of("super_assembler_matrix_frame")),
             Map.entry("ae2lt", Set.of("tianshu_supercomputer_controller", "tianshu_supercomputer_port",
                     "matter_warping_matrix_controller", "matter_warping_matrix_port")),
@@ -69,7 +73,7 @@ final class GuidePagesContractTest {
     private static final Map<String, Set<String>> MOD_PAGES = Map.ofEntries(
             Map.entry("appflux", Set.of("appflux/flux_accessor.md", "appflux/flux_cells.md")),
             Map.entry("advanced_ae", Set.of("aae_intro/quantum_computer.md")),
-            Map.entry("extendedae", Set.of("epp_intro/assembler_matrix.md")),
+            Map.entry("extendedae", Set.of("epp_intro/extended_pattern_provider.md")),
             Map.entry("extendedae_plus", Set.of("introduction/devices/super_assembler_matrix.md")),
             Map.entry("ae2lt", Set.of("tianshu/construction.md", "matrix/construction.md")),
             Map.entry("data_energistics", Set.of("items-blocks-machines/6.1_me_solar_panel.md",
@@ -198,6 +202,21 @@ final class GuidePagesContractTest {
         }
     }
 
+    /** A screenshot shows the screen's text, so a Chinese copy under {@code _zh_cn} shows it in Chinese. */
+    @Test
+    void screenshotsHaveAChineseCopy() throws IOException {
+        var image = Pattern.compile("!\\[[^]]*]\\(([^)]+\\.png)\\)");
+        for (var guide : guides()) {
+            for (var page : pages(guide.root())) {
+                var images = image.matcher(Files.readString(guide.root().resolve(page)));
+                while (images.find()) {
+                    var asset = guide.root().relativize(guide.root().resolve(page).getParent().resolve(images.group(1)).normalize());
+                    assertTrue(Files.isRegularFile(guide.root().resolve("_zh_cn").resolve(asset)), page + " -> _zh_cn/" + asset);
+                }
+            }
+        }
+    }
+
     @Test
     void itemIdsAreQualifiedAndRegistered() throws IOException {
         for (var guide : guides()) {
@@ -209,7 +228,8 @@ final class GuidePagesContractTest {
                     var ids = ID.matcher(text);
                     while (ids.find()) {
                         var known = switch (ids.group(1)) {
-                            case "ae2federation" -> FEDERATION_ITEMS;
+                            case "ae2federation" -> text.startsWith("<Recipe ", ids.start() - "<Recipe ".length())
+                                    && FEDERATION_RECIPES.contains(ids.group(2)) ? FEDERATION_RECIPES : FEDERATION_ITEMS;
                             case "ae2" -> AE2_ITEMS;
                             default -> guide.mods().contains(ids.group(1))
                                     ? MOD_ITEMS.getOrDefault(ids.group(1), Set.of()) : Set.<String>of();
@@ -386,12 +406,14 @@ final class GuidePagesContractTest {
         return parsed;
     }
 
-    /** The diagram with every network's and Endpoint's label and details left out. */
+    /** The diagram with every network's, Endpoint's and domain's label and details left out. */
     private static TopologyDiagram withoutText(TopologyDiagram diagram) {
         return new TopologyDiagram(diagram.networks().stream().map(network -> new TopologyDiagram.Network(network.key(),
                 "", network.color(), network.column(), network.row(), List.of())).toList(), diagram.rules(),
                 diagram.energy(), diagram.endpoints().stream().map(endpoint -> new TopologyDiagram.Endpoint(endpoint.key(),
-                        "", endpoint.owner(), endpoint.energy(), List.of())).toList());
+                        "", endpoint.owner(), endpoint.energy(), List.of())).toList(),
+                diagram.domains().stream().map(domain -> new TopologyDiagram.Domain(domain.key(), "", domain.networks(),
+                        domain.opened())).toList());
     }
 
     /** Close to Minecraft's font: advances of its narrow ASCII glyphs, 6 for the rest, 9 for CJK from Unifont. */

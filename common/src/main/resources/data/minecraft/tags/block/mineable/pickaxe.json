@@ -1,8 +1,13 @@
 {
   "values": [
     "ae2federation:router",
+    "ae2federation:switch",
     "ae2federation:cable",
     "ae2federation:pattern_provider",
-    "ae2federation:processing_endpoint"
+    "ae2federation:processing_endpoint",
+    "ae2federation:beam_converter",
+    "ae2federation:creative_beam_converter",
+    "ae2federation:beam_former",
+    "ae2federation:quantum_cube"
   ]
 }

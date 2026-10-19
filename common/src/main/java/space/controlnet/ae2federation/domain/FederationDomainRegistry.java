@@ -26,9 +26,20 @@ import space.controlnet.ae2federation.policy.AuthorityEpoch;
  * <p>Node changes are applied to the evidence at once and their components are recomputed lazily, together, before the
  * next read: a chunk of cables publishing in one tick costs one walk of the domain, not one per cable. Every read sees
  * the same domains an immediate recomputation would give, up to which new id a merged component receives.
+ *
+ * <p>A domain with any Federation Cable over {@link CableCapacityLimit}, times the cable's capacity factor, is over
+ * capacity: it keeps its nodes, members and id, so nothing it counts changes, but the features that link networks treat
+ * it as stopped. Only domains whose evidence changed, or every domain when the limit changes, are judged again, and only
+ * a changed verdict advances the topology revision and the authority epoch.
+ *
+ * <p>Physical ids outlive the registry through {@link FederationDomainRecords}: after a restart, a record whose domain
+ * is not loaded is one more old domain a component can inherit from, matched by its anchor nodes, and new ids continue
+ * the saved sequence. An id that existed before its domain was last unloaded is restored, and a restored id wins over
+ * one handed out since, so the part of a domain that loads first claims its id and keeps it when the rest joins.
  */
 public final class FederationDomainRegistry {
-    private static final Comparator<Candidate> INHERITANCE_ORDER = Comparator.comparing(Candidate::membersEqual).reversed()
+    private static final Comparator<Candidate> INHERITANCE_ORDER = Comparator.comparing(Candidate::restored).reversed()
+            .thenComparing(Comparator.comparing(Candidate::membersEqual).reversed())
             .thenComparing(Comparator.comparingInt(Candidate::memberOverlap).reversed())
             .thenComparing(Comparator.comparingInt(Candidate::nodeOverlap).reversed())
             .thenComparingLong(Candidate::sequence)
@@ -40,6 +51,10 @@ public final class FederationDomainRegistry {
     private final Map<FederationDomainNodeId, FederationDomainId> nodeToFederationDomain = new HashMap<>();
     private final Map<FederationDomainId, FederationDomainSnapshot> federationDomains = new HashMap<>();
     private final Map<FederationDomainId, Long> physicalSequences = new HashMap<>();
+    /** The anchors and sequence that outlive this registry. */
+    private final FederationDomainRecords records;
+    /** Live domains whose id came from a record, directly or by inheriting from one that did. */
+    private final Set<FederationDomainId> restored = new HashSet<>();
     private final Map<NetworkId, Set<FederationDomainId>> networkIndex = new HashMap<>();
     /** Diagnostic records of removed nodes kept at most; older ones are dropped first (every unloaded chunk adds some). */
     public static final int MAX_UNLOADED_INVALIDATIONS = 4096;
@@ -51,11 +66,23 @@ public final class FederationDomainRegistry {
     /** The dimension each Bridge's part lives in, so closing that level withdraws it. */
     private final Map<FederationDomainSourceId, String> bridgeDimensions = new HashMap<>();
     private long topologyRevision;
+    /** Advances on every evidence change, including ones that leave every domain as it was. */
+    private long evidenceRevision;
     private long physicalSequence;
     /** Nodes whose components changed since the last recomputation; recomputed together before the next read. */
     private final Set<FederationDomainNodeId> pendingSeeds = new TreeSet<>();
     /** Nodes removed since the last recomputation: one that returns first lets its removal take effect. */
     private final Set<FederationDomainNodeId> pendingRemovals = new HashSet<>();
+    /** Domains whose cables exceed the capacity limit; they stop as a whole. */
+    private final Set<FederationDomainId> overCapacity = new HashSet<>();
+    /** Domains whose Beam Converters cannot pay their use; the operating power service sets them. They stop as a whole. */
+    private final Set<FederationDomainId> unpowered = new HashSet<>();
+    /** Nodes whose evidence changed since their domains were last judged against the capacity limit. */
+    private final Set<FederationDomainNodeId> capacityNodes = new HashSet<>();
+    /** Domains installed since they were last judged against the capacity limit. */
+    private final Set<FederationDomainId> capacityDomains = new HashSet<>();
+    /** The limit the verdicts were judged with; null before the first judgement. */
+    private java.util.OptionalInt judgedLimit;
 
     private long recomputes;
     private long recomputeNanos;
@@ -64,7 +91,13 @@ public final class FederationDomainRegistry {
     };
 
     public FederationDomainRegistry(FederationDomainRecomputeBudget budget) {
+        this(budget, new FederationDomainRecords());
+    }
+
+    public FederationDomainRegistry(FederationDomainRecomputeBudget budget, FederationDomainRecords records) {
         this.budget = budget;
+        this.records = records;
+        physicalSequence = records.sequence();
     }
 
     /**
@@ -97,14 +130,14 @@ public final class FederationDomainRegistry {
         install(new FederationDomainSnapshot(federationDomainId, ++topologyRevision, Set.of(), memberships));
         directBridges.put(source, federationDomainId);
         bridgeDimensions.put(source, dimension);
-        mutationListener.run();
+        mutated();
     }
 
     public void invalidateDirectBridge(FederationDomainSourceId source) {
         flush();
         AuthorityEpoch.advance();
         removeDirectBridge(source);
-        mutationListener.run();
+        mutated();
     }
 
     /** Records a node's evidence; returns false when it equals what the node already published. */
@@ -119,10 +152,11 @@ public final class FederationDomainRegistry {
         }
         AuthorityEpoch.advance();
         pendingSeeds.addAll(affectedBy(evidence.nodeId(), previous, evidence));
+        capacityNodes.add(evidence.nodeId());
         removeIncoming(previous);
         nodes.put(evidence.nodeId(), evidence);
         addIncoming(evidence);
-        mutationListener.run();
+        mutated();
         return true;
     }
 
@@ -133,7 +167,7 @@ public final class FederationDomainRegistry {
             pendingSeeds.addAll(affectedBy(nodeId, previous, null));
             pendingRemovals.add(nodeId);
             removeIncoming(previous);
-            mutationListener.run();
+            mutated();
         }
         invalidations.put(nodeId, reason);
         if (reason == FederationDomainInvalidationReason.SOURCE_UNLOADED) {
@@ -147,6 +181,12 @@ public final class FederationDomainRegistry {
 
     public void removeNode(FederationDomainNodeId nodeId) {
         invalidateNode(nodeId, FederationDomainInvalidationReason.SOURCE_UNLOADED);
+    }
+
+    /** Removes a node whose block was broken: unlike an unloaded node, it no longer anchors its domain's id. */
+    public void removeBrokenNode(FederationDomainNodeId nodeId) {
+        records.drop(nodeId);
+        removeNode(nodeId);
     }
 
     /** What {@link #removeDimension} took out: the dimension's nodes and Bridges, and how many of its nodes are left. */
@@ -174,7 +214,7 @@ public final class FederationDomainRegistry {
         invalidations.keySet().removeIf(node -> node.dimension().equals(dimension));
         unloaded.removeIf(node -> node.dimension().equals(dimension));
         if (!removedNodes.isEmpty() || !removedBridges.isEmpty()) {
-            mutationListener.run();
+            mutated();
         }
         var left = (int) nodes.keySet().stream().filter(node -> node.dimension().equals(dimension)).count();
         return new DimensionRemoval(dimension, removedNodes.size(), removedBridges.size(), left);
@@ -183,6 +223,67 @@ public final class FederationDomainRegistry {
     public Set<FederationDomainId> federationdomainsFor(NetworkId networkId) {
         flush();
         return Set.copyOf(networkIndex.getOrDefault(networkId, Set.of()));
+    }
+
+    /**
+     * Whether two networks share a Federation domain that runs: one neither over capacity nor unpowered. The features
+     * that link networks ask this; {@link #shareFederationDomain} answers for the topology alone.
+     */
+    public boolean shareRunningFederationDomain(NetworkId first, NetworkId second) {
+        flush();
+        var firstDomains = networkIndex.getOrDefault(first, Set.of());
+        var secondDomains = networkIndex.getOrDefault(second, Set.of());
+        for (var domain : firstDomains) {
+            if (!overCapacity.contains(domain) && !unpowered.contains(domain) && secondDomains.contains(domain)) return true;
+        }
+        return false;
+    }
+
+    /** Whether two networks share a domain over capacity: the cause named when they share no running one. */
+    public boolean shareOverCapacityFederationDomain(NetworkId first, NetworkId second) {
+        flush();
+        var secondDomains = networkIndex.getOrDefault(second, Set.of());
+        for (var domain : networkIndex.getOrDefault(first, Set.of())) {
+            if (overCapacity.contains(domain) && secondDomains.contains(domain)) return true;
+        }
+        return false;
+    }
+
+    /** Whether a domain has a Federation Cable over the capacity limit, and so stops as a whole. */
+    public boolean overCapacity(FederationDomainId federationDomainId) {
+        flush();
+        return overCapacity.contains(federationDomainId);
+    }
+
+    /** Whether a domain's Beam Converters cannot pay its use, and so it stops as a whole. */
+    public boolean unpowered(FederationDomainId federationDomainId) {
+        flush();
+        return unpowered.contains(federationDomainId);
+    }
+
+    /** Whether a domain has stopped as a whole, over capacity or unpowered. */
+    public boolean stopped(FederationDomainId federationDomainId) {
+        flush();
+        return overCapacity.contains(federationDomainId) || unpowered.contains(federationDomainId);
+    }
+
+    public Set<FederationDomainId> unpoweredDomains() {
+        flush();
+        return Set.copyOf(unpowered);
+    }
+
+    /**
+     * Records the operating power service's verdict for a domain. Like a capacity verdict, only a change advances the
+     * topology and the authority, so the services that link networks notice it; a domain the registry does not know is
+     * ignored.
+     */
+    public void setUnpowered(FederationDomainId federationDomainId, boolean value) {
+        flush();
+        if (value && !federationDomains.containsKey(federationDomainId)) return;
+        if (value ? unpowered.add(federationDomainId) : unpowered.remove(federationDomainId)) {
+            topologyRevision++;
+            AuthorityEpoch.advance();
+        }
     }
 
     /** Whether two networks are members of a common Federation Domain, without copying either membership set. */
@@ -221,6 +322,27 @@ public final class FederationDomainRegistry {
         return Optional.ofNullable(nodeToFederationDomain.get(nodeId)).map(federationDomains::get);
     }
 
+    /** Changes whenever any node's or Bridge's evidence changes, even when no domain does. */
+    public long evidenceRevision() {
+        return evidenceRevision;
+    }
+
+    /** The evidence each node of a domain published; empty for a direct Bridge domain or an unknown id. */
+    public List<FederationDomainNodeEvidence> nodeEvidence(FederationDomainId federationDomainId) {
+        flush();
+        return evidenceOf(federationDomains.get(federationDomainId));
+    }
+
+    private List<FederationDomainNodeEvidence> evidenceOf(FederationDomainSnapshot domain) {
+        return domain == null ? List.of()
+                : domain.nodes().stream().map(nodes::get).filter(Objects::nonNull).toList();
+    }
+
+    private void mutated() {
+        evidenceRevision++;
+        mutationListener.run();
+    }
+
     private long nextTopologyRevision() {
         AuthorityEpoch.advance();
         return ++topologyRevision;
@@ -245,18 +367,55 @@ public final class FederationDomainRegistry {
         return new FederationDomainRegistrySnapshot(federationDomains, copiedIndex, invalidations, topologyRevision);
     }
 
-    /** Recomputes every component a node change touched since the last read. */
+    /** Recomputes every component a node change touched since the last read, then judges their capacity. */
     private void flush() {
-        if (pendingSeeds.isEmpty()) {
+        if (!pendingSeeds.isEmpty()) {
+            var seeds = new TreeSet<>(pendingSeeds);
+            pendingSeeds.clear();
+            pendingRemovals.clear();
+            long started = System.nanoTime();
+            recompute(seeds);
+            recomputes++;
+            recomputeNanos += System.nanoTime() - started;
+        }
+        judgeCapacity();
+        // A domain that is gone lets go of its power verdict; one that inherited the id keeps it.
+        if (unpowered.removeIf(federationDomainId -> !federationDomains.containsKey(federationDomainId))) {
+            topologyRevision++;
+            AuthorityEpoch.advance();
+        }
+    }
+
+    /**
+     * Judges again the domains whose evidence changed or that were installed since, or every domain when the limit
+     * changed. The verdict changes nothing the count reads, so a stopped domain stays stopped until its evidence or the
+     * limit changes.
+     */
+    private void judgeCapacity() {
+        var limit = CableCapacityLimit.current();
+        if (!limit.equals(judgedLimit)) {
+            judgedLimit = limit;
+            capacityDomains.addAll(federationDomains.keySet());
+        }
+        if (capacityNodes.isEmpty() && capacityDomains.isEmpty()) {
             return;
         }
-        var seeds = new TreeSet<>(pendingSeeds);
-        pendingSeeds.clear();
-        pendingRemovals.clear();
-        long started = System.nanoTime();
-        recompute(seeds);
-        recomputes++;
-        recomputeNanos += System.nanoTime() - started;
+        capacityNodes.stream().map(nodeToFederationDomain::get).filter(Objects::nonNull).forEach(capacityDomains::add);
+        capacityNodes.clear();
+        boolean changed = false;
+        for (var federationDomainId : capacityDomains) {
+            var domain = federationDomains.get(federationDomainId);
+            boolean over = domain != null && limit.isPresent() && CableCapacityCounter.count(evidenceOf(domain))
+                    .entrySet().stream().anyMatch(entry -> CableCapacityLimit.current(
+                            nodes.get(entry.getKey()).capacityFactor()).stream()
+                            .anyMatch(cap -> entry.getValue().units() > cap));
+            changed |= over ? overCapacity.add(federationDomainId) : overCapacity.remove(federationDomainId);
+        }
+        capacityDomains.clear();
+        if (changed) {
+            topologyRevision++;
+            AuthorityEpoch.advance();
+        }
     }
 
     /** How many times changed components were recomputed, for diagnostics and benchmarks. */
@@ -309,15 +468,19 @@ public final class FederationDomainRegistry {
                 .filter(Objects::nonNull).forEach(previous::add));
         var old = new LinkedHashMap<FederationDomainId, FederationDomainSnapshot>();
         previous.forEach(federationDomainId -> old.put(federationDomainId, federationDomains.get(federationDomainId)));
-        var inherited = inherit(components, old);
+        var dormant = new HashMap<FederationDomainId, Long>();
+        var inherited = inherit(components, old, dormant);
         if (!changes(components, inherited, old)) {
             components.forEach(this::recordDiagnostics);
             return;
         }
         topologyRevision++;
         AuthorityEpoch.advance();
-        var sequences = new HashMap<FederationDomainId, Long>();
+        var sequences = new HashMap<>(dormant);
         old.keySet().forEach(federationDomainId -> sequences.put(federationDomainId, physicalSequences.get(federationDomainId)));
+        var wasRestored = new HashSet<FederationDomainId>();
+        old.keySet().stream().filter(restored::contains).forEach(wasRestored::add);
+        var absorbed = absorbed(components, inherited, old);
         old.keySet().forEach(this::removeFederationDomain);
         for (var index = 0; index < components.size(); index++) {
             var component = components.get(index);
@@ -325,26 +488,97 @@ public final class FederationDomainRegistry {
             var before = federationDomainId == null ? null : old.get(federationDomainId);
             if (federationDomainId == null) {
                 federationDomainId = FederationDomainId.physical(++physicalSequence);
+                records.advanceSequence(physicalSequence);
             }
-            physicalSequences.put(federationDomainId, before == null ? physicalSequence : sequences.get(federationDomainId));
+            long sequence = sequences.getOrDefault(federationDomainId, physicalSequence);
+            physicalSequences.put(federationDomainId, sequence);
+            if (dormant.containsKey(federationDomainId) || wasRestored.contains(federationDomainId)) {
+                restored.add(federationDomainId);
+            }
             var generation = before != null && before.memberships().keySet().equals(component.memberships().keySet())
                     ? before.generation() : nextTopologyRevision();
             installPhysical(new FederationDomainSnapshot(federationDomainId, generation, component.nodes(),
                     component.memberships()));
+            var absorbedSequences = absorbed.getOrDefault(index, List.of()).stream().map(sequences::get).toList();
+            anchor(sequence, component, absorbedSequences);
+            absorbedSequences.forEach(records::remove);
             recordDiagnostics(component);
         }
     }
 
+    /** The old domains no component inherits, each under the first component that took some of its nodes. */
+    private static Map<Integer, List<FederationDomainId>> absorbed(List<Component> components,
+            Map<Integer, FederationDomainId> inherited, Map<FederationDomainId, FederationDomainSnapshot> old) {
+        var absorbed = new HashMap<Integer, List<FederationDomainId>>();
+        for (var before : old.values()) {
+            if (inherited.containsValue(before.federationDomainId())) {
+                continue;
+            }
+            for (var index = 0; index < components.size(); index++) {
+                if (!java.util.Collections.disjoint(components.get(index).nodes(), before.nodes())) {
+                    absorbed.computeIfAbsent(index, ignored -> new ArrayList<>()).add(before.federationDomainId());
+                    break;
+                }
+            }
+        }
+        return absorbed;
+    }
+
     /**
-     * Gives each component at most one old id and each old id to at most one component, preferring the old domain with
-     * the same member networks, then the most shared members, the most shared nodes and finally the older domain: a split
-     * leaves the id with the side that keeps the members, and a merge with the domain that already had most of them.
+     * Records the anchors of a domain just installed: its devices, or its smallest cables when it has none, together
+     * with the anchors that its record and the records of the domains it absorbed keep for nodes not loaded now.
+     */
+    private void anchor(long sequence, Component component, List<Long> absorbed) {
+        var devices = new TreeSet<FederationDomainNodeId>();
+        var cables = new TreeSet<FederationDomainNodeId>();
+        for (var node : component.nodes()) {
+            if (nodes.get(node).kind() != FederationDomainNodeKind.CABLE) {
+                devices.add(node);
+            }
+        }
+        var previous = new ArrayList<>(absorbed);
+        previous.add(sequence);
+        for (var record : previous) {
+            records.anchors(record).ifPresent(anchors -> {
+                anchors.devices().stream().filter(node -> !nodes.containsKey(node)).forEach(devices::add);
+                anchors.cables().stream().filter(node -> !nodes.containsKey(node)).forEach(cables::add);
+            });
+        }
+        if (devices.isEmpty()) {
+            // The component's nodes are sorted, so only its first ones can be among the smallest.
+            component.nodes().stream().limit(FederationDomainRecords.CABLE_ANCHORS).forEach(cables::add);
+            while (cables.size() > FederationDomainRecords.CABLE_ANCHORS) {
+                cables.pollLast();
+            }
+        } else {
+            cables.clear();
+        }
+        records.put(sequence, devices, cables);
+    }
+
+    /**
+     * Gives each component at most one old id and each old id to at most one component, preferring a restored id, then
+     * the old domain with the same member networks, then the most shared members, the most shared nodes and finally the
+     * older domain: a split leaves the id with the side that keeps the members, and a merge with the domain that already
+     * had most of them. A saved record whose domain is not loaded counts as an old domain with its anchors as nodes.
      */
     private Map<Integer, FederationDomainId> inherit(List<Component> components,
-            Map<FederationDomainId, FederationDomainSnapshot> old) {
+            Map<FederationDomainId, FederationDomainSnapshot> old, Map<FederationDomainId, Long> dormant) {
         var candidates = new ArrayList<Candidate>();
         for (var index = 0; index < components.size(); index++) {
             var component = components.get(index);
+            // A record whose domain is not loaded competes as an old domain that shares only its anchors.
+            var anchored = new HashMap<Long, Integer>();
+            component.nodes().forEach(node -> records.owner(node)
+                    .ifPresent(owner -> anchored.merge(owner, 1, Integer::sum)));
+            for (var entry : anchored.entrySet()) {
+                var federationDomainId = FederationDomainId.physical(entry.getKey());
+                if (!federationDomains.containsKey(federationDomainId)) {
+                    dormant.put(federationDomainId, entry.getKey());
+                    candidates.add(new Candidate(index, federationDomainId, true, false, 0, entry.getValue(),
+                            entry.getKey()));
+                }
+            }
             for (var before : old.values()) {
                 var nodeOverlap = (int) component.nodes().stream().filter(before.nodes()::contains).count();
                 if (nodeOverlap == 0) {
@@ -352,7 +586,7 @@ public final class FederationDomainRegistry {
                 }
                 var memberOverlap = (int) component.memberships().keySet().stream()
                         .filter(before.memberships()::containsKey).count();
-                candidates.add(new Candidate(index, before.federationDomainId(),
+                candidates.add(new Candidate(index, before.federationDomainId(), restored.contains(before.federationDomainId()),
                         component.memberships().keySet().equals(before.memberships().keySet()), memberOverlap, nodeOverlap,
                         physicalSequences.getOrDefault(before.federationDomainId(), Long.MAX_VALUE)));
             }
@@ -376,7 +610,7 @@ public final class FederationDomainRegistry {
         for (var index = 0; index < components.size(); index++) {
             var before = old.get(inherited.get(index));
             var component = components.get(index);
-            if (!before.nodes().equals(component.nodes()) || !before.memberships().equals(component.memberships())) {
+            if (before == null || !before.nodes().equals(component.nodes()) || !before.memberships().equals(component.memberships())) {
                 return true;
             }
         }
@@ -460,6 +694,7 @@ public final class FederationDomainRegistry {
 
     private void install(FederationDomainSnapshot snapshot) {
         federationDomains.put(snapshot.federationDomainId(), snapshot);
+        capacityDomains.add(snapshot.federationDomainId());
         snapshot.memberships().keySet().forEach(network -> networkIndex
                 .computeIfAbsent(network, ignored -> new TreeSet<>()).add(snapshot.federationDomainId()));
     }
@@ -470,6 +705,9 @@ public final class FederationDomainRegistry {
             return null;
         }
         physicalSequences.remove(federationDomainId);
+        restored.remove(federationDomainId);
+        // Judged again, so a stopped domain that is gone lets go of its verdict with a topology change.
+        capacityDomains.add(federationDomainId);
         removed.nodes().forEach(node -> nodeToFederationDomain.remove(node, federationDomainId));
         removed.memberships().keySet().forEach(network -> {
             var indexed = networkIndex.get(network);
@@ -529,7 +767,7 @@ public final class FederationDomainRegistry {
             Set<FederationDomainNodeId> pending, Set<FederationDomainNodeId> unsettled) {
     }
 
-    private record Candidate(int component, FederationDomainId federationDomainId, boolean membersEqual, int memberOverlap,
-            int nodeOverlap, long sequence) {
+    private record Candidate(int component, FederationDomainId federationDomainId, boolean restored, boolean membersEqual,
+            int memberOverlap, int nodeOverlap, long sequence) {
     }
 }

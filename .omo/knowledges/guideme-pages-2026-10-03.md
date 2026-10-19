@@ -76,14 +76,19 @@ assets (`assets/ae2/ae2guide/assets/assemblies/*.snbt` in the AE2 jar). The scri
 | Scene | Pages |
 |---|---|
 | `bridge.snbt`, two networks and a Bridge | Getting Started, Bridge |
-| `router_cable.snbt`, a Router per network and Federation Cable | Getting Started |
-| `router_hub.snbt`, three networks on one Router | Router |
+| `switch_cable.snbt`, a Switch per network and Federation Cable (was `router_cable`) | Getting Started |
+| `switch_hub.snbt`, three networks on one Switch (was `router_hub`) | Switch |
 | `cable_connections.snbt`, what Federation Cable joins | Cable (header) |
 | `remote_processing.snbt`, a Provider, an Endpoint and a furnace subnet | Remote Crafting |
 | `native_projection.snbt`, ordering from network B's AE2 pattern provider through a Crafting rule | Remote Crafting |
 | `bridge_part.snbt`, one Bridge on a cable | Bridge (header) |
 | `p2p_tunnel_part.snbt`, one Federation P2P tunnel on a cable | Federation P2P Tunnel (header) |
 | `federation_p2p_tunnel.snbt`, two Routers joined through tunnels on network A's cable | Federation P2P Tunnel |
+| `network_capacity.snbt`, three cable segments split by two Routers (2 / 4 / 1) | Network Capacity |
+| `bundled_cables.snbt`, a 2x2 Router, a 2x2 bundle with a branch and a turn | Bundled Cables |
+| `router_segments.snbt`, one Router ending three segments (1 / 2 / 1) | Router |
+| `router_multiblock.snbt`, a formed 3x2x1 Router beside an L that does not form | Router |
+| `switch_multiblock.snbt`, a formed 2x2x1 Switch with three networks (A on two faces) | Switch |
 
 - Markup follows AE2's pages:
   `<GameScene zoom interactive={true} background="transparent">`, `<ImportStructure src>`, and `<BoxAnnotation>`
@@ -164,8 +169,14 @@ and page ids did not change.
   registers, in `AddPackFindersEvent`, only the packs whose mods are all loaded, through
   `addPackFinders(..., PackSource.BUILT_IN, alwaysActive=true, TOP)`. Without the mod the pack does not exist: its
   pages, search entries, scenes and the examples-page list entry are all absent.
-- The pack shows in the Resource Packs screen as a required pack named by `ae2federation.pack.<id>`. Hiding it would
-  need building the `Pack` by hand with `.hidden()` and `addRepositorySource`; not done.
+- Since 2026-10-10 the packs are hidden: the entrypoint builds each `Pack` as `addPackFinders` does (same id
+  `mod/ae2federation:resourcepacks/<id>`, `PackSelectionConfig(required=true, TOP)`), then registers `.hidden()` through
+  `addRepositorySource`. NeoForge's `PackSelectionModel` filters hidden packs out of both lists, and
+  `PackRepository.rebuildSelected` re-adds required packs after the screen commits, so the pack stays active although
+  options.txt never lists it. Checked in the guide client with ExtendedAE: the Local Endpoint page opens, the Resource
+  Packs screen shows only Mod Resources and Default, and the reload after Done still loads `guide_extendedae`.
+  GuideME (21.1.1 to 21.1.19) has no mod condition of its own (no ModList use; frontmatter is navigation only), which
+  is why packs are used at all. The `ae2federation.pack.<id>` names now only label the pack internally.
 - `GuidePagesContractTest` checks each pack like the base guide, plus: pack folders == `GuideExamplePacks.ALL`; a pack
   page may link to or hang under base pages or its own pack, never another pack, and base pages never reach a pack;
   a pack's scenes stay in its pack; item ids and scene palette namespaces are limited to minecraft, ae2,
@@ -187,7 +198,7 @@ and page ids did not change.
 | `guide_mekanism` | mekanism | `examples/mekanism-crusher.md` | `endpointCrusherTopOff` |
 | `guide_mekanism` | mekanism | `examples/ore-line.md` | `endpointOreLine` |
 | `guide_mekanism` | mekanism | `examples/power-plant.md` | `inductionMatrixPowerPlant` |
-| `guide_mekanism_appmek` | mekanism, appmek | `examples/mekanism-chemical.md` | `endpointOxidizerEjectOff` |
+| `guide_mekanism_appmek` | mekanism, appmek | `examples/chemical-tank-farm.md` | `dynamicTankFarm` |
 | `guide_appflux_mekanism` | appflux, mekanism | `examples/power-bank.md` | `fluxAccessorRunsCrusher` |
 | `guide_induction_mekanism` (group `induction`) | appflux, mekanism | `examples/induction-card.md` | `inductionCardPowersEndpointMachine` |
 | `guide_induction_createaddition` (group `induction`, 2nd) | appflux, createaddition, create | `examples/induction-card.md` | `inductionCardTurnsElectricMotor` |
@@ -195,11 +206,11 @@ and page ids did not change.
 | `guide_induction_industrialforegoing` (group `induction`, 4th) | appflux, industrialforegoing | `examples/induction-card.md` | `inductionCardPowersResourcefulFurnace` |
 | `guide_advanced_ae` | advanced_ae | `examples/quantum-lab.md` | `quantumComputerLab` |
 | `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
-| `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
+| `guide_extendedae` | extendedae | `examples/local-endpoint.md` | `localEndpointProviderTurned` |
 | `guide_extendedae_plus` | extendedae_plus, extendedae | `examples/super-matrix-hub.md` | `superAssemblerMatrixHub` |
 | `guide_ae2lt` | ae2lt | `examples/tianshu-foundry.md` | `tianshuOrdersFromMatrix` |
 | `guide_data_energistics` | data_energistics | `examples/solar-observatory.md` | `solarObservatory` |
-| `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `storageSystemDismantled`, `computationSystemOrdering` |
+| `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `ecoDistrictOrdering` |
 | `guide_omnisequence` | molecularmanipulator | `examples/matter-fabrication.md` | `matterFabricationWell` |
 | `guide_useless_mod` | useless_mod | `examples/alloy-furnace.md` | `alloyFurnaceWorkshop` |
 
@@ -344,7 +355,7 @@ and page ids did not change.
 ## Neo ECO district relayout (2026-10-05)
 
 The owner asked whether the old layout (A: computation only; B: storage and crafting) could work. It could in theory
-(the Crafting rule switches on A's Storage view of B), but no test covered it: `computationSystemOrdering` kept the
+(at the time a Crafting rule also switched on A's Storage view of B), but no test covered it: `computationSystemOrdering` kept the
 inputs in A's chest. The page now puts the storage and computation systems on A and only the crafting system on B,
 with no power and no storage on B. `ecoDistrictOrdering` builds exactly that
 (`AddonCraftingScene.consumerStorageStructure`: the consumer's chest and the provider's chest lose their cells, the
@@ -403,3 +414,94 @@ there), then breaks a crafting-system casing for the page's "Try it".
 - In the scene, network A carries the tunnels and is the only power source. Its smart cables carry 3 channels (the
   drive and two tunnels) and network B's carry 1; these values were taken from `guidescenecables`.
 - Rendered under Xvfb in English and Chinese: both pages compiled with no `PageCompiler` warnings.
+
+## Domains, Across Domains and less samey examples (2026-10-10)
+
+- **Domain plates in diagrams**: `<Domain key label networks="a,b" opened="true" />` draws the topology screen's
+  translucent plate behind those networks (pale for the opened domain, light blue for a related one; name above the
+  top-left corner, moved right when it would overlap another). Use it only on diagrams with two or more domains; a
+  one-domain diagram has no plate. Nested domains (all networks inside another shown domain) use the smaller padding.
+  Unknown network keys and duplicate domain keys are parse problems.
+- **Across Domains** (`across-domains.md`, position 25, between How Federation Works and Remote Crafting): A-Bridge-B-
+  Bridge-C; B's rule on C with re-export lets A reach C's storage and crafting with no rule of its own. Rules are keyed
+  by network pair, so domains do not stop the chain. Backed by testmod `acrossdomainsstorage` /
+  `acrossdomainscrafting` (shared `test/crafting/BridgeChainFixture`).
+- **Scene boxes**: a network's box starts after the Bridge part on its cable (cable x + 0.375) and must cover every
+  block of the network without cutting through one. Across Domains had B's drive above the cable carrying the B-C
+  Bridge (moved above B's other cable) and A's box starting at x 6, missing A's Bridge cable (now 5.375).
+- **Examples reworked so they are not all remote-crafting variants**:
+  - Mekanism + AppMek: `chemical-tank-farm.md`, a Dynamic Tank read by a chemical storage bus and shared through a
+    Storage rule (replaces `mekanism-chemical.md`). The Dynamic Tank forms from plain placement and the storage bus
+    reads it. Extract-only is not a rule option, so "Try it" switches the rule off.
+  - ExtendedAE: `local-endpoint.md`, a Local-mode Endpoint run by an Extended Pattern Provider (replaces
+    `assembler-matrix.md`). A Local Endpoint shares no power: the scene powers it with a Quartz Fiber. Breaking a
+    quartz fiber between touching cables merges the two networks.
+  - AE2 only: `examples/nether-outpost.md` (position 15), Federation P2P to a Nether outpost (`p2pNetherOutpost`).
+    The tunnels need their own carrier network through a Quantum Bridge: a domain member's own cable cannot carry
+    them through a Quantum Bridge built in two parts ("Merge pending" by design, see troubleshooting). The P2P item
+    page says so. `AE2_PAGES` allows `quantum_bridge.md`; `AE2_ITEMS` gained the quantum ring, link, entangled
+    singularity and spatial anchor.
+  - Kept as they were: Create crushing wheels and the four induction-card variants.
+  - Tried and reverted at the owner's review: Neo ECO `eco-warehouse.md` (an ECO warehouse re-exported to districts
+    through a cable-only hub; back to `eco-district.md`, which shows all three ECO systems) and the alloy furnace two
+    Bridges away through a cable-only trading post (back to the one-Bridge page). `ecoWarehouseChain` and
+    `alloyFurnaceTradingPost` stay as compat coverage.
+  - **Lesson:** an example that chains domains needs a middle network with a job of its own. Cross-domain reach is
+    taught once, on the Across Domains page; mod examples do not repeat it with an empty hub.
+- **Chain example that passes that bar**: `examples/nether-outpost.md` gained "Order from the base's factory": the
+  outpost (physical Switch + Federation P2P domain with the base) orders from a factory joined to the base by a
+  Bridge, through the base's Crafting re-export. The base is the real hub (storage, power); the outpost has its own
+  crafting CPU and pays with the base's logs through its Storage rule on the base. Base -> factory is Crafting only.
+  Testmod `p2pNetherOutpostOrdersFactory` (`p2p.nether-outpost-orders-factory`) builds exactly that: a physical
+  domain chains to a Bridge domain like two Bridges.
+- **Order desk** (`examples/order-desk.md`, position 27, "A Factory That Takes Orders"): first built as customer -
+  counter - factory, because Crafting then forced Storage on and only a chain could hide the factory's stock. After
+  the owner made Crafting and Storage independent (fae6d19), it became one Bridge with "Customer uses Factory's"
+  Crafting only: the customer pays with its own items, results come back, the factory's drive stays private, and
+  leftovers stay in the factory. Its test is `projectionwithoutstorage`; the 3-network `orderDesk` test was removed.
+- **Crafting without Storage in the guide** (2026-10-10, after fae6d19): every page now treats Storage as optional
+  for crafting. A page keeps a Storage step and the Storage `<Rule>` only when the consumer must use the provider's
+  materials or reach leftovers (market-hub district->market, nether-outpost outpost->base); elsewhere both were
+  removed. Compat scenes (`RouterCraftingScene`, `AddonCraftingScene`) still switch Storage on for their tests; the
+  pages' claims stay true because their consumers pay from their own storage.
+
+## Router page (2026-10-14)
+
+- The Router page no longer says "not fully implemented"; it explains what the Router does today: it ends cable
+  segments (capacity), forms larger Routers from solid boxes (edge at most 8, invalid groups link nothing, Jade and
+  the action bar give the reason), and joins bundled cables to ordinary ones. Index and Troubleshooting followed, and
+  Troubleshooting quotes the `ae2federation.structure.invalid.*` message.
+- A formed Router in a scene needs `formed:true` and its six connection booleans set toward members of the same box;
+  a bare `ae2federation:router` (formed:false) draws the standalone model, which is how the unformed L is shown.
+  The scenes were generated once by a scratch script (not kept).
+- In the guide client, edits to an English page and to `.snbt` files hot-reload; an edit to a `_zh_cn` page did not
+  (the page was not recompiled). Restart `runGuideClient -PguideLanguage=zh_cn` to see Chinese edits.
+- Quoting a Jade string like `结构：%s` in a Chinese page needs a space after the colon, or
+  `GuidePagesContractTest` fails (no break point after punctuation).
+- The Switch page gained "Bigger Switches" the same way (2026-10-14). Two Switches face to face now form one 2x1x1
+  Switch, so the old "link directly, as if cable joined them" lines on the Switch and Getting Started pages were
+  replaced. A formed Switch state is `ae2federation:switch{<six booleans>,formed:true}` (the same block class).
+
+## Screenshots in guide pages (2026-10-15, Statistics page)
+
+- Markdown `![alt](assets/x.png)` works. GuideME's `LytImage` lays an image out at **width/4 GUI pixels**, scaled down
+  to the page width, and draws it with **nearest sampling** (a plain `DynamicTexture`). There is no width attribute.
+  AE2's own guide uses GUI screenshots the same way.
+- A Chinese copy of an asset goes at `_zh_cn/assets/x.png`. `MutableGuide.loadAsset` tries `_<language>/` first and
+  falls back to the English file, and both pages write the same `assets/x.png`. `GuidePagesContractTest
+  .screenshotsHaveAChineseCopy` requires the Chinese copy of every PNG an English page shows.
+- Federation screens ignore the GUI scale option (`FederationGuiScale`, `FixedGuiScale.forFramebuffer`): the scale
+  is the largest that still leaves 640x380 logical pixels. A 1600x960 window gives scale 2 (800x480). For a sharp
+  shot, the `ui.mapping` scenario resizes the window to 3196x1916 (scale 4, the same 799x479 layout). 3200x1920 would
+  give scale 5 and the compressed 640x384 layout. The Xvfb screen must be that large, e.g.
+  `xvfb-run -a -s "-screen 0 3200x1920x24"`.
+- `tools/visual/build_guide_statistics.py` makes the guide images from those shots, in three steps:
+  - it crops to the panel and tab rail and makes the world beside the rail transparent;
+  - it resizes the image to 2520 pixels wide with Lanczos, which is 630 GUI pixels, the page width at GUI scale 2.
+    After GuideME's 2:1 nearest sampling the Chinese text stays readable. Taken directly at scale 2, or left at full
+    size, the image lost strokes, for example 甘蔗 read as 川蔗;
+  - it quantizes to 255 colours with max coverage and `kmeans=4`, at about 150 KB each. Plain max coverage tinted the
+    dark navy panel purple, and keeping full RGB was about 790 KB.
+- Before/after shots of a page: `runGuideClient -PguidePage=... -PguideLanguage=...` under
+  `xvfb-run -n <N> -f <xauth>`, and `import -window root` once the log shows "Compiling ae2federation:". Use a
+  detached worktree of the previous commit for the before shot.

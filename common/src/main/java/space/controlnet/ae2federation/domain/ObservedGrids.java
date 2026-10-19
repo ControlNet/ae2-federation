@@ -7,6 +7,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.identity.IdentityEpoch;
 
 /**
  * The Grids a binding service has been told about, kept by identity. A Grid whose NetworkId is not confirmed for a
@@ -15,21 +16,26 @@ import space.controlnet.ae2federation.identity.NetworkId;
  */
 public final class ObservedGrids {
     private final Set<IGrid> grids = Collections.newSetFromMap(new IdentityHashMap<>());
+    private long confirmedEpoch = Long.MIN_VALUE;
+    private Map<NetworkId, IGrid> confirmed = Map.of();
 
     public void add(IGrid grid) {
         if (grid != null && !grid.isEmpty()) {
-            grids.add(grid);
+            if (grids.add(grid)) confirmedEpoch = Long.MIN_VALUE;
         }
     }
 
     /** Each confirmed NetworkId with the observed Grid that carries it now. */
     public Map<NetworkId, IGrid> confirmed() {
+        if (confirmedEpoch == IdentityEpoch.current()) return confirmed;
         grids.removeIf(IGrid::isEmpty);
         var result = new HashMap<NetworkId, IGrid>();
         for (var grid : grids) {
             FederationDomainRegistryAccess.confirmedNetworkId(grid).ifPresent(networkId -> result.put(networkId, grid));
         }
-        return result;
+        confirmed = Map.copyOf(result);
+        confirmedEpoch = IdentityEpoch.current();
+        return confirmed;
     }
 
     public boolean contains(IGrid grid) {
@@ -38,5 +44,7 @@ public final class ObservedGrids {
 
     public void clear() {
         grids.clear();
+        confirmed = Map.of();
+        confirmedEpoch = Long.MIN_VALUE;
     }
 }

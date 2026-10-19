@@ -48,7 +48,7 @@ public final class RingEnergyFixture implements AutoCloseable {
             return false;
         }
         if (!routerPlaced) {
-            routers.placeRouter(CENTER);
+            routers.placeSwitch(CENTER);
             routerPlaced = true;
             return false;
         }

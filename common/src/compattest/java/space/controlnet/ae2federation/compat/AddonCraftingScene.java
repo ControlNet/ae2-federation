@@ -76,6 +76,8 @@ final class AddonCraftingScene {
     private boolean cpuOnCable;
     private boolean providerWithoutStorage;
     private boolean cancelAfterPush;
+    private boolean lateByproduct;
+    private boolean craftingOnly;
     private boolean disconnectAfterPush;
     private long jobs = 2;
     private java.util.function.Consumer<GameTestHelper> placeStructure;
@@ -333,9 +335,21 @@ final class AddonCraftingScene {
         return this;
     }
 
+    /** Never enables the Storage rule, including during fixture preparation. */
+    AddonCraftingScene craftingOnly() {
+        craftingOnly = true;
+        return this;
+    }
+
+    /** A test-operated machine delays the declared bottle byproduct until all primary output reaches the real CPU. */
+    AddonCraftingScene lateByproduct() {
+        lateByproduct = true;
+        return this;
+    }
+
     /**
      * Cancels the consumer's job once the provider has pushed every input into the chest machine, then runs the
-     * machine: the late output stays on the provider network, nothing reaches the consumer and nothing stays owed.
+     * machine: the late output must reach the consumer and only actual delivery settles the debt.
      */
     AddonCraftingScene cancellingAfterPush() {
         if (!(machine instanceof ChestMachine)) throw new IllegalStateException("Only the chest machine can wait");
@@ -364,6 +378,10 @@ final class AddonCraftingScene {
         checkPlan = check;
         return this;
     }
+
+    boolean submitted() { return stage >= 6; }
+
+    PolicyBridgeFixtures bridge() { return bridge; }
 
     /** Runs the whole craft; call from {@code succeedWhen}. */
     void tick() {
@@ -516,19 +534,44 @@ final class AddonCraftingScene {
                 helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
                         "The consumer's job must be cancelled");
                 helper.assertValueEqual(CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(),
-                        bridge.mainNetwork(), output()), 0L, "Waiting for the cancelled job's debt to be forgotten");
+                        bridge.mainNetwork(), output()), jobs, "Cancellation preserves the dispatched output responsibility");
                 machine.collect(helper, assemblerPos, bridge.outerGrid().getStorageService().getInventory());
                 stage = 8;
                 helper.fail("Ran the machine after the cancel");
             }
             case 8 -> {
-                helper.assertValueEqual(held(providerChest(), output()), jobs,
-                        "The late output stays on the provider network");
-                helper.assertValueEqual(held(consumerChest(), output()), 0L, "Nothing reaches the cancelled consumer");
+                helper.assertValueEqual(CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(),
+                        bridge.mainNetwork(), output()), 0L, "Actual late delivery settles cancellation responsibility");
+                helper.assertValueEqual(held(providerChest(), output()), 0L,
+                        "The provider retains none of the cancelled consumer's output");
+                helper.assertValueEqual(held(consumerChest(), output()), jobs, "Late output reaches the cancelled consumer");
                 helper.assertValueEqual(held(consumerChest(), input()), 0L, "The pushed inputs are not given back twice");
+            }
+            case 17 -> {
+                helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
+                        "Both declared outputs complete the real independent CPU");
+                helper.assertValueEqual(held(consumerChest(), output()), requested(), "All primary output reaches consumer storage");
+                var bottle = AEItemKey.of(Items.GLASS_BOTTLE);
+                helper.assertValueEqual(held(consumerChest(), bottle), jobs,
+                        "Delayed declared byproducts must reach the independent CPU or its consumer storage");
+                helper.assertValueEqual(CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(),
+                        bridge.mainNetwork(), bottle), 0L, "Actual byproduct delivery settles the remaining debt");
+                helper.assertValueEqual(held(providerChest(), bottle), 0L, "No completed consumer byproducts stay stranded");
             }
             default -> {
                 if (processing) machine.collect(helper, assemblerPos, bridge.outerGrid().getStorageService().getInventory());
+                if (lateByproduct) {
+                    helper.assertValueEqual(inChest(assemblerPos, Items.COBBLESTONE), 0L, "Test machine consumed every input");
+                    helper.assertValueEqual(CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(),
+                            bridge.mainNetwork(), output()), 0L, "Primary output has been accepted by the independent CPU");
+                    var bottle = AEItemKey.of(Items.GLASS_BOTTLE);
+                    helper.assertValueEqual(CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(),
+                            bridge.mainNetwork(), bottle), jobs, "Primary output delivery retains byproduct debt");
+                    helper.assertValueEqual(bridge.outerGrid().getStorageService().getInventory().insert(bottle, jobs,
+                            Actionable.MODULATE, IActionSource.empty()), jobs, "Test machine emits the delayed declared byproduct");
+                    stage = 17;
+                    helper.fail("Waiting for the independent CPU's delayed byproduct return");
+                }
                 helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
                         "Waiting for the consumer's job to finish");
                 if (consumerStorage != null) {
@@ -627,7 +670,7 @@ final class AddonCraftingScene {
         return null;
     }
 
-    private IGrid consumerGrid() {
+    IGrid consumerGrid() {
         return bridge.mainGrid();
     }
 
@@ -683,9 +726,10 @@ final class AddonCraftingScene {
         var policies = PolicyService.get(helper.getLevel());
         var storage = new PolicyKey(bridge.mainNetwork(), bridge.outerNetwork(), PolicyCapability.STORAGE);
         var crafting = new PolicyKey(bridge.mainNetwork(), bridge.outerNetwork(), PolicyCapability.CRAFTING);
-        var result = policies.editAll(List.of(
-                new PolicyEdit(storage, policies.revision(storage), PolicyRule.storageDefaults()),
-                new PolicyEdit(crafting, policies.revision(crafting), PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)))));
+        var edits = new java.util.ArrayList<PolicyEdit>();
+        if (!craftingOnly) edits.add(new PolicyEdit(storage, policies.revision(storage), PolicyRule.storageDefaults()));
+        edits.add(new PolicyEdit(crafting, policies.revision(crafting), PolicyRule.enabled(Set.of(PolicyOperation.REQUEST))));
+        var result = policies.editAll(edits);
         helper.assertTrue(result instanceof PolicyMutationResult.Accepted, "The rule edit was refused: " + result);
     }
 
@@ -765,7 +809,9 @@ final class AddonCraftingScene {
         return PatternDetailsHelper.encodeProcessingPattern(
                 machine.inputs().entrySet().stream()
                         .map(input -> new appeng.api.stacks.GenericStack(input.getKey(), input.getValue())).toList(),
-                List.of(new appeng.api.stacks.GenericStack(machine.output(), machine.outputPerInput())));
+                lateByproduct ? List.of(new appeng.api.stacks.GenericStack(machine.output(), machine.outputPerInput()),
+                        new appeng.api.stacks.GenericStack(AEItemKey.of(Items.GLASS_BOTTLE), 1))
+                        : List.of(new appeng.api.stacks.GenericStack(machine.output(), machine.outputPerInput())));
     }
 
     private ItemStack stickPattern() {

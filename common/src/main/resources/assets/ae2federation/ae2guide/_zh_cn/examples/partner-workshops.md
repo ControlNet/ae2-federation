@@ -32,16 +32,14 @@ navigation:
   <Network key="a" label="工坊A" color="#915dcd" column="0" row="0" details="木棍样板|能源元件" />
   <Network key="b" label="工坊B" color="#5CA7CD" column="1" row="0" details="木板样板" />
   <Rule user="a" source="b" capability="crafting" />
-  <Rule user="a" source="b" capability="storage" />
   <Rule user="b" source="a" capability="crafting" />
-  <Rule user="b" source="a" capability="storage" />
   <Energy first="a" second="b" />
 </FederationTopology>
 
 ## 搭建
 
 1. **放置桥接器**： 装在一个工坊的线缆上， 外侧接触另一个工坊的线缆。
-2. **打开“A使用B的”和“B使用A的”合成规则**。 每条都会打开同方向的存储规则。
+2. **打开“A使用B的”和“B使用A的”合成规则**。 每个工坊都用自己的存储付账， 所以不需要存储规则。
 3. **打开这对网络的ME能量**， 让B靠A的能源元件运行。
 4. **在A下单木板**， 再**在B下单木棍**。 每个工坊都能在自己的可合成物品里看到对方的配方。
 

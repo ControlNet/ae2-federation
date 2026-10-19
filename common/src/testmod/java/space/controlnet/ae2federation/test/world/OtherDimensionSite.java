@@ -36,6 +36,8 @@ public final class OtherDimensionSite implements AutoCloseable {
     private final BlockPos origin;
     private final BlockPos size;
     private final List<ChunkPos> chunks = new ArrayList<>();
+    /** The region's block entities when its tickets were released, until they are removed by the real unload. */
+    private final List<BlockEntity> unloading = new ArrayList<>();
     private boolean closed;
     private boolean filled;
 
@@ -87,18 +89,29 @@ public final class OtherDimensionSite implements AutoCloseable {
      * and are saved. {@link #forceAgain()} loads them from the save.
      */
     public void releaseTickets() {
+        unloading.clear();
+        for (var chunk : chunks) {
+            var loaded = level.getChunkSource().getChunkNow(chunk.x, chunk.z);
+            if (loaded != null) unloading.addAll(loaded.getBlockEntities().values());
+        }
         for (var chunk : chunks) CONTROLLER.forceChunk(level, origin, chunk.x, chunk.z, false, true);
     }
 
     /** Forces and loads the region's chunks again after {@link #releaseTickets()}. */
     public void forceAgain() {
+        unloading.clear();
         chunks.clear();
         load();
     }
 
-    /** Whether any of the region's chunks is loaded. */
+    /**
+     * Whether any of the region's chunks is loaded, or has not finished unloading. {@code hasChunk} turns false as soon
+     * as a chunk's ticket level drops, but the chunk unloads later, once its save is ready: only then are its block
+     * entities removed and AE2's nodes in them leave their grids. Until then a CPU there still takes part in its job.
+     */
     public boolean loaded() {
-        return chunks.stream().anyMatch(chunk -> level.hasChunk(chunk.x, chunk.z));
+        return chunks.stream().anyMatch(chunk -> level.hasChunk(chunk.x, chunk.z))
+                || unloading.stream().anyMatch(blockEntity -> !blockEntity.isRemoved());
     }
 
     /** Whether every chunk of the region ticks its block entities. */

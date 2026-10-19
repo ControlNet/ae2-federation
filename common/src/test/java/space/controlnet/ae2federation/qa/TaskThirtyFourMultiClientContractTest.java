@@ -67,7 +67,7 @@ final class TaskThirtyFourMultiClientContractTest {
                 && server.contains("settleRestoredExtension(level)")
                 && server.contains("settleCurrentFederationDomain(level)"));
         assertTrue(server.contains("level.setBlockAndUpdate(router, Blocks.AIR.defaultBlockState())")
-                && server.contains("level.setBlockAndUpdate(router, RouterRegistration.ROUTER.get().defaultBlockState())")
+                && server.contains("level.setBlockAndUpdate(router, RouterRegistration.SWITCH.get().defaultBlockState())")
                 && server.contains("routerEntity.neighborChanged(router.north())"));
         assertTrue(server.contains("clientFirstPhaseComplete(\"a\")")
                 && server.contains("clientFirstPhaseComplete(\"b\")"));

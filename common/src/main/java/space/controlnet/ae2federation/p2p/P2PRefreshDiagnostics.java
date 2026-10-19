@@ -11,6 +11,9 @@ import space.controlnet.ae2federation.domain.FederationDomainNodeId;
  */
 public final class P2PRefreshDiagnostics {
     private static long requests;
+    private static long queued;
+    private static long groups;
+    private static long members;
     private static long tasks;
     private static long taskNanos;
     private static long publishes;
@@ -30,7 +33,7 @@ public final class P2PRefreshDiagnostics {
      * @param maxLinks the most tunnel-to-tunnel links one tunnel published last
      */
     public record Snapshot(long requests, long tasks, long taskNanos, long publishes, long changes, long links,
-            int maxLinks) {
+            int maxLinks, long queued, long groups, long members) {
     }
 
     public static Snapshot snapshot() {
@@ -40,16 +43,26 @@ public final class P2PRefreshDiagnostics {
             links += count;
             maxLinks = Math.max(maxLinks, count);
         }
-        return new Snapshot(requests, tasks, taskNanos, publishes, changes, links, maxLinks);
+        return new Snapshot(requests, tasks, taskNanos, publishes, changes, links, maxLinks, queued, groups, members);
     }
 
     /** Clears the counters; the links each tunnel published last are kept. */
     public static void reset() {
         requests = 0;
+        queued = 0;
+        groups = 0;
+        members = 0;
         tasks = 0;
         taskNanos = 0;
         publishes = 0;
         changes = 0;
+    }
+
+    static void queued() { queued++; }
+
+    static void groupBuilt(int size) {
+        groups++;
+        members += size;
     }
 
     static void requested() {

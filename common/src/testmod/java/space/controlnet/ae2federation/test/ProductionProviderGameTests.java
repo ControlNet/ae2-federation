@@ -22,6 +22,8 @@ import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import space.controlnet.ae2federation.domain.CableCapacityLimit;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
@@ -230,6 +232,75 @@ public final class ProductionProviderGameTests {
                     helper.assertValueEqual(scene.consumed(Target.A), 1L, "Exactly one machine operation");
                     facts.put("restoredOutput", "1");
                     writeEvidence("productionproviderrevocation", 9, facts);
+                    helper.succeed();
+                }
+            }
+        });
+    }
+
+    /**
+     * A domain over cable capacity stops its processing too: with a second Provider on the cable (two units) and a
+     * capacity of one, the mapped Lane pauses and nothing is delivered; at the default capacity the same job finishes.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1200, required = true, manualOnly = true)
+    public static void productionProviderOverCapacity(GameTestHelper helper) {
+        var scene = new ProductionProviderScene(helper);
+        var phase = new int[] { 0 };
+        var waited = new int[] { 0 };
+        var facts = new LinkedHashMap<String, String>();
+        helper.succeedWhen(() -> {
+            scene.runMachines();
+            switch (phase[0]) {
+                case 0 -> {
+                    requireReady(helper, scene);
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
+                    scene.installPattern(0);
+                    var status = scene.map(0, Target.A);
+                    helper.assertTrue(status.startsWith("accepted-"), "Mapping A: " + status);
+                    scene.placeSecondProvider();
+                    CableCapacityLimit.set(true, 1);
+                    phase[0] = 1;
+                    helper.fail("Waiting for the second Provider to join the cable");
+                }
+                case 1 -> {
+                    var level = helper.getLevel();
+                    var registry = FederationDomainRegistryAccess.get(level);
+                    var domain = registry.federationDomainOf(FederationDomainRegistryAccess.nodeId(level,
+                            helper.absolutePos(ProductionProviderScene.CABLE_NEAR)));
+                    helper.assertTrue(domain.isPresent() && registry.overCapacity(domain.get().federationDomainId()),
+                            "Waiting for two Providers on the cable to stop the domain");
+                    scene.insertSourceInput(1);
+                    scene.beginCraft(1);
+                    phase[0] = 4;
+                    helper.fail("Planning with the domain over capacity");
+                }
+                case 4 -> {
+                    helper.assertTrue(scene.submitWhenPlanned(), "Waiting for the native plan");
+                    phase[0] = 2;
+                    helper.fail("Submitted while the domain is over capacity");
+                }
+                case 2 -> {
+                    if (++waited[0] < 40) {
+                        helper.assertValueEqual(scene.targetAmount(Target.A, ProductionProviderScene.INPUT), 0L,
+                                "A domain over capacity must stop native delivery");
+                        helper.fail("Holding with the domain over capacity");
+                    }
+                    helper.assertTrue(scene.cpuBusy(), "The native job must stay pending, not fall back");
+                    helper.assertValueEqual(laneState(scene), ProviderTargetState.FEDERATION_DOMAIN_OVER_CAPACITY,
+                            "The Lane must report the domain over capacity");
+                    facts.put("overCapacityState", laneState(scene).name());
+                    CableCapacityLimit.set(true, CableCapacityLimit.DEFAULT_CAPACITY);
+                    phase[0] = 3;
+                    helper.fail("Restored the default capacity");
+                }
+                default -> {
+                    helper.assertTrue(!scene.cpuBusy(), "Waiting for the domain to run again and finish the job");
+                    helper.assertValueEqual(scene.sourceAmount(ProductionProviderScene.OUTPUT), 1L,
+                            "The running domain must deliver and return exactly one product");
+                    helper.assertValueEqual(scene.consumed(Target.A), 1L, "Exactly one machine operation");
+                    facts.put("restoredOutput", "1");
+                    writeEvidence("productionproviderovercapacity", 7, facts);
                     helper.succeed();
                 }
             }

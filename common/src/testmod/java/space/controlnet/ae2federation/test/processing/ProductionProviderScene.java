@@ -155,7 +155,7 @@ public final class ProductionProviderScene {
             }
         }
         if (!routerPlaced) {
-            helper.setBlock(ROUTER, RouterRegistration.ROUTER.get());
+            helper.setBlock(ROUTER, RouterRegistration.SWITCH.get());
             routerPlaced = true;
             return "router-placed";
         }

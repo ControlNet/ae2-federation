@@ -1,7 +1,7 @@
 package space.controlnet.ae2federation.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.core.BlockPos;
@@ -26,20 +27,31 @@ import net.neoforged.neoforge.client.model.BakedModelWrapper;
 import net.neoforged.neoforge.client.model.data.ModelData;
 import net.neoforged.neoforge.client.model.data.ModelProperty;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.bundle.BundleLook;
+import space.controlnet.ae2federation.router.CableCoreFaces;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
 /**
  * A Federation Cable's model: AE2's dense cable geometry ({@link FederationCableBuilder}), built from code for each
- * set of side connections the first time a chunk needs it, and kept until the next resource reload. The connections
- * are read when the chunk mesh is rebuilt; there is no per-frame geometry or network state.
+ * set of side connections the first time a chunk needs it, and kept until the next resource reload. A bundled cell
+ * draws its part of its bundle's shell instead ({@link BundleCableBuilder}), built once for each {@link BundleLook}.
+ * The connections are read when the chunk mesh is rebuilt; there is no per-frame geometry or network state.
  */
 public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
     private static final ModelProperty<Integer> CONNECTIONS = new ModelProperty<>();
+    private static final ModelProperty<BundleLook> BUNDLE = new ModelProperty<>();
     private static final ModelData[] DATA = new ModelData[CableVisualConnections.COUNT];
-    private static final ChunkRenderTypeSet LAYERS = ChunkRenderTypeSet.of(RenderType.solid(), RenderType.translucent());
+    private static final ChunkRenderTypeSet LAYERS = ChunkRenderTypeSet.of(RenderType.translucent());
+    /** A 2x2 bundle's cells also draw the artist's opaque rings. */
+    private static final ChunkRenderTypeSet LARGE_LAYERS = ChunkRenderTypeSet.of(RenderType.solid(),
+            RenderType.translucent());
     private static final ResourceLocation CABLE = ResourceLocation.fromNamespaceAndPath("ae2federation", "cable");
+    /** The artist's 2x2 ring texture. */
+    private static final ResourceLocation LARGE_RING = ResourceLocation.fromNamespaceAndPath("ae2federation",
+            "block/large_cable/large_cable");
 
-    private final Map<Integer, FederationCableBuilder.Quads> shapes = new ConcurrentHashMap<>();
+    private final Map<Integer, List<BakedQuad>> shapes = new ConcurrentHashMap<>();
+    private final Map<BundleLook, Bundle> bundles = new ConcurrentHashMap<>();
     private volatile List<BakedQuad> item;
 
     private CableBakedModel(BakedModel base) {
@@ -56,20 +68,35 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
 
     private static FederationCableBuilder builder() {
         var atlas = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS);
-        // TEMPORARY: the old cable's textures, until the artist's dense cable textures replace them.
-        return new FederationCableBuilder(
-                atlas.apply(texture("dense/core")),
-                atlas.apply(texture("dense/line")),
-                atlas.apply(texture("dense/connector")),
-                atlas.apply(texture("dense/stream_u")),
-                atlas.apply(texture("dense/stream_v")));
+        var cores = new EnumMap<CableCoreFaces.Variant, TextureAtlasSprite>(CableCoreFaces.Variant.class);
+        for (var variant : CableCoreFaces.Variant.values()) {
+            cores.put(variant, atlas.apply(texture("dense/" + variant.texture())));
+        }
+        return new FederationCableBuilder(cores, atlas.apply(texture("dense/line")),
+                atlas.apply(texture("dense/collar")));
     }
 
     private static ResourceLocation texture(String name) {
         return ResourceLocation.fromNamespaceAndPath("ae2federation", "part/cable/" + name);
     }
 
-    private FederationCableBuilder.Quads quads(ModelData data) {
+    /** A bundled cell's quads: its translucent shell and pieces, and the opaque rings of a 2x2 bundle. */
+    private record Bundle(List<BakedQuad> translucent, List<BakedQuad> solid) {
+    }
+
+    private Bundle bundle(BundleLook look) {
+        return bundles.computeIfAbsent(look, key -> {
+            var atlas = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS);
+            var builder = new BundleCableBuilder(builder(),
+                    atlas.apply(texture("dense/" + CableCoreFaces.Variant.CLOSED.texture())),
+                    new LargeCableRings(atlas.apply(LARGE_RING)));
+            return new Bundle(builder.build(key), builder.solid(key));
+        });
+    }
+
+    private List<BakedQuad> quads(ModelData data) {
+        var look = data.get(BUNDLE);
+        if (look != null) return bundle(look).translucent();
         var connections = data.get(CONNECTIONS);
         return shapes.computeIfAbsent(connections == null ? 0 : connections, key -> builder().build(key));
     }
@@ -77,7 +104,7 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
     private List<BakedQuad> itemQuads() {
         var quads = item;
         if (quads == null) {
-            quads = builder().item().all();
+            quads = builder().item();
             item = quads;
         }
         return quads;
@@ -85,6 +112,8 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
 
     @Override
     public ModelData getModelData(BlockAndTintGetter level, BlockPos position, BlockState state, ModelData data) {
+        var look = BundleLook.of(level, position);
+        if (look.isPresent()) return ModelData.builder().with(BUNDLE, look.get()).build();
         int connections = CableVisualConnections.connections(level, position);
         var modelData = DATA[connections];
         if (modelData == null) {
@@ -105,18 +134,26 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
         // Like AE2's cable bus, every quad is unculled: a cable never fills a block face.
         if (side != null) return List.of();
         if (state == null) return itemQuads();
-        var quads = quads(data);
-        if (renderType == RenderType.solid()) return quads.solid();
-        if (renderType == RenderType.translucent()) return quads.translucent();
-        if (renderType != null) return List.of();
-        var all = new ArrayList<BakedQuad>(quads.solid());
-        all.addAll(quads.translucent());
-        return all;
+        if (renderType == RenderType.solid()) {
+            var look = data.get(BUNDLE);
+            return look == null ? List.of() : bundle(look).solid();
+        }
+        if (renderType != null && renderType != RenderType.translucent()) return List.of();
+        var look = data.get(BUNDLE);
+        if (renderType == null && look != null && look.large()) {
+            // Asked for every layer at once: the rings too.
+            var bundle = bundle(look);
+            var all = new java.util.ArrayList<>(bundle.solid());
+            all.addAll(bundle.translucent());
+            return all;
+        }
+        return quads(data);
     }
 
     @Override
     public ChunkRenderTypeSet getRenderTypes(BlockState state, RandomSource random, ModelData data) {
-        return LAYERS;
+        var look = data.get(BUNDLE);
+        return look != null && look.large() ? LARGE_LAYERS : LAYERS;
     }
 
     @Override

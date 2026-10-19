@@ -13,7 +13,7 @@ storage or energy cell of its own. This page appears because Applied Flux and Me
 
 **You need:** a power bank network with ME Drives holding <ItemLink id="appflux:fe_1k_cell" />s and an energy cell; a
 workshop network with a terminal and a <ItemLink id="appflux:flux_accessor" />; a <ItemLink id="mekanism:crusher" />;
-a <ItemLink id="ae2federation:router" /> both networks touch. How FE gets into the cells is in
+a <ItemLink id="ae2federation:switch" /> both networks touch. How FE gets into the cells is in
 [Applied Flux's guide](appflux:appflux/flux_cells.md).
 
 <GameScene zoom="5" interactive={true} background="transparent">
@@ -28,7 +28,7 @@ a <ItemLink id="ae2federation:router" /> both networks touch. How FE gets into t
     Flux Accessor: sends the FE its network can reach into the machines it touches
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
-    One Router: each face joins the network it touches
+    One Switch: each face joins the network it touches
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -44,7 +44,7 @@ The Federation screen then shows the two networks and the rules between them:
 
 ## Build it
 
-1. **Join both networks** on the faces of one Router, as in the scene.
+1. **Join both networks** on the faces of one Switch, as in the scene.
 2. **Switch on Storage under "Workshop uses Power bank's"**. The bank's FE now shows in the workshop's terminal, beside
    anything else the bank stores.
 3. **Switch on ME power** between the two networks, so the workshop runs on the bank's energy cell.

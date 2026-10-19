@@ -50,8 +50,8 @@ public final class AdjacentRouterEnergyFixture implements AutoCloseable {
             return false;
         }
         if (!routersPlaced) {
-            routers.placeRouter(CONSUMER_ROUTER);
-            routers.placeRouter(PROVIDER_ROUTER);
+            routers.placeSwitch(CONSUMER_ROUTER);
+            routers.placeSwitch(PROVIDER_ROUTER);
             routersPlaced = true;
             return false;
         }

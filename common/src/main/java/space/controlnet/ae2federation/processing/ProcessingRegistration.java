@@ -98,6 +98,7 @@ public final class ProcessingRegistration {
         event.registerBlock(Capabilities.EnergyStorage.BLOCK,
                 (level, position, state, blockEntity, side) -> ProviderEnergyRelay.facing(level, position, side),
                 ENDPOINT.get(), space.controlnet.ae2federation.router.RouterRegistration.ROUTER.get(),
+                space.controlnet.ae2federation.router.RouterRegistration.SWITCH.get(),
                 space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get());
         // As on AE2's own Pattern Provider; Applied Mekanistics and other addons wrap it for their resource types.
         event.registerBlockEntity(AECapabilities.GENERIC_INTERNAL_INV, ENDPOINT_BLOCK_ENTITY.get(),

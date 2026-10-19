@@ -2,16 +2,18 @@
 
 Status: future direction established; detailed behavior and scope under discussion.
 
-Discussion date: 2026-10-02. Comparative research expanded: 2026-10-03. [Idea index](README.md).
+Discussion date: 2026-10-02. Comparative research expanded: 2026-10-03. Baseline updated: 2026-10-10. [Idea index](README.md).
 
 ## Intent and baseline
 
 Give players more control over which capabilities and resources their networks share, and when sharing becomes
 effective. Conditions should use information available from AE2 as well as redstone inputs.
 
-The agreed baseline is the simplified policy model: storage and crafting have disabled / enabled /
-enabled-with-re-export states; crafting requires storage for the same pair and direction. That baseline does not
-offer resource filtering. ME power uses a shared energy pool with an on/off control.
+The agreed baseline is the simplified policy model: storage and crafting are independent rules, each with disabled /
+enabled / enabled-with-re-export states. Since 2026-10-10 a crafting rule no longer requires the storage rule for the
+same pair and direction: crafting alone lets a network order from another's pattern providers without seeing its
+stock, and storage only adds the provider's items to what the ordering CPU can use. That baseline does not offer
+resource filtering. ME power uses a shared energy pool with an on/off control.
 
 This page describes future extensions to that baseline. Retained filtering fields in older code do not establish
 the intended product scope. Concrete architecture, implementation and release scheduling remain deferred.
@@ -50,6 +52,27 @@ rejected and must not be treated as the selected UX.
 No language, runtime, full Python/Lua compatibility promise, editor component or dependency has been selected.
 
 ## UX proposals for further discussion
+
+### Unified function authoring and Policy bindings
+
+The later 2026-10-10 proposal makes Policy customization a specialized use of the same general function
+system as [automation](rule-based-automation.md). Players author and edit functions in the automation GUI,
+using the interchangeable graph/script experience above. A Policy can use a predicate returning a boolean
+or a function returning resource-filter criteria. Exact return types and filter semantics remain open.
+This supersedes the earlier interpretation of separate Policy and automation function editors.
+
+The Policy interface can select a function, bind its arguments, and show its current result; these binding
+interactions are assistant recommendations, not finalized UI design. Permission checks should not execute
+resource transfers, submit jobs, or emit redstone. A read-only query function category distinct from
+effectful automation functions is recommended within the shared system, including restrictions on nested
+calls. Current-state queries need not be constant or independent of world state.
+
+This does not make the automation GUI a live-operation requirement for Policy evaluation, or mean that a
+boolean predicate alone implements strict stock reservation. Missing function references, evaluation
+errors, unavailable observations, and result refresh behavior still need design. No runtime or language
+architecture has been selected, and earlier candidate Policy outputs are not all confirmed by this proposal.
+
+### Policy editor proposals
 
 - Context-aware completion for network references, observable fields, functions and accepted parameter values.
   Resource candidates can show localized names, registry IDs and icons; previews can remain visible after insertion.
@@ -153,9 +176,13 @@ does not meet it. KilaGraph and KilaGraphDemo remain the user's explicit graph-e
 
 These questions document future discussion, not a request to resolve implementation choices now. In particular,
 periodic stock thresholds do not alone guarantee strict reserve floors, and shared-pool energy observations need
-clear scope. Future design must account for the crafting/storage dependency.
+clear scope. Crafting and storage are separate rules, so a condition or filter must say which of the two it governs.
 
 ## Research and context
+
+- [Videnoa function-system reference](../../.omo/knowledges/videnoa-function-system-reference-2026-10-10.md):
+  user-provided example of typed workflow interfaces, nested function-like nodes, and shared node metadata.
+  Read-only Policy evaluation and bidirectional script editing remain additional Federation design work.
 
 - [100-project custom-policy comparison](../../.omo/knowledges/custom-policy-mod-survey-2026-10-03.md):
   independently evaluated policy findings, sources, version limits and the distinction between actual mechanisms
@@ -163,7 +190,8 @@ clear scope. Future design must account for the crafting/storage dependency.
 - [Policy investigation and discussion history](../../.omo/knowledges/custom-policy-ideas-2026-10-02.md): code
   snapshots, corrections, qualitative feasibility findings and graph-editor source references.
 - [Simplified policy and crafting design](../../.omo/knowledges/crafting-pattern-projection-design-2026-10-02.md):
-  the agreed baseline preceding this idea. Consult current implementation evidence separately for delivery status.
+  the agreed baseline preceding this idea, including the 2026-10-10 change that made crafting independent of
+  storage. Consult current implementation evidence separately for delivery status.
 - [LDLib2 and KilaGraph investigation](../../.omo/knowledges/gui-ldlib2-reference-review-2026-09-26.md): existing
   graph-toolkit findings and the distinction between topology display and an executable rule editor.
 - [Expanded wireless-mod survey](../../.omo/knowledges/wireless-tech-mod-survey-2026-10-03.md), entry 41:

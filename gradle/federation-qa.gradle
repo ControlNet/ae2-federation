@@ -6006,6 +6006,27 @@ def cleanupGameTest = tasks.register('federationCleanupGameTest') {
 }
 tasks.named('runGameTestServer').configure { finalizedBy(cleanupGameTest) }
 
+// Builds what runGameTestServer needs and writes its launch command, so tools/required_gametests.py --jobs can start
+// many GameTest servers at once, each in a directory of its own, without a Gradle run per test.
+tasks.register('federationWriteGameTestLaunch') {
+    notCompatibleWithConfigurationCache('Reads the GameTest run task to write its launch command.')
+    def run = tasks.named('runGameTestServer').get()
+    dependsOn(run.taskDependencies)
+    def output = layout.buildDirectory.file('gametest-launch.json')
+    doLast {
+        def classpath = run.classpathProvider.isEmpty() ? run.classpath : run.classpathProvider
+        def file = output.get().asFile
+        file.parentFile.mkdirs()
+        file.text = JsonOutput.prettyPrint(JsonOutput.toJson([
+                java       : run.javaLauncher.get().executablePath.asFile.absolutePath,
+                jvmArgs    : run.allJvmArgs,
+                classpath  : classpath.files.collect { it.absolutePath },
+                mainClass  : run.mainClass.get(),
+                args       : run.args,
+                environment: run.environmentProperty.getOrElse([:])]))
+    }
+}
+
 def executeHarness = { String kind, List<String> requestedCases, String profile, File evidenceRoot ->
     evidenceRoot = strictCanonicalPath(evidenceRoot)
     def manifest = new JsonSlurper().parse(manifestFile.asFile)
@@ -6502,7 +6523,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         if (restartCase != null) {
             def policyRestart = restartCase.id.startsWith('policy.')
             def craftingRestart = restartCase.id.startsWith('crafting.')
-            def restartFamily = policyRestart ? 'policy' : craftingRestart ? 'crafting' : 'identity'
+            def domainIdRestart = restartCase.id.startsWith('domain-id.')
+            def restartFamily = policyRestart ? 'policy' : craftingRestart ? 'crafting' : domainIdRestart ? 'domainId' : 'identity'
             def restartState = new File(attempt, "${restartFamily}-restart-state.properties")
             def phaseProperty = "federation${restartFamily.capitalize()}Phase"
             def stateProperty = "federation${restartFamily.capitalize()}StateFile"
@@ -6521,7 +6543,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             if (verify.result.exit != 0) throw new GradleException("${restartFamily.capitalize()} restart verification process failed")
             verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: restartCase.testId,
                     structure: restartCase.structure, assertions: restartCase.assertions,
-                    operations: policyRestart || craftingRestart ? 1 : 2, allowZeroWork: policyRestart])
+                    operations: policyRestart || craftingRestart || domainIdRestart ? 1 : 2,
+                    allowZeroWork: policyRestart || domainIdRestart])
             childArtifacts.add(restartState); childArtifacts.add(nativeEvidence)
         }
         requestedCases.each { caseId ->
@@ -6740,14 +6763,15 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'identity.part-policy-activation':
                 case 'identity.initialization-order':
                 case 'identity.stable-query-cost':
-                case 'migration.legacy-save-import':
-                case 'rules.crafting-needs-storage':
+                case 'rules.crafting-and-storage-apart':
                 case 'storage.source-index-scale':
                 case 'storage.source-index-lifecycle':
                 case 'storage.alias-wrapper-semantics':
                 case 'storage.status-reasons':
                 case 'storage.status-reexport':
                 case 'storage.identity-split-recovers':
+                case 'storage.across-domains':
+                case 'crafting.across-domains':
                 case 'cross-dimension.two-domains':
                 case 'cross-dimension.unload-keeps-overworld':
                 case 'cross-dimension.quantum-bridge-projection':
@@ -6764,6 +6788,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'p2p.link-follows-power-and-reload':
                 case 'p2p.across-dimensions-shares-networks':
                 case 'p2p.across-dimensions-drives-endpoint':
+                case 'p2p.nether-outpost':
+                case 'p2p.nether-outpost-orders-factory':
                 case 'p2p.frequency-and-input-changes':
                 case 'p2p.channel-shortage':
                     // Evidence was verified with the generic GameTest accounting when the child ran.
@@ -6862,7 +6888,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'crafting.projection-revoked':
                 case 'crafting.projection-disconnected':
                 case 'crafting.projection-reload':
-                case 'crafting.projection-storage-required':
+                case 'crafting.projection-without-storage':
                 case 'crafting.projection-chain':
                 case 'crafting.projection-chain-blocked':
                 case 'crafting.projection-mutual':
@@ -6937,6 +6963,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'domain.redundant-membership':
                 case 'domain.partial-unload':
                 case 'domain.reject-stale-route':
+                case 'domain-id.restart':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,

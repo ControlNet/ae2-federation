@@ -19,21 +19,27 @@ import java.util.Objects;
  * before AE2 drops it from its provider list.
  */
 final class PatternProjection implements ICraftingProvider {
-    /** Told of every accepted push, so the outputs the consumer waits for are routed back to it. */
+    /** Captures dispatch context before external callbacks; the returned action runs only for an accepted push. */
     interface PushListener {
-        /** {@code containerItems}: what the pushed inputs leave behind, counted before the push. */
-        void pushed(PatternProjection projection, IPatternDetails details, KeyCounter containerItems);
+        /**
+         * {@code containerItems}: what the pushed inputs leave behind; {@code inputs}: the inputs themselves. Both are
+         * counted before the push, which may empty the holder.
+         */
+        Runnable prepare(PatternProjection projection, IPatternDetails details, KeyCounter containerItems,
+                KeyCounter inputs);
     }
 
     private final ICraftingProvider real;
     private final PushListener listener;
     private List<IPatternDetails> patterns;
     private boolean live = true;
+    private int priority;
 
     PatternProjection(ICraftingProvider real, PushListener listener) {
         this.real = Objects.requireNonNull(real);
         this.listener = Objects.requireNonNull(listener);
         patterns = List.copyOf(real.getAvailablePatterns());
+        priority = real.getPatternPriority();
     }
 
     ICraftingProvider real() {
@@ -43,7 +49,9 @@ final class PatternProjection implements ICraftingProvider {
     /** Takes the real provider's current patterns; true when they changed, so AE2 must re-read them. */
     boolean refresh() {
         var current = real.getAvailablePatterns();
-        if (current.equals(patterns)) return false;
+        int currentPriority = real.getPatternPriority();
+        if (current.equals(patterns) && currentPriority == priority) return false;
+        priority = currentPriority;
         patterns = List.copyOf(current);
         return true;
     }
@@ -59,7 +67,7 @@ final class PatternProjection implements ICraftingProvider {
 
     @Override
     public int getPatternPriority() {
-        return real.getPatternPriority();
+        return priority;
     }
 
     /**
@@ -71,8 +79,13 @@ final class PatternProjection implements ICraftingProvider {
     public boolean pushPattern(IPatternDetails patternDetails, KeyCounter[] inputHolder) {
         if (!live) return false;
         var containerItems = containerItems(patternDetails, inputHolder);
+        var inputs = new KeyCounter();
+        for (var holder : inputHolder) {
+            if (holder != null) inputs.addAll(holder);
+        }
+        var accepted = listener.prepare(this, patternDetails, containerItems, inputs);
         if (!real.pushPattern(patternDetails, inputHolder)) return false;
-        listener.pushed(this, patternDetails, containerItems);
+        accepted.run();
         return true;
     }
 

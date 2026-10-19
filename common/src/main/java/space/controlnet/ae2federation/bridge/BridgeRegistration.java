@@ -18,9 +18,6 @@ public final class BridgeRegistration {
 
     public static void register(IEventBus modBus) {
         PartModels.registerModels(MultipartBridgePart.MODEL);
-        // AE2 cable buses save parts by item id; the pre-rename id keeps loading as the Bridge.
-        ITEMS.addAlias(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("ae2federation",
-                "multipart_bridge"), BRIDGE.getId());
         ITEMS.register(modBus);
     }
 }

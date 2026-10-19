@@ -32,6 +32,7 @@ import space.controlnet.ae2federation.client.domain.FederationDomainGraphLayer;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphNodeKind;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot;
 import space.controlnet.ae2federation.client.policy.DirectionLabelPose;
+import space.controlnet.ae2federation.client.policy.DomainClusterLayout;
 import space.controlnet.ae2federation.client.policy.EndpointNodeLayout;
 import space.controlnet.ae2federation.client.policy.TopologyLink;
 import space.controlnet.ae2federation.client.policy.NetworkIdentityState;
@@ -55,6 +56,10 @@ final class FederationTopologyView {
     private static final float THUMBNAIL_WIDTH = 44;
     private static final float THUMBNAIL_HEIGHT = 30;
     private static final float ENDPOINT_HEIGHT = 16;
+    /** The opened domain among a card's domains for {@link DomainClusterLayout}; related domains go by their ids. */
+    private static final String OPENED_DOMAIN = "";
+    /** Room above a plate for its domain's name. */
+    private static final float PLATE_NAME_HEIGHT = 12;
     private static final PolicyCapability[] CAPABILITIES = PolicyCapability.values();
     private static final int LINK_SEGMENTS = 24;
     /** One run of a quartz bead along a shared-energy link, from end to end. */
@@ -63,6 +68,8 @@ final class FederationTopologyView {
     private static final float LINK_PICK_PIXELS = 5;
     /** Fitting may zoom out this far, so a narrow canvas still shows every card. */
     private static final float MIN_FIT_SCALE = 0.1f;
+    /** Fitting goes no closer than this, so a domain of one or two cards does not open blown up to the largest zoom. */
+    private static final float MAX_FIT_SCALE = 1f;
 
     private final GraphView graph;
     /** The canvas layer the links are drawn on, whose coordinates a press is measured in to pick a link. */
@@ -116,9 +123,21 @@ final class FederationTopologyView {
     /** Accepted deliveries per rule key over the last five seconds, from real transfers only. */
     private final Map<String, JsonObject> flows = new HashMap<>();
     private Label throughput;
+    /** The bar's full width in GUI pixels, as {@code .graph-power-track} draws it. */
+    private static final int POWER_BAR_WIDTH = 40;
+    private UIElement powerGauge;
+    private UIElement powerFill;
+    private Label powerValue;
     /** The domain's Router group or Bridge, as the server reports it. */
     private JsonObject via;
     private boolean showRelated;
+    /** Whether the opened domain has stopped, over cable capacity or unpowered, and which shown related domains have. */
+    private boolean openedStopped;
+    private final java.util.Set<String> stoppedDomains = new java.util.HashSet<>();
+    /** The stopped domains whose cause is cable capacity, which their captions name. */
+    private boolean openedOverCapacity;
+    private final java.util.Set<String> overCapacityDomains = new java.util.HashSet<>();
+    private int canvasColor = FederationTheme.CANVAS;
     private final Button scopeButton;
     private final Button domainScopeButton;
     private final Label scopeCaption;
@@ -135,6 +154,8 @@ final class FederationTopologyView {
     /** The related domains each shown network is in; networks that share no domain do not discover each other. */
     private final Map<String, java.util.Set<String>> networkDomains = new HashMap<>();
     private final Map<String, Vector2f> positions = new LinkedHashMap<>();
+    /** Each shown domain's plate behind its cards, only while other domains are shown. */
+    private final List<Plate> plates = new ArrayList<>();
     private final Map<String, Button> cards = new HashMap<>();
     private final Map<String, Label[]> cardLines = new HashMap<>();
     /** Stored energy as a fraction of capacity per card, read by its bar every frame; negative when unknown. */
@@ -224,7 +245,10 @@ final class FederationTopologyView {
         });
         element(ui, "graph_zoom_in", Button.class).setOnClick(event -> graph.setScale(graph.getScale() * 1.25f));
         element(ui, "graph_zoom_out", Button.class).setOnClick(event -> graph.setScale(graph.getScale() / 1.25f));
-        element(ui, "graph_fit", Button.class).setOnClick(event -> graph.fitToChildren(12, MIN_FIT_SCALE));
+        element(ui, "graph_fit", Button.class).setOnClick(event -> {
+            graph.fitToChildren(12, MIN_FIT_SCALE);
+            limitFitScale();
+        });
         var legend = element(ui, "graph_legend", Label.class);
         legend.setText(legendText());
         var legendToggle = element(ui, "graph_legend_toggle", Button.class);
@@ -244,6 +268,11 @@ final class FederationTopologyView {
         });
         showLegend.run();
         throughput = element(ui, "graph_throughput", Label.class);
+        powerGauge = element(ui, "graph_power", UIElement.class);
+        powerFill = element(ui, "graph_power_fill", UIElement.class);
+        powerValue = element(ui, "graph_power_value", Label.class);
+        powerGauge.setAllowHitTest(false);
+        powerGauge.setDisplay(false);
         throughput.setAllowHitTest(false);
         var flowToggle = element(ui, "graph_flow_toggle", Button.class);
         FederationIcons.apply(flowToggle, FederationIcons.FLOW);
@@ -359,11 +388,42 @@ final class FederationTopologyView {
         refresh();
     }
 
+    /**
+     * The corner gauge: the domain's buffer fill as a bar and a percentage, green while it runs, yellow while use is
+     * above input, red at 0 % when stopped. Not drawn while operating power is not required ({@code ""}).
+     */
+    void acceptPower(String value) {
+        var parts = value.split(":");
+        powerGauge.setDisplay(parts.length == 2);
+        if (parts.length != 2) return;
+        int percent = Math.max(0, Math.min(100, Integer.parseInt(parts[0])));
+        int color = switch (parts[1]) {
+            case "stopped" -> FederationTheme.ERROR;
+            case "draining" -> FederationTheme.WARN;
+            default -> FederationTheme.OK;
+        };
+        // A stopped domain's bar is drawn full in red, whatever its buffer holds; the figure still gives the fill.
+        var stopped = parts[1].equals("stopped");
+        powerFill.layout(layout -> layout.width(stopped ? POWER_BAR_WIDTH : POWER_BAR_WIDTH * percent / 100f));
+        powerFill.style(style -> style.backgroundTexture(FederationTheme.solid(color)));
+        powerValue.setText(Component.literal(percent + "%").withStyle(Style.EMPTY.withColor(
+                (stopped ? FederationTheme.ERROR : FederationTheme.DARK_TEXT) & 0xffffff)));
+    }
+
     void acceptChoices(JsonObject root) {
         // An unpublished domain sends no members; keep the last view until the server reports the context stale.
         if (!root.has("networks") && !networks.isEmpty()) return;
         scope = root.has("scope") ? root.get("scope").getAsString() : "domain";
         via = root.has("via") ? root.getAsJsonObject("via") : null;
+        openedOverCapacity = root.has("openedOverCapacity") && root.get("openedOverCapacity").getAsBoolean();
+        openedStopped = openedOverCapacity || root.has("openedUnpowered") && root.get("openedUnpowered").getAsBoolean();
+        overCapacityDomains.clear();
+        if (root.has("overCapacityDomains")) root.getAsJsonArray("overCapacityDomains")
+                .forEach(value -> overCapacityDomains.add(value.getAsString()));
+        stoppedDomains.clear();
+        stoppedDomains.addAll(overCapacityDomains);
+        if (root.has("unpoweredDomains")) root.getAsJsonArray("unpoweredDomains")
+                .forEach(value -> stoppedDomains.add(value.getAsString()));
         networks.clear();
         networkDomains.clear();
         shownById = null;
@@ -519,7 +579,11 @@ final class FederationTopologyView {
         var caption = Component.literal("· ").append(tr(showRelated ? "scope.related" : "scope.domain"));
         boolean truncated = relatedTotal > related.size();
         if (showRelated && truncated) caption.append(" · ").append(tr("scope.truncated", related.size(), relatedTotal));
+        if (openedOverCapacity) caption.append(" · ").append(tr("over_capacity")
+                .withStyle(Style.EMPTY.withColor(FederationTheme.ERROR & 0xffffff)));
         scopeCaption.setText(caption);
+        scopeCaption.style(style -> style.tooltips(openedOverCapacity
+                ? Component.translatable("ae2federation.ui.domain.runtime.backend.domain_over_capacity") : Component.empty()));
         scopeButton.style(style -> style.tooltips(truncated
                 ? tr("scope.help_truncated", related.size(), relatedTotal) : tr("scope.help", related.size())));
         scopeButton.removeClass("selected");
@@ -598,6 +662,23 @@ final class FederationTopologyView {
         for (var endpoint : endpointNodes) {
             if (endpointPlaces.containsKey(endpoint.id())) graph.addContentChild(endpointNode(endpoint));
         }
+        applyCanvasFont(graph.contentRoot);
+    }
+
+    /** The font every text on the canvas uses; see {@link CanvasFont}. */
+    private static final net.minecraft.resources.ResourceLocation CANVAS_FONT = CanvasFont.ID;
+
+    /** {@code text} in the canvas font, so measuring it matches how the canvas draws it. */
+    private static Component canvasFont(Component text) {
+        return text.copy().withStyle(style -> style.withFont(CANVAS_FONT));
+    }
+
+    /** Sets the canvas font on every text element under {@code element}: card rows, chips and Endpoint labels. */
+    private static void applyCanvasFont(UIElement element) {
+        if (element instanceof com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement text) {
+            text.textStyle(style -> style.font(CANVAS_FONT));
+        }
+        for (var child : element.getChildren()) applyCanvasFont(child);
     }
 
     /** Whether {@code element} is drawn on the graph's canvas, as cards, link labels and Endpoint nodes are. */
@@ -606,6 +687,17 @@ final class FederationTopologyView {
             if (at == graph.contentRoot) return true;
         }
         return false;
+    }
+
+    /** Zooms a fit that came out closer than {@link #MAX_FIT_SCALE} back out to it, around the same centre. */
+    private void limitFitScale() {
+        float scale = graph.getScale();
+        if (scale <= MAX_FIT_SCALE) return;
+        float centerX = graph.getOffsetX() + graph.getContentWidth() / scale / 2;
+        float centerY = graph.getOffsetY() + graph.getContentHeight() / scale / 2;
+        float halfWidth = graph.getContentWidth() / MAX_FIT_SCALE / 2;
+        float halfHeight = graph.getContentHeight() / MAX_FIT_SCALE / 2;
+        graph.fit(centerX - halfWidth, centerY - halfHeight, centerX + halfWidth, centerY + halfHeight, MIN_FIT_SCALE);
     }
 
     /** GraphView's own wheel zoom, kept on the point under the mouse, for a wheel turn over something on the canvas. */
@@ -669,6 +761,12 @@ final class FederationTopologyView {
             width = Math.max(width, place.x() + place.width());
             height = Math.max(height, place.y() + ENDPOINT_HEIGHT);
         }
+        for (var plate : plates) {
+            for (var point : plate.outline()) {
+                width = Math.max(width, point[0]);
+                height = Math.max(height, point[1]);
+            }
+        }
         return new Vector2f(width, height);
     }
 
@@ -709,34 +807,61 @@ final class FederationTopologyView {
         return TopologyLink.between(a.x, a.y, b.x, b.y, CARD_WIDTH, CARD_HEIGHT);
     }
 
-    /** Networks on an ellipse, the entrance network first on the left; two networks sit side by side. */
+    /**
+     * Networks on an ellipse, the entrance network first on the left; two networks sit side by side. With other domains
+     * shown, each domain gets its own ellipse on a plate instead ({@link DomainClusterLayout}).
+     */
     private void layout() {
         positions.clear();
+        plates.clear();
         var ordered = new ArrayList<>(shown());
         ordered.stream().filter(network -> network.member().equals(focus)).findFirst().ifPresent(first -> {
             ordered.remove(first);
             ordered.addFirst(first);
         });
         int count = ordered.size();
-        float radius = count <= 2 ? 140 : (float) Math.max(150, 100 / Math.sin(Math.PI / count));
-        var raw = new ArrayList<Vector2f>();
-        for (int i = 0; i < count; i++) {
-            double angle = Math.PI + 2 * Math.PI * i / Math.max(1, count);
-            raw.add(new Vector2f((float) (Math.cos(angle) * radius * 1.35f), (float) (Math.sin(angle) * radius * 0.8f)));
-        }
-        // Spread the ellipse until every link label clears the cards, as the design keeps its labels in open canvas.
-        var corners = new float[count][];
         var index = new HashMap<String, Integer>();
-        for (int i = 0; i < count; i++) {
-            corners[i] = new float[] {raw.get(i).x, raw.get(i).y};
-            index.put(ordered.get(i).id(), i);
-        }
-        var labels = new ArrayList<space.controlnet.ae2federation.client.policy.TopologySpacing.Label>();
-        var labelled = new ArrayList<String>();
+        for (int i = 0; i < count; i++) index.put(ordered.get(i).id(), i);
         var font = net.minecraft.client.Minecraft.getInstance().font;
+        var linked = new ArrayList<String>();
         for (var pair : pairsWithRules()) {
             var ends = pair.split("\\|");
-            if (!index.containsKey(ends[0]) || !index.containsKey(ends[1])) continue;
+            if (index.containsKey(ends[0]) && index.containsKey(ends[1])) linked.add(pair);
+        }
+        boolean clustered = showRelated && !related.isEmpty();
+        // The opened domain alone fills the canvas, so a stopped one turns the whole canvas; with related domains on
+        // their plates, only the stopped domains' plates turn.
+        int canvas = openedStopped && !clustered ? FederationTheme.CANVAS_STOPPED : FederationTheme.CANVAS;
+        if (canvas != canvasColor) {
+            canvasColor = canvas;
+            graph.style(style -> style.backgroundTexture(FederationTheme.solid(canvas)));
+        }
+        var clusterCards = ordered.stream().map(network -> new DomainClusterLayout.Card(network.id(), shownDomains(network))).toList();
+        var raw = new ArrayList<Vector2f>();
+        if (clustered) {
+            var links = linked.stream().map(pair -> pair.split("\\|"))
+                    .map(ends -> new DomainClusterLayout.Link(ends[0], ends[1])).toList();
+            var placed = DomainClusterLayout.place(clusterCards, OPENED_DOMAIN, links, (a, b, link) -> {
+                var half = labelExtent(network(a), network(b), link, font);
+                return new float[] {half.x, half.y};
+            }, CARD_WIDTH, CARD_HEIGHT);
+            for (var network : ordered) {
+                var corner = placed.corners().get(network.id());
+                raw.add(new Vector2f(corner[0], corner[1]));
+            }
+        } else {
+            float radius = count <= 2 ? 140 : (float) Math.max(150, 100 / Math.sin(Math.PI / count));
+            for (int i = 0; i < count; i++) {
+                double angle = Math.PI + 2 * Math.PI * i / Math.max(1, count);
+                raw.add(new Vector2f((float) (Math.cos(angle) * radius * 1.35f), (float) (Math.sin(angle) * radius * 0.8f)));
+            }
+        }
+        var corners = new float[count][];
+        for (int i = 0; i < count; i++) corners[i] = new float[] {raw.get(i).x, raw.get(i).y};
+        var labels = new ArrayList<space.controlnet.ae2federation.client.policy.TopologySpacing.Label>();
+        var labelled = new ArrayList<String>();
+        for (var pair : linked) {
+            var ends = pair.split("\\|");
             var a = corners[index.get(ends[0])];
             var b = corners[index.get(ends[1])];
             var half = labelExtent(network(ends[0]), network(ends[1]),
@@ -745,8 +870,11 @@ final class FederationTopologyView {
                     index.get(ends[1]), half.x, half.y));
             labelled.add(pair);
         }
-        float spread = space.controlnet.ae2federation.client.policy.TopologySpacing.factor(corners, labels, CARD_WIDTH, CARD_HEIGHT, 8);
-        raw.forEach(point -> point.mul(spread));
+        if (!clustered) {
+            // Spread the ellipse until every link label clears the cards, as the design keeps its labels in open canvas.
+            float spread = space.controlnet.ae2federation.client.policy.TopologySpacing.factor(corners, labels, CARD_WIDTH, CARD_HEIGHT, 8);
+            raw.forEach(point -> point.mul(spread));
+        }
         // Endpoints beside the network that maps them, on its outer side; the others wait below. Spread the cards
         // further while one network's Endpoints would cover another card or its Endpoints.
         var nodes = endpointNodes.stream().map(endpoint -> new EndpointNodeLayout.Node(endpoint.id(),
@@ -767,11 +895,21 @@ final class FederationTopologyView {
             minX = Math.min(minX, place.x());
             minY = Math.min(minY, place.y());
         }
+        // Room above and left of the cards for the plates and their names.
+        float margin = clustered ? 8 + DomainClusterLayout.PLATE_PADDING + PLATE_NAME_HEIGHT : 8;
         for (int i = 0; i < count; i++) {
-            positions.put(ordered.get(i).id(), new Vector2f(raw.get(i).x - minX + 8, raw.get(i).y - minY + 8));
+            positions.put(ordered.get(i).id(), new Vector2f(raw.get(i).x - minX + margin, raw.get(i).y - minY + margin));
         }
         endpointPlaces.clear();
-        for (var place : endpointsPlaced) endpointPlaces.put(place.id(), place.moved(-minX + 8, -minY + 8));
+        for (var place : endpointsPlaced) endpointPlaces.put(place.id(), place.moved(-minX + margin, -minY + margin));
+        if (clustered) {
+            var placedCorners = new HashMap<String, float[]>();
+            positions.forEach((id, point) -> placedCorners.put(id, new float[] {point.x, point.y}));
+            var hosts = DomainClusterLayout.hosts(clusterCards, OPENED_DOMAIN);
+            DomainClusterLayout.plates(clusterCards, OPENED_DOMAIN, placedCorners, CARD_WIDTH, CARD_HEIGHT).forEach((domain, plate) ->
+                    plates.add(new Plate(domain, plate, DomainClusterLayout.rows(plate),
+                            hosts.containsKey(domain) ? DomainClusterLayout.NESTED_PADDING : DomainClusterLayout.PLATE_PADDING)));
+        }
         // Links that cross, such as a diamond's diagonals, would stack their labels in the middle; move one along.
         var placed = new float[count][];
         for (int i = 0; i < count; i++) placed[i] = new float[] {raw.get(i).x, raw.get(i).y};
@@ -839,7 +977,7 @@ final class FederationTopologyView {
         swatch.layout(style -> style.width(6).height(6).flexShrink(0));
         swatch.style(style -> style.backgroundTexture(FederationTheme.solid(network.accent())));
         // The name in bold, "Network 0A1F" by its identity tag while it has none.
-        var heading = text(name(network).copy().withStyle(net.minecraft.ChatFormatting.BOLD), FederationTheme.DARK_TITLE);
+        var heading = text(CanvasFont.boldExceptChinese(name(network)), FederationTheme.DARK_TITLE);
         heading.addClass("card-name");
         heading.setId("graph_node_name_" + sanitize(network.member()));
         heading.layout(style -> style.flex(1).minWidth(0).widthAuto());
@@ -915,7 +1053,7 @@ final class FederationTopologyView {
     }
 
     private static float endpointWidth(EndpointNode endpoint, net.minecraft.client.gui.Font font) {
-        return font.width(endpointLabel(endpoint)) + 4 + 5 + 3 + 4 + 2;
+        return font.width(canvasFont(endpointLabel(endpoint))) + 4 + 5 + 3 + 4 + 2;
     }
 
     private space.controlnet.ae2federation.client.policy.EndpointHealth endpointHealth(EndpointNode endpoint) {
@@ -1105,7 +1243,7 @@ final class FederationTopologyView {
             var label = text(chip.text(), chip.color());
             label.addClass("pill-chip");
             if (chip.reexport()) label.addClass("reexport");
-            float chipWidth = stacked ? widest : font.width(chip.text()) + 5;
+            float chipWidth = stacked ? widest : font.width(canvasFont(chip.text())) + 5;
             label.layout(style -> style.width(chipWidth).height(11).paddingLeft(2).paddingRight(3).paddingTop(1).flexShrink(0));
             if (stacked) label.textStyle(style -> style.textAlignHorizontal(com.lowdragmc.lowdraglib2.gui.ui.data.Horizontal.CENTER));
             label.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, chip.color())));
@@ -1196,13 +1334,13 @@ final class FederationTopologyView {
 
     private static float widestChip(List<Chip> chips, net.minecraft.client.gui.Font font) {
         float widest = 0;
-        for (var chip : chips) widest = Math.max(widest, font.width(chip.text()) + 5);
+        for (var chip : chips) widest = Math.max(widest, font.width(canvasFont(chip.text())) + 5);
         return widest;
     }
 
     private static float labelBodyWidth(List<Chip> chips, boolean related, net.minecraft.client.gui.Font font) {
         float width = 2 * LABEL_PADDING + (related ? LABEL_LOCK : 0) + 3 * (chips.size() - 1);
-        for (var chip : chips) width += font.width(chip.text()) + 5;
+        for (var chip : chips) width += font.width(canvasFont(chip.text())) + 5;
         return width;
     }
 
@@ -1341,7 +1479,7 @@ final class FederationTopologyView {
         var notes = new ArrayList<Component>();
         if (local) notes.add(tr("endpoint_local_help"));
         else if (endpoint.alone()) notes.add(tr("endpoint_node.alone"));
-        else if (!endpoint.ready()) notes.add(tr("endpoint_node.not_ready"));
+        else if (!endpoint.ready()) notes.add(EndpointText.notReady(json));
         else if (endpoint.mode().equals("LOCAL")) notes.add(tr("endpoint_node.local"));
         var flow = endpointFlows.get(endpoint.id());
         if (flow != null && flow.get("events").getAsLong() > 0) notes.add(tr("flow", flow.get("events").getAsLong()));
@@ -1370,9 +1508,7 @@ final class FederationTopologyView {
                 endpointFact("face", FederationWorkspace.tr("face." + string(json, "face"))),
                 endpointFact("owner", json.has("ownerPosition") ? tr("endpoint_owner_at", json.get("ownerPosition").getAsString())
                         : json.has("owner") ? tr("endpoint_owner_unloaded") : FederationWorkspace.tr("unclaimed")),
-                endpointFact("native", host != null ? name(host) : json.has("nativeNetwork")
-                        ? tr("network_name", json.get("nativeNetwork").getAsString().substring(0, 4).toUpperCase(Locale.ROOT))
-                        : FederationWorkspace.tr("network_unconfirmed")));
+                endpointFact("native", host != null ? name(host) : EndpointText.unnamedNetwork(json)));
         if (json.has("energyTarget")) endpointDetail.addChild(endpointEnergyFact(json));
         boolean navigable = json.has("mappingNavigation") && json.get("mappingNavigation").getAsBoolean();
         devices.setDisplay(!local);
@@ -1975,10 +2111,6 @@ final class FederationTopologyView {
         head.addChildren(name, stateLabel);
         var mode = mode(rule);
         boolean on = mode.enabled();
-        // Crafting takes the other network's materials through the same direction's storage rule, which therefore
-        // stays on while crafting is: it steps only between its two on states.
-        boolean heldByCrafting = capability == PolicyCapability.STORAGE
-                && mode(rule(key(consumer.id(), provider.id(), PolicyCapability.CRAFTING.name()))).enabled();
         var toggle = new Button();
         toggle.noText();
         toggle.addClass("policy-switch");
@@ -2011,16 +2143,14 @@ final class FederationTopologyView {
         boolean threeState = RuleMode.REEXPORT.allowedFor(capability);
         toggle.setOnClick(event -> {
             if (!editable) return;
-            var next = !threeState ? on ? RuleMode.DISABLED : RuleMode.ENABLED
-                    : heldByCrafting ? held(mode) : mode.next();
+            var next = !threeState ? on ? RuleMode.DISABLED : RuleMode.ENABLED : mode.next();
             setPolicy.accept(new PolicySwitchTarget(policyKey, next, new PolicyRevision(observed)).encode());
         });
         if (threeState) {
             toggle.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.MOUSE_DOWN, event -> {
                 if (event.button != 1 || !editable || !toggle.isActive()) return;
                 com.lowdragmc.lowdraglib2.gui.util.UISoundUtils.playButtonClickSound();
-                setPolicy.accept(new PolicySwitchTarget(policyKey,
-                        heldByCrafting ? held(mode) : mode.previous(), new PolicyRevision(observed)).encode());
+                setPolicy.accept(new PolicySwitchTarget(policyKey, mode.previous(), new PolicyRevision(observed)).encode());
             });
         }
         head.addChild(toggle);
@@ -2041,10 +2171,20 @@ final class FederationTopologyView {
         return row;
     }
 
-    /** The readable name of another domain; its raw identity is internal. */
+    /** The shown domains a network is in, the opened domain as {@link #OPENED_DOMAIN}. */
+    private java.util.Set<String> shownDomains(Network network) {
+        var domains = new java.util.HashSet<>(networkDomains.getOrDefault(network.id(), java.util.Set.of()));
+        if (!network.foreign()) domains.add(OPENED_DOMAIN);
+        else if (domains.isEmpty()) domains.add(network.domain());
+        return domains;
+    }
+
+    /**
+     * The readable name of another domain, "Domain 3C91": its tag alone, whether a Bridge or cable formed it; its raw
+     * identity is internal.
+     */
     private static Component domainName(String domain) {
-        var label = RelatedDomainLabel.of(domain);
-        return tr("domain_label." + label.kind(), label.tag());
+        return tr("domain_label", RelatedDomainLabel.of(domain).tag());
     }
 
     /** "Via the Bridge at x, y, z" or "Via 5 Routers · first at x, y, z · this domain"; every position is in the tooltip. */
@@ -2077,11 +2217,6 @@ final class FederationTopologyView {
             if (flows.containsKey(key(consumer, provider, capability.name()))) return true;
         }
         return false;
-    }
-
-    /** A storage rule crafting depends on steps between enabled and re-export, either way. */
-    private static RuleMode held(RuleMode mode) {
-        return mode == RuleMode.ENABLED ? RuleMode.REEXPORT : RuleMode.ENABLED;
     }
 
     private static RuleMode mode(JsonObject rule) {
@@ -2296,6 +2431,33 @@ final class FederationTopologyView {
         return ui.selectId(id, type).findFirst().orElseThrow(() -> new IllegalStateException("Missing UI element #" + id));
     }
 
+    /**
+     * The opened domain's plate with its name, and this domain's Endpoints, as {@code [left, top, right, bottom]}; null
+     * when no plates are drawn.
+     */
+    private float[] focusBounds() {
+        var plate = plates.stream().filter(candidate -> candidate.domain().equals(OPENED_DOMAIN)).findFirst().orElse(null);
+        if (plate == null) return null;
+        var bounds = new float[] {Float.MAX_VALUE, Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE};
+        for (var point : plate.outline()) {
+            bounds[0] = Math.min(bounds[0], point[0]);
+            bounds[1] = Math.min(bounds[1], point[1] - PLATE_NAME_HEIGHT);
+            bounds[2] = Math.max(bounds[2], point[0]);
+            bounds[3] = Math.max(bounds[3], point[1]);
+        }
+        for (var place : endpointPlaces.values()) {
+            bounds[0] = Math.min(bounds[0], place.x());
+            bounds[1] = Math.min(bounds[1], place.y());
+            bounds[2] = Math.max(bounds[2], place.x() + place.width());
+            bounds[3] = Math.max(bounds[3], place.y() + ENDPOINT_HEIGHT);
+        }
+        return bounds;
+    }
+
+    /** A domain's plate: its outline, its fill as one-pixel rows {@code [y, left, right]}, and its margin. */
+    record Plate(String domain, List<float[]> outline, List<float[]> rows, float padding) {
+    }
+
     /** {@code domain} is empty for members of this domain and names the related domain otherwise. */
     record Network(String id, String member, int index, String name, String domain) {
         boolean foreign() {
@@ -2335,7 +2497,11 @@ final class FederationTopologyView {
                 fitDelay = 1;
             }
             if (!fitted && fitDelay-- <= 0) {
-                graph.fitToChildren(16, MIN_FIT_SCALE);
+                // With other domains shown, the view starts on the opened domain; Fit still shows them all.
+                var focus = focusBounds();
+                if (focus == null) graph.fitToChildren(16, MIN_FIT_SCALE);
+                else graph.fit(focus[0] - 16, focus[1] - 16, focus[2] + 16, focus[3] + 16, MIN_FIT_SCALE);
+                limitFitScale();
                 fitted = true;
                 fittedWidth = graph.getContentWidth();
                 fittedHeight = graph.getContentHeight();
@@ -2356,6 +2522,7 @@ final class FederationTopologyView {
             pose.pushPose();
             pose.translate(getPositionX(), getPositionY(), 0);
             beads = 0;
+            plates(context);
             var configured = pairsWithRules();
             for (var pair : configured) {
                 var ends = pair.split("\\|");
@@ -2398,6 +2565,36 @@ final class FederationTopologyView {
             }
             pose.popPose();
             FederationFlowPulses.beadsDrawn(beads);
+        }
+
+        /** Each domain's plate under its links and cards, its name above its top-left corner. */
+        private void plates(GUIContext context) {
+            var font = net.minecraft.client.Minecraft.getInstance().font;
+            // Where the next name goes on each spot: nested domains with the same networks share one, side by side.
+            var spots = new HashMap<Long, Integer>();
+            for (var plate : FederationTopologyView.this.plates) {
+                boolean opened = plate.domain().equals(OPENED_DOMAIN);
+                boolean stopped = opened ? openedStopped : stoppedDomains.contains(plate.domain());
+                int fill = stopped ? FederationTheme.PLATE_STOPPED : opened ? FederationTheme.PLATE_OPENED : FederationTheme.PLATE_RELATED;
+                for (var row : plate.rows()) {
+                    context.graphics.fill(Math.round(row[1]), (int) row[0], Math.round(row[2]), (int) row[0] + 1, fill);
+                }
+                float top = (float) plate.outline().stream().mapToDouble(point -> point[1]).min().orElse(0);
+                float left = (float) plate.outline().stream().filter(point -> point[1] <= top + 1)
+                        .mapToDouble(point -> point[0]).min().orElse(0);
+                var name = opened ? tr("plate_opened") : domainName(plate.domain());
+                if (opened ? openedOverCapacity : overCapacityDomains.contains(plate.domain())) {
+                    name = name.copy().append(" · ").append(tr("over_capacity"));
+                }
+                int x = Math.round(left - plate.padding() + 8);
+                int y = Math.round(top - PLATE_NAME_HEIGHT);
+                long spot = (long) x << 32 | (y & 0xffffffffL);
+                x = spots.getOrDefault(spot, x);
+                // LDLib2's renderer, as the canvas text draws it: vanilla drawString breaks glyphs up at a fractional zoom.
+                com.lowdragmc.lowdraglib2.gui.LDLibFonts.drawText(context.graphics, com.lowdragmc.lowdraglib2.gui.LDLibFonts.font(), canvasFont(name),
+                        x, y, stopped ? FederationTheme.ERROR : opened ? FederationTheme.PLATE_OPENED_NAME : FederationTheme.SELECT, false);
+                spots.put(spot, x + font.width(canvasFont(name)) + 6);
+            }
         }
 
         private void line(GUIContext context, TopologyLink link, int color, float width, boolean dashed) {

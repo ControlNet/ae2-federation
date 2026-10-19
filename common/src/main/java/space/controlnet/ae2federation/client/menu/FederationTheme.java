@@ -24,6 +24,8 @@ public final class FederationTheme {
     public static final int DARK_TITLE = 0xffefeaf8;
     public static final int DARK_MUTED = 0xffaaa4b2;
     public static final int CANVAS = 0xff201e27;
+    /** The canvas of a domain over cable capacity, which has stopped as a whole: the CANVAS hue turned to ERROR. */
+    public static final int CANVAS_STOPPED = 0xff2e171c;
     public static final int WELL = 0xff17141e;
     public static final int SELECT = 0xff9cd3ff;
     public static final int OK = 0xff55ff8a;
@@ -40,6 +42,13 @@ public final class FederationTheme {
     public static final int QUARTZ_CORE = 0xff7f93ab;
     public static final int QUARTZ_BEAD = 0xffe8f4ff;
     public static final int QUARTZ_BEAD_EDGE = 0xff3b4a5c;
+    /** Domain plates, faint enough that links and cards read over them: the opened domain pale, related ones blue. */
+    public static final int PLATE_OPENED = 0x1ad8d3e4;
+    public static final int PLATE_RELATED = 0x149cd3ff;
+    /** The plate of a domain over cable capacity: ERROR, a little stronger than the other plates. */
+    public static final int PLATE_STOPPED = 0x2eff6a75;
+    /** The opened domain's plate name; a related domain's name is {@link #SELECT}. */
+    public static final int PLATE_OPENED_NAME = 0xffd8d3e4;
     /** A rule in effect that passes its access on: apart from active green, selection blue and the switch's green. */
     public static final int REEXPORT = 0xff4fd8e8;
     /** Distinct network accents; a network keeps its colour for the lifetime of the open workspace. */
@@ -109,6 +118,18 @@ public final class FederationTheme {
     public static final IGuiTexture TOOLBAR = sprite(AE2_STATES, 176, 128, 18, 20);
     public static final IGuiTexture TOOLBAR_HOVER = sprite(AE2_STATES, 212, 128, 18, 20);
     public static final IGuiTexture TOOLBAR_ACTIVE = sprite(AE2_STATES, 194, 128, 18, 20);
+    /** A statistics range: AE2's toolbar sprite stretched to a chip; the chosen range on its focused sprite. */
+    public static final IGuiTexture CHIP = sprite(AE2_STATES, 176, 128, 18, 20, 2, 2, 2, 3);
+    public static final IGuiTexture CHIP_HOVER = sprite(AE2_STATES, 212, 128, 18, 20, 2, 2, 2, 3);
+    public static final IGuiTexture CHIP_SELECTED = sprite(AE2_STATES, 194, 128, 18, 20, 2, 2, 2, 3);
+    /** A network to show statistics of: flat on the frame, dark with the selection edge when chosen. */
+    public static final IGuiTexture NETWORK_CHIP = outlined(INSET, 0xff77798d);
+    public static final IGuiTexture NETWORK_CHIP_HOVER = outlined(0xffc9cbd6, 0xff535669);
+    public static final IGuiTexture NETWORK_CHIP_SELECTED = outlined(0xff2c2735, SELECT);
+    /** A resource kind on the dark chart. */
+    public static final IGuiTexture KIND_CHIP = outlined(WELL, 0xff4a4655);
+    public static final IGuiTexture KIND_CHIP_HOVER = outlined(0xff2c2735, 0xff6d6a82);
+    public static final IGuiTexture KIND_CHIP_SELECTED = outlined(0xff2c2735, SELECT);
     /** AE2's empty upgrade slot icon ({@code Icon.BACKGROUND_UPGRADE}), at the 40% AE2 draws slot icons with. */
     public static final IGuiTexture UPGRADE_SLOT = tinted(AE2_STATES, 240, 208, 16, 16, 0x66ffffff);
 
@@ -184,6 +205,15 @@ public final class FederationTheme {
         provider.addResource("ROW_RULE", ROW_RULE);
         provider.addResource("LINK", LINK);
         provider.addResource("LINK_HOVER", LINK_HOVER);
+        provider.addResource("CHIP", CHIP);
+        provider.addResource("CHIP_HOVER", CHIP_HOVER);
+        provider.addResource("CHIP_SELECTED", CHIP_SELECTED);
+        provider.addResource("NETWORK_CHIP", NETWORK_CHIP);
+        provider.addResource("NETWORK_CHIP_HOVER", NETWORK_CHIP_HOVER);
+        provider.addResource("NETWORK_CHIP_SELECTED", NETWORK_CHIP_SELECTED);
+        provider.addResource("KIND_CHIP", KIND_CHIP);
+        provider.addResource("KIND_CHIP_HOVER", KIND_CHIP_HOVER);
+        provider.addResource("KIND_CHIP_SELECTED", KIND_CHIP_SELECTED);
         provider.addResource("TOOLBAR", TOOLBAR);
         provider.addResource("TOOLBAR_HOVER", TOOLBAR_HOVER);
         provider.addResource("TOOLBAR_ACTIVE", TOOLBAR_ACTIVE);
@@ -304,6 +334,14 @@ public final class FederationTheme {
             pen.rect(x + 1, y + 1, width - 2, 1, HIGHLIGHT);
             pen.rect(x + 1, y + 1, 1, height - 2, HIGHLIGHT);
             pen.rect(x + 1, y + height - 3, width - 2, 2, BAND);
+        });
+    }
+
+    /** A one-pixel {@code edge} around a {@code fill}. */
+    private static IGuiTexture outlined(int fill, int edge) {
+        return painted((pen, x, y, width, height) -> {
+            pen.rect(x, y, width, height, edge);
+            pen.rect(x + 1, y + 1, width - 2, height - 2, fill);
         });
     }
 

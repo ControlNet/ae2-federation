@@ -76,7 +76,7 @@ public final class ProviderFederationFaceGameTests {
     public static void providerFederationFaceRequired(GameTestHelper helper) {
         var scene = new EndpointFederationFaceGameTests.Scene(helper);
         scene.member();
-        helper.setBlock(HUB, RouterRegistration.ROUTER.get());
+        helper.setBlock(HUB, RouterRegistration.SWITCH.get());
         helper.setBlock(NEAR, RouterRegistration.FEDERATION_CABLE.get());
         scene.endpoint(FAR, Direction.WEST);
         helper.setBlock(ROUTER_CABLE, RouterRegistration.FEDERATION_CABLE.get());

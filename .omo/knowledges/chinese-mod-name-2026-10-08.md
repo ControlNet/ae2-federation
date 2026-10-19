@@ -1,5 +1,13 @@
 # Chinese mod name and the places it shows (2026-10-08)
 
+**2026-10-15: renamed to 「AE2 联邦组网」.** Players said 「AE2 联邦」 alone did not tell them what is federated. The owner
+wanted 「AE2 + four characters」 and kept 联邦 (it reads fine once the name says networks are involved); 组网 says the
+mod builds networks. Only the mod name changed: the creative tab, `mod.ae2federation.name`, the guide index title,
+heading and first sentence, and the example pack names and descriptions. Item and concept names keep 联邦 (ME联邦线缆,
+联邦域, 联邦面). `LanguageContractTest` now rejects 「AE2 联邦」 not followed by 组网 and the unspaced 「AE2联邦」. The
+`ui.chinese-scales` scenario screenshots the creative tab (`ui-chinese-creative-tab`) and checks its name. Everything
+below describes the 2026-10-08 work; read 「AE2 联邦」 there as the name of that time.
+
 The mod's Chinese name is 「AE2 联邦」, with a space; the owner chose it after comparing AE2 addons, whose usage is
 split (ExtendedAE 「AE2扩展」, AE2 Lightning Tech 「AE2 闪电科技」, AE2WTLib 「AE2 无线终端」). AE2's own Chinese never
 puts a space between Latin letters and Chinese; the spaced name is a deliberate choice for the mod name only, and item

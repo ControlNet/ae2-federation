@@ -80,3 +80,22 @@ Pitfalls:
   machine's own buffer (1000 FE = 500 AE).
 - A `succeedWhen` step that mutates the world and then asserts repeats the mutation every tick while the assertion
   fails. Record the result when the step runs, and assert it later.
+
+## The guide's Nether outpost (`p2p.nether-outpost`, 2026-10-10)
+
+`test/p2p/QuantumP2POutpostScene` builds the guide example `examples/nether-outpost.md` in a player's order: the
+overworld side first, the nether half (bridge without singularity, tunnel, Switch, outpost terminal) once the base has
+settled, and the nether singularity last, so the Quantum link joins two halves that already exist.
+
+- **A member network must not carry its own tunnels across a Quantum Bridge built this way.** With the tunnel bus on
+  the base's own cable, the link merges the base with the nether half, which already has its own lineage: the base goes
+  `AMBIGUOUS_MERGE` ("Merge pending"), loses its confirmed id, and the outpost never joins its domain. The tests in
+  `QuantumP2PCarrier` build both halves in one tick, so the provisional-identity rule hides this.
+- A separate carrier works: the bridge, a cable and the tunnel bus on each side. A quartz fiber from the carrier's bus to
+  the base's drive gives it the base's power without joining the networks; the nether half has no energy cell. Without
+  the fiber the tunnels never come online (mutation checked with a cable anchor in its place).
+- The outpost (a terminal on a cable, no power) sees the base's storage and is powered under the Storage and ME power
+  rules. Taking the singularity out of the overworld link chamber drops both; putting it back restores both, and the
+  base stays `SETTLED`. Mutation checked: a simulated extraction keeps the iron and fails the test.
+- `guidescenecables` places each guide scene alone, so the overworld carrier cable shows 1 channel (its own tunnel); in
+  a linked build the carrier has two tunnels and AE2 would show 2.

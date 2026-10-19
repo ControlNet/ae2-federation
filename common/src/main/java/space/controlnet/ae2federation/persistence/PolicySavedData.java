@@ -82,10 +82,7 @@ public final class PolicySavedData extends SavedData {
 
     /** Reads saved rules; public so a GameTest can load a world saved under older rules. */
     public static PolicySavedData load(CompoundTag tag, HolderLookup.Provider registries) {
-        var data = new PolicySavedData(PolicyStore.restore(PolicyStateCodec.load(tag)));
-        // Crafting rules saved before they needed storage gain it, so a loaded world never holds one without it.
-        if (data.store.requireStorageForCrafting() > 0) data.setDirty();
-        return data;
+        return new PolicySavedData(PolicyStore.restore(PolicyStateCodec.load(tag)));
     }
 
     private void markAccepted(PolicyMutationResult result) {

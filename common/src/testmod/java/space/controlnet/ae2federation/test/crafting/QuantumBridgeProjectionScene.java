@@ -102,7 +102,7 @@ public final class QuantumBridgeProjectionScene implements AutoCloseable {
         }
     }
 
-    /** The consumer uses the provider's crafting, with the storage rule crafting needs, in one edit. */
+    /** The consumer uses the provider's crafting and its storage, in one edit. */
     public void enableRules() {
         var policies = PolicyService.get(helper.getLevel());
         var result = policies.editAll(List.of(

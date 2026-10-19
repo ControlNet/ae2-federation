@@ -1,7 +1,7 @@
 {
   "name": "useless-mod-addons",
   "group": "addons",
-  "description": "Useless Mod beside every addon in addons-all plus AdvancedAE, whose crafting CPUs and ExtendedAE's Assembler Matrix it mixes into",
+  "description": "Useless Mod beside the addons of addons-all as of 2026-10-08 (Neo ECO 21.2.0, which keeps the requested-amount fallback tested) plus AdvancedAE, whose crafting CPUs and ExtendedAE's Assembler Matrix it mixes into",
   "neoforge": "21.1.250",
   "mods": [
     "ae2@19.2.18",

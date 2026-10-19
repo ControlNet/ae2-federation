@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.ToIntFunction;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram.Capability;
+import space.controlnet.ae2federation.client.guide.TopologyDiagram.Domain;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram.Endpoint;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram.Network;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram.Rule;
+import space.controlnet.ae2federation.client.policy.DomainClusterLayout;
 import space.controlnet.ae2federation.client.policy.EndpointNodeLayout;
 import space.controlnet.ae2federation.client.policy.TopologyLink;
 import space.controlnet.ae2federation.client.policy.WireCurve;
@@ -18,10 +20,11 @@ import space.controlnet.ae2federation.client.policy.WireCurve;
  * a link per pair that has a rule or shares energy, the energy chip on the link and, beside it, one label per
  * direction with a chip per capability. As on the topology screen, a direction's label points at the network that
  * uses it, and Processing Endpoints are small nodes wired to the network that maps them, placed by the screen's own
- * {@link EndpointNodeLayout}. The legend sits under everything.
+ * {@link EndpointNodeLayout}. A build that spans domains draws each on a plate around its networks, its name above,
+ * as the screen's related scope does ({@link DomainClusterLayout}). The legend sits under everything.
  */
 public record TopologyDiagramLayout(int width, int height, List<Card> cards, List<Link> links,
-        List<EndpointNode> endpoints, int legendY) {
+        List<EndpointNode> endpoints, List<Plate> plates, int legendY) {
     static final int PAD = 8;
     static final int CHIP_HEIGHT = 11;
     static final int CHIP_GAP = 3;
@@ -38,6 +41,10 @@ public record TopologyDiagramLayout(int width, int height, List<Card> cards, Lis
     private static final int ROW_GAP = 40;
     private static final int TITLE_HEIGHT = 13;
     private static final int STRIP = 2;
+    /** A domain plate's margin around its cards, and a nested domain's, which sits inside its host's. */
+    static final int PLATE_PADDING = 6;
+    static final int NESTED_PADDING = 3;
+    static final int NAME_HEIGHT = 10;
 
     public record Rect(int x, int y, int width, int height) {
         public boolean contains(float px, float py) {
@@ -54,6 +61,14 @@ public record TopologyDiagramLayout(int width, int height, List<Card> cards, Lis
     }
 
     public record Card(Network network, Rect rect) {
+    }
+
+    /** A domain's plate: a rounded hull around its cards, and where its name stands above it. */
+    public record Plate(Domain domain, List<float[]> outline, Rect name) {
+        Plate moved(int dx, int dy) {
+            return new Plate(domain, outline.stream().map(point -> new float[] {point[0] + dx, point[1] + dy}).toList(),
+                    name.moved(dx, dy));
+        }
     }
 
     /** A Processing Endpoint's node, and its wire from the card of the network that maps it. */
@@ -99,17 +114,19 @@ public record TopologyDiagramLayout(int width, int height, List<Card> cards, Lis
             for (var detail : network.details()) wanted = Math.max(wanted, textWidth.applyAsInt(detail) + 8);
         }
         int cardWidth = Math.min(wanted, MAX_CARD_WIDTH);
+        // Plates reach past the outer cards; keep them on the canvas.
+        int inset = PAD + (diagram.domains().isEmpty() ? 0 : PLATE_PADDING);
         if (columns > 1) {
-            int room = (availableWidth - 2 * PAD - (columns - 1) * MIN_GAP) / columns;
+            int room = (availableWidth - 2 * inset - (columns - 1) * MIN_GAP) / columns;
             cardWidth = Math.max(MIN_SQUEEZED_CARD_WIDTH, Math.min(cardWidth, room));
         } else {
-            cardWidth = Math.max(MIN_SQUEEZED_CARD_WIDTH, Math.min(cardWidth, availableWidth - 2 * PAD));
+            cardWidth = Math.max(MIN_SQUEEZED_CARD_WIDTH, Math.min(cardWidth, availableWidth - 2 * inset));
         }
         int gap = columns > 1 ? Math.max(MIN_GAP, Math.min(MAX_GAP,
-                (availableWidth - 2 * PAD - columns * cardWidth) / (columns - 1))) : 0;
+                (availableWidth - 2 * inset - columns * cardWidth) / (columns - 1))) : 0;
         int cardHeight = TITLE_HEIGHT + details * LINE_HEIGHT + STRIP + 2;
         int gridWidth = columns * cardWidth + (columns - 1) * gap;
-        int left = Math.max(PAD, (availableWidth - gridWidth) / 2);
+        int left = Math.max(inset, (availableWidth - gridWidth) / 2);
 
         var cards = new LinkedHashMap<String, Card>();
         for (var network : diagram.networks()) {
@@ -167,9 +184,15 @@ public record TopologyDiagramLayout(int width, int height, List<Card> cards, Lis
             links.add(new Link(from.network(), to.network(), curve, energyChip, List.copyOf(labels)));
         }
 
-        // Labels and Endpoints may stand above the top row or below the bottom one: shift everything so they fit.
+        var plates = plates(diagram, cards, cardWidth, cardHeight, textWidth);
+
+        // Labels, Endpoints and plates may stand above the top row or below the bottom one: shift everything so they fit.
         int top = 0;
         int bottom = rows * cardHeight + (rows - 1) * ROW_GAP;
+        for (var plate : plates) {
+            top = Math.min(top, plate.name().y());
+            for (var point : plate.outline()) bottom = Math.max(bottom, (int) Math.ceil(point[1]));
+        }
         for (var link : links) {
             for (var label : link.labels()) {
                 top = Math.min(top, label.rect().y());
@@ -190,9 +213,42 @@ public record TopologyDiagramLayout(int width, int height, List<Card> cards, Lis
                                 .toList())).toList())).toList();
         var placedEndpoints = endpoints.stream().map(node -> new EndpointNode(node.endpoint(), node.rect().moved(0, shift),
                 node.link().translated(0, shift))).toList();
+        var placedPlates = plates.stream().map(plate -> plate.moved(0, shift)).toList();
         int legendY = bottom + shift + PAD;
         return new TopologyDiagramLayout(availableWidth, legendY + LEGEND_HEIGHT + PAD / 2, placedCards, placedLinks,
-                placedEndpoints, legendY);
+                placedEndpoints, placedPlates, legendY);
+    }
+
+    /**
+     * Each domain's plate around its cards, in the page's order; a domain whose networks all belong to another has the
+     * smaller plate inside that one's. A name that would cover an earlier one moves along to its right.
+     */
+    private static List<Plate> plates(TopologyDiagram diagram, Map<String, Card> cards, int cardWidth, int cardHeight,
+            ToIntFunction<String> textWidth) {
+        if (diagram.domains().isEmpty()) return List.of();
+        var opened = diagram.domains().stream().filter(Domain::opened).map(Domain::key).findFirst().orElse("");
+        var clusterCards = diagram.networks().stream().map(network -> new DomainClusterLayout.Card(network.key(),
+                diagram.domains().stream().filter(domain -> domain.networks().contains(network.key())).map(Domain::key)
+                        .collect(java.util.stream.Collectors.toSet()))).toList();
+        var hosts = DomainClusterLayout.hosts(clusterCards, opened);
+        var plates = new ArrayList<Plate>();
+        for (var domain : diagram.domains()) {
+            var corners = domain.networks().stream().map(cards::get)
+                    .map(card -> new float[] {card.rect().x(), card.rect().y()}).toList();
+            int padding = hosts.containsKey(domain.key()) ? NESTED_PADDING : PLATE_PADDING;
+            var outline = DomainClusterLayout.plate(corners, cardWidth, cardHeight, padding);
+            float plateTop = (float) outline.stream().mapToDouble(point -> point[1]).min().orElse(0);
+            float cardLeft = (float) outline.stream().filter(point -> point[1] <= plateTop + 1).mapToDouble(point -> point[0])
+                    .min().orElse(0);
+            var name = new Rect(Math.round(cardLeft - padding + 2), Math.round(plateTop) - NAME_HEIGHT,
+                    textWidth.applyAsInt(domain.label()), NAME_HEIGHT);
+            for (var earlier : plates) {
+                if (name.intersects(earlier.name())) name = new Rect(earlier.name().x() + earlier.name().width() + 6,
+                        name.y(), name.width(), name.height());
+            }
+            plates.add(new Plate(domain, outline, name));
+        }
+        return List.copyOf(plates);
     }
 
     /**

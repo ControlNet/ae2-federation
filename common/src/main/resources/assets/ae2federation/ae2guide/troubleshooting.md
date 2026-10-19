@@ -19,11 +19,16 @@ reason.
 * **"Both sides connect to the same ME network."** The Bridge's two sides are already one network, for example
   through another ME cable. Federation only connects separate networks.
 * **"The outer attachment does not support a Federation connection."** The Bridge's outer side touches a block with
-  no ME node, such as Federation Cable. Bridges join ME networks directly; use a Router for Federation Cable.
-* **A Router face does nothing.** A face counts as an ME face when an ME cable or device touches it, and as a
-  Federation face when Federation Cable, another Router, a Pattern Provider front or an Endpoint front touches it. Any
-  other block leaves the face unused.
-* **"No domain with two networks."** The block you opened does not reach two networks yet. Connect a Router or
+  no ME node, such as Federation Cable. Bridges join ME networks directly; use a Switch for Federation Cable.
+* **A Switch face does nothing.** A face counts as an ME face when an ME cable or device touches it, and as a
+  Federation face when Federation Cable, a Router, another Switch, a Pattern Provider front or an Endpoint front
+  touches it. Any other block leaves the face unused.
+* **A Router does not join my network.** Routers attach no ME networks; put a Switch there instead.
+* **"This ME Federation Router is not formed and links nothing: ..."** Router (or Switch) blocks that touch each other must fill a
+  solid box with no edge longer than 8 blocks, and no block of the same type may touch the box from outside. Until
+  then all of their faces stay disconnected. Complete the box or take the extra blocks away; see
+  <ItemLink id="ae2federation:router" />.
+* **"No domain with two networks."** The block you opened does not reach two networks yet. Connect a Switch or
   Bridge, then open it again.
 
 ## Rules
@@ -32,11 +37,9 @@ reason.
   networks are loaded and powered, by power of their own or through ME power.
 * **"One of the two networks is not loaded, or its identity is not settled yet."** Load the other network's chunks,
   or wait until it has finished starting.
-* **"This direction's Storage rule is off."** Crafting takes the other network's materials through storage; switch
-  that direction's Storage on.
 * **"The other network has no storage it can share."** Add storage to the other network.
 * **"No Federation node on one of the two networks can join the shared energy pool."** Shared ME power needs a
-  Router face or a Bridge on each network.
+  Switch face or a Bridge on each network.
 * **"Too many storage links in this world to work out."** Remove some storage rules or links.
 * **"Merge pending": two established networks were joined.** Names and cross-network rules pause, because neither
   side is picked automatically. Disconnect them to recover.
@@ -45,7 +48,7 @@ reason.
 
 ## Processing
 
-* **"This Provider's front is not on a Federation Cable or Router."** Turn the Provider (wrench) or replace it so its
+* **"This Provider's front is not on a Federation Cable, Switch or Router."** Turn the Provider (wrench) or replace it so its
   front touches the Federation side.
 * **"... belongs to Provider ... Release it there first."** Another Provider owns this Endpoint. Release it there.
 * **"... is in local mode and cannot take federated patterns."** A native pattern provider sits against the

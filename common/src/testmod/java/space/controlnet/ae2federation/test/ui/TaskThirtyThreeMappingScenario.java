@@ -16,6 +16,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
     @Override
     public void configure(ScenarioOptions options) {
         TaskThirtyThreeScenarioSupport.configure(options, 3);
+        // The statistics showcase waits through most of two minutes of traffic on top of the other pages.
+        options.scenarioTimeoutMs(360_000);
     }
 
     @Override
@@ -402,6 +404,11 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .server("showcase: map patterns many-to-many", TaskThirtyThreeShowcaseFixture::mapDevices)
                 .waitUntilServer("showcase: mappings installed", TaskThirtyThreeShowcaseFixture::mapped)
                 .waitUntilServer("showcase: the domain holds all eight networks", TaskThirtyThreeShowcaseFixture::domainComplete)
+                .server("showcase: a Beam Converter on the middle cable", TaskThirtyThreeShowcaseFixture::placeConverter)
+                .serverTicks(4)
+                .waitUntilServer("showcase: the converter joins the domain, which now needs power",
+                        TaskThirtyThreeShowcaseFixture::converterJoined)
+                .waitUntilServer("showcase: the domain runs on its converter", TaskThirtyThreeShowcaseFixture::converterRuns)
                 // The domain gained members, so the open workspace is out of date: reopen it, as a player would.
                 .closeScreen()
                 .server("showcase: open the Router workspace", TaskThirtyThreeWorldFixture::openRouter)
@@ -421,6 +428,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                                 (System.nanoTime() - FRAME_TIMING[0]) / PERF_FRAMES))
                 .check("showcase: five Endpoint nodes, four beside the network that maps them", context ->
                         context.all(".graph-node-endpoint").size() == 5)
+                .waitUntil("showcase: the corner gauge shows the converter's buffer, running", context ->
+                        context.el("#graph_power").isVisible() && context.el("#graph_power_value").text().matches("\\d+%"))
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-topology")
                 .check("showcase: quartz beads drift along the shared-energy links", context ->
@@ -463,6 +472,68 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 })
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-processing-other")
+                // The statistics page over real traffic: the Storage rules move items for a while, then the page shows
+                // the last two minutes. The routes and amounts are test-world activity, as the names and rules are.
+                .server("showcase: start storage traffic", TaskThirtyThreeShowcaseFixture::startTraffic)
+                .timeoutMs(120_000)
+                .waitUntilServer("showcase: storage traffic for most of two minutes", TaskThirtyThreeShowcaseFixture::traffic)
+                .click("#tab_statistics").frames(2)
+                .click("#stats_range_SECONDS")
+                .waitUntil("showcase: the statistics page shows the server's figures for all eight networks", context ->
+                        space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownNetworks() == 8)
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-statistics")
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-hover")
+                .click("#stats_card_stored").frames(2)
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-storage")
+                .click("#stats_card_moved")
+                .step("showcase: show Main Base only", context -> showcaseStatisticsNetwork(context, "Main Base"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-network")
+                // Each metric with what it has below its chart.
+                .click("#stats_by_item")
+                .waitUntil("showcase: what moved by item arrives", context -> statisticsFor("moved;ae2:i"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-moved-network-items")
+                .step("showcase: show all networks", context -> showcaseStatisticsNetwork(context, "All networks"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-moved-items")
+                .click("#stats_card_power")
+                .waitUntil("showcase: power figures arrive", context -> statisticsFor("power;"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-power")
+                .click("#stats_card_fedpower")
+                .waitUntil("showcase: Federation power figures arrive", context -> statisticsFor("fedpower;"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-fedpower")
+                .click("#stats_card_crafting")
+                .waitUntil("showcase: crafting figures arrive", context -> statisticsFor("crafting;"))
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-statistics-crafting")
+                .click("#stats_card_cpus")
+                .waitUntil("showcase: CPU figures arrive", context -> statisticsFor("cpus;"))
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-statistics-cpus")
+                .click("#stats_card_channels")
+                .waitUntil("showcase: channel figures arrive", context -> statisticsFor("channels;"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-channels")
+                .click("#stats_card_stored")
+                .waitUntil("showcase: stock by item arrives", context -> statisticsFor("stock;ae2:i"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-stock-items")
+                .typeInto("#stats_search", "ingot")
+                .waitUntil("showcase: the keys to search arrive", context ->
+                        space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownRequest().startsWith("stock;ae2:i;")
+                                && !space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownRequest().endsWith(";0"))
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-statistics-stock-search")
+                .typeInto("#stats_search", "").blur()
+                .click("#stats_by_network").frames(3)
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-stock-networks")
                 .closeScreen()
                 // The host's own Provider screen in the fuller domain: its two Endpoints, two that other Providers own
                 // (read-only) and one still free.
@@ -506,6 +577,70 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .hover("#provider_title").frames(5)
                 .screenshot("ui-showcase-provider-other")
                 .closeScreen();
+        // The guide's Statistics page shows this screen in each language.
+        guideStatisticsShot(scenario, "guide-statistics-en_us");
+        TaskThirtyThreeScenarioSupport.selectLanguage(scenario, "zh_cn")
+                .teardown("restore English after the Chinese guide shot", TaskThirtyThreeScenarioSupport::restoreEnglish);
+        guideStatisticsShot(scenario, "guide-statistics-zh_cn");
+        TaskThirtyThreeScenarioSupport.selectLanguage(scenario, "en_us");
+        // Without its converter the domain cannot pay its use and stops: the gauge reads empty and red.
+        scenario.server("showcase: remove the Beam Converter", TaskThirtyThreeShowcaseFixture::removeConverter)
+                .waitUntilServer("showcase: the domain stops without power", TaskThirtyThreeShowcaseFixture::domainUnpowered)
+                .server("showcase: open the stopped Router workspace", TaskThirtyThreeWorldFixture::openRouter)
+                .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
+                .awaitModularUI().awaitElement("#domain_graph")
+                .waitUntil("showcase: the corner gauge reads empty", context ->
+                        context.el("#graph_power").isVisible() && context.el("#graph_power_value").text().equals("0%"))
+                .click("#graph_fit").frames(3)
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-topology-unpowered")
+                .closeScreen();
+        // With the rule off the topology draws nothing of power, and Federation power's card cannot be opened.
+        scenario.server("showcase: turn the power rule off", TaskThirtyThreeShowcaseFixture::powerOff)
+                .server("showcase: open the Router workspace without the power rule", TaskThirtyThreeWorldFixture::openRouter)
+                .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
+                .awaitModularUI().awaitElement("#domain_graph")
+                .waitUntil("showcase: no corner gauge without the power rule", context -> !context.el("#graph_power").isVisible())
+                .click("#tab_statistics").frames(2)
+                .click("#stats_card_power")
+                .waitUntil("showcase: power figures arrive without the power rule", context -> statisticsFor("power;"))
+                .click("#stats_card_fedpower").frames(10)
+                .step("showcase: Federation power's card does not open", context -> {
+                    if (!statisticsFor("power;")) {
+                        throw new IllegalStateException("Federation power opened without the rule: "
+                                + space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownRequest());
+                    }
+                })
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-statistics-power-off")
+                .closeScreen();
+    }
+
+    /**
+     * The statistics page as the guide shows it: stored items by item over the last two minutes, the chart hovered.
+     * GuideME draws an image at a quarter of its pixels per GUI pixel, without smoothing, so the shot is taken in a
+     * window twice as large: the screen keeps its layout at four pixels per GUI pixel, and the guide shows it at about
+     * its in-game size. The run's Xvfb screen must hold 3196x1916; 3200x1920 would give scale 5.
+     */
+    private static void guideStatisticsShot(ScenarioBuilder scenario, String label) {
+        scenario.step("guide: a window twice as large", context -> windowSize(context, 3196, 1916)).frames(5)
+                .server("guide: open the Router workspace", TaskThirtyThreeWorldFixture::openRouter)
+                .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
+                .awaitModularUI().awaitElement("#domain_graph")
+                .click("#tab_statistics").frames(2)
+                .click("#stats_range_SECONDS")
+                .click("#stats_card_stored").frames(2)
+                .click("#stats_by_item")
+                .waitUntil("guide: stock by item for all eight networks", context -> statisticsFor("stock;ae2:i")
+                        && space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownNetworks() == 8)
+                .hover("#stats_chart").frames(5)
+                .screenshot(label)
+                .closeScreen()
+                .step("guide: the usual window again", context -> windowSize(context, 1600, 960)).frames(5);
+    }
+
+    private static void windowSize(com.lowdragmc.lowdraglib2.uitest.TestContext context, int width, int height) {
+        org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), width, height);
     }
 
     /** The Provider screen's Endpoint cards counted by claim, as {@code claim-count} in claim order. */
@@ -530,6 +665,22 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         .anyMatch(text -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) text).getText().getString().equals(name)))
                 .findFirst().orElseThrow(() -> new IllegalStateException("No card named " + name));
         var bounds = card.bounds();
+        context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+        context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
+    }
+
+    /** Whether the statistics page's last figures were for {@code prefix} ("metric;kind"). */
+    private static boolean statisticsFor(String prefix) {
+        return space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownRequest().startsWith(prefix);
+    }
+
+    /** Clicks the statistics page's chip of the network named {@code name}. */
+    private static void showcaseStatisticsNetwork(com.lowdragmc.lowdraglib2.uitest.TestContext context, String name) {
+        var chip = context.all(".network-chip").stream()
+                .filter(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.elements.Button.class).text.getText()
+                        .getString().endsWith(name))
+                .findFirst().orElseThrow(() -> new IllegalStateException("No statistics chip for " + name));
+        var bounds = chip.bounds();
         context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
         context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
     }

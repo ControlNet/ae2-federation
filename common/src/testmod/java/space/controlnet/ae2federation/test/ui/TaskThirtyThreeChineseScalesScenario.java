@@ -37,6 +37,31 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                     if (!reload.isDone()) context.repeat("English resource reload");
                     else reload.join();
                 });
+        // The creative tab names the mod in Chinese: 「AE2 联邦组网」.
+        scenario.server("creative mode for the tab", context -> {
+                    context.put("previousGameMode", context.player().gameMode.getGameModeForPlayer().getName());
+                    context.player().setGameMode(net.minecraft.world.level.GameType.CREATIVE);
+                })
+                .waitUntil("creative mode reaches the client", context -> context.mc().gameMode.hasInfiniteItems())
+                .step("open the mod's creative tab", context -> {
+                    try {
+                        var selected = net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen.class
+                                .getDeclaredField("selectedTab");
+                        selected.setAccessible(true);
+                        selected.set(null, space.controlnet.ae2federation.FederationCreativeTab.MAIN.get());
+                    } catch (ReflectiveOperationException e) {
+                        throw new IllegalStateException(e);
+                    }
+                    var player = context.mc().player;
+                    context.mc().setScreen(new net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen(
+                            player, player.connection.enabledFeatures(), false));
+                })
+                .frames(5).screenshot("ui-chinese-creative-tab")
+                .check("creative tab is named 「AE2 联邦组网」", context -> space.controlnet.ae2federation.FederationCreativeTab
+                        .MAIN.get().getDisplayName().getString().equals("AE2 联邦组网"))
+                .step("close the creative tab", context -> context.mc().setScreen(null))
+                .server("restore the game mode", context -> context.player().setGameMode(
+                        net.minecraft.world.level.GameType.byName(context.get("previousGameMode"))));
         TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
                 .waitForText("#domain_title", "ME 联邦域")
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
@@ -45,6 +70,11 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-pair-editor")
                 .typeInto("#graph_search", "网络")
                 .check("localized network search matches", context -> !context.el("#graph_search_empty").isVisible())
+                // 网络 by its pinyin: matches while JustEnoughCharacters is installed, and only then.
+                .typeInto("#graph_search", "wangluo").frames(3).screenshot("ui-chinese-pinyin-search")
+                .check("pinyin search matches only with JustEnoughCharacters", context ->
+                        context.el("#graph_search_empty").isVisible()
+                                != net.neoforged.fml.ModList.get().isLoaded("jecharacters"))
                 .typeInto("#graph_search", "").blur()
                 .step("select the Provider host network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("net.providerHost")))

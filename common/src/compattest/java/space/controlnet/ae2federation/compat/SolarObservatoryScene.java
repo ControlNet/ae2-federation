@@ -79,7 +79,7 @@ final class SolarObservatoryScene implements AutoCloseable {
             }
             case 1 -> {
                 helper.assertTrue(settled(), "Waiting for every network's identity");
-                routers.placeRouter(center);
+                routers.placeSwitch(center);
                 stage = 2;
                 helper.fail("Placed the Router");
             }

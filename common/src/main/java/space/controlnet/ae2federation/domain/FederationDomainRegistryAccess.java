@@ -40,7 +40,8 @@ public final class FederationDomainRegistryAccess {
 
     private static synchronized FederationDomainRegistry getLocked(MinecraftServer server) {
         var registry = REGISTRIES.computeIfAbsent(server, ignored -> {
-            var created = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+            var created = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard(),
+                    space.controlnet.ae2federation.persistence.FederationDomainSavedData.get(server).records());
             AuthorityEpoch.advance();
             // Shared energy pools draw without asking Federation, so a topology change dissolves them at once.
             created.onMutation(space.controlnet.ae2federation.energy.EnergySharingService::topologyChangedAll);
@@ -63,11 +64,15 @@ public final class FederationDomainRegistryAccess {
         last = null;
         AuthorityEpoch.advance();
         REGISTRIES.remove(server);
+        CableCapacity.clear();
     }
 
-    public static synchronized void removeNodeIfPresent(ServerLevel level, FederationDomainNodeId nodeId) {
+    /** Removes a node that unloaded, or one whose block was broken, which then no longer anchors its domain's id. */
+    public static synchronized void removeNodeIfPresent(ServerLevel level, FederationDomainNodeId nodeId, boolean broken) {
         var registry = REGISTRIES.get(level.getServer());
-        if (registry != null) {
+        if (registry != null && broken) {
+            registry.removeBrokenNode(nodeId);
+        } else if (registry != null) {
             registry.removeNode(nodeId);
         }
     }

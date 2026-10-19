@@ -94,6 +94,7 @@ repositories {
             includeModule('maven.modrinth', '1Ro7m06l')
             includeModule('maven.modrinth', 'XExdLWCQ')
             includeModule('maven.modrinth', 'rZwE3agR')
+            includeModule('maven.modrinth', 'jade')
         }
     }
     maven {
@@ -159,6 +160,21 @@ def prepareLogoClientOptions = tasks.register('prepareLogoClientOptions') {
         def file = optionsFile.asFile
         file.parentFile.mkdirs()
         file.setText('onboardAccessibility:false\n', StandardCharsets.UTF_8.name())
+    }
+}
+
+// The formed Router/Switch scene: never pause when the (virtual) window loses focus, and keep the default smooth
+// lighting and mipmaps the screenshots are judged with.
+def prepareStructureSceneClientOptions = tasks.register('prepareStructureSceneClientOptions') {
+    def optionsFile = layout.projectDirectory.file('run-structure-scene/options.txt')
+    outputs.file(optionsFile)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def file = optionsFile.asFile
+        file.parentFile.mkdirs()
+        file.setText('onboardAccessibility:false\npauseOnLostFocus:false\nrenderDistance:8\nfov:0.0\n',
+                StandardCharsets.UTF_8.name())
     }
 }
 
@@ -295,6 +311,26 @@ neoForge {
             logLevel = org.slf4j.event.Level.INFO
             taskBefore(prepareLogoClientOptions)
         }
+        // Screenshots formed Router and Switch bodies in a flat world and quits (testmod DeviceStructureScene). A second
+        // run reopens the saved world. -PstructureSceneOut=<dir> picks the output folder.
+        structureSceneClient {
+            client()
+            gameDirectory = project.file('run-structure-scene')
+            sourceSet = testmod
+            programArguments.addAll('--width', '1600', '--height', '960')
+            systemProperty('ae2federation.structureScene.out', rootProject.file(providers.gradleProperty('structureSceneOut')
+                    .getOrElse('build/multiblock-devices/ingame')).absolutePath)
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareStructureSceneClientOptions)
+        }
+        beamPreviewClient {
+            client()
+            gameDirectory = project.file('run-logo')
+            sourceSet = testmod
+            systemProperty('ae2federation.beamPreview.out', layout.buildDirectory.dir('beam-preview').get().asFile.absolutePath)
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareLogoClientOptions)
+        }
         gameTestServer {
             type = 'gameTestServer'
             gameDirectory = project.file('run-gametest')
@@ -322,6 +358,8 @@ neoForge {
             systemProperty('ae2federation.policyStateFile', providers.gradleProperty('federationPolicyStateFile').getOrElse(''))
             systemProperty('ae2federation.craftingPhase', providers.gradleProperty('federationCraftingPhase').getOrElse(''))
             systemProperty('ae2federation.craftingStateFile', providers.gradleProperty('federationCraftingStateFile').getOrElse(''))
+            systemProperty('ae2federation.domainIdPhase', providers.gradleProperty('federationDomainIdPhase').getOrElse(''))
+            systemProperty('ae2federation.domainIdStateFile', providers.gradleProperty('federationDomainIdStateFile').getOrElse(''))
             logLevel = org.slf4j.event.Level.INFO
         }
         appfluxGameTestServer {
@@ -456,6 +494,11 @@ neoForge {
 
 configurations {
     runtimeClasspath.extendsFrom(localRuntime)
+    jadeApi {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Jade, compiled against by the optional Jade plugin only; on no run or test classpath.'
+    }
     appliedFluxCompatibility {
         canBeConsumed = false
         canBeResolved = true
@@ -482,11 +525,16 @@ configurations {
     gtceuTestImplementation.extendsFrom(gtceuCompatibility)
 }
 
+sourceSets.main.compileClasspath += configurations.jadeApi
+
 dependencies {
     implementation("org.appliedenergistics:appliedenergistics2:${ae2_version}")
     implementation("com.lowdragmc.ldlib2:ldlib2-neoforge-${minecraft_version}:${ldlib2_version}:all")
     // AE2's guide; our topology tag compiles against the oldest GuideME that AE2 19.2.x accepts.
     compileOnly('org.appliedenergistics:guideme:21.1.1')
+    // Jade 15.10.6 for 1.21.1 NeoForge (Modrinth version eYz2YBGT); optional, only its plugin class refers to it.
+    // Not compileOnly: test source sets run with the main compile classpath, and a loaded Jade breaks fake players.
+    jadeApi('maven.modrinth:jade:eYz2YBGT')
     testImplementation(platform('org.junit:junit-bom:5.10.1'))
     testImplementation('org.junit.jupiter:junit-jupiter')
     testRuntimeOnly('org.junit.platform:junit-platform-launcher')
@@ -623,7 +671,14 @@ def verifyReleaseArchive = { File archive, Boolean sources ->
             'UIScenario', 'ae2federation.testId', 'ae2federation_test', 'RegisterCommandsEvent']
     def leaked = entries.findAll { name, bytes ->
         def text = new String(bytes, sources ? StandardCharsets.UTF_8 : StandardCharsets.ISO_8859_1)
-        forbiddenPaths.any(name::contains) || forbiddenSymbols.any(text::contains)
+        forbiddenPaths.any(name::contains) || forbiddenSymbols.any { symbol ->
+            // Reviewed production recovery commands are intentional. All other command registrations remain forbidden.
+            def recoveryRegistration = symbol == 'RegisterCommandsEvent' && [
+                    'space/controlnet/ae2federation/crafting/projection/ReturnRecoveryCommands',
+                    'space/controlnet/ae2federation/neoforge/NeoForgeEntrypoint'
+            ].any { type -> name == type + '.class' || name == type + '.java' }
+            text.contains(symbol) && !recoveryRegistration
+        }
     }.keySet().sort()
     if (!leaked.isEmpty()) {
         throw new GradleException("Test, scenario, instrumentation, or debug registration leaked into ${archive}: ${leaked}")

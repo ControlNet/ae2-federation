@@ -36,6 +36,5 @@ JAR to the client's `mods`, and drive the server console through a FIFO read wit
 
 ## Not covered
 
-Iris with shader packs (LDLib2 has an Iris path; `entityTranslucentEmissive` flow and the highlight's no-depth lines
-are the parts to watch), Embeddium (Sodium declares it incompatible), real GPU frame times, and other Sodium
-add-ons.
+Embeddium (Sodium declares it incompatible), real GPU frame times, and other Sodium add-ons. Iris with shader packs
+was checked on 2026-10-14: [Iris and shader packs](iris-shader-compatibility-2026-10-14.md).

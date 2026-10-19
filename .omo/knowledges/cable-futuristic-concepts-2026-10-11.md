@@ -1,0 +1,10 @@
+# Eight futuristic internal-beam concepts (2026-10-11)
+
+- User requested 5–10 bolder, more futuristic designs after the first texture study. The previously established fixed-shell constraint remains in force.
+- Implemented eight real geometric concepts E–L in `tools/blender/future_beams.py`: Phase Helix, Photon Gates, Crystal Train, Ion Arc, Quantum Lattice, Rift Ribbon, Orbital Nodes, Vector Blades.
+- `render_future_beams.py` replaces only internal flow objects in separate scenes. All original shells, their materials and textures, machine objects, lighting and world are shared and checked by identity/digest. Emission strength is 1 for all candidates. Actual production assets are hash-checked before/after.
+- New beam primitives are generated meshes with deterministic time-dependent coordinates and a shared palette; they are not drop-in texture packs. A future Java integration must implement geometry/color/animation generation, connection transitions and performance controls. Do not claim these were tested in Minecraft.
+- Saved ordinary Blender shape-key animation uses 32 samples over 3.2 seconds (10 fps preview), with no trusted-script requirement. Static wide/closeup views use the same frame/cameras for every concept. Generated media, raw sample meshes and blend live in ignored `tools/blender/build/future-beams/`.
+- Explicitly keep all outer-shell and machine design fixed in future work. The concept demo uses the current main run and T branch, not a validated implementation for every arbitrary network topology.
+- Verification completed: all 14 stdlib unit tests pass; the saved Blender study passes `verify_future_beams.py` with `FUTURE_VERIFY_OK`, including shared-shell identity/digests, unchanged asset hashes, evaluated animated geometry and 32 rendered frames per concept. The composed MP4 is 1440×1352, 32 frames at 10 fps (3.2 seconds).
+- Visual review favors E (double helix), F (photon gates), and K (orbital nodes) for distinct, legible futuristic structures. I is deliberately denser, H more energetic, and L emphasizes direction. These are aesthetic judgments from the Blender previews, not Minecraft performance conclusions.

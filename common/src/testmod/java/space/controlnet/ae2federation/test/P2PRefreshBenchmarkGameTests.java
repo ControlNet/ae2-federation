@@ -63,6 +63,77 @@ public final class P2PRefreshBenchmarkGameTests {
         run(helper, 31);
     }
 
+    /** Two independently paired groups share a carrier; moving an output invalidates both old and new groups. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 600)
+    public static void p2pRefreshIndependentGroups(GameTestHelper helper) {
+        var carrier = TunnelCarrier.withController(helper, new BlockPos(0, 4, 2), 6);
+        int[] stage = {0};
+        long[] changedAt = {0};
+        helper.succeedWhen(() -> {
+            long now = helper.getLevel().getGameTime();
+            if (stage[0] == 0) {
+                helper.assertTrue(carrier.online(0, 1, 2, 3, 4, 5), "Waiting for six real channels");
+                carrier.pair(0, 1, 2);
+                carrier.pair(3, 4, 5);
+                stage[0] = 1;
+                changedAt[0] = now;
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(carrier.domainOf(0, 1, 2) && carrier.domainOf(3, 4, 5), "Independent domains must form");
+                helper.assertTrue(now - changedAt[0] >= SETTLE_TICKS, "Waiting for initial callbacks");
+                P2PRefreshDiagnostics.reset();
+                carrier.tunnels().forEach(tunnel -> tunnel.onTunnelNetworkChange());
+                stage[0] = 2;
+                changedAt[0] = now;
+                helper.fail("Refresh both groups in the same tick");
+            }
+            if (stage[0] == 2) {
+                helper.assertTrue(now > changedAt[0] + 1, "Waiting for the server drain");
+                var counts = P2PRefreshDiagnostics.snapshot();
+                helper.assertValueEqual(counts.requests(), 6L, "Six native callbacks");
+                helper.assertValueEqual(counts.queued(), 1L, "Both groups share one queued drain");
+                helper.assertValueEqual(counts.groups(), 2L, "Each independent group is built exactly once");
+                helper.assertValueEqual(counts.members(), 6L, "Each member is enumerated once");
+                helper.assertValueEqual(counts.publishes(), 6L, "Every affected node is published");
+                LOGGER.info("AE2F_P2P_TWO_GROUPS {}", counts);
+                carrier.pair(3, 2);
+                stage[0] = 3;
+                helper.fail("Move output two to the other frequency");
+            }
+            helper.assertTrue(carrier.domainOf(0, 1), "Old frequency loses the moved output");
+            helper.assertTrue(carrier.domainOf(3, 4, 5, 2), "New frequency gains exactly the moved output");
+            PolicyEvidence.write("p2prefreshindependentgroups", 9,
+                    Map.of("callbacks", "6", "queued", "1", "groups", "2", "members", "6", "frequencyMove", "both updated"));
+        });
+    }
+
+    /** Frequency zero means unpaired, even when native callbacks coalesce on the same carrier Grid. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 600)
+    public static void p2pUnpairedStaySeparate(GameTestHelper helper) {
+        var carrier = TunnelCarrier.withController(helper, new BlockPos(0, 4, 2), 3);
+        int[] stage = {0};
+        long[] refreshed = {0};
+        helper.succeedWhen(() -> {
+            helper.assertTrue(carrier.online(0, 1, 2), "Waiting for three powered native channels");
+            for (var tunnel : carrier.tunnels()) {
+                helper.assertValueEqual(tunnel.getFrequency(), (short) 0, "No memory card has paired these tunnels");
+            }
+            if (stage[0] == 0) {
+                carrier.tunnels().forEach(tunnel -> tunnel.onTunnelNetworkChange());
+                refreshed[0] = helper.getLevel().getGameTime();
+                stage[0] = 1;
+                helper.fail("Wait for the coalesced refresh");
+            }
+            helper.assertTrue(helper.getLevel().getGameTime() > refreshed[0] + 1, "Waiting for queued native callback");
+            for (int index = 0; index < 3; index++) {
+                helper.assertTrue(carrier.alone(index), "Unpaired active tunnel " + index + " must not link through frequency zero");
+            }
+            PolicyEvidence.write("p2punpairedstayseparate", 6, Map.of("unpairedTunnels", "3", "sharedCarrier", "true", "linked", "false"));
+        });
+    }
+
     private static void run(GameTestHelper helper, int outputs) {
         int count = outputs + 1;
         var carrier = TunnelCarrier.withController(helper, new BlockPos(0, 4, 2), count);
@@ -131,6 +202,7 @@ public final class P2PRefreshBenchmarkGameTests {
         long micros = (registry.recomputeNanos() - recomputes[1]) / 1000;
         var line = "requests=" + counts.requests() + " tasks=" + counts.tasks() + " taskMicros="
                 + counts.taskNanos() / 1000 + " publishes=" + counts.publishes()
+                + " queued=" + counts.queued() + " groups=" + counts.groups() + " members=" + counts.members()
                 + " changes=" + counts.changes() + " links=" + counts.links() + " maxLinks=" + counts.maxLinks()
                 + " recomputes=" + recomputed + " recomputeMicros=" + micros + " ticks=" + ticks;
         LOGGER.info("AE2F_P2P_REFRESH outputs={} phase={} {}", outputs, phase, line);

@@ -3,8 +3,9 @@ package space.controlnet.ae2federation.client.policy;
 import java.util.Locale;
 
 /**
- * A readable name for another Federation Domain: how it is formed (one Bridge, or Routers joined by federation
- * cable) and a short tag that tells domains of the same kind apart. The raw identity is internal and not shown.
+ * A readable name for another Federation Domain: a short tag that tells domains apart, which players see as "Domain
+ * 3C91", and how it is formed (one Bridge, or devices joined by federation cable), which only internal text such as
+ * the via line uses. The raw identity is internal and not shown.
  */
 public record RelatedDomainLabel(String kind, String tag) {
     public static RelatedDomainLabel of(String domainId) {

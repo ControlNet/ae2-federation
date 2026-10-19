@@ -52,7 +52,7 @@ public final class BoundaryIdentityGameTests {
         var routers = new RouterFixtures(helper);
         helper.setBlock(chest.below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
         routers.nativePorts().placeChest(chest);
-        routers.placeRouter(routerPos);
+        routers.placeSwitch(routerPos);
         var phase = new int[1];
         var original = new NetworkId[1];
         helper.succeedWhen(() -> {
@@ -196,7 +196,7 @@ public final class BoundaryIdentityGameTests {
         var providerDrive = new BlockPos(5, 1, 1);
         var providerController = new BlockPos(6, 1, 1);
         var routers = new RouterFixtures(helper);
-        routers.placeRouter(routerPos);
+        routers.placeSwitch(routerPos);
         helper.setBlock(consumerController.below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
         helper.setBlock(consumerController, AEBlocks.CONTROLLER.block());
         helper.setBlock(consumerDrive, AEBlocks.DRIVE.block());

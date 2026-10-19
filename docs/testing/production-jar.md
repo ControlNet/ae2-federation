@@ -222,3 +222,60 @@ return row remain); the fixture is loaded with vanilla `forceload`, an operator 
 
 Evidence (Git-ignored): `.omo/evidence/round82-production/` holds the README, timeline, 16 screenshots, server and
 client logs, JAR, dependency and client hashes, source HEAD and status, the exported fixture and each attempt's notes.
+
+## Cross-dimension production run: 0.0.7 release JAR (2026-10-15)
+
+Run on 2026-10-15 (timestamps UTC), on the JAR built for release 0.0.7, with the same fixture and steps as the
+2026-10-08 run above. It does not claim a soak, multiplayer authorization or third-party compatibility.
+
+| Input | Value |
+|---|---|
+| Source | `release/v0.0.7` at `71c37d9b` (the Endpoint card fix `41f4c2bb` merged from `dev`), clean tree |
+| Mod JAR | `ae2federation-0.0.7.jar` built from that commit, SHA-256 `2714b10aa50cc125ac1cb1db4c25cb5b86139382f89e52be2189592c9566335c` |
+| Dependencies | AE2 19.2.17 `460d779a0609b81409907d9956de8f6f70a1b0912257e3e5c3c7e75ac9630e95`, GuideME 21.1.1 `62229015025b7c0a741590b626b6719631f6b8a945c483ece12e7035d4fd903d`, LDLib2 2.2.34 `5314e624e3b4258812a881b3a52886158af53886e5fb96d34919bdf0d5a374d6`; NeoForge 21.1.250; Java 21.0.12.1 |
+| Fixture | `crossdimensionproductionexport`, placed once in a new world with the console commands above |
+
+Server and client load the same four JARs (identical hashes) and no testmod. The client is the portablemc client
+under `Xvfb`, driven by XTEST. Every menu action (mapping, orders) is real client input. Console commands only
+position the player, add and remove `forceload` tickets, read block data and save or stop.
+
+### Result
+
+1. The Provider screen lists both Endpoints, each titled `Endpoint @ 203, 70, 205`. The nether one's second line
+   reads `Network E484 · Nether`, and the overworld twin's reads `Network DDAD`. Selected, the nether Endpoint's
+   details read `Endpoint @ 203, 70, 205 · Nether`. Pattern #0 is mapped to it with **Map #0 here**, and the return
+   row reads `Endpoint · 203, 70, 205 · Nether`.
+2. A terminal order for 8 stone (middle click on the craftable stone, amount 8, Start).
+   - At the second smelt (`RecipesUsed` stone 2) the nether ticket is removed.
+     `execute in minecraft:the_nether unless loaded 203 70 205` confirms the unload.
+   - While the Endpoint is unloaded, the Provider screen hides its card but keeps the `→1` count and the `· Nether`
+     return row.
+   - About 95 seconds after the removal the ticket is added again, and within a minute the job finishes with exactly
+     8 stone. The furnace reads `RecipesUsed` stone 8 and holds only coal. The subnet chest's cell is empty. The
+     terminal holds 8 stone and 8 cobblestone.
+3. `save-all flush`, `stop`: exit 0. After a restart on the same world:
+   - the furnace still reads stone 8;
+   - the Provider still shows #0 mapped to the nether Endpoint, its card reading `Network E484 · Nether`, with the
+     `· Nether` return row;
+   - the terminal holds 8 stone and 8 cobblestone.
+4. A second terminal order after the restart: 16 stone and 0 cobblestone in the terminal, `RecipesUsed` stone 16.
+5. The domain screen (from the overworld Switch) shows the overworld and nether networks in one domain, not stopped.
+   The nether Endpoint is labelled `Endpoint · 203, 70, 205 · Nether`. Cable capacity and the multiblock rules leave
+   this fixture working: each Switch is a single block, and the domain did not stop for capacity.
+6. The final `stop` exits 0.
+7. Logs: one ERROR line, from vanilla (flat generator settings, `No key layers`), in the first server log. There are
+   none after the restart, none in either client session, and no exceptions.
+
+One earlier attempt on the same day found a defect, fixed before this run:
+
+| Attempt | JAR | Found | Fix |
+|---|---|---|---|
+| 1 | `e310ebdf`, SHA-256 `c6968cf73ca86fcd7824f8b5ff6567fbb24ee32a135dcf519de212a1343672e5` | The Provider screen's card for the nether Endpoint was clipped to `Endpoint @ 203, 70, 205 ·`, so the card did not name the dimension. The longer `Endpoint @ <place>` title (`18c42ddf`) did not fit the one-line title row. The details panel, return row and domain screen named it, and every other step passed. | `41f4c2bb`: the dimension moved to the card's network line (`Network E484 · Nether`) |
+
+Missteps, kept and not counted:
+- One stray right click with the camera turned opened the Provider instead of the terminal. A pointer move while no
+  screen was open had turned the view, so later clicks used the item without moving the pointer.
+- The client was closed with SIGTERM on the disconnect screen after each server stop, as before.
+
+Evidence (Git-ignored): `build/release-0.0.7/` holds both attempts' screenshots (`shots/`, `shots-2/`), server and
+client logs, the exported fixture and `card-before-after.png`.

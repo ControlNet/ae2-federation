@@ -26,7 +26,8 @@ import space.controlnet.ae2federation.client.policy.TopologyLink;
 /**
  * Draws a {@link TopologyDiagram} in the topology screen's style: network cards on the dark canvas, links between
  * them, the quartz rail and its beads where a pair shares energy, a label per direction pointing at the network that
- * uses it, and teal dots moving from the providing network to the user along every link with a rule. Processing
+ * uses it, and teal dots moving from the providing network to the user along every link with a rule. A build that
+ * spans domains draws each on a translucent plate under the links, named above its top-left corner. Processing
  * Endpoints are small nodes wired to the network that maps them, with inputs going out and results coming back along
  * the wire, which is a quartz rail when the subnet runs on that network's power. GuideME draws the page every frame,
  * so the dots and beads move. Hovering a card, node, chip or energy chip names it.
@@ -74,6 +75,7 @@ public final class LytFederationTopology extends LytBlock implements Interactive
         pose.pushPose();
         pose.translate(bounds.x(), bounds.y(), 0);
         canvas(graphics);
+        for (var plate : layout.plates()) plate(graphics, font, plate);
         long now = System.currentTimeMillis();
         for (var link : layout.links()) {
             if (link.sharesEnergy()) {
@@ -127,6 +129,17 @@ public final class LytFederationTopology extends LytBlock implements Interactive
         for (int x = 16; x < width; x += 32) graphics.fill(x, 1, x + 1, height - 1, GRID);
         for (int y = 16; y < height; y += 32) graphics.fill(1, y, width - 1, y + 1, GRID);
         graphics.renderOutline(0, 0, width, height, FederationTheme.OUTLINE);
+    }
+
+    /** A domain's plate filled row by row, as the topology screen draws it, and its name above. */
+    private static void plate(GuiGraphics graphics, Font font, TopologyDiagramLayout.Plate plate) {
+        boolean opened = plate.domain().opened();
+        int fill = opened ? FederationTheme.PLATE_OPENED : FederationTheme.PLATE_RELATED;
+        for (var row : space.controlnet.ae2federation.client.policy.DomainClusterLayout.rows(plate.outline())) {
+            graphics.fill(Math.round(row[1]), (int) row[0], Math.round(row[2]), (int) row[0] + 1, fill);
+        }
+        graphics.drawString(font, plate.domain().label(), plate.name().x(), plate.name().y() + 1,
+                opened ? FederationTheme.PLATE_OPENED_NAME : FederationTheme.SELECT, false);
     }
 
     /** The curve stamped with {@code size}-pixel squares a pixel apart. */

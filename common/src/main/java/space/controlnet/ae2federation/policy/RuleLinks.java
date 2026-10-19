@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * The rules one switch changes together. A crafting rule needs the same direction's storage rule, because the crafting
- * network's CPU takes the other network's materials through it: turning crafting on turns that storage on, and
- * turning storage off turns that crafting off. Energy is one pool per pair, so turning it off turns off both ways.
+ * The rules one switch changes together. Energy is one pool per pair, so turning it off turns off both ways. Crafting
+ * and storage change alone: the consumer's CPU pushes to the provider's pattern providers and gets the results back
+ * without the storage rule, which only adds the provider's items to what the CPU can use.
  */
 public final class RuleLinks {
     public record Change(PolicyKey key, RuleMode mode) {
@@ -20,26 +20,10 @@ public final class RuleLinks {
     public static List<Change> of(PolicyKey key, RuleMode mode, Function<PolicyKey, RuleMode> current) {
         var changes = new ArrayList<Change>();
         changes.add(new Change(key, mode));
-        var consumer = key.consumerNetworkId();
-        var provider = key.providerNetworkId();
-        switch (key.capability()) {
-            case CRAFTING -> {
-                var storage = new PolicyKey(consumer, provider, PolicyCapability.STORAGE);
-                if (mode.enabled() && !current.apply(storage).enabled()) {
-                    changes.add(new Change(storage, RuleMode.ENABLED));
-                }
-            }
-            case STORAGE -> {
-                var crafting = new PolicyKey(consumer, provider, PolicyCapability.CRAFTING);
-                if (!mode.enabled() && current.apply(crafting).enabled()) {
-                    changes.add(new Change(crafting, RuleMode.DISABLED));
-                }
-            }
-            case ME_POWER -> {
-                var reverse = new PolicyKey(provider, consumer, PolicyCapability.ME_POWER);
-                if (!mode.enabled() && current.apply(reverse).enabled()) {
-                    changes.add(new Change(reverse, RuleMode.DISABLED));
-                }
+        if (key.capability() == PolicyCapability.ME_POWER) {
+            var reverse = new PolicyKey(key.providerNetworkId(), key.consumerNetworkId(), PolicyCapability.ME_POWER);
+            if (!mode.enabled() && current.apply(reverse).enabled()) {
+                changes.add(new Change(reverse, RuleMode.DISABLED));
             }
         }
         return List.copyOf(changes);

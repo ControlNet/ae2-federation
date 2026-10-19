@@ -48,6 +48,8 @@ final class EndpointMachineScene {
     private static final BlockPos ENDPOINT = new BlockPos(5, 1, 3);
     private static final BlockPos SUBNET_ENERGY = new BlockPos(5, 1, 4);
     private static final BlockPos HOPPER = new BlockPos(5, 2, 3);
+    /** A cable of the Provider's network beside the subnet's cable in the energy cell's place, carrying a Quartz Fiber. */
+    private static final BlockPos FIBER = new BlockPos(4, 1, 4);
 
     /** The machine a processing pattern names and how a player sets it up. */
     interface Machine {
@@ -117,6 +119,7 @@ final class EndpointMachineScene {
     };
     private boolean localPatternInstalled;
     private boolean subnetEnergy = true;
+    private boolean quartzFiber;
     private java.util.function.BiConsumer<GameTestHelper, BlockPos> interrupt;
     private java.util.function.BiConsumer<GameTestHelper, BlockPos> repair;
     private int interruptTicks;
@@ -150,6 +153,22 @@ final class EndpointMachineScene {
     EndpointMachineScene poweredThroughEndpoint() {
         subnetEnergy = false;
         return this;
+    }
+
+    /**
+     * Leaves out the subnet's own energy cell and joins the subnet's power to the Provider's network with an AE2 Quartz
+     * Fiber instead, as the guide's Local-mode build does: a Local Endpoint shares no power, unlike a Federated one.
+     */
+    EndpointMachineScene poweredByQuartzFiber() {
+        subnetEnergy = false;
+        quartzFiber = true;
+        return this;
+    }
+
+    /** Puts the Quartz Fiber of {@link #poweredByQuartzFiber} on its cable, between the two networks' cables. */
+    private static void placeQuartzFiber(GameTestHelper helper) {
+        helper.assertTrue(PartHelper.setPart(helper.getLevel(), helper.absolutePos(FIBER), Direction.EAST, null,
+                AEParts.QUARTZ_FIBER.asItem()) != null, "A Quartz Fiber must go on the cable at " + FIBER);
     }
 
     /**
@@ -248,6 +267,13 @@ final class EndpointMachineScene {
                 helper.setBlock(ENDPOINT, ProcessingRegistration.ENDPOINT.get().defaultBlockState()
                         .setValue(BlockStateProperties.FACING, Direction.WEST));
                 if (subnetEnergy) helper.setBlock(SUBNET_ENERGY, AEBlocks.CREATIVE_ENERGY_CELL.block());
+                if (quartzFiber) {
+                    var cable = AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT);
+                    helper.assertTrue(PartHelper.setPart(helper.getLevel(), helper.absolutePos(FIBER), null, null, cable)
+                            != null && PartHelper.setPart(helper.getLevel(), helper.absolutePos(SUBNET_ENERGY), null,
+                                    null, cable) != null, "Cables must go at " + FIBER + " and " + SUBNET_ENERGY);
+                    placeQuartzFiber(helper);
+                }
                 machine.place(helper, machinePosition);
                 if (!machine.ejectsIntoEndpoint()) {
                     helper.setBlock(HOPPER, machine.collector());
@@ -334,6 +360,31 @@ final class EndpointMachineScene {
         }
     }
 
+    /**
+     * Clicks the Local provider block's {@code face} with a wrench, through the block's own {@code setSide}, which
+     * AE2's pattern provider block and ExtendedAE's call for a wrench.
+     */
+    static void wrenchLocalProvider(GameTestHelper helper, Direction face) {
+        var block = helper.getBlockState(PROVIDER).getBlock();
+        try {
+            block.getClass().getMethod("setSide", net.minecraft.world.level.Level.class, BlockPos.class, Direction.class)
+                    .invoke(block, helper.getLevel(), helper.absolutePos(PROVIDER), face);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(block + " takes no wrench", exception);
+        }
+    }
+
+    /** Where the Local provider block pushes: one side, or null for every side. */
+    static @org.jetbrains.annotations.Nullable Direction localProviderPush(GameTestHelper helper) {
+        var state = helper.getBlockState(PROVIDER);
+        for (var property : state.getProperties()) {
+            if (state.getValue(property) instanceof appeng.block.crafting.PushDirection push) {
+                return push.getDirection();
+            }
+        }
+        throw new IllegalStateException(state + " has no push direction");
+    }
+
     private void installLocalPattern() {
         helper.assertFalse(grid().getCraftingService().getCpus().isEmpty(), "Waiting for the CPU");
         var entity = helper.getLevel().getBlockEntity(helper.absolutePos(PROVIDER));
@@ -407,6 +458,10 @@ final class EndpointMachineScene {
                 + grid().getCraftingService().getCpus().stream().map(cpu -> cpu.getClass().getSimpleName()).toList()
                 + " " + lane
                 + " input=" + grid().getStorageService().getInventory().getAvailableStacks().get(machine.input())
+                + " subnetPowered=" + (binding() == null || binding().subnetNode().getGrid() == null ? "?"
+                        : binding().subnetNode().getGrid().getEnergyService().isNetworkPowered())
+                + " subnetSeparate=" + (binding() == null ? "?" : binding().subnetNode().getGrid() != grid())
+                + " mode=" + (binding() == null ? "?" : binding().runtime().mode().orElse(null))
                 + " machine=" + machine.state(helper, machinePosition);
     }
 

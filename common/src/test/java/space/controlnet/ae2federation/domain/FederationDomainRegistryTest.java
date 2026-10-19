@@ -261,7 +261,8 @@ final class FederationDomainRegistryTest {
         for (var round = 0; round < 3; round++) {
             registry.upsertNode(evidence(node(1), Map.of(), NETWORK_A));
             assertTrue(seen.add(registry.federationDomainOf(node(1)).orElseThrow().federationDomainId()));
-            registry.removeNode(node(1));
+            // Broken, so the block placed next round is a new domain; an unloaded one would get its id back.
+            registry.removeBrokenNode(node(1));
         }
     }
 
@@ -323,7 +324,8 @@ final class FederationDomainRegistryTest {
             var index = random.nextInt(9);
             var id = node(index);
             if (random.nextInt(6) == 0) {
-                registry.removeNode(id);
+                // Broken rather than unloaded: a domain unloaded whole would get its retired id back when it loads.
+                registry.removeBrokenNode(id);
                 published.remove(id);
             } else {
                 var ports = new LinkedHashMap<String, FederationDomainPortEvidence>();
