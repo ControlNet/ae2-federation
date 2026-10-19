@@ -872,8 +872,8 @@ The user asked for the game integration (host) and the editor screens together.
   `IStorageWatcherNode`, `ICraftingWatcherNode`, NeoForge's `BlockEvent`, `CropGrowEvent`,
   `PlayerInteractEvent`), no mixins. Raw event classes were rejected: no scope (they fire anywhere on the server),
   unstable names across versions, and many cannot be used (client-only, off-thread, registration).
-- **Rate limit** (user, 2026-10-18): each installation runs at most once per N ticks (default 20, with a floor such as
-  5); events during the cooldown merge into one run after it. Events start a run and pass no data; the function
+- **Rate limit** (user, 2026-10-18): each installation runs at most once per N ticks (default 20, with a floor of
+  1 tick: the user found 5 too cautious, 2026-10-19); events during the cooldown merge into one run after it. Events start a run and pass no data; the function
   reads what it needs.
 - **A trigger while running** (user, 2026-10-18): each installation chooses ignore (the new trigger is dropped),
   restart (the current run stops, actions already done stay done, and a new run starts) or parallel (another run,

@@ -12,9 +12,12 @@ import java.util.List;
 public record Installation(String id, String device, String file, String function, List<Object> args,
         Trigger trigger, int interval, Overlap overlap) {
     public static final String PREFIX = "install";
-    /** The rate limit (user, 2026-10-18): one start per 20 ticks unless chosen otherwise, never under 5. */
+    /**
+     * The rate limit (user, 2026-10-18): one start per 20 ticks unless chosen otherwise; as often as every tick
+     * (user, 2026-10-19).
+     */
     public static final int DEFAULT_INTERVAL = 20;
-    public static final int MIN_INTERVAL = 5;
+    public static final int MIN_INTERVAL = 1;
     /** Runs at once in parallel mode (assistant proposal). */
     public static final int PARALLEL_LIMIT = 4;
 

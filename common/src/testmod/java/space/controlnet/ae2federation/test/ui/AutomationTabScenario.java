@@ -532,16 +532,16 @@ public final class AutomationTabScenario implements UIScenario {
                         context.all("#auto_install_every text-field").size() == 1
                                 && context.el("#auto_install_every .install-value-text").text().equals("40 ticks"))
                 .click("#auto_install_gap .install-value")
-                .step("type a new gap", context ->
-                        context.el("#auto_install_gap text-field").as(TextField.class).setText("10", true))
+                .step("type a new gap, as short as one tick", context ->
+                        context.el("#auto_install_gap text-field").as(TextField.class).setText("1", true))
                 .key(GLFW.GLFW_KEY_ENTER)
                 .waitUntil("the gap is sent", context ->
-                        context.el("#auto_install_gap .install-value-text").text().equals("10 ticks"))
+                        context.el("#auto_install_gap .install-value-text").text().equals("1 ticks"))
                 .checkServer("the server holds every change", context -> {
                     var installation = installation(context);
                     return installation.args().equals(java.util.List.of("minecraft:iron_ingot", 128L))
                             && installation.trigger().equals(new Installation.Trigger.Schedule(40))
-                            && installation.interval() == 10 && installation.overlap() == Installation.Overlap.RESTART;
+                            && installation.interval() == 1 && installation.overlap() == Installation.Overlap.RESTART;
                 })
                 .frames(2).screenshot("ui-automation-install-edit")
                 .click("#auto_install_trigger_manual")

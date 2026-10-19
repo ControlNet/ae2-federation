@@ -44,7 +44,9 @@ final class InstallationCodecTest {
         assertEquals(Optional.empty(), InstallationCodec.load("install-abcdef", new CompoundTag()));
         var fast = new Installation("install-abcdef", "device-k7m2qx", "f", "g", List.of(),
                 new Installation.Trigger.Manual(), 1, Installation.Overlap.IGNORE);
-        assertEquals(Installation.MIN_INTERVAL, fast.interval());
+        assertEquals(1, fast.interval(), "one start per tick is allowed");
+        assertEquals(1, new Installation("install-abcdef", "device-k7m2qx", "f", "g", List.of(),
+                new Installation.Trigger.Manual(), 0, Installation.Overlap.IGNORE).interval());
         assertEquals(Optional.empty(), InstallationCodec.load("not-an-id", InstallationCodec.save(fast)));
     }
 }
