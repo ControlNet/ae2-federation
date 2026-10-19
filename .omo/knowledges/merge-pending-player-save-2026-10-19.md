@@ -35,3 +35,29 @@
 2. Only then place them again, so that the remaining Grid has one id when the new nodes adopt.
 - AE2 drops these items without node data, so a re-placed block mints fresh.
 - The guide line "Disconnect them to recover" only makes each piece settle on its own id; reconnecting merges again.
+
+## Decision (user, 2026-10-19): A + B + C
+- **C, done.** `NetworkIdentityGridService.resolveMerge` runs at a Grid start tick once the Grid holds several ids.
+  - It acts only when the settlement is `AMBIGUOUS_MERGE`, so copied and split states never take part.
+  - An id carries settings when `persistence.NetworkSettings` finds a name, a configured rule naming it, or crafting
+    returns.
+  - If at most one id carries settings, that one survives; with none, the id held by the most regular nodes survives,
+    then the lowest UUID.
+  - Every node is rewritten (node UUID and revision kept), followed by the same publish as the fresh-tick refresh.
+  - Several configured ids also merge when their settings are interchangeable (user, 2026-10-19). That means the
+    same name, the same rules (side, other network, capability, rule content), no rule between the merging ids, and
+    no crafting returns. The most-nodes id survives, and `NetworkSettings.forget` deletes the others' name and rules.
+  - Differing ids stay pending and are rechecked every 20 ticks.
+  - This save's three ids carry no settings, so the save heals on load.
+  - The function branch must add program references (short ids actually used in programs or args) to
+    `NetworkSettings`. Do not add every minted short id, or C never applies.
+- **A, done.** `FederationDomainPolicySession.pendingMerges` adds the ids of an `AMBIGUOUS_MERGE` Grid that touches one
+  of the domain's Switch faces (`RouterFacePort` owner node) to the shown networks and to the overview.
+  - These ids are shown read-only: they are not in `members()`, so no rule editing applies to them.
+  - Lookup is throttled to once a second.
+- **B, next.** The player chooses which configured id survives, from the Merge pending card. The control needs a
+  design canvas first.
+- Tests: GameTests `identityunconfiguredmerge`, `identityconfiguredmergewins`, `identityconfiguredmergestayspending`,
+  `identityidenticalsettingsmerge`;
+  UI scenarios `ui.merged-network` and `ui.pending-merge`.
+- T33's merge step now names both networks first, to keep that merge pending.

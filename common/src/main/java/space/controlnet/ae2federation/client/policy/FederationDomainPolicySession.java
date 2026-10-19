@@ -78,6 +78,8 @@ public final class FederationDomainPolicySession {
     /** Networks of other domains that share a member with this one, from the last choices build; read-only here. */
     private java.util.Set<space.controlnet.ae2federation.identity.NetworkId> relatedNetworks = java.util.Set.of();
     private long overviewTick;
+    private List<NetworkId> pendingMerges = List.of();
+    private long pendingMergesTick = Long.MIN_VALUE / 2;
     private List<NetworkId> overviewMembers = List.of();
     private @org.jetbrains.annotations.Nullable space.controlnet.ae2federation.processing.provider.ProviderMappingController.ReleaseConfirmation pendingRelease;
 
@@ -392,7 +394,9 @@ public final class FederationDomainPolicySession {
                 .confirmedNetworkId(entry.provider().getGrid()).orElse(null)).toList();
         var endpointNetworks = currentEndpoints().stream().map(binding -> FederationDomainRegistryAccess
                 .confirmedNetworkId(binding.subnetNode().getGrid()).orElse(null)).toList();
-        for (var member : members) {
+        var shownNetworks = new java.util.ArrayList<>(members);
+        shownNetworks.addAll(pendingMerges());
+        for (var member : shownNetworks) {
             var network = new com.google.gson.JsonObject();
             network.addProperty("id", member.value().toString());
             network.addProperty("member", space.controlnet.ae2federation.observability.id.MemberId
@@ -976,9 +980,10 @@ public final class FederationDomainPolicySession {
      * instead of on every binding poll.
      */
     public String networkOverviewText() {
-        if (context == null || members().isEmpty()) return "";
+        if (context == null || members().isEmpty() && pendingMerges().isEmpty()) return "";
         var now = level.getGameTime();
         var described = new java.util.ArrayList<>(members());
+        described.addAll(pendingMerges());
         relatedNetworks.stream().sorted(java.util.Comparator.comparing(network -> network.value().toString()))
                 .forEach(described::add);
         if (overviewText.isEmpty() || now - overviewTick >= OVERVIEW_INTERVAL_TICKS || now < overviewTick
@@ -1473,6 +1478,36 @@ public final class FederationDomainPolicySession {
         if (selection != null) return selection.members();
         return currentFederationDomain().map(domain -> domain.memberships().keySet().stream()
                 .sorted(java.util.Comparator.comparing(NetworkId::toString)).toList()).orElse(List.of());
+    }
+
+    /**
+     * The ids of each pending merge beside one of this domain's Switch faces, members excluded. A Grid holding several
+     * ids settles on none, so it is no member and would otherwise vanish from the topology; its ids are drawn read-only,
+     * each card telling what it was merged with. Looked up at most once a second: it walks the live identity claims.
+     */
+    private List<NetworkId> pendingMerges() {
+        var now = level.getGameTime();
+        if (now - pendingMergesTick < OVERVIEW_INTERVAL_TICKS && now >= pendingMergesTick) return pendingMerges;
+        pendingMergesTick = now;
+        var domain = currentFederationDomain().orElse(null);
+        if (domain == null) return pendingMerges = List.of();
+        var found = new java.util.TreeSet<NetworkId>(java.util.Comparator.comparing(NetworkId::toString));
+        space.controlnet.ae2federation.identity.NetworkIdentityRegistry.get(level).liveClaims().forEach((grid, lineages) -> {
+            if (lineages.stream().map(space.controlnet.ae2federation.identity.NodeLineage::networkId).distinct().count() < 2
+                    || grid.getService(space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement()
+                            .status() != space.controlnet.ae2federation.identity.IdentityStatus.AMBIGUOUS_MERGE) {
+                return;
+            }
+            for (var node : grid.getNodes()) {
+                if (node.getOwner() instanceof space.controlnet.ae2federation.domain.port.RouterFacePort face
+                        && domain.nodes().contains(FederationDomainRegistryAccess.nodeId(node.getLevel(), face.routerPosition()))) {
+                    lineages.forEach(lineage -> found.add(lineage.networkId()));
+                    return;
+                }
+            }
+        });
+        found.removeAll(domain.memberships().keySet());
+        return pendingMerges = List.copyOf(found);
     }
 
     public Component membersText() {

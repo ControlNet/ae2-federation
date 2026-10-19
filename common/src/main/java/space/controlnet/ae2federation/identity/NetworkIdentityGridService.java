@@ -15,6 +15,7 @@ import java.util.WeakHashMap;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.persistence.NetworkSettings;
 
 public final class NetworkIdentityGridService implements NetworkIdentityService, IGridServiceProvider {
     private static final String DATA_KEY = "ae2federation_network_identity";
@@ -26,6 +27,8 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
      * NetworkId. Server thread only; weak keys, as nodes are never removed explicitly.
      */
     private static final Map<IGridNode, Integer> MINTED_TICK = new WeakHashMap<>();
+    /** How often a merge that two configured ids keep pending is looked at again, so clearing one side resolves it. */
+    private static final int MERGE_RECHECK_TICKS = 20;
 
     private final IGrid grid;
     private final NetworkId newGridId = NetworkId.create();
@@ -40,6 +43,8 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
     private int freshTick;
     private boolean settlementRefreshPending;
     private int settlementReadyTick;
+    // The first tick at which a Grid holding several network ids is checked for a merge it can resolve.
+    private int mergeCheckTick;
     private @Nullable MinecraftServer server;
     private int duplicateLineages;
     private IdentitySettlement settlement = new IdentitySettlement(IdentityStatus.NEW_NETWORK, java.util.Optional.empty());
@@ -94,6 +99,9 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
             settlementReadyTick = server.getTickCount() + 1;
         }
         adoptEstablishedLineage();
+        if (networkCounts.size() > 1) {
+            mergeCheckTick = server.getTickCount() + 1;
+        }
     }
 
     private void adoptEstablishedLineage() {
@@ -261,9 +269,19 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
      */
     @Override
     public void onServerStartTick() {
-        if (!settlementRefreshPending || server == null || server.getTickCount() < settlementReadyTick) return;
+        if (server == null) return;
+        if (networkCounts.size() > 1 && server.getTickCount() >= mergeCheckTick) {
+            mergeCheckTick = server.getTickCount() + MERGE_RECHECK_TICKS;
+            resolveMerge();
+        }
+        if (!settlementRefreshPending || server.getTickCount() < settlementReadyTick) return;
         freshNodes();
         settlementRefreshPending = false;
+        publishSettlement();
+    }
+
+    /** Native save notifications to every node, boundaries included, and a binding refresh, so consumers republish. */
+    private void publishSettlement() {
         IdentityEpoch.advance();
         for (var node : java.util.List.copyOf(nodes.keySet())) {
             ((GridNode) node).callListener(IGridNodeListener::onSaveChanges);
@@ -272,6 +290,39 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
             space.controlnet.ae2federation.domain.FederationBindingRefresh.request(node.getLevel());
             break;
         }
+    }
+
+    /**
+     * Settles a merge of several established ids when no player choice is lost ({@link NetworkSettings}): when at most
+     * one id carries settings, that one survives; when several do and their settings are the same, the one held by the
+     * most nodes survives and the others' copies are dropped. With no settings at all, the id held by the most nodes
+     * survives. Ties go to the lowest id. Every node takes the survivor's id. Ids with differing settings stay pending
+     * for the player to choose.
+     */
+    private void resolveMerge() {
+        if (registry == null || !provisional.isEmpty() || settlement().status() != IdentityStatus.AMBIGUOUS_MERGE) return;
+        var level = nodes.keySet().iterator().next().getLevel();
+        var settings = new HashMap<NetworkId, NetworkSettings>();
+        networkCounts.keySet().forEach(network -> settings.put(network, NetworkSettings.of(level, network)));
+        var configured = settings.entrySet().stream().filter(entry -> entry.getValue().configured())
+                .map(Map.Entry::getKey).toList();
+        if (configured.size() > 1 && !NetworkSettings.interchangeable(
+                configured.stream().map(settings::get).toList(), networkCounts.keySet())) {
+            return;
+        }
+        var candidates = configured.isEmpty() ? networkCounts.keySet() : configured;
+        var survivor = candidates.stream().max(java.util.Comparator.<NetworkId>comparingInt(networkCounts::get)
+                .thenComparing(network -> network.value().toString(), java.util.Comparator.reverseOrder())).orElseThrow();
+        for (var network : configured) {
+            if (!network.equals(survivor)) NetworkSettings.forget(level, network);
+        }
+        for (var node : java.util.List.copyOf(nodes.keySet())) {
+            var current = nodes.get(node);
+            if (!survivor.equals(current.networkId())) {
+                put(node, new NodeLineage(survivor, current.nodeId(), current.revision()));
+            }
+        }
+        publishSettlement();
     }
 
     @Override

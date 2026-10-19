@@ -48,7 +48,18 @@ Only `SETTLED` may inherit existing Policy. `PARTIAL_LOAD`, `COPIED_LIVE_IDENTIT
 - Two loaded Grids claiming the same persistent node UUID are copied-live ambiguity. Neither inherits Policy.
 - Two loaded Grids claiming one prior `NetworkId` after a native split are ambiguous. Neither child inherits Policy.
 - One loaded Grid containing multiple prior `NetworkId` values is merge ambiguity. It inherits neither Policy set.
-- No timeout, location, load order, randomness, or newest-wins rule resolves ambiguity.
+- No timeout, location, load order, randomness, or newest-wins rule resolves ambiguity, with one exception: a merge
+  that loses no player choice settles at the next Grid start tick (`NetworkIdentityGridService.resolveMerge`, user
+  decision 2026-10-19). Settings are a name, a configured rule naming the id on either side, or crafting returns
+  (`NetworkSettings`).
+  - When at most one id carries settings, that id survives. With none, the id held by the most regular nodes survives,
+    then the lowest UUID.
+  - When several carry settings that are interchangeable, the one held by the most nodes survives and the others'
+    name and rules are deleted. Interchangeable means the same name, the same rules to the same other networks, no
+    rule between two of the merging ids, and no crafting returns.
+  - Every node takes the survivor's id and keeps its node UUID and revision.
+  - Differing settings stay `AMBIGUOUS_MERGE` and are looked at again every 20 ticks, so making them match or
+    clearing one side resolves the merge.
 
 ### Initialization and established lineage
 
@@ -110,8 +121,15 @@ Task cases:
 - `identity.ambiguous-split`: removal of a real native middle node produces two Grids that both fail closed.
 - `identity.copied-node`: native block-entity NBT copied into a second live disconnected chest is rejected for both.
 - `identity.part-on-settled-cable`: a cable and then an Export Bus added to a settled Grid keep it `SETTLED` with its
-  NetworkId, and linking it to a second established Grid still reports `AMBIGUOUS_MERGE`. Before the provisional rule
-  the Export Bus alone made the Grid `AMBIGUOUS_MERGE`.
+  NetworkId. Linking it to a second established Grid without settings settles on one of the two ids. Before the
+  provisional rule the Export Bus alone made the Grid `AMBIGUOUS_MERGE`.
+- `identity.unconfigured-merge`: three established Grids without settings, cabled into one, settle on the id held by
+  the most nodes.
+- `identity.configured-merge-wins`: a named Grid's id survives a merge with a larger unnamed one, and keeps its name.
+- `identity.configured-merge-stays-pending`: two differently named Grids stay `AMBIGUOUS_MERGE`; clearing one name
+  settles the merge on the other.
+- `identity.identical-settings-merge`: two Grids with the same name and the same rule to a third network settle on the
+  larger one's id; the smaller one's name and rule are deleted.
 
 - `identity.single-established-merge`: a standalone node has persisted Policy, reloads legacy provisional NBT without
   losing lineage, and retains but cannot inherit that Policy after a real merge.

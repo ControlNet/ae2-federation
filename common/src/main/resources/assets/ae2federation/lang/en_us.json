@@ -241,7 +241,7 @@
   "ae2federation.ui.topology.controller.controller_online": "controller online",
   "ae2federation.ui.topology.controller.controller_conflict": "controller conflict",
   "ae2federation.ui.topology.identity.merge": "Merge pending",
-  "ae2federation.ui.topology.identity.merge.help": "Two established networks were joined. Names and cross-network rules are paused; neither side is picked automatically.",
+  "ae2federation.ui.topology.identity.merge.help": "Two networks with different names or rules were joined. Names and cross-network rules are paused; neither side is picked automatically.",
   "ae2federation.ui.topology.identity.merge.fix": "Disconnect them to recover.",
   "ae2federation.ui.topology.identity.merge.contains": "Contains: %s",
   "ae2federation.ui.topology.identity.split": "Split pending",

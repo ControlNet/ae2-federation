@@ -82,8 +82,8 @@ The carrier is not in it. The outpost uses the base's storage and shares its ene
 
 1. **Build the bridge**, one half in each dimension, with one singularity of the pair in each link chamber; see AE2's
    [Quantum Network Bridge](ae2:items-blocks-machines/quantum_bridge.md). Its cable is a network of its own, the
-   carrier. Do not let it touch the base or the outpost: the bridge would then join a half that already exists to
-   that network, and Federation pauses that network's rules ("Merge pending").
+   carrier. Do not let it touch the base or the outpost: the carrier would join that network, and the bridge would
+   carry it into the other dimension.
 2. **Power the carrier from the base** with a Quartz Fiber between the carrier's cable and the base. The Nether half
    needs no energy cell: once the bridge links, the base's power reaches it.
 3. **Place the tunnels.** Put an ME P2P tunnel on the carrier's cable at each end, and right-click each with

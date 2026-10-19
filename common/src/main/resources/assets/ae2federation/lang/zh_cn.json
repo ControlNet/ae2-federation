@@ -241,7 +241,7 @@
   "ae2federation.ui.topology.controller.controller_online": "控制器在线",
   "ae2federation.ui.topology.controller.controller_conflict": "控制器冲突",
   "ae2federation.ui.topology.identity.merge": "合并待定",
-  "ae2federation.ui.topology.identity.merge.help": "两个已确立的网络被接在了一起。名称和跨网络规则暂停生效，不会自动选边。",
+  "ae2federation.ui.topology.identity.merge.help": "两个名称或规则不同的网络被接在了一起。名称和跨网络规则暂停生效，不会自动选边。",
   "ae2federation.ui.topology.identity.merge.fix": "断开它们之间的连接后自动恢复。",
   "ae2federation.ui.topology.identity.merge.contains": "包含：%s",
   "ae2federation.ui.topology.identity.split": "分裂待定",
