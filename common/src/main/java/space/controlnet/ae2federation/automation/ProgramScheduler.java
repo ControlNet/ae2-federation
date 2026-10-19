@@ -208,6 +208,13 @@ public final class ProgramScheduler {
         };
     }
 
+    /** Changes the arguments, typed text as {@link #install} takes them; the installation keeps its ID and settings. */
+    public Installation setArgs(String id, List<String> args) {
+        var installation = installed(id);
+        return update(installation.withArgs(arguments(definition(installation.file(), installation.function()),
+                args)));
+    }
+
     public Installation setInterval(String id, int interval) {
         return update(installed(id).withInterval(interval));
     }

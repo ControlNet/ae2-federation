@@ -37,6 +37,17 @@ public final class ComputingDeviceBlockEntity extends DomainDeviceBlockEntity {
         ComputingDevices.get(level).release(id);
     }
 
+    @Override
+    public String alias(ServerLevel level) {
+        return id() == null ? "" : ComputingDevices.get(level).alias(id());
+    }
+
+    @Override
+    public AutomationInterfaceBook.AliasResult setAlias(ServerLevel level, String alias) {
+        return id() == null ? AutomationInterfaceBook.AliasResult.INVALID
+                : ComputingDevices.get(level).setAlias(level, id(), alias);
+    }
+
     /** A neighbour changed: starts the redstone-triggered installations when a signal arrives. */
     public void redstoneChanged() {
         if (!(level instanceof ServerLevel serverLevel)) {

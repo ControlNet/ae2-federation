@@ -179,6 +179,7 @@
     {"id":"programs.block-events","backend":"gametest","testId":"blockeventsstartattheblockaninterfacepointsat","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.stock-event","backend":"gametest","testId":"astockchangestartsarun","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.tab-traffic","backend":"gametest","testId":"thetabstrafficuploadsinstallsandruns","structure":"ae2federation_test:harness_native_smoke","assertions":1},
+    {"id":"programs.tab-arguments","backend":"gametest","testId":"thetabeditsargumentsandlistsaliases","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"bundle.whole-end-faces","backend":"gametest","testId":"bundlelinksthroughwholeendfaces","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"bundle.side-full-width","backend":"gametest","testId":"bundlesidesneedtheirfullwidth","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"bundle.player-interaction","backend":"gametest","testId":"bundleplayerextendsbranchesanddismantles","structure":"ae2federation_test:harness_native_smoke","assertions":8},

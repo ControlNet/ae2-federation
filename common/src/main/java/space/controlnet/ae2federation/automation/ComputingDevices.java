@@ -3,9 +3,11 @@ package space.controlnet.ae2federation.automation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -18,7 +20,7 @@ import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 
 /**
- * The overworld's record of the automation that runs: every computing device's ID and place, the functions installed
+ * The overworld's record of the automation that runs: every computing device's ID, place and alias, the functions installed
  * on them, and the version of each program last pushed to them. A pushed version holds the file and every file it
  * calls, as text, so editing the library changes nothing that runs until the next push.
  */
@@ -69,6 +71,30 @@ public final class ComputingDevices extends SavedData {
         return book.entry(id).flatMap(entry -> FederationDomainRegistryAccess.get(level)
                 .federationDomainOf(new FederationDomainNodeId(entry.dimension(), entry.position().asLong()))
                 .map(snapshot -> snapshot.federationDomainId()));
+    }
+
+    public String alias(String id) {
+        return book.entry(id).map(AutomationInterfaceBook.Entry::alias).orElse("");
+    }
+
+    /** Sets or clears a device's alias, unique among the devices of its domain, as an interface's is. */
+    public AutomationInterfaceBook.AliasResult setAlias(ServerLevel level, String id, String alias) {
+        var domain = domainOf(level, id).map(found -> idsIn(level, found)).orElse(Set.of(id));
+        var result = book.setAlias(id, alias, domain);
+        if (result == AutomationInterfaceBook.AliasResult.SET) {
+            setDirty();
+        }
+        return result;
+    }
+
+    /** The IDs of the devices in a domain. */
+    public Set<String> idsIn(ServerLevel level, FederationDomainId domain) {
+        var registry = FederationDomainRegistryAccess.get(level);
+        var ids = new LinkedHashSet<String>();
+        book.entries().forEach((id, entry) -> registry.federationDomainOf(
+                new FederationDomainNodeId(entry.dimension(), entry.position().asLong()))
+                .filter(snapshot -> snapshot.federationDomainId().equals(domain)).ifPresent(snapshot -> ids.add(id)));
+        return ids;
     }
 
     /** Installs a function; gives the new installation. */
@@ -122,6 +148,7 @@ public final class ComputingDevices extends SavedData {
             var saved = new CompoundTag();
             saved.putString("dimension", entry.dimension());
             saved.putLong("position", entry.position().asLong());
+            saved.putString("alias", entry.alias());
             devices.put(id, saved);
         });
         tag.put("devices", devices);
@@ -145,7 +172,7 @@ public final class ComputingDevices extends SavedData {
             var saved = devices.getCompound(id);
             if (ShortId.valid(PREFIX, id) && !saved.getString("dimension").isBlank()) {
                 loaded.book.put(id, new AutomationInterfaceBook.Entry(saved.getString("dimension"),
-                        BlockPos.of(saved.getLong("position")), ""));
+                        BlockPos.of(saved.getLong("position")), saved.getString("alias")));
             }
         }
         var installed = tag.getCompound("installations");

@@ -49,6 +49,12 @@ public abstract class DomainDeviceBlockEntity extends AEBaseBlockEntity {
     /** The block was broken: frees its ID. */
     protected abstract void release(ServerLevel level, String id);
 
+    /** The alias a player gave the block in its screen; empty when it has none. */
+    public abstract String alias(ServerLevel level);
+
+    /** Sets or, with an empty text, clears the alias. */
+    public abstract AutomationInterfaceBook.AliasResult setAlias(ServerLevel level, String alias);
+
     /** Whether the face links ME Federation Cable. */
     protected boolean links(Direction face) {
         return true;

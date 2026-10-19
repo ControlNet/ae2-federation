@@ -13,8 +13,8 @@ import space.controlnet.ae2federation.client.menu.FederationTheme;
 import space.controlnet.ae2federation.persistence.NetworkNameBook;
 
 /**
- * The Automation Interface's screen, as the design board "ME联邦自动化接口" shows it: the ID with a copy button and the
- * alias, nothing else. The alias is sent when the player presses Enter or closes the screen; a refused one turns red.
+ * The ID and alias screen of an Automation Interface or a computing device, as the design boards "ME联邦自动化接口"
+ * and the device's beside it show it: the ID with a copy button and the alias, nothing else. The alias is sent when the player presses Enter or closes the screen; a refused one turns red.
  */
 public final class AutomationInterfaceScreen extends Screen {
     private static final int WIDTH = 200;
@@ -28,11 +28,13 @@ public final class AutomationInterfaceScreen extends Screen {
     private static final int ALIAS_Y = 44;
 
     private AutomationInterfaceScreens.View view;
+    /** How much wider than {@link #WIDTH} the screen is drawn so that a long title fits; the fields grow with it. */
+    private int extra;
     private EditBox alias;
     private String sent;
 
     private AutomationInterfaceScreen(AutomationInterfaceScreens.View view) {
-        super(Component.translatable("block.ae2federation.automation_interface"));
+        super(Component.translatable(view.title()));
         this.view = view;
         this.sent = view.alias();
     }
@@ -57,7 +59,7 @@ public final class AutomationInterfaceScreen extends Screen {
     }
 
     private int left() {
-        return (width - WIDTH) / 2;
+        return (width - WIDTH - extra) / 2;
     }
 
     private int top() {
@@ -67,7 +69,8 @@ public final class AutomationInterfaceScreen extends Screen {
     @Override
     protected void init() {
         var current = alias == null ? view.alias() : alias.getValue();
-        alias = new EditBox(font, left() + FIELD_X + 4, top() + ALIAS_Y + 4, ALIAS_W - 8, ROW_H - 6,
+        extra = Math.max(0, font.width(title) + 2 * LABEL_X - WIDTH);
+        alias = new EditBox(font, left() + FIELD_X + 4, top() + ALIAS_Y + 4, ALIAS_W + extra - 8, ROW_H - 6,
                 Component.translatable("ae2federation.automation_interface.alias"));
         alias.setBordered(false);
         alias.setMaxLength(NetworkNameBook.MAX_CODE_POINTS);
@@ -77,7 +80,7 @@ public final class AutomationInterfaceScreen extends Screen {
         addRenderableWidget(alias);
         setInitialFocus(alias);
         var copyWidth = ALIAS_W - ID_W - 4;
-        addRenderableWidget(new Ae2Button(left() + FIELD_X + ID_W + 4, top() + ID_Y, copyWidth, ROW_H,
+        addRenderableWidget(new Ae2Button(left() + FIELD_X + ID_W + extra + 4, top() + ID_Y, copyWidth, ROW_H,
                 Component.translatable("ae2federation.automation_interface.copy"),
                 () -> Minecraft.getInstance().keyboardHandler.setClipboard(view.id())));
     }
@@ -87,15 +90,17 @@ public final class AutomationInterfaceScreen extends Screen {
         super.renderBackground(graphics, mouseX, mouseY, partialTick);
         int x = left();
         int y = top();
-        FederationTheme.FRAME.draw(graphics, mouseX, mouseY, x, y, WIDTH, HEIGHT, partialTick);
+        FederationTheme.FRAME.draw(graphics, mouseX, mouseY, x, y, WIDTH + extra, HEIGHT, partialTick);
         graphics.drawString(font, title, x + LABEL_X, y + 7, FederationTheme.TEXT, false);
         graphics.drawString(font, Component.translatable("ae2federation.automation_interface.id"),
                 x + LABEL_X, y + ID_Y + 4, FederationTheme.TEXT, false);
         graphics.drawString(font, Component.translatable("ae2federation.automation_interface.alias"),
                 x + LABEL_X, y + ALIAS_Y + 4, FederationTheme.TEXT, false);
-        FederationTheme.WELL_RECT.draw(graphics, mouseX, mouseY, x + FIELD_X, y + ID_Y, ID_W, ROW_H, partialTick);
+        FederationTheme.WELL_RECT.draw(graphics, mouseX, mouseY, x + FIELD_X, y + ID_Y, ID_W + extra, ROW_H,
+                partialTick);
         graphics.drawString(font, view.id(), x + FIELD_X + 4, y + ID_Y + 4, FederationTheme.DARK_TEXT, false);
-        FederationTheme.FIELD.draw(graphics, mouseX, mouseY, x + FIELD_X, y + ALIAS_Y, ALIAS_W, ROW_H, partialTick);
+        FederationTheme.FIELD.draw(graphics, mouseX, mouseY, x + FIELD_X, y + ALIAS_Y, ALIAS_W + extra, ROW_H,
+                partialTick);
     }
 
     @Override

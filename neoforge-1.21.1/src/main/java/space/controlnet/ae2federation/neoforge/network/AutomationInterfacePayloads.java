@@ -12,7 +12,10 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import space.controlnet.ae2federation.automation.AutomationInterfaceScreens;
 import space.controlnet.ae2federation.client.automation.AutomationInterfaceScreen;
 
-/** The Automation Interface's screen: what it shows, sent to the player, and the alias the player sends back. */
+/**
+ * The ID and alias screen of an Automation Interface or a computing device: what it shows, sent to the player, and the
+ * alias the player sends back.
+ */
 public final class AutomationInterfacePayloads {
     private AutomationInterfacePayloads() {
     }
@@ -24,12 +27,13 @@ public final class AutomationInterfacePayloads {
                 (buffer, payload) -> {
                     var view = payload.view();
                     buffer.writeBlockPos(view.position());
+                    buffer.writeUtf(view.title());
                     buffer.writeUtf(view.id());
                     buffer.writeUtf(view.alias());
                     buffer.writeBoolean(view.refused());
                 },
                 buffer -> new View(new AutomationInterfaceScreens.View(buffer.readBlockPos(), buffer.readUtf(),
-                        buffer.readUtf(), buffer.readBoolean())));
+                        buffer.readUtf(), buffer.readUtf(), buffer.readBoolean())));
 
         @Override
         public Type<? extends CustomPacketPayload> type() {

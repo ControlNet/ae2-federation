@@ -23,5 +23,8 @@ computing device comes later.
   <ItemLink id="ae2federation:automation_interface" />s. For now an operator installs them with the
   `/ae2federation programs` commands.
 * **Redstone:** a signal arriving at the device starts the programs set to start on redstone.
+* **ID and alias:** every device has an ID, such as `device-k3m9qa`, that stays until it is broken. Right-click
+  it to see or copy the ID, or to give the device an alias. An alias must be unique among the domain's devices and
+  must not look like an ID.
 
 It is only available in creative mode.

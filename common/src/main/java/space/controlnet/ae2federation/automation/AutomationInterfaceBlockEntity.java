@@ -39,6 +39,17 @@ public final class AutomationInterfaceBlockEntity extends DomainDeviceBlockEntit
         AutomationInterfaces.get(level).release(id);
     }
 
+    @Override
+    public String alias(ServerLevel level) {
+        return id() == null ? "" : AutomationInterfaces.get(level).alias(id());
+    }
+
+    @Override
+    public AutomationInterfaceBook.AliasResult setAlias(ServerLevel level, String alias) {
+        return id() == null ? AutomationInterfaceBook.AliasResult.INVALID
+                : AutomationInterfaces.get(level).setAlias(level, id(), alias);
+    }
+
     /** Every face but the front, which acts on the world. */
     @Override
     protected boolean links(Direction face) {

@@ -28,6 +28,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.block.CropGrowEvent;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.automation.AutomationInterfaceBlockEntity;
+import space.controlnet.ae2federation.automation.AutomationInterfaceBook;
 import space.controlnet.ae2federation.automation.AutomationInterfaces;
 import space.controlnet.ae2federation.automation.AutomationRegistration;
 import space.controlnet.ae2federation.automation.ComputingDeviceBlockEntity;
@@ -373,6 +374,57 @@ public final class ProgramSchedulerGameTests {
         }).then(10, () -> helper.assertBlockProperty(TARGET, BlockStateProperties.LIT, true)).finish(() -> {
             AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
             automationInterface.setRedstone(0);
+        });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void theTabEditsArgumentsAndListsAliases(GameTestHelper helper) {
+        var scene = Scene.build(helper, "sched_args", """
+                def light(port: Interface, level: int) -> bool:
+                    return mc.set_redstone(port, level)
+                """);
+        helper.setBlock(TARGET, Blocks.REDSTONE_LAMP);
+        var id = new String[1];
+        scene.whenReady(() -> {
+            var sync = ProgramSync.get(helper.getLevel().getServer());
+            var installed = sync.handle(1, "install", List.of(scene.device(), "sched_args", "light",
+                    scene.interfaceId(), "0"));
+            helper.assertTrue(installed.ok(), installed.message());
+            id[0] = installed.message().substring("installed ".length());
+            scene.installed(ComputingDevices.get(helper.getLevel()).installation(id[0]).orElseThrow());
+            helper.assertTrue(sync.handle(2, "trigger", List.of(id[0], "every 400")).ok(), "Trigger set");
+            helper.assertFalse(sync.handle(3, "args", List.of(id[0], scene.interfaceId())).ok(),
+                    "Every parameter needs its argument");
+            helper.assertFalse(sync.handle(4, "args", List.of(id[0], scene.interfaceId(), "bright")).ok(),
+                    "An argument must read as its parameter's type");
+            helper.assertValueEqual(sync.handle(5, "args", List.of(id[0], scene.interfaceId(), "15")),
+                    new ProgramSync.Answer(5, true, "['" + scene.interfaceId() + "', 15]"), "Arguments changed");
+            var installation = ComputingDevices.get(helper.getLevel()).installation(id[0]).orElseThrow();
+            helper.assertValueEqual(installation.trigger(), new Installation.Trigger.Schedule(400),
+                    "The same installation, its trigger kept");
+            scene.scheduler().trigger(id[0]);
+
+            var devices = ComputingDevices.get(helper.getLevel());
+            helper.assertValueEqual(devices.setAlias(helper.getLevel(), scene.device(), "device-abcdef"),
+                    AutomationInterfaceBook.AliasResult.INVALID, "An alias may not read as an ID");
+            helper.assertValueEqual(devices.setAlias(helper.getLevel(), scene.device(), "  core lab "),
+                    AutomationInterfaceBook.AliasResult.SET, "Alias set");
+            AutomationInterfaces.get(helper.getLevel()).setAlias(helper.getLevel(), scene.interfaceId(), "lamp");
+            var index = sync.index();
+            var device = index.devices().stream().filter(info -> info.id().equals(scene.device())).findFirst()
+                    .orElseThrow();
+            helper.assertValueEqual(device.alias(), "core lab", "The device's alias is listed");
+            var listed = index.interfaces().stream().filter(info -> info.id().equals(scene.interfaceId()))
+                    .findFirst().orElseThrow();
+            helper.assertValueEqual(listed.alias(), "lamp", "The interface's alias is listed");
+            helper.assertValueEqual(listed.domain(), device.domain(), "In the device's domain");
+            helper.assertValueEqual(listed.position(), helper.absolutePos(INTERFACE), "At its place");
+        }).then(10, () -> helper.assertBlockProperty(TARGET, BlockStateProperties.LIT, true)).finish(() -> {
+            AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
+            automationInterface.setRedstone(0);
+            ComputingDevices.get(helper.getLevel()).setAlias(helper.getLevel(), scene.device(), "");
+            AutomationInterfaces.get(helper.getLevel()).setAlias(helper.getLevel(), scene.interfaceId(), "");
         });
     }
 

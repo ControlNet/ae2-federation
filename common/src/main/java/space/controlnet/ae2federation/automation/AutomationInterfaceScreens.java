@@ -7,12 +7,15 @@ import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * The interface's screen as the server sees it: what it shows (the ID and the alias) and the alias the player sends
- * back. The loader's network code registers how both travel.
+ * The ID and alias screen of an Automation Interface or a computing device, as the server sees it: what it shows and
+ * the alias the player sends back. The loader's network code registers how both travel.
  */
 public final class AutomationInterfaceScreens {
-    /** What the screen shows; {@code refused} when the alias the player sent was not taken. */
-    public record View(BlockPos position, String id, String alias, boolean refused) {
+    /**
+     * What the screen shows: its title (the block's translation key), the ID and the alias; {@code refused} when the
+     * alias the player sent was not taken.
+     */
+    public record View(BlockPos position, String title, String id, String alias, boolean refused) {
     }
 
     @FunctionalInterface
@@ -36,15 +39,18 @@ public final class AutomationInterfaceScreens {
         toServer = Objects.requireNonNull(server);
     }
 
-    /** Opens the screen of an interface whose ID is claimed. */
-    public static boolean open(ServerPlayer player, AutomationInterfaceBlockEntity automationInterface) {
-        var id = automationInterface.id();
-        if (id == null || toClient == null || !(automationInterface.getLevel() instanceof ServerLevel level)) {
+    /** Opens the screen of a block whose ID is claimed. */
+    public static boolean open(ServerPlayer player, DomainDeviceBlockEntity device) {
+        var id = device.id();
+        if (id == null || toClient == null || !(device.getLevel() instanceof ServerLevel level)) {
             return false;
         }
-        toClient.send(player, new View(automationInterface.getBlockPos(), id, AutomationInterfaces.get(level).alias(id),
-                false));
+        toClient.send(player, new View(device.getBlockPos(), title(device), id, device.alias(level), false));
         return true;
+    }
+
+    private static String title(DomainDeviceBlockEntity device) {
+        return device.getBlockState().getBlock().getDescriptionId();
     }
 
     /** Client side: the player finished editing the alias. */
@@ -54,19 +60,20 @@ public final class AutomationInterfaceScreens {
         }
     }
 
-    /** Server side: sets the alias if the player can reach the interface, and answers with what it shows now. */
+    /** Server side: sets the alias if the player can reach the block, and answers with what it shows now. */
     public static void setAlias(ServerPlayer player, BlockPos position, String alias) {
         var level = player.serverLevel();
         if (!player.canInteractWithBlock(position, 4.0)
-                || !(level.getBlockEntity(position) instanceof AutomationInterfaceBlockEntity automationInterface)
-                || automationInterface.id() == null || toClient == null) {
+                || !(level.getBlockEntity(position) instanceof DomainDeviceBlockEntity device)
+                || device.id() == null || toClient == null) {
             return;
         }
-        var id = automationInterface.id();
-        var interfaces = AutomationInterfaces.get(level);
-        var result = interfaces.setAlias(level, id, alias);
+        var result = device.setAlias(level, alias);
         var refused = result == AutomationInterfaceBook.AliasResult.TAKEN
                 || result == AutomationInterfaceBook.AliasResult.INVALID;
-        toClient.send(player, new View(position, id, interfaces.alias(id), refused));
+        if (result == AutomationInterfaceBook.AliasResult.SET) {
+            ProgramSync.get(level.getServer()).changed();
+        }
+        toClient.send(player, new View(position, title(device), device.id(), device.alias(level), refused));
     }
 }

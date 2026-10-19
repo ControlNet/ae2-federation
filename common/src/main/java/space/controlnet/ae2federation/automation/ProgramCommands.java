@@ -158,7 +158,8 @@ public final class ProgramCommands {
         if (devices.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No computing devices"), false);
         }
-        devices.forEach((id, entry) -> source.sendSuccess(() -> Component.literal(id + " at "
+        devices.forEach((id, entry) -> source.sendSuccess(() -> Component.literal(id
+                + (entry.alias().isEmpty() ? "" : " (" + entry.alias() + ")") + " at "
                 + entry.position().toShortString() + " in " + entry.dimension()), false));
         return devices.size();
     }

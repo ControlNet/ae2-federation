@@ -19,6 +19,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.function.ListValue;
@@ -44,7 +45,8 @@ public final class ProgramSync {
             List<FunctionInfo> functions) {
     }
 
-    public record DeviceInfo(String id, String dimension, BlockPos position, String domain) {
+    /** A computing device or an Automation Interface: its alias is empty when it has none. */
+    public record DeviceInfo(String id, String alias, String dimension, BlockPos position, String domain) {
     }
 
     /** An installation, with its arguments as Python prints them and its trigger as {@link TriggerText} writes it. */
@@ -52,7 +54,12 @@ public final class ProgramSync {
             String trigger, int interval, String overlap, int running) {
     }
 
-    public record Index(List<FileInfo> files, List<DeviceInfo> devices, List<InstallationInfo> installations) {
+    /**
+     * Every program, computing device, Automation Interface and installation on the server; the tab shows the devices
+     * and interfaces of its own domain.
+     */
+    public record Index(List<FileInfo> files, List<DeviceInfo> devices, List<DeviceInfo> interfaces,
+            List<InstallationInfo> installations) {
     }
 
     /** A file's text, in chunks of {@link ChunkAssembler#CHUNK} characters. */
@@ -172,7 +179,7 @@ public final class ProgramSync {
 
     /**
      * A request: {@code push file}, {@code install device file function args...}, {@code uninstall id},
-     * {@code trigger id text}, {@code interval id ticks}, {@code overlap id mode}, {@code run id}, {@code delete file}.
+     * {@code args id args...}, {@code trigger id text}, {@code interval id ticks}, {@code overlap id mode}, {@code run id}, {@code delete file}.
      */
     public void request(ServerPlayer player, int request, String action, List<String> args) {
         answer(player, handle(request, action, args));
@@ -200,6 +207,12 @@ public final class ProgramSync {
                         args.subList(3, args.size())).id();
             }
             case "uninstall" -> scheduler.uninstall(arg(args, 0, 1)) ? "uninstalled" : "no such installation";
+            case "args" -> {
+                if (args.isEmpty()) {
+                    throw new IllegalArgumentException("args takes an installation and its arguments");
+                }
+                yield Ops.repr(new ListValue(scheduler.setArgs(args.get(0), args.subList(1, args.size())).args()));
+            }
             case "trigger" -> TriggerText.format(scheduler.setTrigger(arg(args, 0, 2),
                     TriggerText.parse(args.get(1))).trigger());
             case "interval" -> {
@@ -265,7 +278,7 @@ public final class ProgramSync {
         subscribers.forEach(id -> toClient.index(server.getPlayerList().getPlayer(id), index));
     }
 
-    /** What the tab lists: every program, every computing device and every installation. */
+    /** What the tab lists: every program, computing device, Automation Interface and installation. */
     public Index index() {
         var library = ProgramStore.get(server).library();
         var devices = ComputingDevices.get(server.overworld());
@@ -288,16 +301,27 @@ public final class ProgramSync {
         }
         var deviceInfos = new ArrayList<DeviceInfo>();
         devices.entries().forEach((id, entry) -> {
-            var location = ResourceLocation.tryParse(entry.dimension());
-            var level = location == null ? null : server.getLevel(ResourceKey.create(Registries.DIMENSION, location));
+            var level = level(entry.dimension());
             var domain = level == null ? "" : devices.domainOf(level, id).map(found -> found.value()).orElse("");
-            deviceInfos.add(new DeviceInfo(id, entry.dimension(), entry.position(), domain));
+            deviceInfos.add(new DeviceInfo(id, entry.alias(), entry.dimension(), entry.position(), domain));
+        });
+        var interfaces = AutomationInterfaces.get(server.overworld());
+        var interfaceInfos = new ArrayList<DeviceInfo>();
+        interfaces.entries().forEach((id, entry) -> {
+            var level = level(entry.dimension());
+            var domain = level == null ? "" : interfaces.domainOf(level, id).map(found -> found.value()).orElse("");
+            interfaceInfos.add(new DeviceInfo(id, entry.alias(), entry.dimension(), entry.position(), domain));
         });
         var installations = devices.installations().stream().map(installation -> new InstallationInfo(
                 installation.id(), installation.device(), installation.file(), installation.function(),
                 Ops.repr(new ListValue(installation.args())), TriggerText.format(installation.trigger()),
                 installation.interval(), installation.overlap().name().toLowerCase(Locale.ROOT),
                 scheduler.running(installation.id()))).toList();
-        return new Index(List.copyOf(files), List.copyOf(deviceInfos), installations);
+        return new Index(List.copyOf(files), List.copyOf(deviceInfos), List.copyOf(interfaceInfos), installations);
+    }
+
+    private @Nullable ServerLevel level(String dimension) {
+        var location = ResourceLocation.tryParse(dimension);
+        return location == null ? null : server.getLevel(ResourceKey.create(Registries.DIMENSION, location));
     }
 }

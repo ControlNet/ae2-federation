@@ -158,12 +158,8 @@ public final class ProgramPayloads {
                 fout.writeBoolean(function.acts());
             });
         });
-        buffer.writeCollection(index.devices(), (out, device) -> {
-            out.writeUtf(device.id());
-            out.writeUtf(device.dimension());
-            out.writeBlockPos(device.position());
-            out.writeUtf(device.domain());
-        });
+        buffer.writeCollection(index.devices(), ProgramPayloads::writeDevice);
+        buffer.writeCollection(index.interfaces(), ProgramPayloads::writeDevice);
         buffer.writeCollection(index.installations(), (out, installation) -> {
             out.writeUtf(installation.id());
             out.writeUtf(installation.device());
@@ -181,12 +177,26 @@ public final class ProgramPayloads {
         var files = buffer.readList(in -> new ProgramSync.FileInfo(in.readUtf(), in.readUtf(), in.readBoolean(),
                 in.readBoolean(), in.readVarInt(), in.readList(fin -> new ProgramSync.FunctionInfo(fin.readUtf(),
                         fin.readList(FriendlyByteBuf::readUtf), fin.readUtf(), fin.readBoolean()))));
-        var devices = buffer.readList(in -> new ProgramSync.DeviceInfo(in.readUtf(), in.readUtf(), in.readBlockPos(),
-                in.readUtf()));
+        var devices = buffer.readList(ProgramPayloads::readDevice);
+        var interfaces = buffer.readList(ProgramPayloads::readDevice);
         var installations = buffer.readList(in -> new ProgramSync.InstallationInfo(in.readUtf(), in.readUtf(),
                 in.readUtf(), in.readUtf(), in.readUtf(), in.readUtf(), in.readVarInt(), in.readUtf(),
                 in.readVarInt()));
-        return new ProgramSync.Index(List.copyOf(files), List.copyOf(devices), List.copyOf(installations));
+        return new ProgramSync.Index(List.copyOf(files), List.copyOf(devices), List.copyOf(interfaces),
+                List.copyOf(installations));
+    }
+
+    private static void writeDevice(FriendlyByteBuf buffer, ProgramSync.DeviceInfo device) {
+        buffer.writeUtf(device.id());
+        buffer.writeUtf(device.alias());
+        buffer.writeUtf(device.dimension());
+        buffer.writeBlockPos(device.position());
+        buffer.writeUtf(device.domain());
+    }
+
+    private static ProgramSync.DeviceInfo readDevice(FriendlyByteBuf buffer) {
+        return new ProgramSync.DeviceInfo(buffer.readUtf(), buffer.readUtf(), buffer.readUtf(), buffer.readBlockPos(),
+                buffer.readUtf());
     }
 
     public static void register(IEventBus modBus) {

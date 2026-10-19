@@ -1164,6 +1164,20 @@ User decisions (2026-10-19):
   installation's ID, trigger and log.
 - Dry-run results on graph nodes get their board with the graph editor (assistant proposal, not objected to).
 
+### The index follow-ups as built (H6, 2026-10-19)
+
+- **Device aliases.** Right-clicking a computing device opens the same ID and alias screen as the interface's, titled
+  with the block's name; the screen widens to fit a long title. An alias is unique among the devices of a domain and
+  may not read as an ID. `/ae2federation programs devices` shows it.
+- **The index** lists the interfaces too, and both lists carry each block's alias, place and domain, so the tab
+  filters devices and interfaces by its own domain on the client.
+- **`args id args...`** changes an installation's arguments, converted by the parameters' types as `install` does; the
+  installation keeps its ID, trigger, interval, overlap mode and log. Like any settings change, it stops the runs in
+  progress.
+- Setting an alias in either screen sends the tab a new index.
+- A condition must be a public function: the scheduler refuses a `_private` one, so the condition list in the tab
+  shows public functions only.
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:
