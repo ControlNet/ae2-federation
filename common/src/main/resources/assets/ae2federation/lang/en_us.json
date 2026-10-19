@@ -59,6 +59,7 @@
   "ae2federation.ui.domain.links": "%s links",
   "ae2federation.ui.domain.links.one": "%s link",
   "ae2federation.ui.domain.members": "%s networks",
+  "ae2federation.ui.domain.members.one": "%s network",
   "ae2federation.ui.domain.members.pending": "No confirmed Federation Domain membership",
   "ae2federation.ui.domain.consumer": "Consumer: %s",
   "ae2federation.ui.domain.provider": "Provider: %s",

@@ -93,8 +93,10 @@ public final class FederationDomainPolicySession {
         observation = context == null ? null : new FederationDomainPolicyObservation(this, player, context);
         var members = federationDomain.map(snapshot -> List.copyOf(snapshot.memberships().keySet())).orElse(List.of());
         selection = members.size() >= 2 ? PolicyEditorSelection.initial(members) : null;
-        var initialState = selection == null ? emptyState : PolicyEditorSessionState.Status.READY;
-        state = new PolicyEditorSessionState(initialState, selection != null && entrance.enabled());
+        // A domain of one network is confirmed too: nothing to pair, but its network is shown and can be renamed.
+        boolean ready = !members.isEmpty();
+        var initialState = ready ? PolicyEditorSessionState.Status.READY : emptyState;
+        state = new PolicyEditorSessionState(initialState, ready && entrance.enabled());
         // Mapping needs no rule pair: a domain may hold one ME network and its Endpoints.
         mappingAllowed = context != null && entrance.enabled();
         refreshExpectedRevision();
@@ -348,12 +350,13 @@ public final class FederationDomainPolicySession {
         for (var group : new String[] {"consumer", "provider", "capability", "mapping_provider", "slot", "target", "endpoint"}) {
             root.add(group, new com.google.gson.JsonArray());
         }
-        if (selection == null || currentFederationDomain().isEmpty()) return root.toString();
+        if (currentFederationDomain().isEmpty()) return root.toString();
+        var members = members();
         space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values().stream()
                 .filter(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::isInstance)
                 .map(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::cast)
-                .filter(record -> selection.members().contains(record.key().consumerNetworkId())
-                        && selection.members().contains(record.key().providerNetworkId())
+                .filter(record -> members.contains(record.key().consumerNetworkId())
+                        && members.contains(record.key().providerNetworkId())
                         && !record.key().consumerNetworkId().equals(record.key().providerNetworkId()))
                 .sorted(java.util.Comparator.comparing(record -> record.key().toString()))
                 .forEach(record -> {
@@ -372,8 +375,8 @@ public final class FederationDomainPolicySession {
         root.add("revisions", revisions);
         space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values().stream()
                 .filter(space.controlnet.ae2federation.policy.PolicyRecord.Deleted.class::isInstance)
-                .filter(record -> selection.members().contains(record.key().consumerNetworkId())
-                        && selection.members().contains(record.key().providerNetworkId()))
+                .filter(record -> members.contains(record.key().consumerNetworkId())
+                        && members.contains(record.key().providerNetworkId()))
                 .sorted(java.util.Comparator.comparing(record -> record.key().toString()))
                 .forEach(record -> {
                     var row = new com.google.gson.JsonObject();
@@ -389,7 +392,7 @@ public final class FederationDomainPolicySession {
                 .confirmedNetworkId(entry.provider().getGrid()).orElse(null)).toList();
         var endpointNetworks = currentEndpoints().stream().map(binding -> FederationDomainRegistryAccess
                 .confirmedNetworkId(binding.subnetNode().getGrid()).orElse(null)).toList();
-        for (var member : selection.members()) {
+        for (var member : members) {
             var network = new com.google.gson.JsonObject();
             network.addProperty("id", member.value().toString());
             network.addProperty("member", space.controlnet.ae2federation.observability.id.MemberId
@@ -402,15 +405,17 @@ public final class FederationDomainPolicySession {
         }
         addRelated(root);
         currentFederationDomain().ifPresent(domain -> root.add("via", viaJson(domain)));
-        for (var member : selection.members()) {
-            var id = member.value().toString();
-            addChoice(root, "consumer", id, shortId(id));
-            addChoice(root, "provider", id, shortId(id));
+        if (selection != null) {
+            for (var member : members) {
+                var id = member.value().toString();
+                addChoice(root, "consumer", id, shortId(id));
+                addChoice(root, "provider", id, shortId(id));
+            }
+            selected.addProperty("consumer", selection.key().consumerNetworkId().value().toString());
+            selected.addProperty("provider", selection.key().providerNetworkId().value().toString());
+            for (var capability : PolicyCapability.values()) addChoice(root, "capability", capability.name(), capability.name());
+            selected.addProperty("capability", selection.key().capability().name());
         }
-        selected.addProperty("consumer", selection.key().consumerNetworkId().value().toString());
-        selected.addProperty("provider", selection.key().providerNetworkId().value().toString());
-        for (var capability : PolicyCapability.values()) addChoice(root, "capability", capability.name(), capability.name());
-        selected.addProperty("capability", selection.key().capability().name());
         for (var provider : currentProviders()) {
             var id = FederationDomainGraphProjection.providerId(context, provider);
             var choice = addChoice(root, "mapping_provider", id, shortId(id));
@@ -439,7 +444,7 @@ public final class FederationDomainPolicySession {
             }
             selected.addProperty("slot", Integer.toString(mappingSlotIndex));
             var endpoints = mappingEndpoints();
-            for (var endpoint : endpoints) targetChoice(root, entry, endpoint, selection.members());
+            for (var endpoint : endpoints) targetChoice(root, entry, endpoint, members);
             if (!endpoints.isEmpty()) selected.addProperty("target", endpointChoiceId(selectedMappingEndpoint(endpoints)));
         });
         var endpoints = currentEndpoints();
@@ -971,9 +976,9 @@ public final class FederationDomainPolicySession {
      * instead of on every binding poll.
      */
     public String networkOverviewText() {
-        if (selection == null || context == null) return "";
+        if (context == null || members().isEmpty()) return "";
         var now = level.getGameTime();
-        var described = new java.util.ArrayList<>(selection.members());
+        var described = new java.util.ArrayList<>(members());
         relatedNetworks.stream().sorted(java.util.Comparator.comparing(network -> network.value().toString()))
                 .forEach(described::add);
         if (overviewText.isEmpty() || now - overviewTick >= OVERVIEW_INTERVAL_TICKS || now < overviewTick
@@ -1005,14 +1010,14 @@ public final class FederationDomainPolicySession {
      */
     private void addRelated(com.google.gson.JsonObject root) {
         var registry = FederationDomainRegistryAccess.get(level);
-        var members = new java.util.HashSet<>(selection.members());
+        var members = new java.util.HashSet<>(members());
         var networksOut = new com.google.gson.JsonArray();
         var rulesOut = new com.google.gson.JsonArray();
         root.add("relatedNetworks", networksOut);
         root.add("relatedRules", rulesOut);
         java.util.Comparator<space.controlnet.ae2federation.identity.NetworkId> byId =
                 java.util.Comparator.comparing(network -> network.value().toString());
-        var reach = ConnectedDomains.reach(selection.members(), context.federationDomainId(),
+        var reach = ConnectedDomains.reach(members(), context.federationDomainId(),
                 network -> registry.federationdomainsFor(network).stream().sorted().toList(),
                 domainId -> registry.federationDomain(domainId).map(domain -> domain.memberships().keySet().stream()
                         .sorted(byId).toList()).orElse(List.of()));
@@ -1227,8 +1232,7 @@ public final class FederationDomainPolicySession {
     /** Renames a member network whose identity is settled; an empty name clears it. */
     public boolean renameNetwork(String encoded) {
         var target = NetworkRenameTarget.parse(encoded).orElse(null);
-        if (target == null || selection == null || !state.editingAllowed()
-                || !selection.members().contains(target.network())) return false;
+        if (target == null || !state.editingAllowed() || !members().contains(target.network())) return false;
         var grids = NetworkOverview.gridsByNetwork(level).getOrDefault(target.network(), List.of());
         var settlements = grids.stream().map(grid -> grid.getService(
                 space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement()).toList();
@@ -1461,20 +1465,32 @@ public final class FederationDomainPolicySession {
         return mappingAcknowledgment;
     }
 
+    /**
+     * The domain's networks in the rule editor's order: the pair's members, or, in a domain of one network, that
+     * network, which has no pair to edit but is still shown.
+     */
+    private List<NetworkId> members() {
+        if (selection != null) return selection.members();
+        return currentFederationDomain().map(domain -> domain.memberships().keySet().stream()
+                .sorted(java.util.Comparator.comparing(NetworkId::toString)).toList()).orElse(List.of());
+    }
+
     public Component membersText() {
         if (context == null && deviceDomainAvailability != null) return Component.translatable("ae2federation.ui.workspace.local_scope");
-        if (selection == null) {
+        var members = members();
+        if (members.isEmpty()) {
             return Component.translatable("ae2federation.ui.domain.members.pending");
         }
         var links = space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values().stream()
                 .filter(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::isInstance)
                 .map(record -> record.key())
-                .filter(key -> selection.members().contains(key.consumerNetworkId())
-                        && selection.members().contains(key.providerNetworkId())
+                .filter(key -> members.contains(key.consumerNetworkId())
+                        && members.contains(key.providerNetworkId())
                         && !key.consumerNetworkId().equals(key.providerNetworkId()))
                 .map(key -> java.util.Set.of(key.consumerNetworkId(), key.providerNetworkId()))
                 .distinct().count();
-        return Component.translatable("ae2federation.ui.domain.members", selection.members().size()).append(" · ")
+        return Component.translatable(members.size() == 1 ? "ae2federation.ui.domain.members.one"
+                        : "ae2federation.ui.domain.members", members.size()).append(" · ")
                 .append(Component.translatable(links == 1 ? "ae2federation.ui.domain.links.one" : "ae2federation.ui.domain.links", links));
     }
 
