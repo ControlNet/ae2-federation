@@ -153,10 +153,12 @@ public final class ProgramScheduler {
         var installation = installed(id);
         if (trigger instanceof Installation.Trigger.Condition condition) {
             var definition = definition(installation.file(), condition.function());
-            if (!definition.result().name().equals("bool")) {
+            var checked = checked(installation.file());
+            var result = checked.results().get(condition.function());
+            if (result == null || !result.name().equals("bool")) {
                 throw new IllegalArgumentException(condition.function() + " does not give a bool");
             }
-            if (acts(installation.file(), condition.function())) {
+            if (checked.effectfulFunctions().contains(condition.function())) {
                 throw new IllegalArgumentException(condition.function()
                         + " acts on the world; a condition may only read");
             }
@@ -497,7 +499,8 @@ public final class ProgramScheduler {
                 .orElseThrow(() -> new IllegalArgumentException(file + " has no function " + function));
     }
 
-    private boolean acts(String file, String function) {
+    /** The pushed version of {@code file}, checked among the other pushed files. */
+    private Checker.Result checked(String file) {
         var texts = devices().pushed(file).orElseThrow();
         var others = new LinkedHashMap<String, space.controlnet.ae2federation.function.Program>();
         texts.forEach((name, text) -> {
@@ -506,7 +509,7 @@ public final class ProgramScheduler {
             }
         });
         return Checker.check(ScriptParser.parse(texts.get(file)).program(),
-                new Workspace(others, ProgramStore.catalog(server, null))).effectfulFunctions().contains(function);
+                new Workspace(others, ProgramStore.catalog(server, null)));
     }
 
     /**

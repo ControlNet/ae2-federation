@@ -435,3 +435,16 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - Before/after shots: a throwaway zh_cn UI scenario run on a detached worktree of the old commit and on the branch
   (never committed). Escape with no completion open closes the screen, so the scenario closed the string with a typed
   quote instead. Compare: `build/editor-tabs-check/compare.png`.
+
+## Return types inferred (2026-10-19)
+
+- `FunctionDef.result` is the hint as written, `null` without `->`; the printer omits the arrow, so a def keeps its
+  form through Library splices and graph edits (`Canvas` entry nodes keep the written hint; the graph never draws it).
+- `Checker` infers: `Inference` is shared by the sub-checkers it starts (one per inferred function, and per other
+  file for `file.f()`); a function met while its returns are being read is unknown there (`Frame.waitsOn`), and a
+  result that rested on such an unknown is not memoised, so `a -> b -> a` resolves `b` again once `a` is known.
+- Use the effective type from `Checker.Result.results()` (or `Checker.results(program, workspace)` without the other
+  checks, as `Completion` does lazily); never `FunctionDef.result()` for "what it returns". Consumers switched:
+  `ProgramSync` index text, `ProgramScheduler.setTrigger` (condition must give bool), Completion candidates/calls.
+- `Signature.of(FunctionDef, TypeRef)` takes the result; `display()` drops the arrow when it is unknown.
+- Compare: `build/return-inference-check/compare.png` (throwaway zh_cn scenario on a detached old-commit worktree).

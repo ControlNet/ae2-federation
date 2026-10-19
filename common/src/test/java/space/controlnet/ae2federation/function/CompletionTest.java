@@ -114,6 +114,25 @@ final class CompletionTest {
     }
 
     @Test
+    void anUnwrittenReturnTypeShowsAsInferred() {
+        var c = at("""
+                def total(n: int):
+                    return n * 2
+
+                def f() -> None:
+                    tot|
+                """);
+        assertEquals("(n: int) -> int", c.candidates().get(0).detail());
+        assertEquals(List.of("upper"), labels(at("""
+                def name():
+                    return "x"
+
+                def f() -> None:
+                    name().up|
+                """)));
+    }
+
+    @Test
     void membersOfAnotherFileLeaveOutItsPrivateFunctions() {
         var c = at("""
                 def f() -> None:
@@ -313,7 +332,7 @@ final class CompletionTest {
     void aSignatureShowsDefaults() {
         var refill = ScriptParser.parse("def refill(name: Item, min: int = 64) -> None:\n    pass\n").program()
                 .functions().get(0);
-        assertEquals("(name: Item, min: int = 64) -> None", Signature.of(refill).display());
+        assertEquals("(name: Item, min: int = 64) -> None", Signature.of(refill, refill.result()).display());
     }
 
     @Test

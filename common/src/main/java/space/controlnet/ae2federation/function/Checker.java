@@ -21,10 +21,38 @@ public final class Checker {
 
     /**
      * Every problem found; the type of every expression that has one, by node ID; this file's functions that act on
-     * the world, directly or through what they call; and the call nodes that do.
+     * the world, directly or through what they call; the call nodes that do; and each function's result type, written
+     * or inferred (left out where it cannot be inferred).
      */
     public record Result(List<Problem> problems, Map<String, TypeRef> types, Set<String> effectfulFunctions,
-            Set<String> effectfulCalls) {
+            Set<String> effectfulCalls, Map<String, TypeRef> results) {
+    }
+
+    /** A return type worked out from the returns: {@code null} when there is none, with the problem saying why. */
+    private record Inferred(TypeRef type, String problem) {
+    }
+
+    /** One function whose returns are being read; {@code waitsOn} are running functions it met unknown. */
+    private record Frame(Program program, String name, Set<Frame> waitsOn) {
+        @Override
+        public boolean equals(Object other) {
+            return this == other;
+        }
+
+        @Override
+        public int hashCode() {
+            return System.identityHashCode(this);
+        }
+    }
+
+    /**
+     * Return types inferred during one check, shared with the checkers it starts for other functions and files. A
+     * function met while its own returns are still being read is unknown there, so {@code n * fact(n - 1)} leaves
+     * {@code fact}'s other returns to decide; a result that rested on such an unknown is not kept.
+     */
+    private static final class Inference {
+        final Map<Program, Map<String, Inferred>> done = new java.util.IdentityHashMap<>();
+        final java.util.Deque<Frame> running = new java.util.ArrayDeque<>();
     }
 
     /** Longer constant texts are left to run time rather than built while checking. */
@@ -75,6 +103,12 @@ public final class Checker {
     private final Map<String, FunctionDef> functions = new LinkedHashMap<>();
     private final Map<String, ClassDef> classes = new LinkedHashMap<>();
 
+    private final Inference inference;
+    /** Each function's result type, written or inferred, as {@link Result#results()} gives them. */
+    private final Map<String, TypeRef> results = new HashMap<>();
+    /** While inferring: the type of each return, {@code null} where unknown. */
+    private List<TypeRef> returned;
+
     private FunctionDef current;
     private TypeRef currentResult;
     private final Map<String, Local> locals = new HashMap<>();
@@ -88,22 +122,53 @@ public final class Checker {
     private record Record(String name, Map<String, TypeRef> fields, boolean readOnly) {
     }
 
-    private Checker(Program program, Workspace workspace) {
+    private Checker(Program program, Workspace workspace, Inference inference) {
         this.program = program;
         this.workspace = workspace;
+        this.inference = inference;
     }
 
     public static Result check(Program program, Workspace workspace) {
-        var checker = new Checker(program, workspace);
+        var checker = new Checker(program, workspace, new Inference());
         checker.run();
         var effects = Effects.of(program, workspace);
         return new Result(List.copyOf(checker.problems), Map.copyOf(checker.types), effects.functions(),
-                effects.calls());
+                effects.calls(), Map.copyOf(checker.results));
+    }
+
+    /**
+     * Each function's result type in {@code program}, written or inferred, without the rest of the checks; a function
+     * whose type cannot be inferred is left out.
+     */
+    public static Map<String, TypeRef> results(Program program, Workspace workspace) {
+        var checker = new Checker(program, workspace, new Inference());
+        checker.register();
+        var out = new HashMap<String, TypeRef>();
+        for (var function : checker.functions.values()) {
+            var type = checker.resultOf(function);
+            if (type != null) {
+                out.put(function.name(), type);
+            }
+        }
+        return out;
     }
 
     // ---- definitions ----
 
     private void run() {
+        register();
+        for (var record : classes.values()) {
+            checkClass(record);
+        }
+        for (var definition : program.definitions()) {
+            if (definition instanceof FunctionDef f && functions.get(f.name()) == f) {
+                checkFunction(f);
+            }
+        }
+    }
+
+    /** Names this file's functions and classes; a name defined twice keeps its first definition. */
+    private void register() {
         for (var definition : program.definitions()) {
             if (functions.containsKey(definition.name()) || classes.containsKey(definition.name())) {
                 problem(definition.id(), "'" + definition.name() + "' is already defined in this file");
@@ -118,14 +183,6 @@ public final class Checker {
                         classes.put(c.name(), c);
                     }
                 }
-            }
-        }
-        for (var record : classes.values()) {
-            checkClass(record);
-        }
-        for (var definition : program.definitions()) {
-            if (definition instanceof FunctionDef f && functions.get(f.name()) == f) {
-                checkFunction(f);
             }
         }
     }
@@ -164,6 +221,29 @@ public final class Checker {
     }
 
     private void checkFunction(FunctionDef function) {
+        if (function.result() == null) {
+            var inferred = inferred(function);
+            if (inferred.problem() != null) {
+                problem(function.id(), inferred.problem());
+            }
+            body(function, inferred.type());
+            if (inferred.type() != null) {
+                results.put(function.name(), inferred.type());
+            }
+            // A run off the end is one of the inferred returns, not a missing one.
+            Flow.check(function, null, assignedInFunction, this::problem);
+            return;
+        }
+        var result = annotation(function.result(), function.id());
+        body(function, result);
+        if (result != null) {
+            results.put(function.name(), result);
+        }
+        Flow.check(function, currentResult, assignedInFunction, this::problem);
+    }
+
+    /** Checks the parameters and the body, returns against {@code result}. */
+    private void body(FunctionDef function, TypeRef result) {
         current = function;
         locals.clear();
         assignedInFunction.clear();
@@ -177,10 +257,97 @@ public final class Checker {
             }
             locals.put(param.name(), new Local(type));
         }
-        currentResult = annotation(function.result(), function.id());
+        currentResult = result;
         collectAssigned(function.body());
         statements(function.body());
-        Flow.check(function, currentResult, assignedInFunction, this::problem);
+    }
+
+    // ---- inferred results ----
+
+    /** The type {@code function} of this file returns: its hint as written, or what its returns give. */
+    private TypeRef resultOf(FunctionDef function) {
+        return function.result() != null ? function.result() : inferred(function).type();
+    }
+
+    /** What {@code function} of {@code file} returns, as that file names its types. */
+    private TypeRef resultOf(Program file, FunctionDef function) {
+        return function.result() != null ? function.result()
+                : new Checker(file, workspace, inference).inferred(function).type();
+    }
+
+    private Inferred inferred(FunctionDef function) {
+        var known = inference.done.computeIfAbsent(program, p -> new HashMap<>());
+        var found = known.get(function.name());
+        if (found != null) {
+            return found;
+        }
+        for (var frame : inference.running) {
+            if (frame.program() == program && frame.name().equals(function.name())) {
+                inference.running.peek().waitsOn().add(frame);
+                return new Inferred(null, null);
+            }
+        }
+        var frame = new Frame(program, function.name(), new HashSet<>());
+        inference.running.push(frame);
+        var checker = new Checker(program, workspace, inference);
+        checker.register();
+        var result = checker.infer(function);
+        inference.running.pop();
+        frame.waitsOn().remove(frame);
+        if (frame.waitsOn().isEmpty()) {
+            known.put(function.name(), result);
+        } else if (!inference.running.isEmpty()) {
+            inference.running.peek().waitsOn().addAll(frame.waitsOn());
+        }
+        return result;
+    }
+
+    /**
+     * Reads {@code function}'s returns, as a type checker for Python would: one type for all of them, a bare
+     * {@code return} or a run off the end adding None (so {@code Optional}); none at all is None.
+     */
+    private Inferred infer(FunctionDef function) {
+        returned = new ArrayList<>();
+        body(function, null);
+        if (Flow.canEnd(function)) {
+            returned.add(Types.NONE);
+        }
+        if (returned.isEmpty()) {
+            return new Inferred(Types.NONE, null);
+        }
+        var display = function.name() + "()";
+        TypeRef joined = null;
+        for (var type : returned) {
+            if (type == null) {
+                continue;
+            }
+            var next = joined == null ? type : join(joined, type);
+            if (next == null) {
+                return new Inferred(null, display + " returns both " + joined + " and " + type
+                        + "; write its return type");
+            }
+            joined = next;
+        }
+        if (joined == null) {
+            // With a mistake in the returns, that mistake is the problem shown.
+            return new Inferred(null, problems.isEmpty() ? display
+                    + " has no return type to infer: its returns only call back into it; write its return type" : null);
+        }
+        if (joined.equals(Types.EMPTY_LIST)) {
+            return new Inferred(null, display + " returns only an empty list; write its return type, as in -> list[int]");
+        }
+        return new Inferred(joined, null);
+    }
+
+    /** One type for two returns: an empty list takes the other list's type. */
+    private static TypeRef join(TypeRef a, TypeRef b) {
+        if (a.equals(Types.EMPTY_LIST) && Types.isList(Types.unwrap(b))) {
+            return b;
+        }
+        if (b.equals(Types.EMPTY_LIST) && Types.isList(Types.unwrap(a))) {
+            return a;
+        }
+        return Types.common(a, b);
     }
 
     /** Names assigned anywhere in the body are local to it, as in Python. */
@@ -393,6 +560,10 @@ public final class Checker {
     }
 
     private void returns(Stmt.Return s) {
+        if (returned != null) {
+            returned.add(s.value() == null ? Types.NONE : expr(s.value(), null));
+            return;
+        }
         var display = current.name() + "()";
         if (s.value() == null) {
             if (currentResult != null && !currentResult.equals(Types.NONE)) {
@@ -631,7 +802,8 @@ public final class Checker {
                 return null;
             }
             if (functions.containsKey(name)) {
-                return bind(Signature.of(functions.get(name)), name + "()", c);
+                var function = functions.get(name);
+                return bind(Signature.of(function, resultOf(function)), name + "()", c);
             }
             if (classes.containsKey(name)) {
                 return bind(constructor(record(Types.simple(name)).orElseThrow()), name + "()", c);
@@ -711,7 +883,7 @@ public final class Checker {
             problem(c.id(), "'" + name + "' is private to " + fileName);
             return null;
         }
-        var signature = function.isPresent() ? Signature.of(function.get())
+        var signature = function.isPresent() ? Signature.of(function.get(), resultOf(file, function.get()))
                 : constructor(record(Types.simple(fileName + "." + name)).orElseThrow());
         return bind(qualify(signature, fileName, file), fileName + "." + name + "()", c);
     }
@@ -1386,6 +1558,9 @@ public final class Checker {
 
     /** Another file's types as this file names them: its classes get the file's name in front. */
     private static TypeRef qualify(TypeRef type, String fileName, Program file) {
+        if (type == null) {
+            return null;
+        }
         var args = type.args().stream().map(a -> qualify(a, fileName, file)).toList();
         boolean own = !type.name().contains(".") && file.classes().stream().anyMatch(c -> c.name().equals(type.name()));
         return new TypeRef(own ? fileName + "." + type.name() : type.name(), args);

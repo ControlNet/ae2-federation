@@ -40,11 +40,12 @@ public record Signature(String name, List<Arg> args, TypeRef result, String summ
         args = List.copyOf(args);
     }
 
-    static Signature of(FunctionDef function) {
+    /** A function of the programs, returning {@code result}: its hint, or the inferred type ({@code null} if none). */
+    static Signature of(FunctionDef function, TypeRef result) {
         return new Signature(function.name(),
                 function.params().stream().map(p -> new Arg(p.name(), p.type(),
                         p.defaultValue() == null ? null : ScriptPrinter.expr(p.defaultValue()))).toList(),
-                function.result(), function.docstring() == null ? "" : function.docstring());
+                result, function.docstring() == null ? "" : function.docstring());
     }
 
     /** A record's constructor: its fields in order, returning the record. */
@@ -55,10 +56,10 @@ public record Signature(String name, List<Arg> args, TypeRef result, String summ
                 new TypeRef(record.name(), List.of()), record.docstring() == null ? "" : record.docstring());
     }
 
-    /** {@code (name: Item, min: int = 64) -> bool}, as completion shows it. */
+    /** {@code (name: Item, min: int = 64) -> bool}, as completion shows it; without a known result, no arrow. */
     public String display() {
         return args.stream().map(a -> a.name() + ": " + a.type() + (a.defaultValue() == null ? "" : " = " + a.defaultValue()))
                 .collect(Collectors.joining(", ", "(", ")"))
-                + " -> " + result;
+                + (result == null ? "" : " -> " + result);
     }
 }

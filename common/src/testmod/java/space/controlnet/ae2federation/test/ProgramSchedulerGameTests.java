@@ -218,9 +218,13 @@ public final class ProgramSchedulerGameTests {
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
     public static void aConditionStartsWhenItTurnsTrue(GameTestHelper helper) {
+        // is_stone and what have no return hint: the condition takes the inferred type.
         var scene = Scene.build(helper, "sched_condition", """
-                def is_stone(port: Interface) -> bool:
+                def is_stone(port: Interface):
                     return mc.block_id(ae2f.select(port)) == "minecraft:stone"
+
+                def what(port: Interface):
+                    return mc.block_id(ae2f.select(port))
 
                 def signal(port: Interface) -> bool:
                     return mc.set_redstone(port, 15)
@@ -236,6 +240,9 @@ public final class ProgramSchedulerGameTests {
                     new Installation.Trigger.Condition("act", List.of(scene.interfaceId()))));
             helper.assertValueEqual(refused, "act acts on the world; a condition may only read",
                     "A condition that calls an effect, even through another function, is refused");
+            helper.assertValueEqual(assertRefused(() -> scene.scheduler().setTrigger(installation.id(),
+                    new Installation.Trigger.Condition("what", List.of(scene.interfaceId())))),
+                    "what does not give a bool", "An inferred str is not a condition");
             scene.scheduler().setTrigger(installation.id(),
                     new Installation.Trigger.Condition("is_stone", List.of(scene.interfaceId())));
             scene.scheduler().setInterval(installation.id(), 5);

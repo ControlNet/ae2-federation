@@ -33,6 +33,14 @@ final class Flow {
         }
     }
 
+    /** Whether some path runs off the end of {@code function}, which then returns None. */
+    static boolean canEnd(FunctionDef function) {
+        var assigned = new HashSet<String>();
+        function.params().forEach(p -> assigned.add(p.name()));
+        return new Flow(Set.of(), (node, message) -> {
+        }).block(function.body(), assigned) != null;
+    }
+
     private Set<String> block(List<Stmt> body, Set<String> in) {
         var assigned = in;
         for (var statement : body) {

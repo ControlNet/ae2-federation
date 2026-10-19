@@ -25,12 +25,16 @@ public final class Completion {
     static final List<String> VALUE_KEYWORDS = List.of("True", "False", "None", "not");
 
     private final Workspace workspace;
+    private final Program program;
     private final List<FunctionDef> ownFunctions;
     private final List<ClassDef> ownClasses;
     private final Map<String, TypeRef> variables = new LinkedHashMap<>();
+    /** Result types of the functions without a hint, by file ({@code null} for this one), inferred when first asked. */
+    private final Map<String, Map<String, TypeRef>> results = new java.util.HashMap<>();
 
     private Completion(Workspace workspace, Program program) {
         this.workspace = workspace;
+        this.program = program;
         this.ownFunctions = program.functions();
         this.ownClasses = program.classes();
     }
@@ -136,7 +140,7 @@ public final class Completion {
                     entry.getValue() == null ? "" : entry.getValue().toString()));
         }
         ownFunctions.stream().sorted(Comparator.comparing(FunctionDef::name))
-                .forEach(f -> out.add(Candidate.of(Signature.of(f), Candidate.Kind.FUNCTION)));
+                .forEach(f -> out.add(Candidate.of(signature(null, f), Candidate.Kind.FUNCTION)));
         ownClasses.stream().sorted(Comparator.comparing(ClassDef::name))
                 .forEach(c -> out.add(Candidate.of(Signature.of(c), Candidate.Kind.TYPE)));
         workspace.files().keySet().stream().sorted()
@@ -156,7 +160,7 @@ public final class Completion {
             builtIns.forEach(s -> out.add(Candidate.of(s, Candidate.Kind.FUNCTION)));
         } else if (workspace.files().containsKey(qualifier)) {
             var file = workspace.files().get(qualifier);
-            file.functions().stream().filter(f -> !f.name().startsWith("_")).map(Signature::of)
+            file.functions().stream().filter(f -> !f.name().startsWith("_")).map(f -> signature(qualifier, f))
                     .forEach(s -> out.add(Candidate.of(s, Candidate.Kind.FUNCTION)));
             file.classes().stream().filter(c -> !c.name().startsWith("_"))
                     .forEach(c -> out.add(Candidate.of(Signature.of(c), Candidate.Kind.TYPE)));
@@ -331,7 +335,7 @@ public final class Completion {
             return variables.get(context.get(0).text());
         }
         if (!context.isEmpty() && keyword(context.get(0), "return") && function != null) {
-            return function.result();
+            return signature(null, function).result();
         }
         return null;
     }
@@ -553,7 +557,7 @@ public final class Completion {
 
     private Optional<Signature> signature(String qualifier, String name) {
         if (qualifier == null) {
-            return ownFunctions.stream().filter(f -> f.name().equals(name)).findFirst().map(Signature::of)
+            return ownFunctions.stream().filter(f -> f.name().equals(name)).findFirst().map(f -> signature(null, f))
                     .or(() -> record(name).map(Signature::of));
         }
         if (variables.containsKey(qualifier)) {
@@ -568,9 +572,16 @@ public final class Completion {
         if (file == null) {
             return Optional.empty();
         }
-        return file.functions().stream().filter(f -> f.name().equals(name)).findFirst().map(Signature::of)
+        return file.functions().stream().filter(f -> f.name().equals(name)).findFirst().map(f -> signature(qualifier, f))
                 .or(() -> record(qualifier + "." + name).map(Signature::of).map(s -> new Signature(s.name(), s.args(),
                         new TypeRef(qualifier + "." + name, List.of()), s.summary())));
+    }
+
+    /** {@code function} of {@code file} ({@code null} for this one), with its result type written or inferred. */
+    private Signature signature(String file, FunctionDef function) {
+        var result = function.result() != null ? function.result() : results.computeIfAbsent(file, name ->
+                Checker.results(name == null ? program : workspace.files().get(name), workspace)).get(function.name());
+        return Signature.of(function, result);
     }
 
     // ---- text helpers ----

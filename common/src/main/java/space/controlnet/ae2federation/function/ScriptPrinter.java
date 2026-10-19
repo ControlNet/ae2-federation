@@ -44,7 +44,7 @@ public final class ScriptPrinter {
         comments(function.notes().above(), 0);
         out.append("def ").append(function.name()).append('(')
                 .append(function.params().stream().map(ScriptPrinter::param).collect(Collectors.joining(", ")))
-                .append(") -> ").append(function.result()).append(':');
+                .append(')').append(function.result() == null ? "" : " -> " + function.result()).append(':');
         lineEnd(function.notes());
         if (function.docstring() != null) {
             out.append(INDENT).append(docstring(function.docstring())).append('\n');

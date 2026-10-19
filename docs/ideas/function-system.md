@@ -92,10 +92,23 @@ Choices made while writing the parser, where the user decisions left them open:
 
 ## Static types everywhere (user decision 2026-10-18)
 
-Functions are statically typed: every parameter has a type hint and every function a return type hint (`-> None`
-when it returns nothing). A missing hint is an error, not an inferred `Any`, so the checker can make sure everything
-fits before a program runs. Locals take the type of the value assigned to them; an annotation such as `x: Item = ...`
-gives them another one (see below).
+Functions are statically typed: every parameter has a type hint. A missing parameter hint is an error, not an
+inferred `Any`, so the checker can make sure everything fits before a program runs. Locals take the type of the value
+assigned to them; an annotation such as `x: Item = ...` gives them another one (see below).
+
+The return type hint is optional (user, 2026-10-19): without one the checker infers it from the returns, as Python
+type checkers do, and completion, calls, the install view and condition triggers use the inferred type. Inference rules
+(assistant proposals, following Pyright's behaviour):
+
+- One type for all returns, joined as values are elsewhere (`int` and `float` give `float`; `Item` and `Fluid` give
+  `Resource`). A bare `return` or a run off the end adds None, so `Optional[T]`; no return at all is None.
+- Returns that share no type (`int` and `str`) are a problem on the `def`: write the return type.
+- A function met again while its own returns are being read is unknown there and the other returns decide, so
+  `return n * fact(n - 1)` beside `return 1` is `int`, and `even`/`odd` calling each other are `bool`. Returns that
+  only call back into the function (`ping`/`pong`) are a problem: write the return type.
+- `return []` alone is a problem (write `-> list[int]`); beside a typed list it takes that list's type.
+- The script keeps what was written: a `def` without `->` prints and saves without it, also after graph edits.
+- A cross-file cycle back into the file being checked is unknown (the workspace holds the other files only).
 
 ### Checking rules as built (B3, 2026-10-18)
 

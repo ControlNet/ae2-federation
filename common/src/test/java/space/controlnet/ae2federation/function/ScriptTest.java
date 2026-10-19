@@ -151,6 +151,18 @@ final class ScriptTest {
     }
 
     @Test
+    void aFunctionWithoutAReturnTypeRoundTrips() {
+        assertRoundTrip("""
+                def f(x: int):
+                    return x
+
+                def g() -> None:
+                    pass
+                """);
+        assertNull(parseClean("def f():\n    pass\n").functions().get(0).result());
+    }
+
+    @Test
     void defaultsAndKeywordArgumentsParse() {
         var program = parseClean(DEFAULTS);
         var refill = program.functions().get(0);
@@ -369,7 +381,6 @@ final class ScriptTest {
                 Arguments.of(body("class A:\n        pass"), 2, "nested classes are not supported"),
                 // signatures
                 Arguments.of("def f(x) -> None:\n    pass\n", 1, "parameter 'x' needs a type hint"),
-                Arguments.of("def f(x: int):\n    pass\n", 1, "function 'f' needs a return type hint"),
                 Arguments.of("def f(*xs: int) -> None:\n    pass\n", 1, "*args"),
                 Arguments.of("def f(x: int | None) -> None:\n    pass\n", 1, "union types"),
                 Arguments.of("def f(x: \"int\") -> None:\n    pass\n", 1, "string annotations"),

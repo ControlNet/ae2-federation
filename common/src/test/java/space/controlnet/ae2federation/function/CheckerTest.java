@@ -421,6 +421,102 @@ final class CheckerTest {
     }
 
     @Test
+    void anUnwrittenReturnTypeIsInferredFromTheReturns() {
+        var result = check("""
+                def one():
+                    return 1
+
+                def half(n: int):
+                    if n > 0:
+                        return 0.5
+                    return n
+
+                def maybe(n: int):
+                    if n > 0:
+                        return "x"
+
+                def nothing(n: int):
+                    if n > 0:
+                        return
+                    print(n)
+
+                def fact(n: int):
+                    if n <= 1:
+                        return 1
+                    return n * fact(n - 1)
+
+                def even(n: int):
+                    if n == 0:
+                        return True
+                    return odd(n - 1)
+
+                def odd(n: int):
+                    if n == 0:
+                        return False
+                    return even(n - 1)
+
+                def names():
+                    xs: list[str] = []
+                    if len(xs) > 0:
+                        return []
+                    return xs
+
+                def order():
+                    return iron_tools.make("minecraft:iron_ingot")
+
+                def use() -> int:
+                    return one() + fact(3) + len(names())
+                """);
+        assertEquals(List.of(), result.problems());
+        var results = new java.util.TreeMap<String, String>();
+        result.results().forEach((name, type) -> results.put(name, type.toString()));
+        assertEquals(new java.util.TreeMap<>(Map.of("one", "int", "half", "float", "maybe", "Optional[str]",
+                "nothing", "None", "fact", "int", "even", "bool", "odd", "bool", "names", "list[str]",
+                "order", "iron_tools.Order", "use", "int")), results);
+    }
+
+    @Test
+    void anInferredReturnTypeChecksItsCallers() {
+        assertEquals(List.of("6: x is int; it cannot hold str", "8: argument 'x' of g() must be int, not str"),
+                problems("""
+                def one():
+                    return "a"
+
+                def f() -> None:
+                    x = 1
+                    x = one()
+
+                    y = g(one())
+
+                def g(x: int):
+                    return x
+                """));
+    }
+
+    @Test
+    void returnsThatShareNoTypeOrOnlyCallThemselvesNeedAHint() {
+        assertEquals(List.of(
+                "1: a() returns both int and str; write its return type",
+                "6: ping() has no return type to infer: its returns only call back into it; write its return type",
+                "9: pong() has no return type to infer: its returns only call back into it; write its return type",
+                "12: empty() returns only an empty list; write its return type, as in -> list[int]"), problems("""
+                def a(n: int):
+                    if n > 0:
+                        return 1
+                    return "x"
+
+                def ping(n: int):
+                    return pong(n)
+
+                def pong(n: int):
+                    return ping(n)
+
+                def empty():
+                    return []
+                """));
+    }
+
+    @Test
     void effectsAreInferredThroughCallsAndFiles() {
         var parsed = ScriptParser.parse("""
                 def a() -> None:

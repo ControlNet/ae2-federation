@@ -158,12 +158,11 @@ public final class ScriptParser {
             }
         }
         advance();
-        if (!checkOp("->")) {
-            throw fail(nameToken, "function '" + nameToken.text()
-                    + "' needs a return type hint (-> None if it returns nothing)");
+        TypeRef result = null;
+        if (checkOp("->")) {
+            advance();
+            result = type();
         }
-        advance();
-        var result = type();
         expect(":");
         var end = endComment();
         openBlock("def");

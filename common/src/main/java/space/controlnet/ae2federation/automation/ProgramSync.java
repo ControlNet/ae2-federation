@@ -28,6 +28,7 @@ import space.controlnet.ae2federation.function.ListValue;
 import space.controlnet.ae2federation.function.Ops;
 import space.controlnet.ae2federation.function.RunError;
 import space.controlnet.ae2federation.function.ScriptParser;
+import space.controlnet.ae2federation.function.TypeRef;
 import space.controlnet.ae2federation.persistence.NetworkNames;
 
 /**
@@ -333,9 +334,13 @@ public final class ProgramSync {
             var checked = parsed.ok() ? library.check(name) : null;
             var problems = checked != null ? checked.problems().size() : parsed.errors().size();
             var acting = checked != null ? checked.effectfulFunctions() : Set.<String>of();
+            // A result without a hint is the inferred one; empty when it cannot be worked out.
+            var results = checked != null ? checked.results() : java.util.Map.<String, TypeRef>of();
             var functions = parsed.program().functions().stream().filter(f -> !f.name().startsWith("_"))
                     .map(f -> new FunctionInfo(f.name(), f.params().stream()
-                            .map(param -> param.name() + ": " + param.type()).toList(), f.result().toString(),
+                            .map(param -> param.name() + ": " + param.type()).toList(),
+                            f.result() != null ? f.result().toString()
+                                    : results.containsKey(f.name()) ? results.get(f.name()).toString() : "",
                             acting.contains(f.name())))
                     .toList();
             var pushed = devices.pushed(name);
