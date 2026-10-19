@@ -83,6 +83,13 @@ public final class StandardLibrary {
                                 if mc.amount(machine, item) < 16:
                                     ae2.export_to(machine, item, 16)
                             """, arg("block", "Block"), arg("resource", "Resource"), amount(), network()),
+                    act("move", "bool", "Moves the resource from one network of the domain to another.",
+                            """
+                            def stock_farm(base: Network, farm: Network, item: Item) -> None:
+                                if ae2.amount(item, farm) < 64:
+                                    ae2.move(base, farm, item, 64)
+                            """, arg("source", "Network"), arg("target", "Network"), arg("resource", "Resource"),
+                            amount()),
                     fn("free_cpus", "int", "Crafting CPUs not busy.", """
                             def craft_when_idle(item: Item, amount: int) -> None:
                                 if ae2.free_cpus() > 0:

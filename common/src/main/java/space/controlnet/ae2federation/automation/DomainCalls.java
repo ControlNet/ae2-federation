@@ -94,6 +94,8 @@ final class DomainCalls {
             case "ae2.cancel" -> !simulate && ProgramCrafting.get(server).cancel(owner, key(args.get(0)));
             case "ae2.import_from" -> importFrom(host, args.get(0), key(args.get(1)), (Long) args.get(2), args.get(3));
             case "ae2.export_to" -> exportTo(host, args.get(0), key(args.get(1)), (Long) args.get(2), args.get(3));
+            case "ae2.move" -> (Long) args.get(3) > 0 && transfer(domainStorage(args.get(0)), domainStorage(args.get(1)),
+                    key(args.get(2)), (Long) args.get(3)) > 0;
             case "ae2.free_cpus" -> grids(args.get(0)).stream().mapToLong(ProgramCrafting::freeCpus).sum();
             case "ae2.energy" -> grids(args.get(0)).stream()
                     .mapToDouble(grid -> grid.getEnergyService().getStoredPower()).sum();

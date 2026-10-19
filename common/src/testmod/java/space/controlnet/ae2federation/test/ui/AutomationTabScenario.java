@@ -427,13 +427,13 @@ public final class AutomationTabScenario implements UIScenario {
                 })
                 // The Library: namespaces with their counts, a function's page and the way back, a search.
                 .check("the library lists the namespaces with their counts", context ->
-                        context.el("#auto_library_ns_ae2 .library-count").text().equals("11")
+                        context.el("#auto_library_ns_ae2 .library-count").text().equals("12")
                                 && context.el("#auto_library_ns_ae2f .library-count").text().equals("6")
                                 && context.el("#auto_library_ns_mc .library-count").text().equals("13")
                                 && context.all("#auto_library_tree .library-function").isEmpty())
                 .click("#auto_library_ns_ae2")
                 .check("opening a namespace lists its functions", context ->
-                        context.all("#auto_library_tree .library-function").size() == 11
+                        context.all("#auto_library_tree .library-function").size() == 12
                                 && context.all("#auto_library_fn_ae2_craft .library-acts").size() == 1
                                 && context.all("#auto_library_fn_ae2_amount .library-acts").isEmpty())
                 .frames(2).screenshot("ui-automation-library")
@@ -454,7 +454,7 @@ public final class AutomationTabScenario implements UIScenario {
                 .click("#auto_library_back")
                 .check("back returns to the list as it was", context ->
                         !context.el("#auto_library_doc").isVisible()
-                                && context.all("#auto_library_tree .library-function").size() == 11)
+                                && context.all("#auto_library_tree .library-function").size() == 12)
                 .step("search the library", context ->
                         context.el("#auto_library_search").as(TextField.class).setText("redstone", true))
                 .check("a search lists only the matches, under their namespace", context ->

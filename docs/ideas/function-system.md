@@ -131,7 +131,7 @@ bug-prone. The rules below were proposed by the assistant and are now decided by
   `RuleMode`, `FilterMode`) or the catalogue (an unknown item, an ID of another kind, an ID that is both an item and a
   fluid in a `Resource` place, an interface or network not in the domain). Library ranges: `reach` 1 to 4,
   redstone level 0 to 15, amounts and ticks not negative.
-- Effects: library actions are marked in their signatures (`ae2.craft cancel import_from export_to`,
+- Effects: library actions are marked in their signatures (`ae2.craft cancel import_from export_to move`,
   `ae2f.set_rule set_filter`, `mc.move set_redstone break_block place_block wait move_fe`); a player function acts if
   it calls one, through any file and recursion.
 - Measured (2026-10-18): parsing a 1,020-line file takes about 3.6 ms and checking it about 2 ms after warm-up, a
@@ -431,6 +431,11 @@ ae2.energy(network=None) -> float  # AE stored (user: float after all)
 `import_from`/`export_to` take the selected block first (user, 2026-10-18). The four open questions below were
 adopted as proposed, the user raising no objection when asked twice (2026-10-18).
 
+`ae2.move(source: Network, target: Network, resource, amount: int) -> bool` moves between two networks of the domain
+in one action, with no block in between; arguments in `mc.move`'s order; `True` if anything moved (user, 2026-10-19,
+accepting the assistant's proposal). It uses the same network storage as `import_from`/`export_to`, paying AE power
+on both sides, and a dry run only simulates it.
+
 Open questions in this round:
 
 1. **Variants** (enchanted books, damaged tools, filled tanks): AE2 keys carry components. Proposal: a resource
@@ -554,6 +559,7 @@ ae2.craft(resource, amount, network=None) -> bool            # action
 ae2.cancel(resource, network=None) -> bool                   # action
 ae2.import_from(block, resource, amount, network=None) -> bool  # action
 ae2.export_to(block, resource, amount, network=None) -> bool    # action
+ae2.move(source, target, resource, amount) -> bool               # action, network to network
 ae2.free_cpus(network=None) -> int
 ae2.energy(network=None) -> float
 # ae2f: the Federation's own things

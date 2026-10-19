@@ -1,5 +1,9 @@
 package space.controlnet.ae2federation.test;
 
+import appeng.api.config.Actionable;
+import appeng.api.networking.security.IActionSource;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.storage.StorageCells;
 import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
@@ -182,6 +186,35 @@ public final class ProgramHostGameTests {
                     return " ".join([str(len(networks)), str(before), str(after), str(kept), str(last)])
                 """, "2 off reexport reexport off",
                 "A program sets and reads a rule between the two networks of its domain; a filter keeps the mode",
+                () -> {
+                });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void programMovesBetweenItsNetworks(GameTestHelper helper) {
+        var fixtures = build(helper, Blocks.AIR.defaultBlockState());
+        // The north chest's network starts with ten iron; the other cell is empty.
+        var cell = AEItems.ITEM_CELL_1K.stack();
+        StorageCells.getCellInventory(cell, null).insert(AEItemKey.of(Items.IRON_INGOT), 10, Actionable.MODULATE,
+                IActionSource.empty());
+        MEChestBlockEntity north = helper.getBlockEntity(CENTER.west().north());
+        north.setCell(cell);
+        run(helper, fixtures, "host_move", """
+                def run() -> str:
+                    networks = ae2f.networks()
+                    source = networks[0]
+                    target = networks[1]
+                    if ae2.amount("minecraft:iron_ingot", target) > 0:
+                        source = networks[1]
+                        target = networks[0]
+                    before = ae2.amount("minecraft:iron_ingot", source)
+                    moved = ae2.move(source, target, "minecraft:iron_ingot", 4)
+                    none = ae2.move(source, target, "minecraft:iron_ingot", 0)
+                    return " ".join([str(before), str(moved), str(ae2.amount("minecraft:iron_ingot", source)),
+                                     str(ae2.amount("minecraft:iron_ingot", target)), str(none)])
+                """, "10 True 6 4 False",
+                "A program moves four iron from one network of its domain to the other; moving none is False",
                 () -> {
                 });
     }

@@ -390,3 +390,14 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   `automationblocksjointhecableasdrawn` checks the kinds.
 - A creative block's item takes `Rarity.EPIC` for the purple name, as the Creative Beam Converter's does.
 - Compare: `build/automation-cable-device-check/compare.png`.
+
+## ae2.move: network to network
+
+- `ae2.move(source, target, resource, amount)` is one `DomainCalls.transfer` between two `domainStorage(network)`
+  views, so it simulates first, gives back what the target refused, pays AE power on both sides and only simulates in
+  a dry run. Library tests count the ae2 functions (StandardLibraryTest's acting set, the Library count in
+  `AutomationTabScenario`); a new function changes both.
+- `dev_gametests.py` takes the GameTest's testId (`programmovesbetweenitsnetworks`), not the manifest id.
+- A test cell can be filled before it goes into a chest: `StorageCells.getCellInventory(stack, null).insert(...)`
+  writes the stack at once when it has no host.
+- GameTest `programmovesbetweenitsnetworks`; compare: `build/ae2-move-check/compare.png`.

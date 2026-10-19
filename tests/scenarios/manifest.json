@@ -170,6 +170,7 @@
     {"id":"programs.host-dry-run","backend":"gametest","testId":"dryrunreadstheworldandonlysimulatesactions","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-blocks","backend":"gametest","testId":"programbreaksablockintothedomainandplacesitback","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-rules","backend":"gametest","testId":"programsetsastoragerulebetweenitsnetworks","structure":"ae2federation_test:harness_native_smoke","assertions":1},
+    {"id":"programs.host-move","backend":"gametest","testId":"programmovesbetweenitsnetworks","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-status","backend":"gametest","testId":"programreadscraftingandnetworkstatus","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-crafting","backend":"gametest","testId":"programcraftsthroughitsdomain","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.installed-run","backend":"gametest","testId":"installedfunctionlightsalampwhenrun","structure":"ae2federation_test:harness_native_smoke","assertions":1},
