@@ -180,6 +180,7 @@
     {"id":"programs.pushed-version","backend":"gametest","testId":"runsusethepushedversion","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.print-log","backend":"gametest","testId":"printwritestothelog","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.condition","backend":"gametest","testId":"aconditionstartswhenitturnstrue","structure":"ae2federation_test:harness_native_smoke","assertions":1},
+    {"id":"programs.set-redstone","backend":"gametest","testId":"setredstonepowerstheblockinfront","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.device-broken","backend":"gametest","testId":"breakingthedevicestopsitsrunsanddropsitsinstallations","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.block-events","backend":"gametest","testId":"blockeventsstartattheblockaninterfacepointsat","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.stock-event","backend":"gametest","testId":"astockchangestartsarun","structure":"ae2federation_test:harness_native_smoke","assertions":1},

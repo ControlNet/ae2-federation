@@ -260,6 +260,33 @@ public final class ProgramSchedulerGameTests {
         });
     }
 
+    /** set_redstone reaches real redstone in front: a lamp lights, dust carries the level, 0 turns it off. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void setRedstonePowersTheBlockInFront(GameTestHelper helper) {
+        var scene = Scene.build(helper, "sched_signal", """
+                def signal(port: Interface, level: int) -> bool:
+                    return mc.set_redstone(port, level)
+                """);
+        helper.setBlock(TARGET, Blocks.REDSTONE_LAMP);
+        scene.whenReady(() -> {
+            var installation = scene.scheduler().install(scene.device(), "sched_signal", "signal",
+                    List.of(scene.interfaceId(), "15"));
+            scene.installed(installation);
+            scene.scheduler().trigger(installation.id());
+        }).then(10, () -> {
+            helper.assertValueEqual(scene.log(0), List.of("started", "done: True"), "The call ran");
+            helper.assertBlockProperty(TARGET, net.minecraft.world.level.block.RedstoneLampBlock.LIT, true);
+            helper.setBlock(TARGET, Blocks.REDSTONE_WIRE);
+        }).then(5, () -> {
+            helper.assertBlockProperty(TARGET, net.minecraft.world.level.block.RedStoneWireBlock.POWER, 15);
+            scene.scheduler().setArgs(scene.installations().get(0).id(), List.of(scene.interfaceId(), "0"));
+            scene.scheduler().trigger(scene.installations().get(0).id());
+        }).then(10, () -> helper.assertBlockProperty(TARGET,
+                net.minecraft.world.level.block.RedStoneWireBlock.POWER, 0)).finish(() -> {
+        });
+    }
+
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
     public static void breakingTheDeviceStopsItsRunsAndDropsItsInstallations(GameTestHelper helper) {
