@@ -12,3 +12,11 @@
 - GameTest `adomainofonenetworkshowsitsnetwork`: Switch + one ME Chest + one cable, `forRouter(...)`,
   `workspaceChoices()` lists one network and `statusCode()` is `ready`.
 - Compare: `build/topology-one-network-check/compare.png`.
+
+## Opening zoom (2026-10-19)
+
+- `GraphView.fit` clamps only to the canvas's `max-scale` (3 in `domain.lss`), so one card filled the canvas at
+  about 3x. `FederationTopologyView.limitFitScale` zooms any fit (the opening one and the Fit button) back out to
+  `MAX_FIT_SCALE` = 1 around the same centre; wheel and +/- still reach 3.
+- UI scenario `ui.one-network` (Switch + ME Chest + Federation Cable) checks both fits; compare:
+  `build/topology-max-zoom-check/compare.png`.
