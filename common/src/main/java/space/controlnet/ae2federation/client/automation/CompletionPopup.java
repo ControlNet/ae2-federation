@@ -158,7 +158,11 @@ public final class CompletionPopup extends UIElement {
     private String footer() {
         var candidate = chosen();
         if (candidate == null) return "";
-        if (!candidate.doc().isEmpty()) return candidate.doc().lines().findFirst().orElse("");
+        if (!candidate.doc().isEmpty()) {
+            var doc = net.minecraft.client.resources.language.I18n.exists(candidate.docKey())
+                    ? net.minecraft.client.resources.language.I18n.get(candidate.docKey()) : candidate.doc();
+            return doc.lines().findFirst().orElse("");
+        }
         if (candidate.kind() == Candidate.Kind.VALUE && completions.expected() != null) {
             var note = isResource(candidate) ? resourceNote.apply(candidate.label()) : "";
             return completions.expected() + (note.isEmpty() ? "" : " \u00b7 " + note);

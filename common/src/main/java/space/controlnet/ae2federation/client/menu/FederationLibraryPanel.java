@@ -136,7 +136,8 @@ final class FederationLibraryPanel {
             acts.addChild(label("library-text", Component.translatable("ae2federation.ui.automation.acts")));
             page.addScrollViewChild(acts);
         }
-        page.addScrollViewChild(label("library-text", Component.literal(function.summary())));
+        page.addScrollViewChild(label("library-text", Component.translatableWithFallback(
+                StandardLibrary.summaryKey(function), function.summary())));
         page.addScrollViewChild(label("library-text heading", Component.translatable("ae2federation.ui.automation.example")));
         page.addScrollViewChild(example(function));
         page.setDisplay(true);

@@ -448,3 +448,13 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   `ProgramSync` index text, `ProgramScheduler.setTrigger` (condition must give bool), Completion candidates/calls.
 - `Signature.of(FunctionDef, TypeRef)` takes the result; `display()` drops the arrow when it is unknown.
 - Compare: `build/return-inference-check/compare.png` (throwaway zh_cn scenario on a detached old-commit worktree).
+
+## Library summaries translated, alias field readable (2026-10-19)
+
+- Each library function's summary has a language key `ae2federation.function.<namespace>.<name>`
+  (`StandardLibrary.summaryKey`); the Java summary is the English text and must equal en_us (StandardLibraryTest).
+  `Candidate.docKey` carries the key to the completion popup; the Library page uses `translatableWithFallback`.
+  Problem messages, example comments and built-in (len, range...) texts are still English.
+- The ID/alias screen is a vanilla `Screen` with an `EditBox` on AE2's grey-blue FIELD: text is
+  `FederationTheme.HIGHLIGHT` (#f2f2f2, as the Domain screen's text fields) and `setTextShadow(false)` (NeoForge).
+- Compare: `build/library-zh-check/compare.png`.

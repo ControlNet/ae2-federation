@@ -180,7 +180,7 @@ public final class StandardLibrary {
                                 # The interface itself is a block: the signal it receives.
                                 return mc.redstone(port) > 0
                             """, arg("block", "Block")),
-                    act("set_redstone", "bool", "Emits redstone from the interface's front face.",
+                    act("set_redstone", "bool", "Emits redstone from the interface's front face; it stays until set again.",
                             """
                             def signal_low_iron(port: Interface) -> None:
                                 if ae2.amount("minecraft:iron_ingot") < 64:
@@ -246,6 +246,21 @@ public final class StandardLibrary {
     }
 
     /** A library function, with a whole function showing it in use. */
+    /** The language key of each library function's summary; the summary written here is the English text. */
+    private static final Map<Signature, String> SUMMARY_KEYS = summaryKeys();
+
+    private static Map<Signature, String> summaryKeys() {
+        var keys = new java.util.HashMap<Signature, String>();
+        NAMESPACES.forEach((namespace, functions) -> functions.forEach(function ->
+                keys.put(function, "ae2federation.function." + namespace + "." + function.name())));
+        return Map.copyOf(keys);
+    }
+
+    /** {@code ae2federation.function.<namespace>.<name>} for a library function; empty for anything else. */
+    public static String summaryKey(Signature function) {
+        return SUMMARY_KEYS.getOrDefault(function, "");
+    }
+
     private static Signature fn(String name, String result, String summary, String example, Signature.Arg... args) {
         return new Signature(name, List.of(args), type(result), summary, false, example);
     }

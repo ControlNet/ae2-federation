@@ -22,6 +22,24 @@ final class StandardLibraryTest {
         }
     }
 
+    /** Each summary has a language key: English as written here, and a Chinese one. */
+    @Test
+    void everySummaryIsTranslated() throws java.io.IOException {
+        var lang = java.nio.file.Path.of("..").toAbsolutePath().normalize()
+                .resolve("common/src/main/resources/assets/ae2federation/lang");
+        var english = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(lang.resolve("en_us.json")))
+                .getAsJsonObject();
+        var chinese = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(lang.resolve("zh_cn.json")))
+                .getAsJsonObject();
+        StandardLibrary.NAMESPACES.forEach((namespace, signatures) -> signatures.forEach(s -> {
+            var key = StandardLibrary.summaryKey(s);
+            assertEquals("ae2federation.function." + namespace + "." + s.name(), key);
+            assertTrue(english.has(key) && english.get(key).getAsString().equals(s.summary()), key);
+            assertTrue(chinese.has(key) && !chinese.get(key).getAsString().equals(s.summary()), key);
+        }));
+        assertEquals("", StandardLibrary.summaryKey(Checker.LIST_METHODS.get(0)), "a method has no key");
+    }
+
     @Test
     void namesAreUniqueWithinANamespace() {
         StandardLibrary.NAMESPACES.forEach((namespace, signatures) -> {
