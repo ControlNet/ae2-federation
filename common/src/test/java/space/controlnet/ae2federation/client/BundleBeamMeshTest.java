@@ -127,6 +127,59 @@ final class BundleBeamMeshTest {
                 both(huge, CableBeamStyle.fromLoad(.6), 0).size(), "the same vertices, only wider");
     }
 
+    /** Every vertex of one pass, as raw bits, drawn by the cell at {@code x, y, z}. */
+    private static List<Integer> bits(BundleBeam beam, int mask, int x, int y, int z, CableBeamStyle style, int detail,
+            boolean glow) {
+        var out = new ArrayList<Integer>();
+        BundleBeamMesh.Sink sink = (px, py, pz, r, g, b, a, nx, ny, nz) -> {
+            for (float f : new float[] {px, py, pz, r, g, b, a, nx, ny, nz}) out.add(Float.floatToRawIntBits(f));
+        };
+        if (beam != null) BundleBeamMesh.emit(beam, x, y, z, 13, .4f, style, detail, glow, sink);
+        else BundleBeamMesh.emitCell(mask, x, y, z, 13, .4f, style, detail, glow, sink);
+        return out;
+    }
+
+    @Test
+    void aBeamReadsTheParityOfOnlyTheAxesItsArmsRunAlong() {
+        // Cells that differ only in the parity of other axes draw the same vertices, so they may share one mesh.
+        var beams = new ArrayList<BundleBeam>(List.of(RUN, BRANCH, TURN,
+                new BundleBeam(Direction.Axis.X, mask(Direction.EAST, Direction.WEST), 1, 3),
+                new BundleBeam(Direction.Axis.X, mask(Direction.EAST, Direction.WEST, Direction.UP), 3, 3),
+                new BundleBeam(Direction.Axis.Z, mask(Direction.NORTH, Direction.EAST), 3, 3),
+                new BundleBeam(Direction.Axis.Y, mask(Direction.UP, Direction.DOWN), 1, 2),
+                new BundleBeam(Direction.Axis.Y, 0, 1, 2),
+                new BundleBeam(Direction.Axis.Z, 0, 1, 3)));
+        var style = CableBeamStyle.fromLoad(.6);
+        int checked = 0;
+        for (int item = 0; item < beams.size() + 64; item++) {
+            var beam = item < beams.size() ? beams.get(item) : null;
+            int mask = item - beams.size();
+            for (int detail = 0; detail < 3; detail++) {
+                for (boolean glow : new boolean[] {true, false}) {
+                    int axes = beam != null ? BundleBeamMesh.parityAxes(beam, detail, glow)
+                            : BundleBeamMesh.cellParityAxes(mask, detail, glow);
+                    var byParity = new java.util.HashMap<Integer, List<Integer>>();
+                    var seen = new java.util.HashSet<List<Integer>>();
+                    for (int parity = 0; parity < 8; parity++) {
+                        var mesh = bits(beam, mask, 6 + (parity & 1), 64 + (parity >> 1 & 1), -4 + (parity >> 2 & 1),
+                                style, detail, glow);
+                        var first = byParity.putIfAbsent(parity & axes, mesh);
+                        if (first != null) assertEquals(first, mesh, beam + " " + mask + " " + detail + " " + glow);
+                        seen.add(mesh);
+                        checked++;
+                    }
+                    // And no axis is left out that the beam does read.
+                    assertEquals(byParity.size(), seen.size(), beam + " " + mask + " " + detail + " " + glow);
+                }
+            }
+        }
+        assertTrue(checked > 1000);
+        assertEquals(1, BundleBeamMesh.parityAxes(RUN, 0, true), "a run along X reads x only");
+        assertEquals(0, BundleBeamMesh.parityAxes(RUN, 0, false), "the core is an even tube");
+        assertEquals(0, BundleBeamMesh.parityAxes(RUN, 2, true), "far off a beam has no sheaths");
+        assertEquals(1 | 2, BundleBeamMesh.parityAxes(BRANCH, 1, true));
+    }
+
     @Test
     void the2x2BeamIsUnchangedByThe3x3Scales() {
         // Every 2x2 vertex, bit for bit, as before the 3x3 beam had scales of its own.
