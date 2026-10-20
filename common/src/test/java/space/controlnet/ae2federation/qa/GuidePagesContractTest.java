@@ -37,6 +37,9 @@ final class GuidePagesContractTest {
             "bridge", "router", "switch", "cable", "pattern_provider", "processing_endpoint", "automation_interface",
             "federation_p2p_tunnel",
             "beam_converter", "creative_beam_converter", "beam_former", "quantum_cube", "creative_computing_device");
+    /** Our items that exist only beside another mod, by that mod; only a pack that requires the mod may name them. */
+    private static final Map<String, Set<String>> FEDERATION_MOD_ITEMS = Map.of("neoecoae",
+            Set.of("eco_computation_system_l4", "eco_computation_system_l6", "eco_computation_system_l9"));
     /** Recipes a page shows by id with {@code <Recipe>} whose id is not an item's: the second recipe for an item. */
     private static final Set<String> FEDERATION_RECIPES = Set.of("nexus_processor_press_from_iron");
     /** The AE2 19.2.17 guide pages and items the pages name; the client check opens them for real. */
@@ -86,6 +89,7 @@ final class GuidePagesContractTest {
                     "items-blocks-machines/matter_fabrication_pattern_assembly.md")));
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
+    private static final Pattern PROGRAM = Pattern.compile("<FederationProgram src=\"([^\"]+)\"");
     private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);
 
     @Test
@@ -230,7 +234,8 @@ final class GuidePagesContractTest {
                     while (ids.find()) {
                         var known = switch (ids.group(1)) {
                             case "ae2federation" -> text.startsWith("<Recipe ", ids.start() - "<Recipe ".length())
-                                    && FEDERATION_RECIPES.contains(ids.group(2)) ? FEDERATION_RECIPES : FEDERATION_ITEMS;
+                                    && FEDERATION_RECIPES.contains(ids.group(2)) ? FEDERATION_RECIPES
+                                    : federationItems(guide.mods());
                             case "ae2" -> AE2_ITEMS;
                             default -> guide.mods().contains(ids.group(1))
                                     ? MOD_ITEMS.getOrDefault(ids.group(1), Set.of()) : Set.<String>of();
@@ -293,6 +298,26 @@ final class GuidePagesContractTest {
                 }
             }
             assertEquals(structures(guide.root()), used);
+        }
+    }
+
+    /** A program block loads its file relative to the page id, as a scene does, and every example program is shown. */
+    @Test
+    void programBlocksResolveAndEveryProgramIsShown() throws IOException {
+        for (var guide : guides()) {
+            var used = new TreeSet<Path>();
+            for (var root : List.of(guide.root(), guide.root().resolve("_zh_cn"))) {
+                for (var page : pages(root)) {
+                    var sources = PROGRAM.matcher(Files.readString(root.resolve(page)));
+                    while (sources.find()) {
+                        var resolved = guide.root().resolve(page).getParent().resolve(sources.group(1)).normalize();
+                        assertTrue(Files.isRegularFile(resolved) && resolved.startsWith(guide.root().resolve("assets")),
+                                page + " -> " + sources.group(1));
+                        used.add(resolved);
+                    }
+                }
+            }
+            assertEquals(assets(guide.root(), ".ae2f"), used);
         }
     }
 
@@ -467,10 +492,21 @@ final class GuidePagesContractTest {
     }
 
     private static Set<Path> structures(Path root) throws IOException {
+        return assets(root, ".snbt");
+    }
+
+    private static Set<Path> assets(Path root, String extension) throws IOException {
         if (!Files.isDirectory(root.resolve("assets"))) return Set.of();
         try (Stream<Path> files = Files.walk(root.resolve("assets"))) {
-            return files.filter(path -> path.toString().endsWith(".snbt")).collect(Collectors.toCollection(TreeSet::new));
+            return files.filter(path -> path.toString().endsWith(extension))
+                    .collect(Collectors.toCollection(TreeSet::new));
         }
+    }
+
+    private static Set<String> federationItems(Set<String> mods) {
+        var items = new TreeSet<>(FEDERATION_ITEMS);
+        mods.forEach(mod -> items.addAll(FEDERATION_MOD_ITEMS.getOrDefault(mod, Set.of())));
+        return items;
     }
 
     private static String frontmatter(Path page) throws IOException {

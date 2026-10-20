@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: automation/index.md
   title: ME联邦自动化接口
   icon: ae2federation:automation_interface
   position: 155

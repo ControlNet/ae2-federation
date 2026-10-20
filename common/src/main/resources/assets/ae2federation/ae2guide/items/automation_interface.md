@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: automation/index.md
   title: ME Federation Automation Interface
   icon: ae2federation:automation_interface
   position: 155

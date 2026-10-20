@@ -26,6 +26,8 @@ on, and each permission works in one direction.
   patterns to its machines.
 * [Statistics](statistics.md): charts of the domain's power, storage, traffic, crafting and channels.
 * [Examples](examples/index.md): complete builds for a shared warehouse, an assembly workshop and outsourced machines.
+* [Federation Automation](automation/index.md): Python programs that watch the domain and act on it, run by a
+  computing device.
 * [Troubleshooting](troubleshooting.md): what the warnings in the Federation screen mean.
 
 ## Items and blocks
