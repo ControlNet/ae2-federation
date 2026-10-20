@@ -219,7 +219,7 @@ public final class NeoEcoComputingCompatGameTests {
     /**
      * Installations reserve the device's compute and bandwidth (user decisions 2026-10-20). Two L4 parallel cores give
      * 128 CU; drives without cells give no bandwidth, so anything that moves is refused until a cell goes in. Parallel
-     * mode reserves four times the compute.
+     * mode reserves four times the compute. A move's bytes follow its resource, named by an argument too.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 400)
     public static void federationComputationSystemReservesComputeAndBandwidth(GameTestHelper helper) {
@@ -241,6 +241,9 @@ public final class NeoEcoComputingCompatGameTests {
                     chest = ae2f.select(port, 1)
                     for stack in mc.storage(chest):
                         ae2.import_from(chest, stack.resource, stack.amount)
+
+                def stock(base: Network, farm: Network, res: Resource, n: int) -> None:
+                    ae2.move(base, farm, res, n)
                 """.formatted(statements));
         var scheduler = ProgramScheduler.get(helper.getLevel().getServer());
         var installed = new java.util.ArrayList<String>();
@@ -264,6 +267,15 @@ public final class NeoEcoComputingCompatGameTests {
                             .bandwidth(), 1L << 26, "an L4 cell gives its bytes");
                     installed.add(scheduler.install(device, file, "give", List.of("port")).id());
                     installed.add(scheduler.install(device, file, "drain", List.of("port")).id());
+                    // Fluids count in mB, 8,000 to a byte: 64,000 mB of water named by an argument is 8 bytes a tick.
+                    var water = scheduler.install(device, file, "stock", List.of("base", "farm", "minecraft:water",
+                            "64000")).id();
+                    installed.add(water);
+                    helper.assertValueEqual(scheduler.cost(water).bandwidth(), 160L, "64 buckets of water a tick");
+                    var iron = scheduler.install(device, file, "stock", List.of("base", "farm",
+                            "minecraft:iron_ingot", "64000")).id();
+                    installed.add(iron);
+                    helper.assertValueEqual(scheduler.cost(iron).bandwidth(), 160_000L, "64,000 iron a tick");
                     installed.forEach(scheduler::uninstall);
                     deleteProgram(helper, file);
                 })

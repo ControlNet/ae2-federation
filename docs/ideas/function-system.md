@@ -1571,8 +1571,14 @@ Implementation choices (assistant, 2026-10-20):
   installations says "paused" and then "resumed".
 - A condition trigger's function counts its nodes in the installation's CU, together with the installed function.
   Functions both call count once.
-- A move's bytes use its resource's own ratio when the resource is written out, such as `"minecraft:water"`.
-  Otherwise they use the smallest ratio of any resource type, which gives the most bytes.
+- Amounts stay in AE2's units: fluids in mB, 8,000 to a byte (user, 2026-10-20; buckets were considered and
+  rejected, since amounts are whole numbers and mods work in mB).
+- A move's bytes follow the resources it may name. These are found the way amounts are:
+  - IDs written out, or given as installation arguments, use their own type's ratio;
+  - IDs passed through variables and call sites do the same;
+  - otherwise the declared type (`Item`, `Fluid`) gives the ratio;
+  - a resource read from the world, or typed only `Resource`, uses the smallest ratio of any type, which gives the
+    most bytes.
 - Shares are worked out from the capacity and the installations at each tick. A run keeps the per-call limit it
   started with.
 

@@ -100,6 +100,9 @@ plugin may still match our block entity, which subclasses its controller. Not ch
 ## Compute and bandwidth (step 3, 2026-10-20)
 
 Where things live:
+- `Cost.Move.resource()` is a `Cost.Resources`: possible IDs (literals, string installation arguments, joined
+  through variables and calls) plus an optional unknown type (`Item`, `Fluid` or `Resource`). The scheduler's
+  `perByte` takes the least ratio among them.
 - `function/Cost.java` works out an installation's cost from the program alone. `Cost.of` gives the nodes and each
   move's most. `Cost.nodes` counts the union of several roots, which covers the installed function plus its
   condition.

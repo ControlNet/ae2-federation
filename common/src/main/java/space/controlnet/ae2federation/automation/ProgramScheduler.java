@@ -16,7 +16,6 @@ import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.function.Checker;
 import space.controlnet.ae2federation.function.Cost;
-import space.controlnet.ae2federation.function.Expr;
 import space.controlnet.ae2federation.function.FunctionDef;
 import space.controlnet.ae2federation.function.Ops;
 import space.controlnet.ae2federation.function.Runner;
@@ -312,10 +311,11 @@ public final class ProgramScheduler {
         if (definition.isEmpty()) {
             return new InstallationCost(0, 0, 0);
         }
-        var numbers = new HashMap<String, Long>();
+        var given = new HashMap<String, Object>();
         for (int i = 0; i < installation.args().size() && i < definition.get().params().size(); i++) {
-            if (installation.args().get(i) instanceof Long number) {
-                numbers.put(definition.get().params().get(i).name(), number);
+            var value = installation.args().get(i);
+            if (value instanceof Long || value instanceof String) {
+                given.put(definition.get().params().get(i).name(), value);
             }
         }
         var functions = new ArrayList<>(List.of(installation.function()));
@@ -323,19 +323,33 @@ public final class ProgramScheduler {
                 && program.functions().stream().anyMatch(f -> f.name().equals(condition.function()))) {
             functions.add(condition.function());
         }
-        var cost = Cost.of(program, installation.function(), numbers, workspace);
-        var resources = new RegistryResources(server.registryAccess());
+        var cost = Cost.of(program, installation.function(), given, workspace);
+        var registry = new RegistryResources(server.registryAccess());
         return InstallationCost.of(Cost.nodes(program, functions, workspace), cost.moves(), installation.overlap(),
-                resource -> resource instanceof Expr.StrLit literal
-                        ? resources.key(literal.value()).map(key -> (long) key.getType().getAmountPerByte())
-                                .orElse(fewestPerByte())
-                        : fewestPerByte());
+                resources -> perByte(resources, registry));
     }
 
-    /** The least of any resource that fits in a byte: a resource not written out is taken to be the one that costs most. */
-    private static long fewestPerByte() {
-        return appeng.api.stacks.AEKeyTypes.getAll().stream().mapToLong(type -> type.getAmountPerByte()).min()
+    /**
+     * How much of the resources a move may name fits in a byte, the least of them: by the ID's own type when it is
+     * known, by the declared type ({@code Item}, {@code Fluid}) otherwise, and for any resource the least of every
+     * type, which costs the most bytes.
+     */
+    private static long perByte(Cost.Resources resources, RegistryResources registry) {
+        var fewest = appeng.api.stacks.AEKeyTypes.getAll().stream().mapToLong(type -> type.getAmountPerByte()).min()
                 .orElse(8);
+        var least = Long.MAX_VALUE;
+        for (var id : resources.ids()) {
+            least = Math.min(least, registry.key(id).map(key -> (long) key.getType().getAmountPerByte())
+                    .orElse(fewest));
+        }
+        if (resources.unknown() != null) {
+            least = Math.min(least, switch (resources.unknown()) {
+                case "Item" -> appeng.api.stacks.AEKeyType.items().getAmountPerByte();
+                case "Fluid" -> appeng.api.stacks.AEKeyType.fluids().getAmountPerByte();
+                default -> fewest;
+            });
+        }
+        return least == Long.MAX_VALUE ? fewest : least;
     }
 
     public boolean uninstall(String id) {

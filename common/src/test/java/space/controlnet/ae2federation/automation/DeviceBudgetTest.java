@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import space.controlnet.ae2federation.function.Cost;
-import space.controlnet.ae2federation.function.Expr;
 
 /**
  * What installations reserve on a computing device and what the device lets them do (user decisions 2026-10-20):
@@ -17,21 +17,20 @@ import space.controlnet.ae2federation.function.Expr;
  * reservations no longer fit starts nothing.
  */
 final class DeviceBudgetTest {
-    private static final Expr ITEM = new Expr.StrLit("n0", "minecraft:iron_ingot");
-    private static final Expr FLUID = new Expr.StrLit("n0", "minecraft:water");
-    private static final Expr ANY = new Expr.Name("n1", "resource");
+    private static final Cost.Resources ITEM = new Cost.Resources(Set.of("minecraft:iron_ingot"), null);
+    private static final Cost.Resources FLUID = new Cost.Resources(Set.of("minecraft:water"), null);
 
     /** Items 8 per byte, fluids 8,000 per byte, and an unknown resource the most bytes of all: 8. */
-    private static long perByte(Expr resource) {
-        return resource == FLUID ? 8_000 : 8;
+    private static long perByte(Cost.Resources resource) {
+        return resource.equals(FLUID) ? 8_000 : 8;
     }
 
-    private static Cost.Move move(Expr resource, long most) {
+    private static Cost.Move move(Cost.Resources resource, long most) {
         return new Cost.Move("ae2.move", resource, OptionalLong.of(most));
     }
 
     private static Cost.Move unbounded() {
-        return new Cost.Move("ae2.import_from", ANY, OptionalLong.empty());
+        return new Cost.Move("ae2.import_from", Cost.Resources.ANY, OptionalLong.empty());
     }
 
     private static InstallationCost cost(int nodes, Installation.Overlap overlap, Cost.Move... moves) {

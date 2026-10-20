@@ -244,13 +244,64 @@ final class CostTest {
                 "mc.move", List.of(OptionalLong.of(64))), found);
     }
 
+    private static List<Cost.Resources> resources(String source, String function, Map<String, ?> args) {
+        return Cost.of(program(source), function, args, WORKSPACE).moves().stream().map(Cost.Move::resource).toList();
+    }
+
+    private static Cost.Resources ids(String... ids) {
+        return new Cost.Resources(Set.of(ids), null);
+    }
+
     @Test
-    void aMoveKeepsTheResourceAsWritten() {
-        var moves = Cost.of(program("""
+    void aResourceWrittenOutIsItsId() {
+        assertEquals(List.of(ids("minecraft:iron_ingot")), resources("""
                 def pass_along(port_in: Interface, port_out: Interface) -> None:
                     mc.move(ae2f.select(port_in), ae2f.select(port_out), "minecraft:iron_ingot", 64)
-                """), "pass_along", Map.of(), WORKSPACE).moves();
-        assertEquals(1, moves.size());
-        assertEquals(new Expr.StrLit(moves.get(0).resource().id(), "minecraft:iron_ingot"), moves.get(0).resource());
+                """, "pass_along", Map.of()));
+    }
+
+    /** The installation's arguments name the resource as they give the amount: water in mB, not as items. */
+    @Test
+    void anInstallationArgumentNamesTheResource() {
+        var source = """
+                def stock(base: Network, farm: Network, res: Resource, n: int) -> None:
+                    ae2.move(base, farm, res, n)
+                """;
+        assertEquals(List.of(ids("minecraft:water")), resources(source, "stock",
+                Map.of("res", "minecraft:water", "n", 64_000L)));
+        assertEquals(List.of(new Cost.Resources(Set.of(), "Resource")), resources(source, "stock", Map.of()));
+    }
+
+    @Test
+    void anUnknownResourceKeepsItsDeclaredType() {
+        assertEquals(List.of(new Cost.Resources(Set.of(), "Fluid")), resources("""
+                def fill(base: Network, farm: Network, fluid: Fluid) -> None:
+                    ae2.move(base, farm, fluid, 8000)
+                """, "fill", Map.of()));
+    }
+
+    @Test
+    void aResourceComesThroughCallsAndAssignments() {
+        assertEquals(List.of(ids("minecraft:iron_ingot")), resources("""
+                def main(farm: Network) -> None:
+                    tools.give(farm, "minecraft:iron_ingot", 12)
+                """, "main", Map.of()));
+        assertEquals(List.of(ids("minecraft:water", "minecraft:lava")), resources("""
+                def either(base: Network, farm: Network, hot: bool) -> None:
+                    res = "minecraft:water"
+                    if hot:
+                        res = "minecraft:lava"
+                    ae2.move(base, farm, res, 1000)
+                """, "either", Map.of()));
+    }
+
+    @Test
+    void aResourceReadFromTheWorldCouldBeAnything() {
+        assertEquals(List.of(Cost.Resources.ANY), resources("""
+                def empty_chest(port: Interface) -> None:
+                    chest = ae2f.select(port)
+                    for stack in mc.storage(chest):
+                        ae2.import_from(chest, stack.resource, min(stack.amount, 512))
+                """, "empty_chest", Map.of()));
     }
 }

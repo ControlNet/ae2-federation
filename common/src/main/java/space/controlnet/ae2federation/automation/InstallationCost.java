@@ -3,7 +3,6 @@ package space.controlnet.ae2federation.automation;
 import java.util.List;
 import java.util.function.ToLongFunction;
 import space.controlnet.ae2federation.function.Cost;
-import space.controlnet.ae2federation.function.Expr;
 
 /**
  * What an installation reserves on its device (user decisions 2026-10-20): compute in CU, its graph nodes, and fixed
@@ -21,10 +20,10 @@ public record InstallationCost(long compute, long bandwidth, int shares) {
 
     /**
      * The cost of a function with {@code nodes} graph nodes and these moves; {@code amountPerByte} is how much of a
-     * move's resource fits in an AE2 byte.
+     * move's resources fits in an AE2 byte, the least of any it may move.
      */
     public static InstallationCost of(int nodes, List<Cost.Move> moves, Installation.Overlap overlap,
-            ToLongFunction<Expr> amountPerByte) {
+            ToLongFunction<Cost.Resources> amountPerByte) {
         var runs = overlap == Installation.Overlap.PARALLEL ? Installation.PARALLEL_LIMIT : 1;
         if (moves.stream().anyMatch(move -> move.most().isEmpty())) {
             return new InstallationCost(times(nodes, runs), 0, runs);

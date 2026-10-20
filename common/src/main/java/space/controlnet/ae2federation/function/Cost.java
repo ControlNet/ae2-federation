@@ -25,8 +25,36 @@ public record Cost(int nodes, List<Move> moves) {
     /** Rounds after which a range that still grows is taken to grow without end. */
     private static final int WIDEN_AFTER = 8;
 
-    /** A call that moves resources: its resource as written, and the most it moves; empty when there is no bound. */
-    public record Move(String call, Expr resource, OptionalLong most) {
+    /** A call that moves resources: the resources it may move, and the most it moves; empty when there is no bound. */
+    public record Move(String call, Resources resource, OptionalLong most) {
+    }
+
+    /**
+     * The resources a value may name: these IDs, written out or given as installation arguments, and when
+     * {@code unknown} is not {@code null}, any resource of that type ({@code Item}, {@code Fluid} or {@code Resource}).
+     */
+    public record Resources(Set<String> ids, String unknown) {
+        /** No value yet, before any assignment is seen. */
+        static final Resources NONE = new Resources(Set.of(), null);
+        public static final Resources ANY = new Resources(Set.of(), "Resource");
+
+        public Resources {
+            ids = Set.copyOf(ids);
+        }
+
+        Resources join(Resources other) {
+            var joined = new HashSet<>(ids);
+            joined.addAll(other.ids);
+            var type = unknown == null ? other.unknown : other.unknown == null || unknown.equals(other.unknown)
+                    ? unknown : ANY.unknown;
+            return new Resources(joined, type);
+        }
+
+        /** Any resource of a parameter's type, when it is a resource type. */
+        static Resources of(TypeRef type) {
+            return type != null && (type.name().equals("Item") || type.name().equals("Fluid"))
+                    ? new Resources(Set.of(), type.name()) : ANY;
+        }
     }
 
     public Cost {
@@ -38,8 +66,11 @@ public record Cost(int nodes, List<Move> moves) {
         return moves.stream().allMatch(m -> m.most().isPresent());
     }
 
-    /** The cost of {@code function} in {@code program}, its whole-number arguments by parameter name. */
-    public static Cost of(Program program, String function, Map<String, Long> args, Workspace workspace) {
+    /**
+     * The cost of {@code function} in {@code program}, with its installation arguments by parameter name: whole numbers
+     * as {@code Long}, resources as their ID.
+     */
+    public static Cost of(Program program, String function, Map<String, ?> args, Workspace workspace) {
         return new Analysis(program, workspace).run(function, args);
     }
 
@@ -70,26 +101,34 @@ public record Cost(int nodes, List<Move> moves) {
         private final Map<String, Fn> functions = new LinkedHashMap<>();
         private final Map<String, Map<String, Span>> params = new HashMap<>();
         private final Map<String, Map<String, Span>> envs = new HashMap<>();
+        private final Map<String, Map<String, Resources>> resourceParams = new HashMap<>();
+        private final Map<String, Map<String, Resources>> resourceEnvs = new HashMap<>();
 
         Analysis(Program program, Workspace workspace) {
             this.program = program;
             this.workspace = workspace;
         }
 
-        Cost run(String function, Map<String, Long> args) {
+        Cost run(String function, Map<String, ?> args) {
             var start = lookup(function);
             if (start == null) {
                 throw new IllegalArgumentException("there is no function " + function);
             }
             closure(start);
             var entry = new HashMap<String, Span>();
+            var named = new HashMap<String, Resources>();
             for (var param : start.def().params()) {
                 var value = args.get(param.name());
-                entry.put(param.name(), value != null ? Span.of(value) : param.defaultValue() != null
+                entry.put(param.name(), value instanceof Long number ? Span.of(number) : param.defaultValue() != null
                         ? eval(param.defaultValue(), Map.of(), start) : Span.ANY);
+                named.put(param.name(), value instanceof String id ? new Resources(Set.of(id), null)
+                        : param.defaultValue() != null ? resource(param.defaultValue(), Map.of())
+                        : Resources.of(param.type()));
             }
             params.put(start.key(), entry);
+            resourceParams.put(start.key(), named);
             solve();
+            solveResources();
             int nodes = 0;
             var moves = new ArrayList<Move>();
             for (var fn : functions.values()) {
@@ -167,6 +206,104 @@ public record Cost(int nodes, List<Move> moves) {
                     return;
                 }
             }
+        }
+
+        /** The resources every function's variables may name, and its parameters from every call of it. */
+        private void solveResources() {
+            var changed = true;
+            while (changed) {
+                changed = false;
+                for (var fn : functions.values()) {
+                    var env = resourceEnv(fn);
+                    resourceEnvs.put(fn.key(), env);
+                    var calls = new ArrayList<Expr.Call>();
+                    Effects.calls(fn.def().body(), calls::add);
+                    for (var call : calls) {
+                        var callee = callee(fn, call);
+                        if (callee != null) {
+                            changed |= bindResources(callee, call, env);
+                        }
+                    }
+                }
+            }
+        }
+
+        private boolean bindResources(Fn callee, Expr.Call call, Map<String, Resources> env) {
+            var current = resourceParams.computeIfAbsent(callee.key(), k -> new HashMap<>());
+            var changed = false;
+            var declared = callee.def().params();
+            for (int i = 0; i < declared.size(); i++) {
+                var param = declared.get(i);
+                Expr given = i < call.args().size() ? call.args().get(i) : null;
+                for (var keyword : call.keywords()) {
+                    if (keyword.name().equals(param.name())) {
+                        given = keyword.value();
+                    }
+                }
+                var value = given != null ? resource(given, env) : param.defaultValue() != null
+                        ? resource(param.defaultValue(), Map.of()) : Resources.of(param.type());
+                var old = current.getOrDefault(param.name(), Resources.NONE);
+                var grown = old.join(value);
+                if (!grown.equals(old)) {
+                    current.put(param.name(), grown);
+                    changed = true;
+                }
+            }
+            return changed;
+        }
+
+        /** The resources a function's variables may name over all its assignments, in any order. */
+        private Map<String, Resources> resourceEnv(Fn fn) {
+            var env = new HashMap<String, Resources>();
+            fn.locals().forEach(name -> env.put(name, Resources.NONE));
+            env.putAll(resourceParams.getOrDefault(fn.key(), Map.of()));
+            while (true) {
+                var before = new HashMap<>(env);
+                assignResources(fn.def().body(), env);
+                if (env.equals(before)) {
+                    return env;
+                }
+            }
+        }
+
+        private void assignResources(List<Stmt> body, Map<String, Resources> env) {
+            for (var statement : body) {
+                switch (statement) {
+                    case Stmt.Assign s -> {
+                        if (s.target() instanceof Expr.Name name) {
+                            env.merge(name.name(), resource(s.value(), env), Resources::join);
+                        }
+                    }
+                    case Stmt.AugAssign s -> {
+                        if (s.target() instanceof Expr.Name name) {
+                            env.merge(name.name(), Resources.ANY, Resources::join);
+                        }
+                    }
+                    case Stmt.For s -> {
+                        env.merge(s.variable(), Resources.ANY, Resources::join);
+                        assignResources(s.body(), env);
+                    }
+                    case Stmt.While s -> assignResources(s.body(), env);
+                    case Stmt.If s -> {
+                        assignResources(s.body(), env);
+                        s.elifs().forEach(elif -> assignResources(elif.body(), env));
+                        if (s.orElse() != null) {
+                            assignResources(s.orElse().body(), env);
+                        }
+                    }
+                    default -> {
+                    }
+                }
+            }
+        }
+
+        /** The resources a value may name: a string as written, a variable's, or anything. */
+        private static Resources resource(Expr expr, Map<String, Resources> env) {
+            return switch (expr) {
+                case Expr.StrLit literal -> new Resources(Set.of(literal.value()), null);
+                case Expr.Name name -> env.getOrDefault(name.name(), Resources.ANY);
+                default -> Resources.ANY;
+            };
         }
 
         /** Joins a call's arguments into the callee's parameters; whether any grew. */
@@ -339,7 +476,10 @@ public record Cost(int nodes, List<Move> moves) {
             }
             var amount = argument(signature, call, "amount");
             var span = amount == null ? Span.ANY : eval(amount, envs.getOrDefault(fn.key(), Map.of()), fn);
-            out.add(new Move(call.id(), argument(signature, call, "resource"),
+            var named = argument(signature, call, "resource");
+            var resource = named == null ? Resources.ANY
+                    : resource(named, resourceEnvs.getOrDefault(fn.key(), Map.of()));
+            out.add(new Move(call.id(), resource.equals(Resources.NONE) ? Resources.ANY : resource,
                     span.none() || span.hi() == Span.MAX ? OptionalLong.empty() : OptionalLong.of(Math.max(0, span.hi()))));
         }
 
