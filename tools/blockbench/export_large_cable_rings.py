@@ -1,7 +1,7 @@
-"""Write the artist's 2x2 cable rings into the cable model's Java table (stdlib only).
+"""Write the artist's 2x2 and 3x3 cable rings into the cable model's Java table (stdlib only).
 
-Reads tools/blockbench/projects/large_cable_{straight,corner}.bbmodel and rewrites LargeCableRingModels.java. Run it
-again whenever the artist changes those projects; --check only reports whether the table is current.
+Reads tools/blockbench/projects/{large,huge}_cable_{straight,corner}.bbmodel and rewrites LargeCableRingModels.java.
+Run it again whenever the artist changes those projects; --check only reports whether the table is current.
 """
 from __future__ import annotations
 
@@ -14,43 +14,65 @@ ROOT = Path(__file__).resolve().parents[1].parent
 PROJECTS = ROOT / 'tools/blockbench/projects'
 TARGET = ROOT / 'common/src/main/java/space/controlnet/ae2federation/client/LargeCableRingModels.java'
 SIDES = {'north': 'NORTH', 'south': 'SOUTH', 'west': 'WEST', 'east': 'EAST', 'up': 'UP', 'down': 'DOWN'}
+AXES = 'XYZ'
+# The 3x3 projects are drawn about Blockbench's origin (8, 0, 8), which is the ring's axis: moved by this much, it is
+# the centre of the middle cell of a frame three blocks each way.
+HUGE_OFFSET = (16, 24, 16)
 MODELS = (
-    ('STRAIGHT', 'large_cable_straight',
+    ('STRAIGHT', 'large_cable_straight', 2, (0, 0, 0),
      'A ring across a run along Z, standing on the layer boundary at z = 16.'),
-    ('CORNER', 'large_cable_corner',
+    ('CORNER', 'large_cable_corner', 2, (0, 0, 0),
      'The rings where a branch leaves: flat in the plane of the run and the branch (X and Z), one in each layer of Y.'),
+    ('HUGE_STRAIGHT', 'huge_cable_straight', 3, HUGE_OFFSET,
+     'A 3x3 ring across a run along Z, in the middle of the frame\'s middle layer.'),
+    ('HUGE_CORNER', 'huge_cable_corner', 3, HUGE_OFFSET,
+     'The 3x3 rings where a branch leaves: flat in the plane of the run and the branch (X and Z), one on each boundary\n'
+     '     * of the middle layer of Y.'),
 )
 
 
-def elements(name: str) -> list[str]:
+def number(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else repr(float(value)) + 'f'
+
+
+def elements(name: str, cells: int, offset: tuple[int, int, int]) -> list[str]:
     project = json.loads((PROJECTS / (name + '.bbmodel')).read_text())
     assert project['meta']['model_format'] == 'java_block', name
     assert project['resolution'] == {'width': 32, 'height': 32}, name
     rows = []
     for element in project['elements']:
-        assert not element.get('rotation') or element['rotation'] == [0, 0, 0], (name, element['name'])
-        corners = element['from'] + element['to']
-        assert all(float(v).is_integer() and 0 <= v <= 32 for v in corners), (name, element['name'])
+        corners = [v + offset[i % 3] for i, v in enumerate(element['from'] + element['to'])]
+        assert all(float(v).is_integer() and 0 <= v <= 16 * cells for v in corners), (name, element['name'])
+        turn = ''
+        rotation = element.get('rotation') or [0, 0, 0]
+        turned = [i for i in range(3) if rotation[i] != 0]
+        if turned:
+            # One axis at a time, at the angles a block model allows.
+            assert len(turned) == 1 and abs(rotation[turned[0]]) in (22.5, 45), (name, element['name'])
+            assert not element.get('rescale'), (name, element['name'])
+            origin = [v + offset[i] for i, v in enumerate(element['origin'])]
+            turn = ' turn(Direction.Axis.%s, %s, %s),' % (AXES[turned[0]], number(rotation[turned[0]]),
+                                                         ', '.join(number(v) for v in origin))
         faces = []
         for side, face in element['faces'].items():
             if face.get('texture') is None:
                 continue
-            rotation = face.get('rotation', 0)
-            assert rotation in (0, 90, 180, 270), (name, element['name'], side)
+            face_rotation = face.get('rotation', 0)
+            assert face_rotation in (0, 90, 180, 270), (name, element['name'], side)
             uv = face['uv']
             assert all(float(v).is_integer() and 0 <= v <= 32 for v in uv), (name, element['name'], side)
-            faces.append('face(%s, %s, %d)' % (SIDES[side], ', '.join(str(int(v)) for v in uv), rotation))
+            faces.append('face(%s, %s, %d)' % (SIDES[side], ', '.join(str(int(v)) for v in uv), face_rotation))
         if faces:
-            rows.append('element(%s,\n                    %s)' % (', '.join(str(int(v)) for v in corners),
-                                                              ',\n                    '.join(faces)))
+            rows.append('element(%s,%s\n                    %s)' % (', '.join(str(int(v)) for v in corners), turn,
+                                                                ',\n                    '.join(faces)))
     return rows
 
 
 def source() -> str:
     tables = []
-    for constant, name, doc in MODELS:
-        tables.append('    /** %s */\n    static final List<Element> %s = List.of(\n            %s);\n'
-                      % (doc, constant, ',\n            '.join(elements(name))))
+    for constant, name, cells, offset, doc in MODELS:
+        tables.append('    /** %s */\n    static final Model %s = new Model(%d, List.of(\n            %s));\n'
+                      % (doc, constant, cells, ',\n            '.join(elements(name, cells, offset))))
     return '''package space.controlnet.ae2federation.client;
 
 import static net.minecraft.core.Direction.DOWN;
@@ -62,11 +84,12 @@ import static net.minecraft.core.Direction.WEST;
 
 import java.util.List;
 import net.minecraft.core.Direction;
+import org.jetbrains.annotations.Nullable;
 
 /**
- * The artist's 2x2 cable rings, from {@code tools/blockbench/projects/large_cable_straight.bbmodel} and
- * {@code large_cable_corner.bbmodel}: boxes in their 32-voxel frame, two blocks each way, with UVs in pixels of the
- * 32-pixel {@code block/large_cable/large_cable} texture. Generated by
+ * The artist's cable rings, from {@code tools/blockbench/projects/}: the 2x2 ones ({@code large_cable_straight} and
+ * {@code large_cable_corner}) as boxes in a frame two blocks each way, the 3x3 ones ({@code huge_cable_*}) in a frame
+ * of three, with UVs in pixels of the 32-pixel {@code block/large_cable/large_cable} texture they share. Generated by
  * {@code tools/blockbench/export_large_cable_rings.py}; run it again when the artist changes them.
  */
 final class LargeCableRingModels {
@@ -74,7 +97,15 @@ final class LargeCableRingModels {
     record Face(Direction side, int u0, int v0, int u1, int v1, int rotation) {
     }
 
-    record Element(int x0, int y0, int z0, int x1, int y1, int z1, List<Face> faces) {
+    /** A box turned by {@code angle} degrees about {@code axis} through the point {@code x, y, z} of the frame. */
+    record Turn(Direction.Axis axis, float angle, float x, float y, float z) {
+    }
+
+    record Element(int x0, int y0, int z0, int x1, int y1, int z1, @Nullable Turn turn, List<Face> faces) {
+    }
+
+    /** The boxes of one model, in a frame {@code cells} blocks each way (16 voxels a block). */
+    record Model(int cells, List<Element> elements) {
     }
 
 %s
@@ -82,7 +113,15 @@ final class LargeCableRingModels {
     }
 
     private static Element element(int x0, int y0, int z0, int x1, int y1, int z1, Face... faces) {
-        return new Element(x0, y0, z0, x1, y1, z1, List.of(faces));
+        return new Element(x0, y0, z0, x1, y1, z1, null, List.of(faces));
+    }
+
+    private static Element element(int x0, int y0, int z0, int x1, int y1, int z1, Turn turn, Face... faces) {
+        return new Element(x0, y0, z0, x1, y1, z1, turn, List.of(faces));
+    }
+
+    private static Turn turn(Direction.Axis axis, float angle, float x, float y, float z) {
+        return new Turn(axis, angle, x, y, z);
     }
 
     private static Face face(Direction side, int u0, int v0, int u1, int v1, int rotation) {

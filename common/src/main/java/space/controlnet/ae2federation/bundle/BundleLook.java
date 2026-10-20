@@ -19,16 +19,22 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  * <p>Anything else stays closed: an ordinary cable, a bundle that does not link, or a device that covers a contact only
  * in part.
  *
- * <p>A 2x2 bundle ({@code large}) is drawn as one thick cable: the artist's ring stands at every
- * {@link #RING_SPACING}th layer boundary along a straight stretch ({@code rings}: bit 0 the boundary before this cell,
- * bit 1 the one after), and where a branch leaves, the two layers it covers carry the artist's corner rings instead.
- * {@code jointsBefore} and {@code jointsAfter} name the sides with such a branch, for every cell of those layers, and
- * whether the branch's other layer is the previous or the next one.
+ * <p>A 2x2 or 3x3 bundle ({@code side} 2 or 3, else 0) is drawn as one thick cable. In a 2x2 one the artist's ring
+ * stands at every {@link #RING_SPACING}th layer boundary along a straight stretch ({@code rings}: bit 0 the boundary
+ * before this cell, bit 1 the one after); in a 3x3 one it stands inside every {@link #HUGE_RING_SPACING}th layer (bit
+ * 2). Where a branch leaves, the layers it covers carry the artist's corner rings instead. {@code jointsBefore} and
+ * {@code jointsAfter} name the sides with such a branch, for every cell of those layers, and whether the branch goes on
+ * into the previous or the next layer; the middle layer of a 3x3 branch has both.
  */
 public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, int joinsBefore, int joinsAfter,
-        boolean large, int rings, int jointsBefore, int jointsAfter) {
+        int side, int rings, int jointsBefore, int jointsAfter) {
     /** Layer boundaries between two rings of a straight 2x2 stretch, counted in world coordinates. */
     public static final int RING_SPACING = 2;
+    /**
+     * Layers between two rings of a straight 3x3 stretch, counted in world coordinates. A guess, as the 2x2 spacing
+     * was: the artist only asked that rings not stand too close.
+     */
+    public static final int HUGE_RING_SPACING = 3;
 
     /** Whether a device body takes the whole contact that {@code face} of {@code pos} belongs to. */
     @FunctionalInterface
@@ -69,8 +75,8 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
                 dense |= bit(side);
             }
         }
-        boolean large = segment.shape().filter(shape -> shape.narrow() == 2 && shape.wide() == 2).isPresent();
-        if (!large) return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, false, 0, 0, 0));
+        int width = segment.shape().filter(shape -> shape.narrow() == shape.wide()).map(BundleShape::narrow).orElse(0);
+        if (width == 0) return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, 0, 0, 0, 0));
         int jointsBefore = 0;
         int jointsAfter = 0;
         for (var side : Direction.values()) {
@@ -90,9 +96,10 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
         int rings = 0;
         int layer = pos.get(axis);
         boolean joint = (jointsBefore | jointsAfter) != 0;
-        if (!joint && ringAt(segment, pos, layer, segments)) rings |= 1;
-        if (!joint && ringAt(segment, pos, layer + 1, segments)) rings |= 2;
-        return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, true, rings, jointsBefore,
+        if (width == 2 && !joint && ringAt(segment, pos, layer, segments)) rings |= 1;
+        if (width == 2 && !joint && ringAt(segment, pos, layer + 1, segments)) rings |= 2;
+        if (width == 3 && !joint && Math.floorMod(layer, HUGE_RING_SPACING) == 0) rings |= 4;
+        return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, width, rings, jointsBefore,
                 jointsAfter));
     }
 
@@ -147,6 +154,16 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
         return mask;
     }
 
+    /** Whether the bundle is drawn as one thick cable, with the artist's rings and one beam down its middle. */
+    public boolean thick() {
+        return side != 0;
+    }
+
+    /** Whether a 3x3 ring stands inside this cell's layer. */
+    public boolean ringInside() {
+        return (rings & 4) != 0;
+    }
+
     /** Whether a ring stands at the boundary before this cell's layer. */
     public boolean ringBefore() {
         return (rings & 1) != 0;
@@ -157,12 +174,12 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
         return (rings & 2) != 0;
     }
 
-    /** Whether a branch leaves toward {@code side} from this layer and the previous one. */
+    /** Whether a branch leaving toward {@code side} from this layer covers the previous one too. */
     public boolean jointBefore(Direction side) {
         return (jointsBefore & bit(side)) != 0;
     }
 
-    /** Whether a branch leaves toward {@code side} from this layer and the next one. */
+    /** Whether a branch leaving toward {@code side} from this layer covers the next one too. */
     public boolean jointAfter(Direction side) {
         return (jointsAfter & bit(side)) != 0;
     }

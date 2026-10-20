@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import space.controlnet.ae2federation.bundle.BundleBeam;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
-/** The 2x2 bundle's plasma beam (Blender study R): a core inside lobed sheaths that twist and roll along the run. */
+/** The 2x2 and 3x3 bundles' plasma beam (Blender study R): a core inside lobed sheaths that twist and roll along the run. */
 final class BundleBeamMeshTest {
     private static final double[] LOADS = {0, .25, .6, 1, 1.25};
     /** One layer of a run along X, open at both ends. */
@@ -67,6 +67,30 @@ final class BundleBeamMeshTest {
                 }
             }
         }
+    }
+
+    @Test
+    void a3x3CorePassesThroughItsNarrowerRingsAndItsJointReachesEveryArm() {
+        // The artist's 3x3 ring leaves a bore of 8 voxels, radius 1/4 block, round the middle cell's axis.
+        var run = new BundleBeam(Direction.Axis.X, mask(Direction.EAST, Direction.WEST), 1, 3);
+        for (double load : LOADS) {
+            var style = CableBeamStyle.fromLoad(load);
+            for (long tick = 0; tick < 64; tick += 7) {
+                for (var v : emit(run, 0, tick, .3f, style, 0, false)) {
+                    assertTrue(Math.hypot(v.y() - 1.5, v.z() - 1.5) <= .24, "load " + load + " " + v);
+                }
+            }
+        }
+        var branch = new BundleBeam(Direction.Axis.X, mask(Direction.EAST, Direction.WEST, Direction.UP), 3, 3);
+        double low = 3, high = 0, top = 0;
+        for (var v : emit(branch, 0, 0, 0, CableBeamStyle.fromLoad(.6), 0, false)) {
+            low = Math.min(low, v.x());
+            high = Math.max(high, v.x());
+            top = Math.max(top, v.y());
+        }
+        assertEquals(0, low, .2);
+        assertEquals(3, high, .2);
+        assertEquals(3, top, .2);
     }
 
     @Test

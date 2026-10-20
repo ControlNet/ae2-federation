@@ -32,7 +32,7 @@ import space.controlnet.ae2federation.router.RouterRegistration;
 
 /**
  * Cable beams: R / PLASMA, a depth-tested core inside soft lobed sheaths, down every cable (R / LITE in a 1x1 cell) and
- * down a 2x2 bundle's middle.
+ * down a 2x2 or 3x3 bundle's middle.
  */
 public final class CableFlowRenderer implements BlockEntityRenderer<FederationCableBlockEntity> {
     private static final ResourceLocation WHITE = ResourceLocation.withDefaultNamespace("textures/misc/white.png");
@@ -112,7 +112,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
                 : CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
         int mask = cable.flowMask(), detail = CableBeamMesh.detail(distance);
         long tick = level.getGameTime();
-        // A 2x2 bundle draws one beam down its middle, over the box its corner cell names.
+        // A 2x2 or 3x3 bundle draws one beam down its middle, over the box its corner cell names.
         var bundle = cable.bundleBeam();
         if (bundle != null) {
             if (bundle.length() > 0) {
@@ -136,7 +136,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
     }
 
     /**
-     * The 2x2 beam, in blocks from the corner cell at {@code x, y, z}, into the world's batched buffers; the pose places
+     * A 2x2 or 3x3 bundle's beam, in blocks from the corner cell at {@code x, y, z}, into the world's batched buffers; the pose places
      * and stretches it.
      */
     static void emitBundle(PoseStack stack, MultiBufferSource buffers, BundleBeam bundle, int x, int y, int z,
@@ -199,7 +199,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         }
     }
 
-    /** A 2x2 bundle's middle beam reaches past its corner cell, over the box it is stretched to. */
+    /** A 2x2 or 3x3 bundle's middle beam reaches past its corner cell, over the box it is stretched to. */
     @Override
     public AABB getRenderBoundingBox(FederationCableBlockEntity cable) {
         var box = new AABB(cable.getBlockPos());

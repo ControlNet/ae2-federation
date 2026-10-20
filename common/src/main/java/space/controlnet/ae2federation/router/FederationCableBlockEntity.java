@@ -304,7 +304,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
         return flowMask;
     }
 
-    /** Where this cell draws its 2x2 bundle's middle beam, or null when it draws its own; read like {@link #flowMask}. */
+    /** Where this cell draws its 2x2 or 3x3 bundle's middle beam, or null when it draws its own; read like {@link #flowMask}. */
     public @Nullable BundleBeam bundleBeam() {
         refreshFlow();
         return bundleBeam;
@@ -318,7 +318,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
                 : CableVisualConnections.maskOf(CableVisualConnections.connections(level, worldPosition));
         var segment = bundleSegment;
         bundleBeam = look.isEmpty() || segment == null ? null : BundleBeam.of(worldPosition, segment, look.get(),
-                () -> BundleLook.of(level, worldPosition.relative(segment.axis(), 1))).orElse(null);
+                layers -> BundleLook.of(level, worldPosition.relative(segment.axis(), layers))).orElse(null);
         flowMaskTick = gameTime;
     }
 }

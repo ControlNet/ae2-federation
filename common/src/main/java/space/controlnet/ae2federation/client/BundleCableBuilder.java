@@ -12,7 +12,7 @@ import space.controlnet.ae2federation.bundle.BundleLook;
  * A bundled cell's translucent quads: its part of the bundle's one shell ({@link BundleShellLayout}), cut from the
  * artist's core frame, and inside it the ordinary cable's pieces at the cell's own size. A collar rings the cell where
  * its beam runs on into the next cell or into a branch, and a dense arm reaches each device it connects to, so a 2x3
- * bundle shows six beams in one 2x3 shell. A 2x2 bundle is one thick cable instead: no collars, but the artist's rings
+ * bundle shows six beams in one 2x3 shell. A 2x2 or 3x3 bundle is one thick cable instead: no collars, but the artist's rings
  * ({@link LargeCableRings}) around the one beam down its middle.
  */
 final class BundleCableBuilder {
@@ -34,7 +34,7 @@ final class BundleCableBuilder {
         }
         for (var side : Direction.values()) {
             if (look.open(side)) {
-                if (!look.large()) cable.addCollar(side, quads);
+                if (!look.thick()) cable.addCollar(side, quads);
             } else if (look.dense(side)) {
                 cable.addDenseConnection(side, quads);
             }
@@ -43,11 +43,11 @@ final class BundleCableBuilder {
     }
 
     /**
-     * A 2x2 cell's share of the artist's rings. They are opaque, so they go in the solid layer: in the translucent one
+     * A 2x2 or 3x3 cell's share of the artist's rings. They are opaque, so they go in the solid layer: in the translucent one
      * the shell, drawn first and writing depth, hid whatever of them lay behind it.
      */
     List<BakedQuad> solid(BundleLook look) {
-        if (!look.large()) return List.of();
+        if (!look.thick()) return List.of();
         var quads = new ArrayList<BakedQuad>();
         rings.add(look, quads);
         return List.copyOf(quads);
