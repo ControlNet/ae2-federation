@@ -32,7 +32,7 @@ class EndpointTextTest {
     void aSubnetOutsideTheMembersIsNamedByItsIdentityAsTheTopologyNamesIt() {
         var name = translated(EndpointText.network(endpoint(-1, SUBNET), List.of("Main")));
         assertEquals("ae2federation.ui.topology.network_name", name.getKey());
-        assertArrayEquals(new Object[] {"C556"}, name.getArgs());
+        assertArrayEquals(new Object[] {"C556A0"}, name.getArgs());
     }
 
     @Test

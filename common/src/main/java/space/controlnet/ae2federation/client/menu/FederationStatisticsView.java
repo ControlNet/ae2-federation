@@ -209,7 +209,7 @@ public final class FederationStatisticsView {
             var id = json.get("id").getAsString();
             var name = json.has("name") ? json.get("name").getAsString() : "";
             networks.add(new Net(id, FederationTheme.networkAccent(index++), FederationTopologyView.displayName(id, name),
-                    name.isEmpty() ? id.substring(0, 4).toUpperCase(Locale.ROOT) : name));
+                    name.isEmpty() ? space.controlnet.ae2federation.identity.NetworkId.tag(id) : name));
         }
         if (network != null && networks.stream().noneMatch(net -> net.id().equals(network))) network = null;
         refreshChips();

@@ -7,12 +7,13 @@ import net.minecraft.core.Direction;
 import space.controlnet.ae2federation.bundle.BundleBeam;
 
 /**
- * The one beam down a 2x2 bundle (Blender study R, {@code tools/blender/plasma_beam.py}): a white-hot core inside three
+ * The one beam down a 2x2 or 3x3 bundle (Blender study R, {@code tools/blender/plasma_beam.py}): a white-hot core inside three
  * lobed sheaths that twist round it and roll along the run, and a halo. It follows an ordinary beam's centerlines,
  * stretched over the bundle's box in blocks, so runs, branches and turns meet as theirs do; its pulses and lobes take
- * their phase from world coordinates, so they run on from layer to layer and through two-layer joints.
+ * their phase from world coordinates, so they run on from layer to layer and through joints.
  *
- * <p>The core writes depth and must pass through the artist's rings, whose bore has a radius of 10/32 block. The
+ * <p>The core writes depth and must pass through the artist's rings, whose bore has a radius of 10/32 block in a 2x2 bundle
+ * and 1/4 block in a 3x3 one; the beam keeps the same radii in both, only its box is wider. The
  * sheaths and halo are additive, and fade toward their outlines as they turn from the eye ({@link #fade}), so the
  * nested tubes read as one soft volume rather than bands; the renderer applies that per vertex, by view, from the
  * normals this mesh carries.
@@ -69,7 +70,7 @@ public final class BundleBeamMesh {
      */
     public static void emit(BundleBeam beam, int x, int y, int z, long tick, float partialTick, CableBeamStyle style,
             int detail, boolean glow, Sink sink) {
-        if (detail < 0 || detail > 2 || beam.length() < 1 || beam.length() > 2) {
+        if (detail < 0 || detail > 2 || beam.length() < 1 || beam.length() > 3) {
             throw new IllegalArgumentException("Invalid bundle beam");
         }
         float[] extent = {beam.extent(Direction.Axis.X), beam.extent(Direction.Axis.Y), beam.extent(Direction.Axis.Z)};
@@ -239,7 +240,7 @@ public final class BundleBeamMesh {
         var details = new ArrayList<List<List<List<CableBeamMesh.Path>>>>();
         for (int perBlock : SAMPLES_PER_BLOCK) {
             var lengths = new ArrayList<List<List<CableBeamMesh.Path>>>();
-            for (int length = 1; length <= 2; length++) {
+            for (int length = 1; length <= 3; length++) {
                 var masks = new ArrayList<List<CableBeamMesh.Path>>();
                 for (int mask = 0; mask < 64; mask++) masks.add(CableBeamMesh.build(mask, perBlock * length));
                 lengths.add(List.copyOf(masks));

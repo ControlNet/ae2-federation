@@ -10,7 +10,7 @@ import net.minecraft.core.Direction;
 import org.junit.jupiter.api.Test;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
-/** A 2x2 bundle's one beam: drawn by each layer's corner cell, two layers long where a branch leaves. */
+/** A 2x2 or 3x3 bundle's one beam: drawn by each layer's corner cell, as many layers long as it is wide at a branch. */
 final class BundleBeamTest {
     /** 2x2 along X, x 0..5, y 0..1, z 0..1, with a 2x2 branch south over x 2..3. */
     private static final BundleSegment RUN = new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 1, 1),
@@ -22,7 +22,7 @@ final class BundleBeamTest {
     private static Optional<BundleBeam> beam(BundleSet set, BlockPos pos) {
         var segment = set.at(pos).orElseThrow().segment();
         return BundleBeam.of(pos, segment, look(set, pos).orElseThrow(),
-                () -> look(set, pos.relative(segment.axis(), 1)));
+                layers -> look(set, pos.relative(segment.axis(), layers)));
     }
 
     private static Optional<BundleLook> look(BundleSet set, BlockPos pos) {
@@ -73,6 +73,30 @@ final class BundleBeamTest {
         set.form(BRANCH);
         assertEquals(new BundleBeam(Direction.Axis.X, mask(Direction.WEST, Direction.SOUTH), 2),
                 beam(set, new BlockPos(2, 0, 0)).orElseThrow());
+    }
+
+    @Test
+    void a3x3BundleDrawsOneBeamThreeWideAndThreeLayersLongAtABranch() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(8, 2, 2), Direction.Axis.X));
+        set.form(new BundleSegment(new BlockPos(3, 0, 3), new BlockPos(5, 2, 5), Direction.Axis.Z));
+        var run = beam(set, new BlockPos(1, 0, 0)).orElseThrow();
+        assertEquals(new BundleBeam(Direction.Axis.X, mask(Direction.EAST, Direction.WEST), 1, 3), run);
+        assertEquals(3, run.extent(Direction.Axis.Z));
+        assertEquals(0, beam(set, new BlockPos(1, 1, 1)).orElseThrow().length(), "only the corner cell draws");
+        assertEquals(new BundleBeam(Direction.Axis.X, mask(Direction.EAST, Direction.WEST, Direction.SOUTH), 3, 3),
+                beam(set, new BlockPos(3, 0, 0)).orElseThrow());
+        assertEquals(0, beam(set, new BlockPos(4, 0, 0)).orElseThrow().length());
+        assertEquals(0, beam(set, new BlockPos(5, 0, 0)).orElseThrow().length());
+    }
+
+    @Test
+    void a3x3TurnHasNoArmPastTheEnd() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 2, 2), Direction.Axis.X));
+        set.form(new BundleSegment(new BlockPos(3, 0, 3), new BlockPos(5, 2, 5), Direction.Axis.Z));
+        assertEquals(new BundleBeam(Direction.Axis.X, mask(Direction.WEST, Direction.SOUTH), 3, 3),
+                beam(set, new BlockPos(3, 0, 0)).orElseThrow());
     }
 
     @Test

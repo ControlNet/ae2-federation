@@ -31,7 +31,7 @@ final class CableBeamFrame {
     private int size;
 
     /**
-     * The vertices of one pass of the 2x2 beam drawn by the cell at {@code x, y, z}, {@link #BUNDLE_STRIDE} floats
+     * The vertices of one pass of the bundle beam drawn by the cell at {@code x, y, z}, {@link #BUNDLE_STRIDE} floats
      * each; do not modify.
      */
     float[] bundle(BundleBeam beam, int x, int y, int z, long tick, float partialTick, CableBeamStyle style,
