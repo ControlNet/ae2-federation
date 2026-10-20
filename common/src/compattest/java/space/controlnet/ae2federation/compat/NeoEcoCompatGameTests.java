@@ -9,6 +9,9 @@ import appeng.core.definitions.AEParts;
 import appeng.api.storage.IStorageProvider;
 import appeng.api.storage.MEStorage;
 import appeng.me.cluster.IAEMultiBlock;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,10 +20,17 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.AttachFace;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.automation.ComputingDevices;
 import space.controlnet.ae2federation.automation.ComputingHost;
+import space.controlnet.ae2federation.automation.Installation;
+import space.controlnet.ae2federation.automation.ProgramScheduler;
+import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.router.CableVisualConnections;
@@ -444,6 +454,173 @@ public final class NeoEcoCompatGameTests {
             helper.assertFalse(formed(helper.getBlockState(controller)), "an ME interface keeps it from forming");
             helper.succeed();
         });
+    }
+
+    /**
+     * Programs install and run on the Federation computation system as on any computing device. A broken part takes it
+     * out of its domain while its installation stays, and it runs again once the part is back.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void federationComputationSystemRunsInstalledPrograms(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        helper.setBlock(controller.north(), space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE
+                .get());
+        var file = "neoeco_sched_run";
+        writeProgram(helper, file, """
+                def ping() -> str:
+                    return "ping"
+                """);
+        var level = helper.getLevel();
+        var scheduler = ProgramScheduler.get(level.getServer());
+        var device = new String[1];
+        var installation = new String[1];
+        var casing = controller.above();
+        var casingState = new BlockState[1];
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    device[0] = helper.getBlockEntity(controller) instanceof ComputingHost host ? host.id() : null;
+                    helper.assertTrue(device[0] != null && sharesDomain(helper, controller, controller.north()),
+                            "waiting for the device to join the cable's domain");
+                })
+                .thenExecute(() -> {
+                    installation[0] = scheduler.install(device[0], file, "ping", List.of()).id();
+                    scheduler.trigger(installation[0]);
+                })
+                .thenWaitUntil(() -> helper.assertValueEqual(log(scheduler, installation[0]),
+                        List.of("started", "done: 'ping'"), "it ran once"))
+                .thenExecute(() -> {
+                    casingState[0] = helper.getBlockState(casing);
+                    helper.destroyBlock(casing);
+                })
+                .thenWaitUntil(() -> helper.assertFalse(sharesDomain(helper, controller, controller.north()),
+                        "a broken part takes it out of the cable's domain"))
+                .thenExecute(() -> helper.assertTrue(ComputingDevices.get(level).installation(installation[0])
+                        .isPresent(), "its installation stays"))
+                .thenExecute(() -> helper.setBlock(casing, casingState[0]))
+                .thenWaitUntil(() -> helper.assertTrue(sharesDomain(helper, controller, controller.north()),
+                        "it rejoins the cable's domain once the part is back"))
+                .thenExecute(() -> scheduler.trigger(installation[0]))
+                .thenWaitUntil(() -> helper.assertValueEqual(log(scheduler, installation[0]),
+                        List.of("started", "done: 'ping'", "started", "done: 'ping'"), "it ran again"))
+                .thenExecute(() -> {
+                    scheduler.uninstall(installation[0]);
+                    deleteProgram(helper, file);
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * A redstone signal starts a Redstone-triggered installation, as on any computing device. Its structure covers every
+     * face but the front, so the signal comes through a part: a lever on the casing above it.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void aLeverOnItsCasingStartsTheFederationComputationSystem(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        helper.setBlock(controller.north(), space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE
+                .get());
+        var lever = controller.above(2);
+        helper.setBlock(lever, Blocks.LEVER.defaultBlockState().setValue(BlockStateProperties.ATTACH_FACE,
+                AttachFace.FLOOR));
+        var file = "neoeco_sched_redstone";
+        writeProgram(helper, file, """
+                def ping() -> str:
+                    return "ping"
+                """);
+        var level = helper.getLevel();
+        var scheduler = ProgramScheduler.get(level.getServer());
+        var device = new String[1];
+        var installation = new String[1];
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    device[0] = helper.getBlockEntity(controller) instanceof ComputingHost host ? host.id() : null;
+                    helper.assertTrue(device[0] != null && sharesDomain(helper, controller, controller.north()),
+                            "waiting for the device to join the cable's domain");
+                })
+                .thenExecute(() -> {
+                    installation[0] = scheduler.install(device[0], file, "ping", List.of()).id();
+                    scheduler.setTrigger(installation[0], new Installation.Trigger.Redstone());
+                    helper.pullLever(lever);
+                })
+                .thenWaitUntil(() -> helper.assertValueEqual(log(scheduler, installation[0]),
+                        List.of("started", "done: 'ping'"), "the lever turning on starts it once"))
+                .thenExecuteAfter(10, () -> helper.assertValueEqual(log(scheduler, installation[0]).size(), 2,
+                        "a signal that stays on does not start it again"))
+                .thenExecute(() -> {
+                    scheduler.uninstall(installation[0]);
+                    deleteProgram(helper, file);
+                })
+                .thenSucceed();
+    }
+
+    /** Breaking the controller stops its runs, drops its installations and frees its ID. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void breakingTheFederationComputationSystemDropsItsInstallations(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        helper.setBlock(controller.north(), space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE
+                .get());
+        var file = "neoeco_sched_broken";
+        writeProgram(helper, file, """
+                def slow() -> int:
+                    mc.wait(100)
+                    return 1
+                """);
+        var level = helper.getLevel();
+        var scheduler = ProgramScheduler.get(level.getServer());
+        var device = new String[1];
+        var installation = new String[1];
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    device[0] = helper.getBlockEntity(controller) instanceof ComputingHost host ? host.id() : null;
+                    helper.assertTrue(device[0] != null && sharesDomain(helper, controller, controller.north()),
+                            "waiting for the device to join the cable's domain");
+                })
+                .thenExecute(() -> {
+                    installation[0] = scheduler.install(device[0], file, "slow", List.of()).id();
+                    scheduler.trigger(installation[0]);
+                })
+                .thenWaitUntil(() -> helper.assertValueEqual(scheduler.running(installation[0]), 1, "running"))
+                .thenExecute(() -> helper.destroyBlock(controller))
+                .thenExecuteAfter(2, () -> {
+                    helper.assertValueEqual(scheduler.running(installation[0]), 0, "its run stopped");
+                    helper.assertTrue(ComputingDevices.get(level).installation(installation[0]).isEmpty(),
+                            "its installation went with it");
+                    helper.assertTrue(ComputingDevices.get(level).entry(device[0]).isEmpty(), "its ID is free again");
+                    deleteProgram(helper, file);
+                })
+                .thenSucceed();
+    }
+
+    /** Whether the blocks at {@code a} and {@code b} are nodes of one Federation domain. */
+    private static boolean sharesDomain(GameTestHelper helper, BlockPos a, BlockPos b) {
+        var level = helper.getLevel();
+        var registry = FederationDomainRegistryAccess.get(level);
+        var domain = registry.federationDomainOf(FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(b)));
+        return domain.isPresent() && domain.get().nodes().contains(
+                FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(a)));
+    }
+
+    private static List<String> log(ProgramScheduler scheduler, String installation) {
+        return scheduler.log(installation).stream().map(ProgramScheduler.LogEntry::text).toList();
+    }
+
+    private static void writeProgram(GameTestHelper helper, String file, String text) {
+        var store = ProgramStore.get(helper.getLevel().getServer());
+        try {
+            Files.writeString(store.folder().resolve(file + ".ae2f"), text);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        store.reload();
+    }
+
+    private static void deleteProgram(GameTestHelper helper, String file) {
+        var store = ProgramStore.get(helper.getLevel().getServer());
+        try {
+            Files.deleteIfExists(store.folder().resolve(file + ".ae2f"));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        store.reload();
     }
 
     /**
