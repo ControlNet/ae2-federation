@@ -1533,22 +1533,31 @@ Installation cost (user decisions 2026-10-20 unless marked):
 
   Each costs its amount in AE2 bytes: 8 items per byte, 8 buckets of fluid per byte, and each key type's own ratio.
   There is no per-type cost.
-- **Inferring the amount (assistant proposal, open).** A range analysis in the checker bounds most amounts:
+- **Inferring the amount.** A range analysis in the checker bounds most amounts:
   - constants and installation arguments;
   - arithmetic on them, and `min(x, N)`;
   - branch conditions;
   - library facts such as amounts never being negative. `missing = target - ae2.amount(r) - ae2.crafting(r)` under
     `if missing > 0` is 1..target.
 
-  It cannot bound values read straight from the world, such as `stack.amount`, or totals built up in a loop. Such a
-  call reserves a default of 1,024 bytes and moves at most that much at run time. The checker notes the line and
-  suggests `min(..., N)`.
+  It cannot bound values read straight from the world, such as `stack.amount`, or totals built up in a loop.
+- **Elastic installations (user, 2026-10-20).** An installation with a moving call the analysis cannot bound is
+  elastic.
+  - It reserves no fixed bandwidth. It can be installed unless the device's bandwidth is fully taken by fixed
+    reservations.
+  - Whenever installations or the device's capacity change, the bandwidth left after the fixed reservations is split
+    evenly among the elastic installations. A Parallel installation counts as 4 shares (assistant choice).
+  - Each share is fixed until the next change. Nothing is adjusted at run time.
+  - A moving call moves at most its share's bytes per call, which is the share divided by 20. A call that asks for
+    1,000 when its share allows 200 moves 200.
+  - CU is always fixed, since a node count is always known.
 - **B/s = 20 x the largest B** among the function's moving calls, because a run makes at most one effect per tick
   (user, 2026-10-20).
 - Calls that move no AE2 resources cost no bandwidth: crafting, redstone, blocks and FE.
 
 When the capacity drops, for example because a part is broken or a cell is taken out, the installations stay. The whole
-device starts no runs while its reservations exceed its capacity (user, 2026-10-20). The install view shows it in red.
+device starts no runs while its fixed reservations exceed its capacity (user, 2026-10-20). The install view shows it in
+red. Elastic shares never pause a device; they only shrink.
 
 GUI: the install view gets the device meters planned on 2026-10-18 (CU and B/s, used of total). Dragging colours the
 devices by whether the cost fits. A design canvas comes first.
