@@ -60,7 +60,7 @@ record Effects(Set<String> functions, Set<String> calls) {
     }
 
     /** Stands for "a library function that acts on the world" among call targets. */
-    private static final String LIBRARY_EFFECT = "<library effect>";
+    static final String LIBRARY_EFFECT = "<library effect>";
 
     private static void collect(Program program, String fileName, Workspace workspace, Map<String, Calls> out) {
         var names = new HashSet<String>();
@@ -87,7 +87,7 @@ record Effects(Set<String> functions, Set<String> calls) {
     }
 
     /** The key of the function a call runs; {@link #LIBRARY_EFFECT} for an effectful library function. */
-    private static String target(Expr.Call call, String fileName, Set<String> names, Set<String> locals,
+    static String target(Expr.Call call, String fileName, Set<String> names, Set<String> locals,
             Workspace workspace) {
         if (call.receiver() == null) {
             if (locals.contains(call.name()) || !names.contains(call.name())) {
@@ -105,7 +105,7 @@ record Effects(Set<String> functions, Set<String> calls) {
         return workspace.files().containsKey(qualifier.name()) ? qualifier.name() + "." + call.name() : null;
     }
 
-    private static void locals(List<Stmt> body, Set<String> out) {
+    static void locals(List<Stmt> body, Set<String> out) {
         for (var statement : body) {
             switch (statement) {
                 case Stmt.Assign s -> {
