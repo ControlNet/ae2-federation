@@ -1,0 +1,5 @@
+def stock_farm(base: Network, farm: Network, item: Item, target: int = 64) -> None:
+    # Top the farm network up from the base, a stack at most per call.
+    missing = target - ae2.amount(item, farm)
+    if missing > 0:
+        ae2.move(base, farm, item, min(missing, 64))

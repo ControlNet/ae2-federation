@@ -1,0 +1,4 @@
+def empty_chest(port: Interface) -> None:
+    chest = ae2f.select(port)
+    for stack in mc.storage(chest):
+        ae2.import_from(chest, stack.resource, stack.amount)

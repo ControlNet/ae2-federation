@@ -1,0 +1,9 @@
+def smelt_iron(port: Interface) -> None:
+    # A furnace takes ore from above and hands out ingots below.
+    top = ae2f.select(port, side="up")
+    if mc.amount(top, "minecraft:raw_iron") < 8:
+        ae2.export_to(top, "minecraft:raw_iron", 8)
+    bottom = ae2f.select(port, side="down")
+    done = mc.amount(bottom, "minecraft:iron_ingot")
+    if done > 0:
+        ae2.import_from(bottom, "minecraft:iron_ingot", min(done, 64))

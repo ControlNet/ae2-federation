@@ -74,6 +74,11 @@ public final class PythonLanguage implements ILanguageDefinition {
         styles.setDefaultStyle(Style.EMPTY.withColor(COLORS.get("name")));
     }
 
+    /** A kind's colour (RGB), as the editor draws it. */
+    public static int color(String kind) {
+        return COLORS.getOrDefault(kind, COLORS.get("name"));
+    }
+
     /** The colours to give the editor with this language. */
     public StyleManager styles() {
         return styles;

@@ -130,23 +130,26 @@ public final class ScriptChecker {
         Minecraft.getInstance().execute(() -> job.done().accept(marks));
     }
 
+    /** The graph of every function of {@code text}, by name in the file's order; nothing when it does not parse. */
+    public static Optional<Map<String, Graph>> graphs(String text, Workspace workspace) {
+        var parsed = ScriptParser.parse(text);
+        if (!parsed.ok()) return Optional.empty();
+        var result = Checker.check(parsed.program(), workspace);
+        var functions = new LinkedHashMap<String, Graph>();
+        for (var function : parsed.program().functions()) {
+            var canvas = Canvas.of(function, result);
+            functions.put(function.name(), new Graph(canvas, GraphCards.of(canvas, parsed.program(), workspace),
+                    GraphCards.variables(canvas)));
+        }
+        return Optional.of(functions);
+    }
+
     private static void graphPending() {
         var job = GRAPH.getAndSet(null);
         if (job == null) return;
-        Optional<Map<String, Graph>> graphs = Optional.empty();
+        Optional<Map<String, Graph>> graphs;
         try {
-            var parsed = ScriptParser.parse(job.text());
-            if (parsed.ok()) {
-                var workspace = workspace(job.others(), job.catalog());
-                var result = Checker.check(parsed.program(), workspace);
-                var functions = new LinkedHashMap<String, Graph>();
-                for (var function : parsed.program().functions()) {
-                    var canvas = Canvas.of(function, result);
-                    functions.put(function.name(), new Graph(canvas,
-                            GraphCards.of(canvas, parsed.program(), workspace), GraphCards.variables(canvas)));
-                }
-                graphs = Optional.of(functions);
-            }
+            graphs = graphs(job.text(), workspace(job.others(), job.catalog()));
         } catch (RuntimeException e) {
             LOGGER.error("Drawing a program's graph in the Automation tab failed", e);
             return;

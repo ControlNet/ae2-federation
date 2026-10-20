@@ -1,0 +1,5 @@
+def keep_stocked(item: Item, target: int) -> None:
+    # Count what is stored and what jobs are still making.
+    missing = target - ae2.amount(item) - ae2.crafting(item)
+    if missing > 0:
+        ae2.craft(item, missing)

@@ -1,0 +1,9 @@
+def _low(item: Item, minimum: int) -> bool:
+    return ae2.amount(item) < minimum
+
+def iron_is_low(minimum: int = 64) -> bool:
+    return _low("minecraft:iron_ingot", minimum)
+
+def refill_iron(amount: int = 64) -> None:
+    if _low("minecraft:iron_ingot", amount):
+        ae2.craft("minecraft:iron_ingot", amount)

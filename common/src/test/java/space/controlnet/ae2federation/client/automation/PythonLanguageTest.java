@@ -47,4 +47,13 @@ final class PythonLanguageTest {
         assertEquals(List.of("name:x", "operator:=", "number:12", "name:ab", "operator:+", "operator:²"),
                 kinds("x = 12ab + ²"));
     }
+
+    /** The guide colours a listing with the editor's colours, kind by kind. */
+    @Test
+    void eachKindHasTheEditorsColour() {
+        assertEquals(0xb37bea, PythonLanguage.color("keyword"));
+        assertEquals(0xf7b13a, PythonLanguage.color("string"));
+        assertEquals(PythonLanguage.NAMESPACE, PythonLanguage.color("namespace"));
+        assertEquals(0xd6d0e0, PythonLanguage.color("space"));
+    }
 }

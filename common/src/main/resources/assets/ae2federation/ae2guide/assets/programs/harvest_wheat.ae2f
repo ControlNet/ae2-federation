@@ -1,0 +1,5 @@
+def harvest_wheat(port: Interface) -> None:
+    crop = ae2f.select(port)
+    if mc.state(crop, "age") == "7":
+        mc.break_block(crop)
+        mc.place_block(crop, "minecraft:wheat_seeds")

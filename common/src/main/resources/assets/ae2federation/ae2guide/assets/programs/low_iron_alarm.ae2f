@@ -1,0 +1,6 @@
+def low_iron_alarm(lamp: Interface, minimum: int = 64) -> None:
+    # Light the lamp while iron runs low.
+    if ae2.amount("minecraft:iron_ingot") < minimum:
+        mc.set_redstone(lamp, 15)
+    else:
+        mc.set_redstone(lamp, 0)

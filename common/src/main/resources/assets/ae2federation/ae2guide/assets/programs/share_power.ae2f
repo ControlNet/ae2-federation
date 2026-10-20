@@ -1,0 +1,5 @@
+def share_power_when_full(base: Network, farm: Network) -> None:
+    if ae2.energy(base) > 100000:
+        ae2f.set_rule(base, farm, "power", "on")
+    else:
+        ae2f.set_rule(base, farm, "power", "off")

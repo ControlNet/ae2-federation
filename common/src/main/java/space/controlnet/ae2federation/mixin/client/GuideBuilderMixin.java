@@ -10,12 +10,13 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import space.controlnet.ae2federation.client.guide.FederationProgramTagCompiler;
 import space.controlnet.ae2federation.client.guide.FederationTopologyTagCompiler;
 
 /**
- * Adds {@code <FederationTopology>} to AE2's guide, which our pages join. GuideME takes tag compilers only through the
- * {@link GuideBuilder} that builds a guide, and AE2 builds its own privately with no hook for other mods, so this
- * hands the compiler to that builder just before it builds.
+ * Adds {@code <FederationTopology>} and {@code <FederationProgram>} to AE2's guide, which our pages join. GuideME takes
+ * tag compilers only through the {@link GuideBuilder} that builds a guide, and AE2 builds its own privately with no hook
+ * for other mods, so this hands the compilers to that builder just before it builds.
  */
 @Mixin(value = GuideBuilder.class, remap = false)
 public abstract class GuideBuilderMixin {
@@ -26,9 +27,11 @@ public abstract class GuideBuilderMixin {
     private ResourceLocation id;
 
     @Inject(method = "build", at = @At("HEAD"))
-    private void ae2federation$addTopologyTag(CallbackInfoReturnable<Guide> callback) {
+    private void ae2federation$addTags(CallbackInfoReturnable<Guide> callback) {
         if (AE2_GUIDE.equals(id)) {
-            ((GuideBuilder) (Object) this).extension(TagCompiler.EXTENSION_POINT, new FederationTopologyTagCompiler());
+            var builder = (GuideBuilder) (Object) this;
+            builder.extension(TagCompiler.EXTENSION_POINT, new FederationTopologyTagCompiler());
+            builder.extension(TagCompiler.EXTENSION_POINT, new FederationProgramTagCompiler());
         }
     }
 }
