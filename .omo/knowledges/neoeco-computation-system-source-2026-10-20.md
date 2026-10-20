@@ -71,3 +71,28 @@ Package `automation/neoeco`. Only `NeoEcoSupport` is touched when NeoECO is abse
   Our `useWithoutItem` opens the automation screen instead, so with an empty hand the player gets our screen.
 - Compat tests: `federationComputationSystem{LinksAtItsFront,RefusesAnMeInterface,RefusesANetworkSwitch}`. Turning
   off the switch check fails the third test.
+
+## Placeholder art (2026-10-20)
+
+`tools/visual/build_eco_computation_placeholder.py` reads Neo ECO's jar from the Gradle cache. It writes:
+- `textures/block/eco_computation/`: `screen_off`, `controller_formed`, `controller_formed_a` and
+  `controller_formed_switch`, with hues 210-300 at saturation >= 0.15 turned to teal #26A6BD (hue 189);
+- our models in `models/block/eco_computation/`, copied from Neo ECO's controller models with those textures swapped
+  in. Composite children set `base` explicitly, because the parent's own default is Neo ECO's;
+- blockstates and item models. The network-switch variants map to the plain models.
+
+The tier lights and screens (`*_a/b/c`) stay Neo ECO's: L4 blue, L6 orange, L9 purple.
+
+In-game result (`build/neoeco-computation-check/`):
+- Unformed, the screen turns from navy to dark teal.
+- Formed, the front looks like Neo ECO's apart from our cable. The chips sit on the sides. The purple in view is Neo
+  ECO's drives (shared blocks) and the L9 tier lights.
+
+`tools/visual/validate_assets.py` now:
+- counts textures used in composite children as used;
+- skips the size rule for `eco_computation/`, which keeps Neo ECO's 128-px atlases.
+
+Its unused Quantum Cube tile textures fail on dev as well.
+
+The NeoECO 21.2.1 controller has no tooltips on our items (`NETooltips` keys on Neo ECO's own items). Neo ECO's Jade
+plugin may still match our block entity, which subclasses its controller. Not checked.

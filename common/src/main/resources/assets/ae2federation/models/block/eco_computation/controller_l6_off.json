@@ -1,0 +1,7 @@
+{
+  "parent": "neoecoae:block/computation_controller/controller_off_base",
+  "textures": {
+    "level": "neoecoae:block/compute/controller/controller_side_layer_b",
+    "screen": "ae2federation:block/eco_computation/screen_off"
+  }
+}

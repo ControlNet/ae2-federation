@@ -64,14 +64,18 @@ NOT_DRAWN_YET = ({NS + 'part/cable/dense/' + name for name in ('connector', 'str
 # Textures the client code binds by path, such as the bundle selection's hatch, are drawn too.
 JAVA = '\n'.join(path.read_text() for path in (REPO / 'common/src/main/java').rglob('*.java'))
 CODE_BOUND = {NS + ref for ref in re.findall(r'"textures/([a-z0-9_/]+)\.png"', JAVA)}
-used = {texture for model in models.values() for texture in model.get('textures', {}).values()} | CODE_DRAWN \
-    | CODE_BOUND | NOT_DRAWN_YET
+used = {texture for model in models.values()
+        for part in [model, *model.get('children', {}).values()] for texture in part.get('textures', {}).values()} \
+    | CODE_DRAWN | CODE_BOUND | NOT_DRAWN_YET
 for path in (BASE / 'textures').rglob('*.png'):
     im = Image.open(path)
     ref = NS + path.relative_to(BASE / 'textures').as_posix()[:-4]
     assert ref in used or ref == NS + 'entity/cable_flow', ('unused texture', ref)
     # Overlays the client code draws, such as the bundle selection's hatch, keep their own size.
     if ref.startswith(NS + 'misc/'):
+        continue
+    # The Federation computation system's placeholders are Neo ECO's textures recoloured, in Neo ECO's sizes.
+    if ref.startswith(NS + 'block/eco_computation/'):
         continue
     meta = path.with_suffix('.png.mcmeta')
     # The artist's 2x2 rings are modelled over two blocks, on a 32-pixel texture.
