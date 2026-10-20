@@ -2,6 +2,10 @@ package space.controlnet.ae2federation.automation.neoeco;
 
 import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.blocks.entity.computation.ECOComputationSystemBlockEntity;
+import cn.dancingsnow.neoecoae.gui.multiblock.MultiblockBuilderUI;
+import cn.dancingsnow.neoecoae.multiblock.placement.MultiBlockBuildController;
+import com.lowdragmc.lowdraglib2.gui.factory.BlockUIMenuType;
+import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -27,6 +31,11 @@ import space.controlnet.ae2federation.domain.port.FederationPort;
 public final class EcoComputationSystemBlockEntity extends ECOComputationSystemBlockEntity
         implements ComputingHost, DomainDevice.Host {
     private final DomainDevice device = new DomainDevice(this, this);
+    /**
+     * Neo ECO's Structure Builder state machine for this screen's builder window; Neo ECO keeps its own private, so
+     * this one is ticked beside it. It builds what {@link #getBuildDefinition()} gives.
+     */
+    private final MultiBlockBuildController builder = new MultiBlockBuildController(this);
     /** Whether a redstone signal reached it at the last update, so only a rising edge triggers; kept across loads. */
     private boolean powered;
 
@@ -79,6 +88,24 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
 
     public @Nullable FederationPort federationPort(@Nullable Direction face) {
         return device.federationPort(face);
+    }
+
+    /** Neo ECO's controller screen with the device's readouts in place of the crafting CPU's. */
+    @Override
+    public ModularUI createUI(BlockUIMenuType.BlockUIHolder holder) {
+        var player = holder.player;
+        var buildWindow = MultiblockBuilderUI.createFloatingPanel(new MultiblockBuilderUI.Config(player,
+                this::getSelectedBuildLength, this::isMirrorBuild, mirror -> builder.setMirrorBuild(player, mirror),
+                () -> builder.decreaseBuildLength(player), () -> builder.increaseBuildLength(player),
+                () -> builder.autoBuild(player), this::isFormed, this::isBuildInProgress,
+                builder::createLocalPreviewPlan));
+        return EcoComputationPanel.create(this, holder, buildWindow);
+    }
+
+    @Override
+    public void tick(Level level, BlockPos position, BlockState state) {
+        super.tick(level, position, state);
+        builder.tick(level);
     }
 
     /** Neo ECO's controller tick, then the device's. */
