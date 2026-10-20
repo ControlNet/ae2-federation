@@ -39,7 +39,8 @@ final class GuidePagesContractTest {
             "beam_converter", "creative_beam_converter", "beam_former", "quantum_cube", "creative_computing_device");
     /** Our items that exist only beside another mod, by that mod; only a pack that requires the mod may name them. */
     private static final Map<String, Set<String>> FEDERATION_MOD_ITEMS = Map.of("neoecoae",
-            Set.of("eco_computation_system_l4", "eco_computation_system_l6", "eco_computation_system_l9"));
+            Set.of("eco_computation_system_l4", "eco_computation_system_l6", "eco_computation_system_l9",
+                    "eco_computation_interface"));
     /** Recipes a page shows by id with {@code <Recipe>} whose id is not an item's: the second recipe for an item. */
     private static final Set<String> FEDERATION_RECIPES = Set.of("nexus_processor_press_from_iron");
     /** The AE2 19.2.17 guide pages and items the pages name; the client check opens them for real. */

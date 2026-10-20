@@ -2,6 +2,11 @@ package space.controlnet.ae2federation.automation.neoeco;
 
 import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.blocks.entity.computation.ECOComputationSystemBlockEntity;
+import cn.dancingsnow.neoecoae.gui.multiblock.MultiblockBuilderUI;
+import cn.dancingsnow.neoecoae.multiblock.definition.MultiBlockDefinition;
+import cn.dancingsnow.neoecoae.multiblock.placement.MultiBlockBuildController;
+import com.lowdragmc.lowdraglib2.gui.factory.BlockUIMenuType;
+import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import java.util.Map;
 import java.util.TreeMap;
 import net.minecraft.core.BlockPos;
@@ -31,11 +36,24 @@ import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 public final class EcoComputationSystemBlockEntity extends ECOComputationSystemBlockEntity
         implements ComputingHost, DomainDevice.Host {
     private final DomainDevice device = new DomainDevice(this, this);
+    /**
+     * Neo ECO's Structure Builder state machine for this screen's builder window; Neo ECO keeps its own private, so
+     * this one is ticked beside it. It builds what {@link #getBuildDefinition()} gives.
+     */
+    private final MultiBlockBuildController builder = new MultiBlockBuildController(this);
     /** Whether a redstone signal reached it at the last update, so only a rising edge triggers; kept across loads. */
     private boolean powered;
 
     public EcoComputationSystemBlockEntity(BlockEntityType<?> type, BlockPos position, BlockState state, IECOTier tier) {
         super(type, position, state, tier);
+    }
+
+    /** Neo ECO's structure of this tier, built around this controller with one communication interface. */
+    @Override
+    public @Nullable MultiBlockDefinition getBuildDefinition() {
+        var definition = super.getBuildDefinition();
+        return definition == null ? null
+                : EcoComputationBuild.of(definition, getBlockState().getBlock().defaultBlockState());
     }
 
     @Override
@@ -96,6 +114,24 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
     public AutomationInterfaceBook.AliasResult setAlias(ServerLevel level, String alias) {
         return id() == null ? AutomationInterfaceBook.AliasResult.INVALID
                 : ComputingDevices.get(level).setAlias(level, id(), alias);
+    }
+
+    /** Neo ECO's controller screen with the device's readouts in place of the crafting CPU's. */
+    @Override
+    public ModularUI createUI(BlockUIMenuType.BlockUIHolder holder) {
+        var player = holder.player;
+        var buildWindow = MultiblockBuilderUI.createFloatingPanel(new MultiblockBuilderUI.Config(player,
+                this::getSelectedBuildLength, this::isMirrorBuild, mirror -> builder.setMirrorBuild(player, mirror),
+                () -> builder.decreaseBuildLength(player), () -> builder.increaseBuildLength(player),
+                () -> builder.autoBuild(player), this::isFormed, this::isBuildInProgress,
+                builder::createLocalPreviewPlan));
+        return EcoComputationPanel.create(this, holder, buildWindow);
+    }
+
+    @Override
+    public void tick(Level level, BlockPos position, BlockState state) {
+        super.tick(level, position, state);
+        builder.tick(level);
     }
 
     /** Neo ECO's controller tick, then the device's. */

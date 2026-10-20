@@ -49,3 +49,14 @@ The ECO - N controllers had no loot tables. `BlockLootContractTest` now pins one
 
 Evidence: `build/eco-interface-check/before-after.png`. Compat run: `python3 tools/compat_run.py --accept-eula neoecoae`
 → 43/43.
+
+## Structure Builder (auto-build)
+
+- Neo ECO's builder reads `getBuildDefinition()` from the controller. `EcoComputationBuild` wraps Neo ECO's
+  `MultiBlockDefinition`: one instruction that replays Neo ECO's instructions into a `Swapping` `MultiBlockContext`,
+  which swaps `ECOComputationSystem` for our controller and `ECOMachineInterface` for one communication interface
+  (FACING EAST: Neo ECO's built structure grows west). `Swapping.isFormed()` is false so `onFormed` runs once, by the
+  outer definition.
+- Verified in game (build/eco-interface-check/build/built.png): Build forms the structure with a green interface.
+- The panel's "network online" flag must count only foreign nodes: the controller's domain always holds its own
+  interfaces, so it checks `domain.nodes().size() > 1 + remotePorts().size()`.
