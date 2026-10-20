@@ -58,17 +58,17 @@ final class PlasmaFadeTest {
             var view = new Matrix4f(modelView).mul(pose);
             var turn = view.normal(new Matrix3f());
             for (int i = 0; i < glow.length; i += CableBeamFrame.BUNDLE_STRIDE) {
-                float alpha = glow[i + 6];
+                float alpha = glow[i + 7];
                 float expected = PlasmaFade.inEye(view, turn, orthographic, glow[i], glow[i + 1], glow[i + 2],
-                        glow[i + 7], glow[i + 8], glow[i + 9], alpha, eye, facing);
+                        glow[i + 3], glow[i + 4], glow[i + 5], alpha, eye, facing);
                 float x = glow[i] + pose.m30(), y = glow[i + 1] + pose.m31(), z = glow[i + 2] + pose.m32();
                 var check = new Vector3f();
                 pose.transformPosition(glow[i], glow[i + 1], glow[i + 2], check);
                 assertEquals(check, new Vector3f(x, y, z), "the moved position is the pose's");
                 float actual = orthographic
-                        ? PlasmaFade.movedOrthographic(modelView.m02(), modelView.m12(), modelView.m22(), glow[i + 7],
-                                glow[i + 8], glow[i + 9], alpha)
-                        : PlasmaFade.moved(x, y, z, glow[i + 7], glow[i + 8], glow[i + 9], alpha);
+                        ? PlasmaFade.movedOrthographic(modelView.m02(), modelView.m12(), modelView.m22(), glow[i + 3],
+                                glow[i + 4], glow[i + 5], glow[i + 6], alpha)
+                        : PlasmaFade.moved(x, y, z, glow[i + 3], glow[i + 4], glow[i + 5], glow[i + 6], alpha);
                 assertEquals(expected, actual, 2e-5f);
                 int a = alphaByte(expected), b = alphaByte(actual);
                 assertTrue(Math.abs(a - b) <= 1, a + " " + b);

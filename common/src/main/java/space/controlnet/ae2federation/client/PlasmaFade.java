@@ -35,19 +35,21 @@ final class PlasmaFade {
 
     /**
      * {@link #inEye} for a vertex already at {@code x, y, z} from the camera, when the pose only moves and the
-     * model-view only turns, in a perspective view.
+     * model-view only turns, in a perspective view; {@code normalSquared} is the normal's squared length, taken once
+     * per mesh.
      */
-    static float moved(float x, float y, float z, float nx, float ny, float nz, float alpha) {
+    static float moved(float x, float y, float z, float nx, float ny, float nz, float normalSquared, float alpha) {
         float facing = nx * x + ny * y + nz * z;
-        return Math.min(1, alpha * 2 * facing * facing / ((nx * nx + ny * ny + nz * nz) * (x * x + y * y + z * z)));
+        return Math.min(1, alpha * 2 * facing * facing / (normalSquared * (x * x + y * y + z * z)));
     }
 
     /**
      * {@link #inEye} in an orthographic view, when the pose only moves and the model-view only turns: the eye looks
      * along the model-view's third row, {@code ex, ey, ez}.
      */
-    static float movedOrthographic(float ex, float ey, float ez, float nx, float ny, float nz, float alpha) {
-        float facing = (nx * ex + ny * ey + nz * ez) / (float) Math.sqrt(nx * nx + ny * ny + nz * nz);
+    static float movedOrthographic(float ex, float ey, float ez, float nx, float ny, float nz, float normalSquared,
+            float alpha) {
+        float facing = (nx * ex + ny * ey + nz * ez) / (float) Math.sqrt(normalSquared);
         return Math.min(1, alpha * 2 * facing * facing);
     }
 

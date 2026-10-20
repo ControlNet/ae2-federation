@@ -55,6 +55,8 @@ public final class BundleBeamMesh {
     static final float HUGE_CORE_SCALE = 4 / 3f;
     /** Paths by detail, then box length (1 to 3 layers), then mask. */
     private static final List<List<List<List<CableBeamMesh.Path>>>> PATHS = buildPaths();
+    /** By detail, box length and mask, as {@link #PATHS}: the axes the paths run along, as bits x 1, y 2, z 4. */
+    private static final int[][][] PATH_AXES = pathAxes();
     private static final ThreadLocal<float[]> RADII =
             ThreadLocal.withInitial(() -> new float[CableBeamMesh.MAX_SAMPLES * (MAX_SIDES + 1)]);
     private static final ThreadLocal<float[]> POINTS = ThreadLocal.withInitial(() -> new float[CableBeamMesh.MAX_SAMPLES * 3]);
@@ -87,6 +89,25 @@ public final class BundleBeamMesh {
     public static float fade(float nx, float ny, float nz, float vx, float vy, float vz) {
         float facing = nx * vx + ny * vy + nz * vz;
         return 2 * facing * facing;
+    }
+
+    /**
+     * Which of the drawing cell's coordinates {@link #emit} reads for {@code beam}'s glow or core at {@code detail}, as
+     * bits x 1, y 2, z 4: only the sheaths read any, each the parity of the coordinate along its arms (their lobes and
+     * pulses). The core and the halo are even tubes, and a distant beam has no sheaths. Cells whose coordinates differ
+     * in parity only off these axes draw the same vertices.
+     */
+    public static int parityAxes(BundleBeam beam, int detail, boolean glow) {
+        if (!glow || SHEATH_SIDES[detail] == 0) return 0;
+        // A bundle joined to nothing shows a stub along its own axis.
+        if (beam.mask() == 0) return 1 << beam.axis().ordinal();
+        return PATH_AXES[detail][beam.length() - 1][beam.mask()];
+    }
+
+    /** {@link #parityAxes} for an ordinary cell's beam with connections {@code mask}. */
+    public static int cellParityAxes(int mask, int detail, boolean glow) {
+        if (!glow || CELL_SHEATH_SIDES[detail] == 0) return 0;
+        return PATH_AXES[detail][0][mask];
     }
 
     /**
@@ -269,6 +290,20 @@ public final class BundleBeamMesh {
 
     private static float component(CableBeamMesh.Point point, int axis) {
         return axis == 0 ? point.x() : axis == 1 ? point.y() : point.z();
+    }
+
+    private static int[][][] pathAxes() {
+        var axes = new int[PATHS.size()][3][64];
+        for (int detail = 0; detail < axes.length; detail++) {
+            for (int length = 0; length < 3; length++) {
+                for (int mask = 0; mask < 64; mask++) {
+                    for (var path : PATHS.get(detail).get(length).get(mask)) {
+                        axes[detail][length][mask] |= 1 << path.firstAxis() | 1 << path.secondAxis();
+                    }
+                }
+            }
+        }
+        return axes;
     }
 
     private static List<List<List<List<CableBeamMesh.Path>>>> buildPaths() {

@@ -148,3 +148,93 @@ by `GameTime`. Custom shaders carry Iris/shader-pack risk (`iris-shader-compatib
   `unpowered=false` reflectively on the client so the easing path is exercised.
 - Unit tests cannot load `CableFlowRenderer` (its `RenderType` fields need a bootstrapped registry, and `Bootstrap`
   fails without FML's `LoadingModList`); keep testable math in plain classes such as `PlasmaFade`.
+
+## Second pass (same day, after `1f721f5a`)
+
+The user then saw ~118 FPS looking away and ~90 looking at the bundles (55 before `1f721f5a`): ~2.6 ms per frame left.
+Constraint: no custom shaders (Iris), no look change committed.
+
+### Where the time goes (measured here: CPU, Xvfb + llvmpipe, loaded 60-core host)
+
+Same `BundlePerfScene` (2028 cable BEs, 303 anchors, 485k beam vertices per frame), new counter "BE loop" = from
+`AFTER_ENTITIES` to the start of our `AFTER_BLOCK_ENTITIES` flush (the whole block entity loop: frustum tests,
+dispatch, our renderer, refresh). Shipped `1f721f5a`, looking at the bundles:
+
+| Part | ms per frame |
+|---|---|
+| BE loop | 16.5 |
+| our renderer (`render`) | 14.2, of which anchors 13.9, the 1725 cells that draw nothing 0.3 |
+| per-vertex replay inside the anchors | ~11 (about 23 ns per vertex in game, 11.6 ns in a unit probe) |
+| mesh compute | 2.0 (76 meshes) |
+| refresh (`refreshFlow`, runs in the frustum test's `getRenderBoundingBox`) | ~0.67 per tick |
+| dispatch for the 1725 idle cells (frustum, pose push, `getLightColor`, dispatcher) | ~1-1.5 |
+
+- JFR (render thread): 104 of 167 Java samples sit in `BufferBuilder.addVertex` (attributed to `endLastVertex` /
+  `beginVertex`), only a handful in our fade math: the replay is bound by writing 32-byte vertices (15.5 MB per frame
+  here), not by arithmetic. In game it costs twice the unit probe's ns per vertex because llvmpipe's raster threads
+  compete for caches and memory bandwidth; on a real GPU expect nearer the probe figure.
+- Allocation: `Arrays.copyOf` of every recomputed mesh each frame (124 KB per near 2x2 glow, 555 KB per near 3x3 joint)
+  was the largest real allocation; 1 young GC per 15 s at 10 FPS here, roughly every 1-2 s at 90 FPS.
+- Core sort (`CORE` has `sortOnUpload`): unit probe, 26k core quads sorted in 2.1 ms (~80 ns per quad); the
+  scene's mostly straight layers have far fewer (8 quads each), so roughly 0.2-0.4 ms per frame. Needed while a core
+  is translucent (idle load), so it stays.
+- Not measurable here: driver upload of the per-frame buffer and GPU fill. The glow is 4 nested additive tubes with
+  `NO_CULL`, so up to 8 layers of overdraw over the beam's screen area.
+
+### Shipped in `cf236f8a` (all bit-identical)
+
+1. `CableFlowRenderer.shouldRender`: false for a bundle cell off its layer's low corner (`bundleBeam().length() == 0`).
+   The dispatcher then skips `getLightColor`, the style/ease and the `render` call for them (2028 -> 303 renders).
+   Side effect: such a cell no longer eases its own `beamLoad`; if it later becomes an anchor its first drawn load
+   comes from `smooth` over the long gap, i.e. at once near its target. Only matters while a bundle is reshaped.
+2. Parity key narrowed (`BundleBeamMesh.parityAxes` / `cellParityAxes`): only the sheaths read the drawing cell's
+   coordinates, each the parity along its paths' axes (`radii()` reads `world[first]`/`world[second]`). The core,
+   the halo and far detail read none. 76 -> 51 meshes per frame in the scene; more in real bases at mixed coordinates.
+3. Frame cache keeps arrays across frames (`CableBeamFrame.keep`): last frame's maps are swapped in, a key computed
+   again writes into its old array (same key = same vertex count); leftovers are dropped next frame. A steady scene
+   allocates no mesh arrays.
+4. Packed layout, stride 9: x y z, normal, |n|^2, alpha, colour as ARGB bits with alpha 0 (exponent <= 1, never NaN).
+   The per-vertex `(int) (c * 255)` of three colours and the |n|^2 sum are gone; replay moved to `PlasmaReplay`
+   (`moved` / `inEye`) so it is unit-testable.
+- Tests: `PlasmaReplayTest` writes real `BufferBuilder` bytes from the new replay and from a copy of the old renderer
+  reading the mesh's raw vertices: 0 bytes differ over 1.08M vertices (moved and eye-space paths, perspective and
+  ortho, bundles and cells). `BundleBeamMeshTest.aBeamReadsTheParityOfOnlyTheAxesItsArmsRunAlong` (every beam, detail,
+  pass and 64 cell masks, all 8 parities: equal masked parity => bit-identical; and no masked axis is unused).
+  `CableBeamFrameTest` (layout, sharing, reuse with recomputed values).
+
+In game, two alternating runs each (`build/beam-perf-2-check/logs/`), ms per frame:
+
+| Window | before (`1f721f5a`) | after |
+|---|---|---|
+| toward, BE loop (6 windows) | 16.5 (15.5-17.0) | 12.0 (11.8-12.3) |
+| toward, our renderer | 14.2 | 10.1 |
+| close | 18.1 / 17.5 | 13.3 / 12.8 |
+| 3x3 joint view | 14.6 / 14.4 | 11.0 / 10.6 |
+| easing 0-20 s | 15.6-16.6 | 11.3-12.6 |
+| away | 0.7-0.8 | 0.6-0.8 |
+
+Same frame (game time 240000, frozen), before vs after: 0 of 1,536,000 pixels differ in overview, close-up and 3x3
+joint (`build/beam-perf-2-check/before-after.png`). Between two runs of the same build, clouds (client ticks) and one
+small patch can differ; compare shots from one round.
+
+### Evaluated, not shipped
+
+- Skipping glow quads whose four alpha bytes are 0: exact in vanilla (GLOW is `SRC_ALPHA, ONE`, no depth write),
+  but only 2.4% of glow quads (silhouette quads cannot be all-zero with 8/16 sides), and under a shader pack such
+  quads may still write non-blended buffers. Not worth it.
+- Raw `MemoryUtil` writes instead of `addVertex`: slower in the probe (19 vs 11.6 ns); `addVertex`'s fast path is
+  already direct puts.
+- Look-identical but bigger: replay on worker threads into one reserved buffer, drawn with `GLOW.draw(new
+  MeshData(...))` at the flush, only when the BER's buffer source is the vanilla `BufferSource` (Iris's sources fall
+  back). Same bytes, same order, so identical; cuts the replay's wall time by the thread count, but adds threads to
+  the render path. Needs the user's go-ahead.
+- Look changes (for the user to decide): back-face cull on the glow (~half the glow vertices and fill; back halves of
+  the tubes vanish, glow dimmer), fewer sheath sides or samples per block (proportional), closer LOD distances
+  (pop-in), smaller vertex format / other shader (changes the Iris program mapping), GPU animation (custom shader).
+
+### Counters harness for this pass
+
+`BundlePerfScene` as in the prototype patch, plus: an `AFTER_ENTITIES` stamp for the BE loop; same-frame shots taken
+first (freeze, then `getWorldData().overworldData().setGameTime(240000)` and the client's `ClientLevelData`); then
+three "toward" windows, close, joint, away, easing. Counters were applied by a script to detached worktrees of both
+builds; nothing of it is in git.
