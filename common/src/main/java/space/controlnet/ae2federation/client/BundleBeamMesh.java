@@ -13,7 +13,9 @@ import space.controlnet.ae2federation.bundle.BundleBeam;
  * their phase from world coordinates, so they run on from layer to layer and through joints.
  *
  * <p>The core writes depth and must pass through the artist's rings, whose bore has a radius of 10/32 block in a 2x2 bundle
- * and 1/4 block in a 3x3 one; the beam keeps the same radii in both, only its box is wider. The
+ * and 1/4 block in a 3x3 one. A 3x3 beam's glow is the 2x2 one scaled by {@link #HUGE_GLOW_SCALE}, as its box is, so
+ * it keeps the proportions of the 2x2; its core grows only by {@link #HUGE_CORE_SCALE}, to stay inside the narrower
+ * bore. The
  * sheaths and halo are additive, and fade toward their outlines as they turn from the eye ({@link #fade}), so the
  * nested tubes read as one soft volume rather than bands; the renderer applies that per vertex, by view, from the
  * normals this mesh carries.
@@ -47,7 +49,11 @@ public final class BundleBeamMesh {
     private static final int[] CELL_SHEATHS = {0, 2};
     private static final int[] CELL_SHEATH_SIDES = {8, 8, 0};
     private static final float[] CELL_EXTENT = {1, 1, 1};
-    /** Paths by detail, then box length (1 or 2 layers), then mask. */
+    /** A 3x3 beam's sheaths and halo: its box is 1.5 times the 2x2 one. */
+    static final float HUGE_GLOW_SCALE = 1.5f;
+    /** A 3x3 beam's core: at most .165 x 4/3 = .22 block at an alarm's breath, inside the 1/4-block ring bore. */
+    static final float HUGE_CORE_SCALE = 4 / 3f;
+    /** Paths by detail, then box length (1 to 3 layers), then mask. */
     private static final List<List<List<List<CableBeamMesh.Path>>>> PATHS = buildPaths();
     private static final ThreadLocal<float[]> RADII =
             ThreadLocal.withInitial(() -> new float[CableBeamMesh.MAX_SAMPLES * (MAX_SIDES + 1)]);
@@ -74,8 +80,9 @@ public final class BundleBeamMesh {
             throw new IllegalArgumentException("Invalid bundle beam");
         }
         float[] extent = {beam.extent(Direction.Axis.X), beam.extent(Direction.Axis.Y), beam.extent(Direction.Axis.Z)};
-        emit(paths(beam, detail), extent, 1, BUNDLE_SHEATHS, SHEATH_SIDES[detail], x, y, z, tick, partialTick, style,
-                glow, sink);
+        boolean huge = beam.side() == 3;
+        emit(paths(beam, detail), extent, huge ? HUGE_CORE_SCALE : 1, huge ? HUGE_GLOW_SCALE : 1, BUNDLE_SHEATHS,
+                SHEATH_SIDES[detail], x, y, z, tick, partialTick, style, glow, sink);
     }
 
     /**
@@ -85,17 +92,19 @@ public final class BundleBeamMesh {
     public static void emitCell(int mask, int x, int y, int z, long tick, float partialTick, CableBeamStyle style,
             int detail, boolean glow, Sink sink) {
         if (detail < 0 || detail > 2 || mask < 0 || mask > 63) throw new IllegalArgumentException("Invalid cell beam");
-        emit(PATHS.get(detail).get(0).get(mask), CELL_EXTENT, CELL_SCALE, CELL_SHEATHS, CELL_SHEATH_SIDES[detail], x,
-                y, z, tick, partialTick, style, glow, sink);
+        emit(PATHS.get(detail).get(0).get(mask), CELL_EXTENT, CELL_SCALE, CELL_SCALE, CELL_SHEATHS,
+                CELL_SHEATH_SIDES[detail], x, y, z, tick, partialTick, style, glow, sink);
     }
 
-    private static void emit(List<CableBeamMesh.Path> paths, float[] extent, float scale, int[] sheaths, int sides,
-            int x, int y, int z, long tick, float partialTick, CableBeamStyle style, boolean glow, Sink sink) {
+    private static void emit(List<CableBeamMesh.Path> paths, float[] extent, float coreScale, float scale,
+            int[] sheaths, int sides, int x, int y, int z, long tick, float partialTick, CableBeamStyle style,
+            boolean glow, Sink sink) {
         float u = (float) Math.min(style.load(), 1);
         float strength = style.strength(tick, partialTick);
         float breath = style.breath(tick, partialTick);
         boolean red = style.overloaded();
-        float core = (.10f + .05f * u) * breath * scale;
+        float pulse = (.10f + .05f * u) * breath;
+        float core = pulse * coreScale;
         int[] world = {x, y, z};
         double time = (Math.floorMod(tick, 64) + partialTick) / 64.0;
         for (var path : paths) {
@@ -122,7 +131,7 @@ public final class BundleBeamMesh {
             for (int index = 0; sides > 0 && index < sheaths.length; index++) {
                 int sheath = sheaths[index];
                 float base = switch (sheath) {
-                    case 0 -> core * 1.6f;
+                    case 0 -> pulse * scale * 1.6f;
                     case 1 -> (.22f + .04f * u) * scale;
                     default -> (.31f + .02f * u) * scale;
                 };

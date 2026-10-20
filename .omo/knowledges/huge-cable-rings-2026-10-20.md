@@ -29,10 +29,17 @@ the merge's second parent), like PR #4 (see `large-cable-rings-2026-10-17.md`), 
 - 3x3 corner rings: a 3x3 branch covers three layers of the run; `jointBefore/After` already say which one (after only
   = first, both = middle, before only = last), which picks the cell along the run in the corner frame.
 - One middle beam, as for 2x2 (`BundleBeam.side`): box `side` wide, 3 layers long at a joint (the far layer, looked up
-  by `IntFunction` offset, decides whether the run goes on). `BundleBeamMesh` keeps the 2x2's absolute radii, so the
-  depth-writing core (at most ~.18) passes the 1/4-block bore; `BundleBeamMeshTest` checks it. Collars are dropped in
-  3x3 cells as in 2x2. Before this, a 3x3 bundle drew nine per-cell beams with collars, which would cut through the
-  ring's outer bars.
+  by `IntFunction` offset, decides whether the run goes on). Collars are dropped in 3x3 cells as in 2x2. Before this, a
+  3x3 bundle drew nine per-cell beams with collars, which would cut through the ring's outer bars.
+- Beam radii (owner found the first 3x3 beam, with the 2x2's radii, too thin): `BundleBeamMesh` scales a 3x3 beam's
+  glow (all three sheaths and the halo; sheath 0 is 1.6 x the unscaled pulse x the glow scale) by `HUGE_GLOW_SCALE`
+  1.5, as its box is 1.5 x the 2x2 one, and its depth-writing core only by `HUGE_CORE_SCALE` 4/3: the core's widest is
+  (.10 + .05 u) x breath, .165 at full load in an alarm (breath 1.1), so .22 block, inside the 1/4-block bore. Halo
+  .44 -> .66 x breath; sheaths 1 and 2 .22-.26 -> .33-.39 and .31-.33 -> .465-.495 before lobes. Same vertex counts.
+  2x2 and 1x1 output is bit-identical (`BundleBeamMeshTest` fingerprints every 2x2 vertex as of 3d2ff190).
+- In a guide scene the beam animates (the scene's level ticks), so an animated preview can be grabbed with
+  `ffmpeg -f x11grab -framerate 10 -t 3.2` (32 frames = one 64-tick cycle). A loaded look needs `CapacityUnits` below
+  `Capacity` in the scene's block entities (above it is an overload alarm).
 
 ## Not taken from the PR
 
