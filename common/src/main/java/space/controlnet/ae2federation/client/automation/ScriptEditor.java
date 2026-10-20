@@ -288,7 +288,7 @@ public final class ScriptEditor extends CodeEditor {
 
     /** A name, a dot or a quote asks; a colon only goes on with a list of resources (inside an ID). */
     private boolean asksForCompletion(char typed) {
-        // Inside an ID ("minecraft:iron_ingot", "network-x4k9pa") the list of values stays open.
+        // Inside an ID ("minecraft:iron_ingot", "network-082a5c") the list of values stays open.
         if (typed == ':' || typed == '-') {
             var completions = isCompleting() ? popup.completions() : null;
             return completions != null && completions.candidates().get(0).kind() == Candidate.Kind.VALUE;

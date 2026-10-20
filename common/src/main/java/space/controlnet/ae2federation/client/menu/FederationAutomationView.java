@@ -654,7 +654,7 @@ final class FederationAutomationView {
         var completed = new LinkedHashMap<String, GameCatalog.Named>();
         for (var info : index.networks()) {
             var named = new GameCatalog.Named(info.id(), info.name(),
-                    FederationTopologyView.displayName(info.network(), info.name()).getString());
+                    FederationTopologyView.displayName(info.network(), info.name()).getString(), info.network());
             networks.putIfAbsent(info.id(), named);
             if (info.domain().equals(domain)) completed.putIfAbsent(info.id(), named);
         }

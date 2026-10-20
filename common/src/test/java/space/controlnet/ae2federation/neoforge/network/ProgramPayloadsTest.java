@@ -24,9 +24,9 @@ final class ProgramPayloadsTest {
                                 new BlockPos(-8, 70, 2), "")),
                 List.of(new ProgramSync.DeviceInfo("interface-q2w8rt", "north_gate", "minecraft:overworld",
                         new BlockPos(2, -60, 3), "physical:4")),
-                List.of(new ProgramSync.NetworkInfo("network-x4k9pa", "Main base", "physical:4",
+                List.of(new ProgramSync.NetworkInfo("network-0b6f1e", "Main base", "physical:4",
                                 "0b6f1e2a-5c3d-4e7f-8a9b-1c2d3e4f5a6b"),
-                        new ProgramSync.NetworkInfo("network-r2m7dw", "", "physical:9",
+                        new ProgramSync.NetworkInfo("network-4f1c2b", "", "physical:9",
                                 "4f1c2b3a-9d8e-4f7a-b6c5-d4e3f2a1b0c9")),
                 List.of(new ProgramSync.InstallationInfo("install-abcdef", "device-k7m2qx", "iron_tools", "keep",
                         List.of("minecraft:iron_ingot", "64"), "every 40", 20, "ignore", 1)));

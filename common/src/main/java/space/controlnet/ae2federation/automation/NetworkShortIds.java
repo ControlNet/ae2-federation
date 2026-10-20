@@ -2,14 +2,13 @@ package space.controlnet.ae2federation.automation;
 
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 import space.controlnet.ae2federation.identity.NetworkId;
 
-/** The overworld's {@link NetworkShortIdBook}. Server thread only: asking for an ID may draw one. */
+/** The overworld's {@link NetworkShortIdBook}. Server thread only: asking for an ID may give one. */
 public final class NetworkShortIds extends SavedData {
     private static final String DATA_NAME = "ae2federation_network_short_ids";
     private static final Factory<NetworkShortIds> FACTORY = new Factory<>(NetworkShortIds::new, NetworkShortIds::load);
@@ -22,7 +21,7 @@ public final class NetworkShortIds extends SavedData {
 
     public String id(NetworkId network) {
         var before = book.entries().size();
-        var id = book.id(network, ThreadLocalRandom.current());
+        var id = book.id(network);
         if (book.entries().size() != before) {
             setDirty();
         }
@@ -57,7 +56,8 @@ public final class NetworkShortIds extends SavedData {
             try {
                 loaded.book.put(new NetworkId(UUID.fromString(entries.getString(id))), id);
             } catch (IllegalArgumentException ignored) {
-                // A malformed record is dropped rather than failing the whole save.
+                // A malformed record is dropped rather than failing the whole save, as is one that does not start its
+                // network's own digits; the network is given its ID again when it is next asked for.
             }
         }
         var aliases = tag.getCompound("aliases");

@@ -10,11 +10,21 @@ User report, five points; four are in the function-system editor:
    completes only the networks whose `domain` is the tab's domain, while checking still accepts every network. The
    server catalog (`ProgramStore.catalog(server, domain)`) was already per domain.
 3. **Completion ids did not match the topology.**
-   - The topology names an unnamed network "Network 082A", the first four hex digits of its NetworkId
+   - The topology named an unnamed network "Network 082A", the first four hex digits of its NetworkId
      (`FederationTopologyView.displayName`).
    - Short IDs (`network-x4k9pa`) are drawn at random by `NetworkShortIdBook`, so the two have nothing in common.
    - `NetworkInfo` now carries the NetworkId. Completion shows the topology's name beside each short ID, through the
      new `GameCatalog.Named.shown`.
+   - Follow-up the same day (user chose B+C, then six digits everywhere): the short ID itself is now the first six
+     hex digits of the NetworkId, `network-082a5c`, the same digits as the topology's "Network 082A5C". Every
+     player-facing network tag (topology, statistics, Endpoint text, merge parts) uses `NetworkId.tag` /
+     `NetworkId.TAG_DIGITS` (dev).
+     - A clash takes one more digit; an ID is kept once given.
+     - IDs match in either case, and a whole NetworkId (UUID) names a network too.
+     - Earlier randomly drawn IDs fail `NetworkShortIdBook.put` on load (not the start of their network's digits) and
+       are given again.
+     - Open gap: aliases of folded networks are in the book but not in the catalog lists, so `GameCatalog.matches`
+       (and with it `DomainCalls.network`) does not find them yet.
 4. **Duplicates.** The index lists one `NetworkInfo` per (network, domain). A network is a member of its physical
    domain and also of a Bridge's `direct:bridge:...` domain, so it came twice. Filtering by the tab's domain and
    keying by short ID removes this.

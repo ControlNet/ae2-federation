@@ -17,12 +17,13 @@ import space.controlnet.ae2federation.function.TypeRef;
  */
 public final class GameCatalog implements Catalog {
     /**
-     * An interface or network: its ID, its alias or name (empty when it has none), and what completion shows beside
-     * its ID, which may name it where it has no name, such as the topology's "Network 082A".
+     * An interface or network: its ID, its alias or name (empty when it has none), what completion shows beside its
+     * ID, which may name it where it has no name, such as the topology's "Network 082A5C", and the long form a program
+     * may name it by too: a network's whole NetworkId (empty for an interface).
      */
-    public record Named(String id, String name, String shown) {
+    public record Named(String id, String name, String shown, String full) {
         public Named(String id, String name) {
-            this(id, name, name);
+            this(id, name, name, "");
         }
     }
 
@@ -81,10 +82,27 @@ public final class GameCatalog implements Catalog {
         if (prefix == null) {
             return List.of();
         }
-        var all = prefix.equals(AutomationInterfaceBook.PREFIX) ? interfaces.get() : networks.get();
+        if (prefix.equals(NetworkShortIdBook.PREFIX)) {
+            // A network's ID is matched in either case, as the topology writes its digits in capitals.
+            var id = NetworkShortIdBook.valid(value) ? NetworkShortIdBook.normalize(value) : null;
+            var full = isNetworkId(value);
+            return networks.get().stream().filter(named -> id != null ? named.id().equals(id)
+                    : full ? named.full().equalsIgnoreCase(value) : named.name().equals(value)).map(Named::id).toList();
+        }
         var byId = ShortId.valid(prefix, value);
-        return all.stream().filter(named -> byId ? named.id().equals(value) : named.name().equals(value))
+        return interfaces.get().stream().filter(named -> byId ? named.id().equals(value) : named.name().equals(value))
                 .map(Named::id).toList();
+    }
+
+    /** Whether the string is a whole NetworkId, such as "082a5c1e-9d2b-4f00-8a1b-2c3d4e5f6a7b". */
+    private static boolean isNetworkId(String value) {
+        if (value.length() != 36) return false;
+        try {
+            java.util.UUID.fromString(value);
+            return true;
+        } catch (IllegalArgumentException notOne) {
+            return false;
+        }
     }
 
     /** Aliases first, each with its ID beside it, then every ID with its alias. */

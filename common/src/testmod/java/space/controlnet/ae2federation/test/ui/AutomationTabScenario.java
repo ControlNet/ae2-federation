@@ -460,10 +460,19 @@ public final class AutomationTabScenario implements UIScenario {
                     return labels.size() == java.util.Set.copyOf(labels).size()
                             && java.util.Set.copyOf(labels).equals(context.get(DOMAIN_NETWORKS));
                 })
-                .check("each network shows the topology's name for it, apart from its ID", context ->
-                        editor(context).completionPopup().details().stream().allMatch(detail ->
-                                detail.matches("Network [0-9A-F]{4}") || context.<java.util.Set<String>>get(
-                                        DOMAIN_NETWORK_NAMES).contains(detail)))
+                .check("an unnamed network's ID is the topology's \"Network 082A\"; a named one shows its name",
+                        context -> {
+                            var popup = editor(context).completionPopup();
+                            for (int i = 0; i < popup.labels().size(); i++) {
+                                var tag = popup.labels().get(i).substring("network-".length()).toUpperCase(java.util.Locale.ROOT);
+                                var detail = popup.details().get(i);
+                                if (!detail.equals("Network " + tag)
+                                        && !context.<java.util.Set<String>>get(DOMAIN_NETWORK_NAMES).contains(detail)) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        })
                 .frames(2).screenshot("ui-automation-completion-network")
                 .key(GLFW.GLFW_KEY_ESCAPE)
                 .check("Escape closes the list", context -> !editor(context).isCompleting())

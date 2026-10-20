@@ -375,9 +375,9 @@ Assistant proposals on top:
 
 - **Network IDs** (accepted by the user 2026-10-18): a typed string `Network`, completed in the editor, holding
   either the network's ID or the alias (name) given to it in the Federation GUI. The ID can be looked up in the
-  Federation GUI. Proposal: the ID is short, derived from the network's stable identity (`NetworkId`, a UUID), as
-  `network-p3x9ka` with the interface IDs' alphabet, and the topology view's network details show it with a copy
-  button (one row, minimal GUI). A
+  Federation GUI. The ID is the first six hexadecimal digits of the network's stable identity (`NetworkId`, a UUID),
+  as `network-082a5c`, which the topology shows as "Network 082A5C"; a program may also name a network by its
+  whole NetworkId (user, 2026-10-20, replacing a randomly drawn `network-xxxxxx`). A
   network whose identity is paused (merged, split or copied) is not usable until it settles; a call naming it
   returns nothing and the run log says why.
 - **Optional arguments in calls.** `ae2.stock("minecraft:iron_ingot")` for the domain and
@@ -1054,8 +1054,12 @@ Assistant choices, to review:
 - **Checked server-wide.** Programs are global, so the library checks names against every interface and network on
   the server; an installation (H4) checks again against its own domain. The catalog reads the interface index and
   the domain registry on every query, since `Library.check` runs on demand and aliases change while it is loaded.
-- **Network IDs.** A network's `network-xxxxxx` ID is drawn the first time a catalog lists it and kept in the
-  overworld (`NetworkShortIds`), keyed by its persistent `NetworkId`; a network that comes back keeps it. A network's
+- **Network IDs.** A network's ID is given the first time a catalog lists it and kept in the overworld
+  (`NetworkShortIds`), keyed by its persistent `NetworkId`; a network that comes back keeps it. Since 2026-10-20 it is
+  `network-` and the first six hex digits of the NetworkId (`NetworkId.TAG_DIGITS`), as the topology's
+  "Network 082A5C"; a network whose digits
+  start as an ID already given takes one more digit until it is free. IDs match in either case, and a whole NetworkId
+  names its network too. A network's
   name is its player-given name from the Federation screen.
 - **An ID-shaped string is only ever an ID**, even when an alias or network name looks like one. Network names are
   not unique: a name two networks share names both (`GameCatalog.matches` returns both IDs); what a call does with
@@ -1284,11 +1288,11 @@ User decisions (2026-10-19):
   the problem. The list counts the shown program's problems from the client, the others from the server.
 
 - **Completion** (G1c-i) runs on the same worker. A name, a dot or a quote asks for candidates (a colon or a dash only goes on
-  inside an ID such as "minecraft:iron_ingot" or "network-x4k9pa"; Ctrl+Space asks anywhere, and the space a platform
+  inside an ID such as "minecraft:iron_ingot" or "network-082a5c"; Ctrl+Space asks anywhere, and the space a platform
   types with it is dropped); they show under the caret: functions with their signature (cut with "..." when long), a
   purple square when they act and the chosen one's summary below; items and fluids with their icon, name and ID, the
   expected type below; other names with their type or ID one gap after them. Networks are completed from the tab's
-  own domain only, each once, beside the name the topology shows for them ("Network 082A" while unnamed); checking
+  own domain only, each once, beside the name the topology shows for them ("Network 082A5C" while unnamed); checking
   still accepts every network on the server (user, 2026-10-20). Up/Down choose, Tab accepts, Enter accepts unless the choice is
   what is typed already (so Enter after a finished word still breaks the line), Escape closes. Accepting a resource
   closes its string. The chosen item or fluid's footer adds the domain's stock (G1c-iii), "Item · in stock:

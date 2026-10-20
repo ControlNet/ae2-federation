@@ -113,7 +113,7 @@ public final class ProgramHost implements Evaluator.Host {
         return switch (namespace + "." + name) {
             case "ae2f.select" -> select((String) args.get(0), (Long) args.get(1), (String) args.get(2));
             case "ae2f.networks" -> new ListValue(List.copyOf(catalog.values(new TypeRef("Network", List.of()), "")
-                    .stream().filter(candidate -> ShortId.valid(NetworkShortIdBook.PREFIX, candidate.label()))
+                    .stream().filter(candidate -> NetworkShortIdBook.valid(candidate.label()))
                     .map(candidate -> (Object) candidate.label()).toList()));
             case "mc.block_id" -> place(args.get(0)).map(place -> BuiltInRegistries.BLOCK
                     .getKey(place.level().getBlockState(place.position()).getBlock()).toString()).orElse("");

@@ -337,7 +337,7 @@ final class CheckerTest {
                     mc.set_redstone("mine_entry", 15 - n)
                     goo: Item = "testmod:goo"
                     z: Resource = "minecraft:" + s
-                    w = ae2.amount("minecraft:water", network="network-p3x9ka")
+                    w = ae2.amount("minecraft:water", network="network-082a5c")
                     big = 9223372036854775807 - 1 + n * 2
                     q = 7 // -2 + 7 % -2 + 7.5 // 2.0
                 """));

@@ -88,7 +88,8 @@ public final class ProgramStore {
             var names = NetworkNames.get(overworld);
             List<GameCatalog.Named> named = new ArrayList<>();
             networks.forEach(network -> named.add(
-                    new GameCatalog.Named(shortIds.id(network), names.name(network).orElse(""))));
+                    new GameCatalog.Named(shortIds.id(network), names.name(network).orElse(""),
+                            names.name(network).orElse(""), network.value().toString())));
             return named;
         }, new RegistryResources(server.registryAccess()));
     }

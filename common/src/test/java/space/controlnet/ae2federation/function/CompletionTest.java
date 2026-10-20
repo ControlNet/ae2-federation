@@ -33,7 +33,7 @@ final class CompletionTest {
             return switch (type.name()) {
                 case "Interface" -> List.of("north_gate", "mine_entry", "interface-k7m2qx", "interface-r4tw9e")
                         .contains(value);
-                case "Network" -> List.of("main_base", "network-p3x9ka").contains(value);
+                case "Network" -> List.of("main_base", "network-082a5c").contains(value);
                 default -> false;
             };
         }

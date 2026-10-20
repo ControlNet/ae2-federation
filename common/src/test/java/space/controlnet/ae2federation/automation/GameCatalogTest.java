@@ -15,8 +15,8 @@ final class GameCatalogTest {
             new GameCatalog.Named("interface-r4tw9e", ""),
             new GameCatalog.Named("interface-b2c3dd", "mine_entry"));
     private static final List<GameCatalog.Named> NETWORKS = List.of(
-            new GameCatalog.Named("network-p3x9ka", "Main Base"),
-            new GameCatalog.Named("network-h7j8kk", "network-p3x9ka"));
+            new GameCatalog.Named("network-082a5c", "Main Base", "Main Base", "082a5c1e-0000-4000-8000-000000000001"),
+            new GameCatalog.Named("network-4f1c9d", "network-082a5c", "network-082a5c", "4f1c9d2b-0000-4000-8000-000000000002"));
 
     /** TEST-ONLY stand-in for the registries: one item and one fluid. */
     private static final GameCatalog.Resources RESOURCES = new GameCatalog.Resources() {
@@ -48,16 +48,26 @@ final class GameCatalogTest {
         assertTrue(CATALOG.exists(type("Interface"), "interface-k7m2qx"));
         assertTrue(CATALOG.exists(type("Interface"), "interface-r4tw9e"), "an interface without an alias");
         assertFalse(CATALOG.exists(type("Interface"), "south_gate"));
-        assertFalse(CATALOG.exists(type("Interface"), "network-p3x9ka"));
+        assertFalse(CATALOG.exists(type("Interface"), "network-082a5c"));
     }
 
     @Test
     void anIdShapedStringIsOnlyEverAnId() {
         assertTrue(CATALOG.exists(type("Network"), "Main Base"));
-        assertTrue(CATALOG.exists(type("Network"), "network-p3x9ka"));
-        assertFalse(CATALOG.exists(type("Network"), "network-zzzzzz"));
+        assertTrue(CATALOG.exists(type("Network"), "network-082a5c"));
+        assertFalse(CATALOG.exists(type("Network"), "network-ffffff"));
         // The second network is named like the first one's ID: the string still means the first network.
-        assertEquals(List.of("network-p3x9ka"), CATALOG.matches(type("Network"), "network-p3x9ka"));
+        assertEquals(List.of("network-082a5c"), CATALOG.matches(type("Network"), "network-082a5c"));
+    }
+
+    @Test
+    void aNetworkIsNamedByItsIdInEitherCaseOrByItsWholeNetworkId() {
+        assertEquals(List.of("network-082a5c"), CATALOG.matches(type("Network"), "network-082A5C"));
+        assertEquals(List.of("network-4f1c9d"),
+                CATALOG.matches(type("Network"), "4f1c9d2b-0000-4000-8000-000000000002"));
+        assertEquals(List.of("network-4f1c9d"),
+                CATALOG.matches(type("Network"), "4F1C9D2B-0000-4000-8000-000000000002"));
+        assertEquals(List.of(), CATALOG.matches(type("Network"), "ffffffff-0000-4000-8000-000000000002"));
     }
 
     @Test
@@ -76,12 +86,12 @@ final class GameCatalogTest {
 
     @Test
     void networksCompleteFromTheirOwnListAndShowTheTopologyName() {
-        var here = List.of(new GameCatalog.Named("network-r2m7dw", "", "Network 4F1C"));
+        var here = List.of(new GameCatalog.Named("network-4f1c9d", "", "Network 4F1C9D", ""));
         var catalog = new GameCatalog(() -> INTERFACES, () -> NETWORKS, () -> here, RESOURCES);
-        assertEquals(List.of(new Candidate("network-r2m7dw", Candidate.Kind.VALUE, "Network 4F1C")),
+        assertEquals(List.of(new Candidate("network-4f1c9d", Candidate.Kind.VALUE, "Network 4F1C9D")),
                 catalog.values(type("Network"), "network-"));
         // A network that is not completed here still names a network.
-        assertTrue(catalog.exists(type("Network"), "network-p3x9ka"));
+        assertTrue(catalog.exists(type("Network"), "network-082a5c"));
     }
 
     @Test
