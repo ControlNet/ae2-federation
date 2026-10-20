@@ -164,6 +164,7 @@ public final class ProgramPayloads {
             out.writeUtf(network.id());
             out.writeUtf(network.name());
             out.writeUtf(network.domain());
+            out.writeUtf(network.network());
         });
         buffer.writeCollection(index.installations(), (out, installation) -> {
             out.writeUtf(installation.id());
@@ -184,7 +185,8 @@ public final class ProgramPayloads {
                         fin.readList(FriendlyByteBuf::readUtf), fin.readUtf(), fin.readBoolean()))));
         var devices = buffer.readList(ProgramPayloads::readDevice);
         var interfaces = buffer.readList(ProgramPayloads::readDevice);
-        var networks = buffer.readList(in -> new ProgramSync.NetworkInfo(in.readUtf(), in.readUtf(), in.readUtf()));
+        var networks = buffer.readList(in -> new ProgramSync.NetworkInfo(in.readUtf(), in.readUtf(), in.readUtf(),
+                in.readUtf()));
         var installations = buffer.readList(in -> new ProgramSync.InstallationInfo(in.readUtf(), in.readUtf(),
                 in.readUtf(), in.readUtf(), List.copyOf(in.readList(FriendlyByteBuf::readUtf)), in.readUtf(),
                 in.readVarInt(), in.readUtf(), in.readVarInt()));

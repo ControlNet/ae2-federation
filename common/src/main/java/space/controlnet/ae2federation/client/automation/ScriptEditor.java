@@ -288,7 +288,8 @@ public final class ScriptEditor extends CodeEditor {
 
     /** A name, a dot or a quote asks; a colon only goes on with a list of resources (inside an ID). */
     private boolean asksForCompletion(char typed) {
-        if (typed == ':') {
+        // Inside an ID ("minecraft:iron_ingot", "network-x4k9pa") the list of values stays open.
+        if (typed == ':' || typed == '-') {
             var completions = isCompleting() ? popup.completions() : null;
             return completions != null && completions.candidates().get(0).kind() == Candidate.Kind.VALUE;
         }
@@ -297,6 +298,8 @@ public final class ScriptEditor extends CodeEditor {
 
     @Override
     protected void onCharTyped(UIEvent event) {
+        // Ctrl+Space asked for completion on key down; the space some platforms type with it is not text.
+        if (event.codePoint == ' ' && event.isCtrlDown()) return;
         boolean asks = asksForCompletion(event.codePoint);
         var typed = isEditable() && !hasSelection() && Character.isBmpCodePoint(event.codePoint)
                 ? Pairs.typed(lines.get(getCursorLine()), getCursorCol(), (char) event.codePoint) : Pairs.Typed.PLAIN;

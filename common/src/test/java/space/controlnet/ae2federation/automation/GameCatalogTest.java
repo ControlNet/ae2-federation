@@ -75,6 +75,16 @@ final class GameCatalogTest {
     }
 
     @Test
+    void networksCompleteFromTheirOwnListAndShowTheTopologyName() {
+        var here = List.of(new GameCatalog.Named("network-r2m7dw", "", "Network 4F1C"));
+        var catalog = new GameCatalog(() -> INTERFACES, () -> NETWORKS, () -> here, RESOURCES);
+        assertEquals(List.of(new Candidate("network-r2m7dw", Candidate.Kind.VALUE, "Network 4F1C")),
+                catalog.values(type("Network"), "network-"));
+        // A network that is not completed here still names a network.
+        assertTrue(catalog.exists(type("Network"), "network-p3x9ka"));
+    }
+
+    @Test
     void resourcesComeFromTheRegistries() {
         assertEquals(Set.of("Item"), CATALOG.kinds("minecraft:iron_ingot"));
         assertEquals(Set.of(), CATALOG.kinds("minecraft:nope"));

@@ -55,8 +55,11 @@ public final class ProgramSync {
     public record DeviceInfo(String id, String alias, String dimension, BlockPos position, String domain) {
     }
 
-    /** A network a program can name: its short ID, its name (empty when it has none) and its domain. */
-    public record NetworkInfo(String id, String name, String domain) {
+    /**
+     * A network a program can name in one domain: its short ID, its name (empty when it has none), the domain and its
+     * NetworkId, which the topology names it by while it has no name.
+     */
+    public record NetworkInfo(String id, String name, String domain, String network) {
     }
 
     /**
@@ -365,7 +368,8 @@ public final class ProgramSync {
         var networks = new ArrayList<NetworkInfo>();
         FederationDomainRegistryAccess.get(server.overworld()).federationDomains().forEach(snapshot ->
                 snapshot.memberships().keySet().forEach(network -> networks.add(new NetworkInfo(shortIds.id(network),
-                        names.name(network).orElse(""), snapshot.federationDomainId().value()))));
+                        names.name(network).orElse(""), snapshot.federationDomainId().value(),
+                        network.value().toString()))));
         var installations = devices.installations().stream().map(installation -> new InstallationInfo(
                 installation.id(), installation.device(), installation.file(), installation.function(),
                 installation.args().stream().map(Installation::text).toList(), TriggerText.format(installation.trigger()),

@@ -21,6 +21,7 @@ import space.controlnet.ae2federation.automation.ComputingDevices;
 import space.controlnet.ae2federation.automation.Installation;
 import space.controlnet.ae2federation.automation.LibraryRows;
 import space.controlnet.ae2federation.automation.LocalCopies;
+import space.controlnet.ae2federation.automation.NetworkShortIds;
 import space.controlnet.ae2federation.automation.ProgramScheduler;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
@@ -28,6 +29,8 @@ import space.controlnet.ae2federation.client.automation.ScriptEditor;
 import space.controlnet.ae2federation.function.ScriptParser;
 import space.controlnet.ae2federation.function.StandardLibrary;
 import space.controlnet.ae2federation.function.Stmt;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.persistence.NetworkNames;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
 /**
@@ -78,6 +81,8 @@ public final class AutomationTabScenario implements UIScenario {
             """;
     /** The sample device's ID, once it has claimed one. */
     private static String device = "";
+    private static final String DOMAIN_NETWORKS = "automation.domainNetworks";
+    private static final String DOMAIN_NETWORK_NAMES = "automation.domainNetworkNames";
     private static final String SMELTING = """
             # Keep a stack of raw iron ready.
             def raw_iron_low() -> bool:
@@ -445,6 +450,35 @@ public final class AutomationTabScenario implements UIScenario {
                     }
                     return true;
                 })
+                // Networks: only this domain's, each once, beside the name the topology shows for it.
+                .server("note this domain's networks", AutomationTabScenario::noteDomainNetworks)
+                .key(GLFW.GLFW_KEY_END)
+                .key(GLFW.GLFW_KEY_ENTER)
+                .type("net: Network = \"network-")
+                .waitUntil("a network string lists this domain's networks, each once", context -> {
+                    var labels = popupLabels(context);
+                    return labels.size() == java.util.Set.copyOf(labels).size()
+                            && java.util.Set.copyOf(labels).equals(context.get(DOMAIN_NETWORKS));
+                })
+                .check("each network shows the topology's name for it, apart from its ID", context ->
+                        editor(context).completionPopup().details().stream().allMatch(detail ->
+                                detail.matches("Network [0-9A-F]{4}") || context.<java.util.Set<String>>get(
+                                        DOMAIN_NETWORK_NAMES).contains(detail)))
+                .frames(2).screenshot("ui-automation-completion-network")
+                .key(GLFW.GLFW_KEY_ESCAPE)
+                .check("Escape closes the list", context -> !editor(context).isCompleting())
+                // Ctrl+Space asks again; the space a platform may type with it stays out of the text.
+                .step("press Ctrl+Space", context -> {
+                    context.input().keyDown(GLFW.GLFW_KEY_LEFT_CONTROL, GLFW.GLFW_MOD_CONTROL);
+                    context.input().keyDown(GLFW.GLFW_KEY_SPACE, GLFW.GLFW_MOD_CONTROL);
+                    context.input().charTyped(' ', GLFW.GLFW_MOD_CONTROL);
+                    context.input().keyUp(GLFW.GLFW_KEY_SPACE, GLFW.GLFW_MOD_CONTROL);
+                    context.input().keyUp(GLFW.GLFW_KEY_LEFT_CONTROL, 0);
+                })
+                .waitUntil("Ctrl+Space lists the networks again", context ->
+                        java.util.Set.copyOf(popupLabels(context)).equals(context.get(DOMAIN_NETWORKS)))
+                .check("Ctrl+Space typed nothing", context -> lastLine(context, 0).equals("    net: Network = \"network-\""))
+                .key(GLFW.GLFW_KEY_ENTER)
                 // The Library: namespaces with their counts, a function's page and the way back, a search.
                 .check("the library lists the namespaces with their counts", context ->
                         context.el("#auto_library_ns_ae2 .library-count").text().equals("12")
@@ -826,6 +860,25 @@ public final class AutomationTabScenario implements UIScenario {
 
     private static boolean chosen(com.lowdragmc.lowdraglib2.uitest.TestContext context, String chip) {
         return context.el(chip).as(UIElement.class).hasClass("selected");
+    }
+
+    /** The short IDs and names of the Router's domain's networks. */
+    private static void noteDomainNetworks(ServerContext context) {
+        var level = context.level();
+        var node = FederationDomainRegistryAccess.nodeId(level, TaskFifteenWorldFixture.routerPosition(context));
+        var shortIds = NetworkShortIds.get(context.server());
+        var names = NetworkNames.get(level);
+        var ids = new java.util.HashSet<String>();
+        var shown = new java.util.HashSet<String>();
+        FederationDomainRegistryAccess.get(level).federationDomains().stream()
+                .filter(domain -> domain.nodes().contains(node))
+                .forEach(domain -> domain.memberships().keySet().forEach(network -> {
+                    ids.add(shortIds.id(network));
+                    names.name(network).ifPresent(shown::add);
+                }));
+        if (ids.isEmpty()) throw new IllegalStateException("the Router's domain must have networks");
+        context.put(DOMAIN_NETWORKS, java.util.Set.copyOf(ids));
+        context.put(DOMAIN_NETWORK_NAMES, java.util.Set.copyOf(shown));
     }
 
     private static BlockPos devicePosition(ServerContext context) {

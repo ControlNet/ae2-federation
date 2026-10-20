@@ -148,7 +148,13 @@ public final class CompletionPopup extends UIElement {
     @OnlyIn(Dist.CLIENT)
     private float rowWidth(Candidate candidate) {
         if (isResource(candidate)) return ICON + 3 + width(candidate.detail()) + GAP + width(candidate.label());
-        return width(candidate.label()) + width(candidate.detail()) + (candidate.acts() ? MARKER : 0);
+        return width(candidate.label()) + separation(candidate) + width(candidate.detail())
+                + (candidate.acts() ? MARKER : 0);
+    }
+
+    /** Room between a name and its type or ID; a function's signature follows its name directly. */
+    private static float separation(Candidate candidate) {
+        return candidate.detail().isEmpty() || candidate.detail().startsWith("(") ? 0 : GAP;
     }
 
     /**
@@ -217,9 +223,9 @@ public final class CompletionPopup extends UIElement {
                 continue;
             }
             draw(context, candidate.label(), left, textY, NAME);
-            float room = x + width - TEXT_INSET - (candidate.acts() ? MARKER : 0) - left - width(candidate.label());
-            draw(context, fit(candidate.detail(), room), left + width(candidate.label()), textY,
-                    FederationTheme.DARK_MUTED);
+            float detailX = left + width(candidate.label()) + separation(candidate);
+            float room = x + width - TEXT_INSET - (candidate.acts() ? MARKER : 0) - detailX;
+            draw(context, fit(candidate.detail(), room), detailX, textY, FederationTheme.DARK_MUTED);
             if (candidate.acts()) {
                 DrawerHelper.drawSolidRect(graphics, x + width - TEXT_INSET - 3, rowY + (row - 3) / 2, 3, 3, ACTS);
             }
@@ -255,6 +261,11 @@ public final class CompletionPopup extends UIElement {
     /** The text under the rows; for tests. */
     public String footerText() {
         return footer();
+    }
+
+    /** The candidates' details, for tests. */
+    public List<String> details() {
+        return completions == null ? List.of() : completions.candidates().stream().map(Candidate::detail).toList();
     }
 
     /** The candidates' labels, for tests. */

@@ -10,6 +10,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -635,7 +636,10 @@ final class FederationAutomationView {
     private record Snapshot(Map<String, String> others, GameCatalog catalog) {
     }
 
-    /** The other programs as received so far, and every interface and network on the server; null before then. */
+    /**
+     * The other programs as received so far, and every interface and network on the server; null before then. Only
+     * this domain's networks are completed, each once, beside the name the topology shows for it.
+     */
     private @Nullable Snapshot snapshot() {
         var index = ClientPrograms.get().index().orElse(null);
         var level = net.minecraft.client.Minecraft.getInstance().level;
@@ -646,9 +650,18 @@ final class FederationAutomationView {
                 .forEach(name -> programs.text(name).ifPresent(received -> others.put(name, received.text())));
         var interfaces = index.interfaces().stream().map(info -> new GameCatalog.Named(info.id(), info.alias()))
                 .toList();
-        var networks = index.networks().stream().map(info -> new GameCatalog.Named(info.id(), info.name())).toList();
-        return new Snapshot(others,
-                new GameCatalog(() -> interfaces, () -> networks, new RegistryResources(level.registryAccess())));
+        var networks = new LinkedHashMap<String, GameCatalog.Named>();
+        var completed = new LinkedHashMap<String, GameCatalog.Named>();
+        for (var info : index.networks()) {
+            var named = new GameCatalog.Named(info.id(), info.name(),
+                    FederationTopologyView.displayName(info.network(), info.name()).getString());
+            networks.putIfAbsent(info.id(), named);
+            if (info.domain().equals(domain)) completed.putIfAbsent(info.id(), named);
+        }
+        var all = List.copyOf(networks.values());
+        var here = List.copyOf(completed.values());
+        return new Snapshot(others, new GameCatalog(() -> interfaces, () -> all, () -> here,
+                new RegistryResources(level.registryAccess())));
     }
 
     /** Marks the problems in the editor, lists them under it, and counts them beside the program. */
