@@ -28,6 +28,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.router.CableLinkedBlock;
 import space.controlnet.ae2federation.router.DeviceStructure;
 import space.controlnet.ae2federation.router.DeviceStructureUpdater;
 import space.controlnet.ae2federation.router.FormableDevice;
@@ -39,7 +40,7 @@ import space.controlnet.ae2federation.router.RouterBlockEntity;
  * cube of edge 3, 4 or 5 ({@link QuantumCubeShape}). Two formed cubes bound with an AE2 Memory Card are joined as if by
  * cable, in any dimensions: sneak-use copies a cube to the card, use binds the cube on the card to this one.
  */
-public final class QuantumCubeBlock extends BaseEntityBlock implements FormableDevice {
+public final class QuantumCubeBlock extends BaseEntityBlock implements FormableDevice, CableLinkedBlock {
     public static final MapCodec<QuantumCubeBlock> CODEC = simpleCodec(QuantumCubeBlock::new);
     private static final String MESSAGE = "ae2federation.quantum_cube.";
 
@@ -76,7 +77,7 @@ public final class QuantumCubeBlock extends BaseEntityBlock implements FormableD
     }
 
     @Override
-    public boolean covers(BlockState state, Direction face) {
+    public boolean linksCable(BlockState state, Direction face) {
         return links(state, face);
     }
 

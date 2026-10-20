@@ -28,6 +28,7 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.router.CableLinkedBlock;
 import space.controlnet.ae2federation.router.DeviceStructure;
 import space.controlnet.ae2federation.router.DeviceStructureUpdater;
 import space.controlnet.ae2federation.router.FederationCableBlock;
@@ -41,7 +42,7 @@ import space.controlnet.ae2federation.router.RouterBlockEntity;
  * 1x1, 2x2 or 3x3 one block thick ({@link BeamFormerShape}). Formed, all its blocks face one way along a thin axis
  * ({@link #forming}); a wrench flips a 2x2 or 3x3 and turns a 1x1 to the clicked face.
  */
-public final class BeamFormerBlock extends BaseEntityBlock implements FormableDevice {
+public final class BeamFormerBlock extends BaseEntityBlock implements FormableDevice, CableLinkedBlock {
     public static final MapCodec<BeamFormerBlock> CODEC = simpleCodec(BeamFormerBlock::new);
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
 
@@ -55,6 +56,18 @@ public final class BeamFormerBlock extends BaseEntityBlock implements FormableDe
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(FACING).add(RouterBlock.CONNECTED).add(RouterBlock.FORMED);
+    }
+
+    /** Once formed, the back links, and so do faces toward the rest of the body. */
+    @Override
+    public boolean linksCable(BlockState state, Direction face) {
+        return RouterBlock.formed(state) && faces(state, face);
+    }
+
+    /** The back, and faces toward the rest of the body. */
+    public static boolean faces(BlockState state, Direction face) {
+        return face == state.getValue(FACING).getOpposite()
+                || (RouterBlock.connections(state) & 1 << face.get3DDataValue()) != 0;
     }
 
     /**

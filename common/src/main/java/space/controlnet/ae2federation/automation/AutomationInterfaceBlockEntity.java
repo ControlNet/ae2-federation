@@ -50,12 +50,6 @@ public final class AutomationInterfaceBlockEntity extends DomainDeviceBlockEntit
                 : AutomationInterfaces.get(level).setAlias(level, id(), alias);
     }
 
-    /** Every face but the front, which acts on the world. */
-    @Override
-    protected boolean links(Direction face) {
-        return face != front();
-    }
-
     public int redstone() {
         return redstone;
     }

@@ -150,11 +150,6 @@ public final class QuantumCubeBlockEntity extends RouterBlockEntity {
                 new FederationDomainPortId(other, QuantumLinkService.PORT + self)));
     }
 
-    @Override
-    protected boolean links(Direction face) {
-        return QuantumCubeBlock.links(getBlockState(), face);
-    }
-
     @Nullable
     @Override
     public FederationPort federationDomainPort(@Nullable Direction face) {

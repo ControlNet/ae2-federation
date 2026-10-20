@@ -22,6 +22,7 @@ import space.controlnet.ae2federation.domain.FederationDomainPortId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.domain.port.CableFacePort;
 import space.controlnet.ae2federation.domain.port.FederationPort;
+import space.controlnet.ae2federation.router.CableLinkedBlock;
 
 /**
  * A block of the automation system that is a device node of its Federation domain, as an Endpoint is: it links ME
@@ -55,9 +56,10 @@ public abstract class DomainDeviceBlockEntity extends AEBaseBlockEntity {
     /** Sets or, with an empty text, clears the alias. */
     public abstract AutomationInterfaceBook.AliasResult setAlias(ServerLevel level, String alias);
 
-    /** Whether the face links ME Federation Cable. */
-    protected boolean links(Direction face) {
-        return true;
+    /** Whether the face links ME Federation Cable, as the block says ({@link CableLinkedBlock}). */
+    protected final boolean links(Direction face) {
+        var state = getBlockState();
+        return state.getBlock() instanceof CableLinkedBlock linked && linked.linksCable(state, face);
     }
 
     /** The ID once the server has claimed it, such as {@code interface-k7m2qx}. */

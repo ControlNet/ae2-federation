@@ -21,8 +21,8 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  *
  * <p>A 2x2 or 3x3 bundle ({@code side} 2 or 3, else 0) is drawn as one thick cable. In a 2x2 one the artist's ring
  * stands at every {@link #RING_SPACING}th layer boundary along a straight stretch ({@code rings}: bit 0 the boundary
- * before this cell, bit 1 the one after); in a 3x3 one it stands inside every {@link #HUGE_RING_SPACING}th layer (bit
- * 2). Where a branch leaves, the layers it covers carry the artist's corner rings instead. {@code jointsBefore} and
+ * before this cell, bit 1 the one after); in a 3x3 one it stands inside every {@link #HUGE_RING_SPACING}th layer but
+ * an end layer (bit 2). Where a branch leaves, the layers it covers carry the artist's corner rings instead. {@code jointsBefore} and
  * {@code jointsAfter} name the sides with such a branch, for every cell of those layers, and whether the branch goes on
  * into the previous or the next layer; the middle layer of a 3x3 branch has both.
  */
@@ -98,7 +98,11 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
         boolean joint = (jointsBefore | jointsAfter) != 0;
         if (width == 2 && !joint && ringAt(segment, pos, layer, segments)) rings |= 1;
         if (width == 2 && !joint && ringAt(segment, pos, layer + 1, segments)) rings |= 2;
-        if (width == 3 && !joint && Math.floorMod(layer, HUGE_RING_SPACING) == 0) rings |= 4;
+        // Never in an end layer, where it would stand against the end face; a 2x2 ring keeps a layer from it too.
+        if (width == 3 && !joint && Math.floorMod(layer, HUGE_RING_SPACING) == 0
+                && layer != segment.min().get(axis) && layer != segment.max().get(axis)) {
+            rings |= 4;
+        }
         return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, width, rings, jointsBefore,
                 jointsAfter));
     }

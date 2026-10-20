@@ -18,6 +18,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.beam.BeamFormerBlock;
 import space.controlnet.ae2federation.beam.BeamLinkService;
 import space.controlnet.ae2federation.beam.BeamRegistration;
+import space.controlnet.ae2federation.router.CableVisualConnections;
 import space.controlnet.ae2federation.bundle.BundleSegment;
 import space.controlnet.ae2federation.bundle.BundledCables;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
@@ -97,8 +98,8 @@ public final class BeamFormerGameTests {
     }
 
     /**
-     * A 1x1 former facing east: a cable at its back joins its domain, cables at its front and side do not; its node
-     * is a Beam Former's and carries one cable's capacity.
+     * A 1x1 former facing east: a cable at its back joins its domain and reaches it with a dense arm, cables at its
+     * front and side do neither; its node is a Beam Former's and carries one cable's capacity.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 300, required = true, manualOnly = true)
@@ -117,12 +118,18 @@ public final class BeamFormerGameTests {
             for (var cable : new BlockPos[] {CENTER.east(), CENTER.north()}) {
                 helper.assertTrue(!linked(helper, cable, former), "a cable at the front or side links nothing: " + cable);
             }
+            helper.assertValueEqual(arm(helper, CENTER.west(), Direction.EAST), CableVisualConnections.DENSE,
+                    "the cable at the back reaches the former with a dense arm");
+            helper.assertValueEqual(arm(helper, CENTER.east(), Direction.WEST), CableVisualConnections.NONE,
+                    "the cable at the front stays closed toward it");
+            helper.assertValueEqual(arm(helper, CENTER.north(), Direction.SOUTH), CableVisualConnections.NONE,
+                    "the cable at the side stays closed toward it");
             var evidence = evidence(helper, former);
             helper.assertTrue(evidence != null && evidence.kind() == FederationDomainNodeKind.BEAM_FORMER,
                     "the node is a Beam Former's");
             helper.assertValueEqual(evidence.capacityFactor(), 1, "a 1x1 carries one cable");
-            RouterEvidence.write("beamformerlinksthroughitsback", 4, Map.of("back", "linked",
-                    "frontAndSide", "unlinked", "kind", "BEAM_FORMER", "capacityFactor", "1"));
+            RouterEvidence.write("beamformerlinksthroughitsback", 5, Map.of("back", "linked",
+                    "frontAndSide", "unlinked", "kind", "BEAM_FORMER", "capacityFactor", "1", "arm", "back-only"));
             fixtures.close();
         });
     }
@@ -395,6 +402,12 @@ public final class BeamFormerGameTests {
         var cells = new ArrayList<BlockPos>();
         for (int x = 0; x < sx; x++) for (int y = 0; y < sy; y++) for (int z = 0; z < sz; z++) cells.add(min.offset(x, y, z));
         return cells;
+    }
+
+    /** How the cable at {@code cable} draws its side toward {@code side}. */
+    private static int arm(GameTestHelper helper, BlockPos cable, Direction side) {
+        return CableVisualConnections.kind(CableVisualConnections.connections(helper.getLevel(),
+                helper.absolutePos(cable)), side);
     }
 
     private static void place(GameTestHelper helper, BlockPos position, Direction facing) {

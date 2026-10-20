@@ -14,14 +14,21 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
+import space.controlnet.ae2federation.router.CableLinkedBlock;
 
 /**
  * ME Federation Automation Interface block. Its facing is the face that acts on the world; AE2's facing strategy
  * handles placement, wrench rotation and wrench pickup. Using it opens the ID and alias screen.
  */
-public final class AutomationInterfaceBlock extends AEBaseEntityBlock<AutomationInterfaceBlockEntity> {
+public final class AutomationInterfaceBlock extends AEBaseEntityBlock<AutomationInterfaceBlockEntity> implements CableLinkedBlock {
     public AutomationInterfaceBlock(Properties properties) {
         super(properties);
+    }
+
+    /** Every face but the front, which acts on the world. */
+    @Override
+    public boolean linksCable(BlockState state, Direction face) {
+        return getOrientationStrategy().getFacing(state) != face;
     }
 
     @Override

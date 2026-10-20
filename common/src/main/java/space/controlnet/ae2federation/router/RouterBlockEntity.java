@@ -32,8 +32,8 @@ import space.controlnet.ae2federation.domain.FederationDomainPortId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 
 /**
- * A Router's or Switch's block: one node of the domain, linking through each face. A Beam Converter is one too, linking
- * fewer faces ({@link #links(Direction)}).
+ * A Router's or Switch's block: one node of the domain, linking through each face. A Beam Converter, Beam Former or
+ * Quantum Cube is one too, linking the fewer faces its block names ({@link CableLinkedBlock}).
  */
 public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHost {
     private final Map<Direction, FederationPort> federationDomainPorts = new EnumMap<>(Direction.class);
@@ -59,9 +59,10 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
         }
     }
 
-    /** Whether {@code face} links now: every face of a formed body does. */
-    protected boolean links(Direction face) {
-        return RouterBlock.formed(getBlockState());
+    /** Whether {@code face} links now, as the block says ({@link CableLinkedBlock}). */
+    protected final boolean links(Direction face) {
+        var state = getBlockState();
+        return state.getBlock() instanceof CableLinkedBlock linked && linked.linksCable(state, face);
     }
 
     /** What the block publishes itself as. */

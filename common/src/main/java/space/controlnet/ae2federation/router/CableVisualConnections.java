@@ -4,21 +4,18 @@ import appeng.api.parts.IPartHost;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import space.controlnet.ae2federation.bundle.BundleLook;
 import space.controlnet.ae2federation.bundle.BundleView;
 import space.controlnet.ae2federation.p2p.FederationP2PTunnelPart;
-import space.controlnet.ae2federation.processing.endpoint.EndpointBlock;
-import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlock;
 
 /**
  * Read-only projection of the stateless Federation port registrations onto a chunk snapshot.
  *
  * <p>A Federation Cable renders as AE2's dense cable. Another Federation Cable joins it at the core's full width, so
- * cables run on without a step. A Router, and a Provider or Endpoint front, get a dense connection, a narrower arm
- * that marks where the cable meets a machine. AE2 would shrink the connection to a smart machine such as its Pattern
+ * cables run on without a step. A device face that links ({@link CableLinkedBlock}) gets a dense connection, a narrower
+ * arm that marks where the cable meets a machine. AE2 would shrink the connection to a smart machine such as its Pattern
  * Provider to a covered one with a cap; at the artist's request a Federation machine's port joins the cable as a
- * Router does, and so do the Computing Device and the Automation Interface on the faces that link. A Federation P2P tunnel's front is a part on another cable bus, which AE2 joins with a covered
+ * Router does. A Federation P2P tunnel's front is a part on another cable bus, which AE2 joins with a covered
  * connection.
  *
  * <p>A bundled cable is no ordinary cable: an ordinary cable stays closed toward one, and a bundled cell's sides come
@@ -30,7 +27,7 @@ public final class CableVisualConnections {
     };
     /** Not connected on that side. */
     public static final int NONE = 0;
-    /** A dense connection: a Router, or a Provider or Endpoint front. */
+    /** A dense connection: a device face that links, such as a Router or a Provider front. */
     public static final int DENSE = 1;
     /** A covered connection to a part on another cable bus: a Federation P2P tunnel's front. */
     public static final int COVERED = 2;
@@ -105,26 +102,10 @@ public final class CableVisualConnections {
         if (block instanceof FederationCableBlock) {
             return BundleView.bundled(level, position.relative(direction)) ? NONE : CABLE;
         }
-        if (block instanceof RouterBlock) return DENSE;
-        // A Beam Converter links through its front only, and only once formed: an unformed block's facing means nothing.
-        if (block instanceof space.controlnet.ae2federation.power.BeamConverterBlock && RouterBlock.formed(neighbor)
-                && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {
-            return DENSE;
-        }
-        // A Quantum Cube links inside each face's centre only, once formed.
-        if (block instanceof space.controlnet.ae2federation.quantum.QuantumCubeBlock
-                && space.controlnet.ae2federation.quantum.QuantumCubeBlock.links(neighbor, direction.getOpposite())) {
-            return DENSE;
-        }
-        // Provider and Endpoint expose FederationPortCapability on their front only; the Bridge exposes none.
-        if ((block instanceof FederationPatternProviderBlock || block instanceof EndpointBlock)
-                && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {
-            return DENSE;
-        }
-        // The Computing Device links every face; the Automation Interface every face but its front.
-        if (block instanceof space.controlnet.ae2federation.automation.ComputingDeviceBlock) return DENSE;
-        if (block instanceof space.controlnet.ae2federation.automation.AutomationInterfaceBlock
-                && neighbor.getValue(BlockStateProperties.FACING) != direction.getOpposite()) {
+        // A device links through the faces its block names, Routers on every face once formed, a Beam Former through its
+        // back, a Converter, Provider or Endpoint through its front, a Quantum Cube inside each face's centre, a Computing
+        // Device on every face and an Automation Interface on every face but its front.
+        if (block instanceof CableLinkedBlock linked && linked.linksCable(neighbor, direction.getOpposite())) {
             return DENSE;
         }
         // A Federation P2P tunnel's front is its port.
