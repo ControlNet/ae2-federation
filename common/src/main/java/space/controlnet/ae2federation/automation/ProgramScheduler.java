@@ -482,7 +482,7 @@ public final class ProgramScheduler {
                 : server.getLevel(ResourceKey.create(Registries.DIMENSION, location));
         var position = entry.get().position();
         if (level == null || !level.isLoaded(position)
-                || !(level.getBlockEntity(position) instanceof ComputingDeviceBlockEntity)) {
+                || !(level.getBlockEntity(position) instanceof ComputingHost)) {
             return Optional.empty();
         }
         return devices().domainOf(level, device);

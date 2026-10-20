@@ -1,6 +1,8 @@
 package space.controlnet.ae2federation.compat;
 
 import appeng.api.config.Actionable;
+import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.api.networking.IInWorldGridNodeHost;
 import appeng.api.parts.PartHelper;
 import appeng.api.util.AEColor;
 import appeng.core.definitions.AEParts;
@@ -18,7 +20,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.automation.ComputingHost;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.policy.PolicyCapability;
+import space.controlnet.ae2federation.router.CableVisualConnections;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.policy.RuleMode;
@@ -365,6 +370,123 @@ public final class NeoEcoCompatGameTests {
         for (int y = 0; y < 3; y++) helper.setBlock(start.offset(4, y, 1), block(tier, "computation_casing"));
         helper.setBlock(COMPUTATION, block(tier, "computation_interface"));
         helper.setBlock(start.offset(1, 1, 0), facing(tier, "computation_system_l4", Direction.NORTH));
+    }
+
+    /**
+     * The Federation computation system: Neo ECO's computation structure with the Federation controller and a casing
+     * column where Neo ECO's ME interface would go. It forms, becomes a computing device of the domain of the Federation
+     * Cable at its front, which reaches it with a dense arm, and gives the AE2 grid of its parts no crafting CPU.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 300)
+    public static void federationComputationSystemLinksAtItsFront(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        var front = controller.north();
+        helper.setBlock(front, space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get());
+        // ME cables against its parts' outer faces, where an ME network would try to reach it.
+        var probes = List.of(controller.east(2).above().north(), controller.east(2).north(),
+                controller.east(3).north(), controller.above().north(), controller.west().north(),
+                controller.east(4).above(2), controller.south(2));
+        for (var probe : probes) {
+            PartHelper.setPart(helper.getLevel(), helper.absolutePos(probe), null, null,
+                    AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT));
+        }
+        var level = helper.getLevel();
+        helper.succeedWhen(() -> {
+            var state = helper.getBlockState(controller);
+            helper.assertTrue(formed(state), "the Federation computation system forms without an ME interface");
+            helper.assertTrue(helper.getBlockEntity(controller) instanceof ComputingHost host && host.id() != null,
+                    "its controller is a computing device with an ID");
+            var node = FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(controller));
+            var domain = FederationDomainRegistryAccess.get(level).federationDomainOf(
+                    FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(front)));
+            helper.assertTrue(domain.isPresent() && domain.get().nodes().contains(node),
+                    "the cable at its front joins it to the domain");
+            helper.assertValueEqual(CableVisualConnections.kind(CableVisualConnections.connections(level,
+                    helper.absolutePos(front)), Direction.SOUTH), CableVisualConnections.DENSE,
+                    "the cable reaches the front with a dense arm");
+            var drive = helper.getBlockEntity(controller.east(2).above());
+            var grid = drive instanceof AENetworkedBlockEntity networked ? networked.getMainNode().getGrid() : null;
+            helper.assertTrue(grid != null, "its parts are on one grid");
+            for (var probe : probes) {
+                var cable = helper.getBlockEntity(probe) instanceof IInWorldGridNodeHost host
+                        ? host.getGridNode(null) : null;
+                helper.assertTrue(cable != null && cable.getGrid() != grid,
+                        "an ME cable at " + probe + " stays off the grid of its parts");
+            }
+        });
+    }
+
+    /**
+     * An L9 Federation computation system takes no network switch at its side: a switch pools clusters across systems
+     * and would lend this one's capacity to a Neo ECO system on ME. The same structure forms with casing there.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 400)
+    public static void federationComputationSystemRefusesANetworkSwitch(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l9");
+        var side = controller.west();
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(formed(helper.getBlockState(controller)),
+                        "an L9 controller forms over L4 parts with casing at its side"))
+                .thenExecute(() -> helper.setBlock(side, block(Tier.L4, "computation_network_switch")))
+                .thenWaitUntil(() -> helper.assertFalse(formed(helper.getBlockState(controller)),
+                        "a network switch at its side keeps it from forming"))
+                .thenExecuteAfter(40, () -> helper.assertFalse(formed(helper.getBlockState(controller)),
+                        "it stays unformed"))
+                .thenSucceed();
+    }
+
+    /** With Neo ECO's ME interface in its interface cell, the Federation computation system does not form. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 300)
+    public static void federationComputationSystemRefusesAnMeInterface(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_interface",
+                "eco_computation_system_l4");
+        helper.runAfterDelay(60, () -> {
+            helper.assertFalse(formed(helper.getBlockState(controller)), "an ME interface keeps it from forming");
+            helper.succeed();
+        });
+    }
+
+    /**
+     * Neo ECO's smallest computation structure, as {@link #placeComputationSystem} lays it out without the consumer's
+     * cable, around the Federation controller {@code controllerId} facing north, with {@code interfaceCell} where the
+     * interface goes.
+     * Returns the controller's position.
+     */
+    private static BlockPos placeFederationComputationSystem(GameTestHelper helper, String interfaceCell,
+            String controllerId) {
+        var tier = Tier.L4;
+        var start = COMPUTATION.offset(0, -1, -1);
+        for (int y = 0; y < 3; y++) {
+            helper.setBlock(start.offset(0, y, 0), block(tier, "computation_casing"));
+            helper.setBlock(start.offset(1, y, 1), block(tier, "computation_casing"));
+            helper.setBlock(start.offset(2, y, 0), block(tier, "computation_casing"));
+            helper.setBlock(start.offset(2, y, 1), block(tier, "computation_casing"));
+        }
+        helper.setBlock(start.offset(0, 2, 1), block(tier, "computation_casing"));
+        helper.setBlock(start.offset(0, 0, 1), block(tier, "computation_casing"));
+        helper.setBlock(start.offset(1, 2, 0), block(tier, "computation_casing"));
+        helper.setBlock(start.offset(1, 0, 0), block(tier, "computation_casing"));
+        helper.setBlock(start.offset(3, 2, 0), facing(tier, "computation_drive", Direction.NORTH));
+        helper.setBlock(start.offset(3, 1, 0), facing(tier, "computation_transmitter", Direction.NORTH));
+        helper.setBlock(start.offset(3, 0, 0), facing(tier, "computation_drive", Direction.NORTH));
+        helper.setBlock(start.offset(3, 2, 1), facing(tier, "computation_parallel_core_l4", Direction.SOUTH));
+        helper.setBlock(start.offset(3, 1, 1), facing(tier, "computation_threading_core_l4", Direction.SOUTH));
+        helper.setBlock(start.offset(3, 0, 1), facing(tier, "computation_parallel_core_l4", Direction.SOUTH));
+        helper.setBlock(start.offset(4, 2, 0), block(tier, "computation_casing"));
+        helper.setBlock(start.offset(4, 1, 0), facing(tier, "computation_cooling_controller_l4", Direction.EAST));
+        helper.setBlock(start.offset(4, 0, 0), block(tier, "computation_casing"));
+        for (int y = 0; y < 3; y++) helper.setBlock(start.offset(4, y, 1), block(tier, "computation_casing"));
+        helper.setBlock(COMPUTATION, block(tier, interfaceCell));
+        var controller = start.offset(1, 1, 0);
+        helper.setBlock(controller, facing(new Tier("ae2federation", Map.of()), controllerId, Direction.NORTH));
+        return controller;
+    }
+
+    private static boolean formed(BlockState state) {
+        for (var property : state.getProperties()) {
+            if (property.getName().equals("formed")) return Boolean.TRUE.equals(state.getValue(property));
+        }
+        return false;
     }
 
     /**

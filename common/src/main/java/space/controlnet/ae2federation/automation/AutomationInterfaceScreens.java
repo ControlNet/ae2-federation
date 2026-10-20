@@ -4,6 +4,7 @@ import java.util.Objects;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -40,7 +41,7 @@ public final class AutomationInterfaceScreens {
     }
 
     /** Opens the screen of a block whose ID is claimed. */
-    public static boolean open(ServerPlayer player, DomainDeviceBlockEntity device) {
+    public static <T extends BlockEntity & AutomationDevice> boolean open(ServerPlayer player, T device) {
         var id = device.id();
         if (id == null || toClient == null || !(device.getLevel() instanceof ServerLevel level)) {
             return false;
@@ -49,7 +50,7 @@ public final class AutomationInterfaceScreens {
         return true;
     }
 
-    private static String title(DomainDeviceBlockEntity device) {
+    private static String title(BlockEntity device) {
         return device.getBlockState().getBlock().getDescriptionId();
     }
 
@@ -64,7 +65,7 @@ public final class AutomationInterfaceScreens {
     public static void setAlias(ServerPlayer player, BlockPos position, String alias) {
         var level = player.serverLevel();
         if (!player.canInteractWithBlock(position, 4.0)
-                || !(level.getBlockEntity(position) instanceof DomainDeviceBlockEntity device)
+                || !(level.getBlockEntity(position) instanceof AutomationDevice device)
                 || device.id() == null || toClient == null) {
             return;
         }
@@ -74,6 +75,7 @@ public final class AutomationInterfaceScreens {
         if (result == AutomationInterfaceBook.AliasResult.SET) {
             ProgramSync.get(level.getServer()).changed();
         }
-        toClient.send(player, new View(position, title(device), device.id(), device.alias(level), refused));
+        toClient.send(player, new View(position, title(level.getBlockEntity(position)), device.id(), device.alias(level),
+                refused));
     }
 }

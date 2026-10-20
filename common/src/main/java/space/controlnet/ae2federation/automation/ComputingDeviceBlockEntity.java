@@ -13,7 +13,7 @@ import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
  * asked for to test automation (2026-10-18), with unlimited compute; the survival device and its costs come later.
  * It links ME Federation Cable on all six faces. Its installations are kept in {@link ComputingDevices}.
  */
-public final class ComputingDeviceBlockEntity extends DomainDeviceBlockEntity {
+public final class ComputingDeviceBlockEntity extends DomainDeviceBlockEntity implements ComputingHost {
     /** Whether a redstone signal reached it at the last update, so only a rising edge triggers; kept across loads. */
     private boolean powered;
 
@@ -22,17 +22,17 @@ public final class ComputingDeviceBlockEntity extends DomainDeviceBlockEntity {
     }
 
     @Override
-    protected FederationDomainNodeKind kind() {
+    public FederationDomainNodeKind kind() {
         return FederationDomainNodeKind.COMPUTING_DEVICE;
     }
 
     @Override
-    protected String claim(ServerLevel level, @Nullable String stored) {
+    public String claim(ServerLevel level, @Nullable String stored) {
         return ComputingDevices.get(level).claim(stored, level, worldPosition);
     }
 
     @Override
-    protected void release(ServerLevel level, String id) {
+    public void release(ServerLevel level, String id) {
         ProgramScheduler.get(level.getServer()).deviceGone(id);
         ComputingDevices.get(level).release(id);
     }

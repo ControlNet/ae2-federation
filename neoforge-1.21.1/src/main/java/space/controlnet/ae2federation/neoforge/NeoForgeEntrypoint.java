@@ -63,6 +63,7 @@ public final class NeoForgeEntrypoint {
         BeamRegistration.register(modBus);
         space.controlnet.ae2federation.quantum.QuantumRegistration.register(modBus);
         space.controlnet.ae2federation.automation.AutomationRegistration.register(modBus);
+        space.controlnet.ae2federation.automation.neoeco.NeoEcoSupport.register(modBus);
         MaterialRegistration.register(modBus);
         FederationCreativeTab.register(modBus);
         ObservationPayloads.register(modBus);

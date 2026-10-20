@@ -95,6 +95,7 @@ repositories {
             includeModule('maven.modrinth', 'XExdLWCQ')
             includeModule('maven.modrinth', 'rZwE3agR')
             includeModule('maven.modrinth', 'jade')
+            includeModule('maven.modrinth', 'udZtKfzP')
         }
     }
     maven {
@@ -499,6 +500,12 @@ configurations {
         canBeResolved = true
         description = 'Jade, compiled against by the optional Jade plugin only; on no run or test classpath.'
     }
+    neoEcoApi {
+        canBeConsumed = false
+        canBeResolved = true
+        transitive = false
+        description = 'Neo ECO AE Extension, compiled against by the optional automation.neoeco package only; on no run or test classpath.'
+    }
     appliedFluxCompatibility {
         canBeConsumed = false
         canBeResolved = true
@@ -526,6 +533,7 @@ configurations {
 }
 
 sourceSets.main.compileClasspath += configurations.jadeApi
+sourceSets.main.compileClasspath += configurations.neoEcoApi
 
 dependencies {
     implementation("org.appliedenergistics:appliedenergistics2:${ae2_version}")
@@ -535,6 +543,9 @@ dependencies {
     // Jade 15.10.6 for 1.21.1 NeoForge (Modrinth version eYz2YBGT); optional, only its plugin class refers to it.
     // Not compileOnly: test source sets run with the main compile classpath, and a loaded Jade breaks fake players.
     jadeApi('maven.modrinth:jade:eYz2YBGT')
+    // Neo ECO AE Extension 21.2.1 (Modrinth project udZtKfzP, version p9oqETs4), the version the compat profiles run.
+    // Optional: only automation.neoeco refers to it, and that package is reached only when the mod is loaded.
+    neoEcoApi('maven.modrinth:udZtKfzP:p9oqETs4')
     testImplementation(platform('org.junit:junit-bom:5.10.1'))
     testImplementation('org.junit.jupiter:junit-jupiter')
     testRuntimeOnly('org.junit.platform:junit-platform-launcher')

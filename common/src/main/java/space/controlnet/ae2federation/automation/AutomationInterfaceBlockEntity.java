@@ -25,17 +25,17 @@ public final class AutomationInterfaceBlockEntity extends DomainDeviceBlockEntit
     }
 
     @Override
-    protected FederationDomainNodeKind kind() {
+    public FederationDomainNodeKind kind() {
         return FederationDomainNodeKind.AUTOMATION_INTERFACE;
     }
 
     @Override
-    protected String claim(ServerLevel level, @Nullable String stored) {
+    public String claim(ServerLevel level, @Nullable String stored) {
         return AutomationInterfaces.get(level).claim(stored, level, worldPosition);
     }
 
     @Override
-    protected void release(ServerLevel level, String id) {
+    public void release(ServerLevel level, String id) {
         AutomationInterfaces.get(level).release(id);
     }
 
