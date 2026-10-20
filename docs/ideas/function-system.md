@@ -1502,6 +1502,49 @@ Assistant proposals on how:
 Open: the full list of library
 functions that take a location (with the standard library design); entity interactions (later).
 
+## Survival computing device: compute and bandwidth (2026-10-20)
+
+User decisions (2026-10-20):
+- The first survival computing device is the Federation computation system, built on Neo ECO's computation structure.
+- It provides compute (CU) and bandwidth (B/s). It has no threads.
+- Each installation reserves its cost when it is installed. A device that cannot hold the cost refuses the
+  installation.
+- The cost is inferred statically from the program, and the player cannot change it. A function whose bound cannot be
+  inferred gets a fixed conservative value.
+- Bandwidth counts AE2 bytes, as AE2's storage cells do. A device's B/s is the byte total of its computation cells.
+
+Device capacity:
+- CU is the accelerator count of its parallel cores: L4 64, L6 192, L9 576 per core. Threading cores add nothing.
+- B/s is the byte total of the computation cells in its drives: 2^26, 2^28 and 2^30 per cell.
+- The creative device stays unlimited.
+
+Installation cost (assistant proposal, numbers open):
+- **Steps per tick S.** A run makes at most one effect per tick, so in one tick it needs no more than its longest
+  effect-free stretch of steps.
+  - The stretch is counted through the function and every function it calls, with the installation's arguments
+    folded in as constants.
+  - An effect-free loop whose trip count is not a constant makes S unbounded, and so does recursion. Such a function
+    gets S = 10,000, the cap every run already has.
+- **CU = ceil(S / 10)**, so 1 CU is 10 steps per tick. The Parallel overlap mode multiplies the cost by its limit of 4.
+- **Bytes per moving call B.** These calls move resources:
+  - `ae2.import_from`, `ae2.export_to` and `ae2.move`;
+  - the block-to-block `move`.
+
+  Each costs its amount in AE2 bytes: 8 items per byte, 8 buckets of fluid per byte, and each key type's own ratio.
+  There is no per-type cost. When the amount is not a constant after folding the arguments, B is 1,024 bytes, and the
+  call moves at most that much at run time.
+- **B/s = 20 x the largest B** among the function's moving calls, because a run makes at most one effect per tick.
+  Parallel multiplies it by 4. A finer rule would count bytes per run times runs per second, from the trigger
+  interval.
+- Calls that move no AE2 resources cost no bandwidth: crafting, redstone, blocks and FE.
+- At run time a run never takes more than S steps per tick, and a moving call never moves more than its B.
+
+When the capacity drops, for example because a part is broken or a cell is taken out, the installations stay. The
+device starts no runs while its reservations exceed its capacity, and the install view shows it in red.
+
+GUI: the install view gets the device meters planned on 2026-10-18 (CU and B/s, used of total). Dragging colours the
+devices by whether the cost fits. A design canvas comes first.
+
 ## Simplification review (asked by the user 2026-10-18)
 
 The user wants a very simplified Python and asked what in the design makes the interpreter, maintenance or debugging
