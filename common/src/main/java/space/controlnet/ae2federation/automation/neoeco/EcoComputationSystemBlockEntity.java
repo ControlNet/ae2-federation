@@ -40,13 +40,14 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
     }
 
     /**
-     * Its parallel cores' accelerators in CU and its computation cells' bytes in B/s (user decisions 2026-10-20);
-     * nothing while it is not formed.
+     * Its parallel cores' accelerators in CU, its computation cells' bytes in B/s (user decisions 2026-10-20) and its
+     * threading cores' threads in installations (user, 2026-10-20); nothing while it is not formed.
      */
     @Override
     public Capacity capacity() {
         var cluster = getCluster();
-        return cluster == null ? Capacity.NONE : new Capacity(cluster.getCPUAccelerators(), cluster.getTotalStorage());
+        return cluster == null ? Capacity.NONE
+                : new Capacity(cluster.getCPUAccelerators(), cluster.getTotalStorage(), cluster.getMaxThreads());
     }
 
     @Override

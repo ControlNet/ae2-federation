@@ -6,9 +6,9 @@ import java.util.Optional;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * A device's capacity against what its installations reserve (user decisions 2026-10-20). Compute and fixed bandwidth
- * are hard: an installation that does not fit is refused, and a device whose reservations stop fitting, because a
- * part was broken or a cell taken out, starts no runs. Elastic installations share the bandwidth left after the fixed
+ * A device's capacity against what its installations reserve (user decisions 2026-10-20). Compute, fixed bandwidth
+ * and the number of installations are hard: an installation that does not fit is refused, and a device whose
+ * reservations stop fitting, because a part was broken or a cell taken out, starts no runs. Elastic installations share the bandwidth left after the fixed
  * reservations evenly, by their shares; a share only limits what each move takes, it never pauses the device. Nothing
  * depends on what runs do: the budget follows from the capacity and the installations alone.
  */
@@ -27,7 +27,8 @@ final class DeviceBudget {
             fixed = InstallationCost.plus(fixed, cost.bandwidth());
             shares += cost.shares();
         }
-        this.paused = !capacity.unlimited() && (compute > capacity.compute() || fixed > capacity.bandwidth());
+        this.paused = !capacity.unlimited() && (compute > capacity.compute() || fixed > capacity.bandwidth()
+                || costs.size() > capacity.installations());
         if (!capacity.unlimited() && shares > 0) {
             var share = Math.max(0, capacity.bandwidth() - fixed) / shares;
             costs.forEach((id, cost) -> {
@@ -70,6 +71,9 @@ final class DeviceBudget {
         if (capacity.unlimited() || before != null && after.compute() <= before.compute()
                 && after.bandwidth() <= before.bandwidth() && (!after.elastic() || before.elastic())) {
             return Optional.empty();
+        }
+        if (before == null && others.size() + 1 > capacity.installations()) {
+            return Optional.of("the device holds " + capacity.installations() + " installations and has none free");
         }
         long compute = 0;
         long fixed = 0;

@@ -78,7 +78,7 @@ final class DeviceBudgetTest {
                 .bandwidth());
     }
 
-    private static final ComputingHost.Capacity DEVICE = new ComputingHost.Capacity(64, 1_000);
+    private static final ComputingHost.Capacity DEVICE = new ComputingHost.Capacity(64, 1_000, 8);
 
     @Test
     void anInstallationFitsWhenComputeAndBandwidthFit() {
@@ -147,6 +147,24 @@ final class DeviceBudgetTest {
         assertEquals(6, budget.perCall("one"));
         assertEquals(6, budget.perCall("four"));
         assertEquals(Long.MAX_VALUE, budget.perCall("fixed"));
-        assertEquals(0, DeviceBudget.of(new ComputingHost.Capacity(64, 400), costs).perCall("one"));
+        assertEquals(0, DeviceBudget.of(new ComputingHost.Capacity(64, 400, 8), costs).perCall("one"));
+    }
+
+    /** Threads are the installations a device holds (user, 2026-10-20): one more is refused, a change of one is not. */
+    @Test
+    void aDeviceHoldsAsManyInstallationsAsItHasThreads() {
+        var two = new ComputingHost.Capacity(64, 1_000, 2);
+        var one = Map.of("a", cost(1));
+        var full = Map.of("a", cost(1), "b", cost(1));
+        assertEquals(Optional.empty(), DeviceBudget.refusal(two, one, null, cost(1)));
+        assertTrue(DeviceBudget.refusal(two, full, null, cost(1)).orElseThrow().contains("installations"));
+        assertEquals(Optional.empty(), DeviceBudget.refusal(two, Map.of("a", cost(1)), cost(1), cost(2)));
+    }
+
+    @Test
+    void aDeviceIsPausedWhileItHoldsMoreInstallationsThanThreads() {
+        var one = new ComputingHost.Capacity(64, 1_000, 1);
+        assertFalse(DeviceBudget.of(one, Map.of("a", cost(1))).paused());
+        assertTrue(DeviceBudget.of(one, Map.of("a", cost(1), "b", cost(1))).paused());
     }
 }
