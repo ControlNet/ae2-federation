@@ -33,6 +33,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
+import space.controlnet.ae2federation.automation.AutomationRegistration;
 import space.controlnet.ae2federation.automation.ClientPrograms;
 import space.controlnet.ae2federation.automation.InstallationLog;
 import space.controlnet.ae2federation.automation.ProgramEvents;
@@ -304,16 +305,38 @@ final class FederationInstallView {
         var lines = new UIElement();
         lines.addClass("install-device-lines");
         lines.addChild(label("install-title", Component.literal(deviceName(device))));
-        // The Creative Computing Device is the only kind so far: unlimited compute.
-        var position = device.position();
-        lines.addChild(label("install-muted", device.alias().isEmpty()
-                ? Component.translatable("ae2federation.ui.automation.creative_at",
-                        position.getX() + ", " + position.getY() + ", " + position.getZ())
-                : Component.translatable("ae2federation.ui.automation.creative")));
+        lines.addChild(label("install-muted", deviceLine(device)));
         head.addChildren(port, lines);
         card.addChild(head);
         for (var installation : installations) card.addChild(installationRow(installation));
         return card;
+    }
+
+    /**
+     * The line under a device's name: its kind, then its position while it has no alias. The Creative Computing
+     * Device says it is unlimited instead; another mod's device goes by its block's name, and one whose chunk is not
+     * loaded by its position alone.
+     */
+    private static Component deviceLine(ProgramSync.DeviceInfo device) {
+        var parts = new ArrayList<Component>();
+        var block = device.block().isEmpty() ? null : ResourceLocation.tryParse(device.block());
+        if (block != null) {
+            parts.add(block.getNamespace().equals("ae2federation")
+                    ? Component.translatable("ae2federation.ui.automation.kind." + block.getPath())
+                    : BuiltInRegistries.BLOCK.get(block).getName());
+        }
+        var position = device.position();
+        if (device.alias().isEmpty() || block == null) {
+            parts.add(Component.literal(position.getX() + ", " + position.getY() + ", " + position.getZ()));
+        } else if (block.equals(AutomationRegistration.DEVICE.getId())) {
+            parts.add(Component.translatable("ae2federation.ui.automation.unlimited"));
+        }
+        var line = Component.empty();
+        for (var part : parts) {
+            if (!line.getSiblings().isEmpty()) line.append(" · ");
+            line.append(part);
+        }
+        return line;
     }
 
     @Nullable

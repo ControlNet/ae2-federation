@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -51,8 +52,12 @@ public final class ProgramSync {
             List<FunctionInfo> functions) {
     }
 
-    /** A computing device or an Automation Interface: its alias is empty when it has none. */
-    public record DeviceInfo(String id, String alias, String dimension, BlockPos position, String domain) {
+    /**
+     * A computing device or an Automation Interface: its alias is empty when it has none, and its block's registry ID
+     * is empty while its chunk is not loaded.
+     */
+    public record DeviceInfo(String id, String alias, String dimension, BlockPos position, String domain,
+            String block) {
     }
 
     /**
@@ -354,14 +359,16 @@ public final class ProgramSync {
         devices.entries().forEach((id, entry) -> {
             var level = level(entry.dimension());
             var domain = level == null ? "" : devices.domainOf(level, id).map(found -> found.value()).orElse("");
-            deviceInfos.add(new DeviceInfo(id, entry.alias(), entry.dimension(), entry.position(), domain));
+            deviceInfos.add(new DeviceInfo(id, entry.alias(), entry.dimension(), entry.position(), domain,
+                    block(level, entry.position())));
         });
         var interfaces = AutomationInterfaces.get(server.overworld());
         var interfaceInfos = new ArrayList<DeviceInfo>();
         interfaces.entries().forEach((id, entry) -> {
             var level = level(entry.dimension());
             var domain = level == null ? "" : interfaces.domainOf(level, id).map(found -> found.value()).orElse("");
-            interfaceInfos.add(new DeviceInfo(id, entry.alias(), entry.dimension(), entry.position(), domain));
+            interfaceInfos.add(new DeviceInfo(id, entry.alias(), entry.dimension(), entry.position(), domain,
+                    block(level, entry.position())));
         });
         var shortIds = NetworkShortIds.get(server);
         var names = NetworkNames.get(server.overworld());
@@ -377,6 +384,12 @@ public final class ProgramSync {
                 scheduler.running(installation.id()))).toList();
         return new Index(List.copyOf(files), List.copyOf(deviceInfos), List.copyOf(interfaceInfos),
                 List.copyOf(networks), installations);
+    }
+
+    /** The registry ID of the block at {@code position}; empty while its chunk is not loaded (never loads one). */
+    private static String block(@Nullable ServerLevel level, BlockPos position) {
+        return level == null || !level.isLoaded(position) ? ""
+                : BuiltInRegistries.BLOCK.getKey(level.getBlockState(position).getBlock()).toString();
     }
 
     private @Nullable ServerLevel level(String dimension) {

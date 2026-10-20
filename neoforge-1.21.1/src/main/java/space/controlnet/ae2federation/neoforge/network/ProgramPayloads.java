@@ -200,11 +200,12 @@ public final class ProgramPayloads {
         buffer.writeUtf(device.dimension());
         buffer.writeBlockPos(device.position());
         buffer.writeUtf(device.domain());
+        buffer.writeUtf(device.block());
     }
 
     private static ProgramSync.DeviceInfo readDevice(FriendlyByteBuf buffer) {
         return new ProgramSync.DeviceInfo(buffer.readUtf(), buffer.readUtf(), buffer.readUtf(), buffer.readBlockPos(),
-                buffer.readUtf());
+                buffer.readUtf(), buffer.readUtf());
     }
 
     public static void register(IEventBus modBus) {
