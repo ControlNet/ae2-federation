@@ -1518,29 +1518,37 @@ Device capacity:
 - B/s is the byte total of the computation cells in its drives: 2^26, 2^28 and 2^30 per cell.
 - The creative device stays unlimited.
 
-Installation cost (assistant proposal, numbers open):
-- **Steps per tick S.** A run makes at most one effect per tick, so in one tick it needs no more than its longest
-  effect-free stretch of steps.
-  - The stretch is counted through the function and every function it calls, with the installation's arguments
-    folded in as constants.
-  - An effect-free loop whose trip count is not a constant makes S unbounded, and so does recursion. Such a function
-    gets S = 10,000, the cap every run already has.
-- **CU = ceil(S / 10)**, so 1 CU is 10 steps per tick. The Parallel overlap mode multiplies the cost by its limit of 4.
+Installation cost (user decisions 2026-10-20 unless marked):
+- **CU = graph nodes.** CU counts the graph nodes of the installed function and of every function it calls, directly
+  or through others, in any file. Each called function counts once, however many places call it, so recursion adds
+  nothing more. Loops are not multiplied by their trip count. The user replaced a steps-per-tick inference with this
+  as simpler.
+- **CU only admits.** It decides at install whether the installation fits, like the memory a program takes. At run
+  time every run keeps the 10,000-step cap per tick.
+- **Parallel multiplies.** The Parallel overlap mode multiplies the reservation (CU and B/s) by its limit of 4.
+- **Ratio open.** 1 CU = 1 node for now. The user will judge the numbers in game.
 - **Bytes per moving call B.** These calls move resources:
   - `ae2.import_from`, `ae2.export_to` and `ae2.move`;
   - the block-to-block `move`.
 
   Each costs its amount in AE2 bytes: 8 items per byte, 8 buckets of fluid per byte, and each key type's own ratio.
-  There is no per-type cost. When the amount is not a constant after folding the arguments, B is 1,024 bytes, and the
-  call moves at most that much at run time.
-- **B/s = 20 x the largest B** among the function's moving calls, because a run makes at most one effect per tick.
-  Parallel multiplies it by 4. A finer rule would count bytes per run times runs per second, from the trigger
-  interval.
-- Calls that move no AE2 resources cost no bandwidth: crafting, redstone, blocks and FE.
-- At run time a run never takes more than S steps per tick, and a moving call never moves more than its B.
+  There is no per-type cost.
+- **Inferring the amount (assistant proposal, open).** A range analysis in the checker bounds most amounts:
+  - constants and installation arguments;
+  - arithmetic on them, and `min(x, N)`;
+  - branch conditions;
+  - library facts such as amounts never being negative. `missing = target - ae2.amount(r) - ae2.crafting(r)` under
+    `if missing > 0` is 1..target.
 
-When the capacity drops, for example because a part is broken or a cell is taken out, the installations stay. The
-device starts no runs while its reservations exceed its capacity, and the install view shows it in red.
+  It cannot bound values read straight from the world, such as `stack.amount`, or totals built up in a loop. Such a
+  call reserves a default of 1,024 bytes and moves at most that much at run time. The checker notes the line and
+  suggests `min(..., N)`.
+- **B/s = 20 x the largest B** among the function's moving calls, because a run makes at most one effect per tick
+  (user, 2026-10-20).
+- Calls that move no AE2 resources cost no bandwidth: crafting, redstone, blocks and FE.
+
+When the capacity drops, for example because a part is broken or a cell is taken out, the installations stay. The whole
+device starts no runs while its reservations exceed its capacity (user, 2026-10-20). The install view shows it in red.
 
 GUI: the install view gets the device meters planned on 2026-10-18 (CU and B/s, used of total). Dragging colours the
 devices by whether the cost fits. A design canvas comes first.
