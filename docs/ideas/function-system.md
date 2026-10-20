@@ -1559,6 +1559,23 @@ When the capacity drops, for example because a part is broken or a cell is taken
 device starts no runs while its fixed reservations exceed its capacity (user, 2026-10-20). The install view shows it in
 red. Elastic shares never pause a device; they only shrink.
 
+Implementation choices (assistant, 2026-10-20):
+- A fixed installation may not take the last of the bandwidth while elastic installations share it, just as an
+  elastic installation is refused when none is left. Elastic installations therefore always keep some bandwidth.
+- A change that asks for no more (fewer nodes, less fixed bandwidth, not newly elastic) is always taken, even on a
+  device that is over its capacity.
+- A device that is not loaded cannot say its capacity, so it takes every installation and change. If they do not fit,
+  it pauses when it loads.
+- A push is never refused for cost. A pushed version that no longer fits pauses its devices, as a capacity drop does.
+- On a paused device, runs that are going wait, frozen, and triggers wait. Nothing is stopped. The log of each of its
+  installations says "paused" and then "resumed".
+- A condition trigger's function counts its nodes in the installation's CU, together with the installed function.
+  Functions both call count once.
+- A move's bytes use its resource's own ratio when the resource is written out, such as `"minecraft:water"`.
+  Otherwise they use the smallest ratio of any resource type, which gives the most bytes.
+- Shares are worked out from the capacity and the installations at each tick. A run keeps the per-call limit it
+  started with.
+
 GUI: the install view gets the device meters planned on 2026-10-18 (CU and B/s, used of total). Dragging colours the
 devices by whether the cost fits. A design canvas comes first.
 

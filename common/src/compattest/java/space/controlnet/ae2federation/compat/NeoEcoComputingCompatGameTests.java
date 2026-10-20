@@ -19,11 +19,15 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.automation.AutomationInterfaceBlockEntity;
 import space.controlnet.ae2federation.automation.ComputingDevices;
 import space.controlnet.ae2federation.automation.ComputingHost;
 import space.controlnet.ae2federation.automation.Installation;
@@ -210,6 +214,194 @@ public final class NeoEcoComputingCompatGameTests {
                     deleteProgram(helper, file);
                 })
                 .thenSucceed();
+    }
+
+    /**
+     * Installations reserve the device's compute and bandwidth (user decisions 2026-10-20). Two L4 parallel cores give
+     * 128 CU; drives without cells give no bandwidth, so anything that moves is refused until a cell goes in. Parallel
+     * mode reserves four times the compute.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 400)
+    public static void federationComputationSystemReservesComputeAndBandwidth(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        var file = "neoeco_budget";
+        var statements = String.join("\n", java.util.Collections.nCopies(40, "    x = 1"));
+        writeProgram(helper, file, """
+                def ping() -> str:
+                    return "ping"
+
+                def busy() -> int:
+                %s
+                    return x
+
+                def give(port: Interface) -> None:
+                    mc.move(ae2f.select(port, 1), ae2f.select(port, 2), "minecraft:iron_ingot", 64)
+
+                def drain(port: Interface) -> None:
+                    chest = ae2f.select(port, 1)
+                    for stack in mc.storage(chest):
+                        ae2.import_from(chest, stack.resource, stack.amount)
+                """.formatted(statements));
+        var scheduler = ProgramScheduler.get(helper.getLevel().getServer());
+        var installed = new java.util.ArrayList<String>();
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(helper.getBlockEntity(controller) instanceof ComputingHost host
+                        && host.id() != null && host.capacity().equals(new ComputingHost.Capacity(128, 0)),
+                        "a formed L4 system with two parallel cores and empty drives has 128 CU and no bandwidth"))
+                .thenExecute(() -> {
+                    var device = ((ComputingHost) helper.getBlockEntity(controller)).id();
+                    installed.add(scheduler.install(device, file, "ping", List.of()).id());
+                    var busy = scheduler.install(device, file, "busy", List.of()).id();
+                    installed.add(busy);
+                    helper.assertValueEqual(scheduler.cost(busy).compute(), 42L,
+                            "its entry, forty assignments and its return");
+                    refused(helper, () -> scheduler.setOverlap(busy, Installation.Overlap.PARALLEL), "CU");
+                    refused(helper, () -> scheduler.install(device, file, "give", List.of("port")), "B/s");
+                    refused(helper, () -> scheduler.install(device, file, "drain", List.of("port")),
+                            "no bandwidth left");
+                    insertCell(helper, controller);
+                    helper.assertValueEqual(((ComputingHost) helper.getBlockEntity(controller)).capacity()
+                            .bandwidth(), 1L << 26, "an L4 cell gives its bytes");
+                    installed.add(scheduler.install(device, file, "give", List.of("port")).id());
+                    installed.add(scheduler.install(device, file, "drain", List.of("port")).id());
+                    installed.forEach(scheduler::uninstall);
+                    deleteProgram(helper, file);
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * While its fixed reservations do not fit, a device starts nothing and its runs wait, and it resumes once they fit
+     * again (user decision 2026-10-20). Broken casing unforms it, which leaves it no capacity.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void federationComputationSystemPausesWhileItHoldsTooLittle(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        var file = "neoeco_pause";
+        writeProgram(helper, file, """
+                def ping() -> str:
+                    return "ping"
+                """);
+        var scheduler = ProgramScheduler.get(helper.getLevel().getServer());
+        var installation = new String[1];
+        var casing = controller.above();
+        var casingState = new BlockState[1];
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(helper.getBlockEntity(controller) instanceof ComputingHost host
+                        && host.id() != null && host.capacity().compute() > 0, "waiting for it to form"))
+                .thenExecute(() -> {
+                    installation[0] = scheduler.install(((ComputingHost) helper.getBlockEntity(controller)).id(), file,
+                            "ping", List.of()).id();
+                    scheduler.setTrigger(installation[0], new Installation.Trigger.Schedule(10));
+                })
+                .thenWaitUntil(() -> helper.assertTrue(log(scheduler, installation[0]).contains("done: 'ping'"),
+                        "it runs on its schedule"))
+                .thenExecute(() -> {
+                    casingState[0] = helper.getBlockState(casing);
+                    helper.destroyBlock(casing);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(log(scheduler, installation[0]).contains(
+                        "paused: the device holds less than its installations reserve"), "an unformed device pauses"))
+                .thenExecuteAfter(40, () -> {
+                    var log = log(scheduler, installation[0]);
+                    helper.assertValueEqual(log.get(log.size() - 1),
+                            "paused: the device holds less than its installations reserve",
+                            "a paused device starts nothing on its schedule");
+                })
+                .thenExecute(() -> helper.setBlock(casing, casingState[0]))
+                .thenWaitUntil(() -> {
+                    var log = log(scheduler, installation[0]);
+                    var resumed = log.lastIndexOf("resumed");
+                    helper.assertTrue(resumed >= 0 && log.subList(resumed, log.size()).contains("done: 'ping'"),
+                            "it resumes and runs once it forms again");
+                })
+                .thenExecute(() -> {
+                    scheduler.uninstall(installation[0]);
+                    deleteProgram(helper, file);
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * An elastic installation shares the bandwidth the fixed ones leave, and a move takes at most its share's bytes per
+     * tick: asked for 64 iron, it moves 16 (user decision 2026-10-20). A fixed installation is sized to leave 40 to 59
+     * B/s, two bytes a tick.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void anElasticMoveTakesItsShareOfTheFederationComputationSystem(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        helper.setBlock(controller.north(), space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE
+                .get());
+        var port = controller.north(2);
+        helper.setBlock(port, space.controlnet.ae2federation.automation.AutomationRegistration.INTERFACE.get()
+                .defaultBlockState().setValue(BlockStateProperties.FACING, Direction.NORTH));
+        var source = controller.north(3);
+        var target = controller.north(4);
+        helper.setBlock(source, Blocks.CHEST);
+        helper.setBlock(target, Blocks.CHEST);
+        ((ChestBlockEntity) helper.getBlockEntity(source)).setItem(0, new ItemStack(Items.IRON_INGOT, 64));
+        var file = "neoeco_elastic";
+        var scheduler = ProgramScheduler.get(helper.getLevel().getServer());
+        var installed = new java.util.ArrayList<String>();
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(helper.getBlockEntity(controller) instanceof ComputingHost host
+                        && host.capacity().compute() > 0, "waiting for it to form"))
+                .thenExecute(() -> insertCell(helper, controller))
+                .thenWaitUntil(() -> helper.assertTrue(helper.getBlockEntity(controller) instanceof ComputingHost host
+                        && host.id() != null && host.capacity().bandwidth() > 0
+                        && helper.getBlockEntity(port) instanceof AutomationInterfaceBlockEntity automationInterface
+                        && automationInterface.id() != null && sharesDomain(helper, controller, port),
+                        "waiting for it to form with a cell, beside the interface"))
+                .thenExecute(() -> {
+                    var host = (ComputingHost) helper.getBlockEntity(controller);
+                    var bytes = (host.capacity().bandwidth() - 40) / 20;
+                    writeProgram(helper, file, """
+                            def hog(port: Interface) -> None:
+                                mc.move(ae2f.select(port, 1), ae2f.select(port, 2), "minecraft:iron_ingot", %d)
+
+                            def shift(port: Interface) -> None:
+                                source = ae2f.select(port, 1)
+                                n = mc.amount(source, "minecraft:iron_ingot")
+                                mc.move(source, ae2f.select(port, 2), "minecraft:iron_ingot", n)
+                            """.formatted(bytes * 8));
+                    var portId = ((AutomationInterfaceBlockEntity) helper.getBlockEntity(port)).id();
+                    installed.add(scheduler.install(host.id(), file, "hog", List.of(portId)).id());
+                    var shift = scheduler.install(host.id(), file, "shift", List.of(portId)).id();
+                    installed.add(shift);
+                    helper.assertTrue(scheduler.cost(shift).elastic(), "a move of what a chest holds is elastic");
+                    scheduler.trigger(shift);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(log(scheduler, installed.get(1)).contains("done: None"),
+                        "the move ran"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(((ChestBlockEntity) helper.getBlockEntity(target)).getItem(0).getCount(),
+                            16, "it moved two bytes of iron");
+                    helper.assertValueEqual(((ChestBlockEntity) helper.getBlockEntity(source)).getItem(0).getCount(),
+                            48, "the rest stayed");
+                    installed.forEach(scheduler::uninstall);
+                    deleteProgram(helper, file);
+                })
+                .thenSucceed();
+    }
+
+    /** An L4 computation cell into the upper drive of {@link #placeFederationComputationSystem}'s structure. */
+    private static void insertCell(GameTestHelper helper, BlockPos controller) {
+        var drive = helper.getLevel().getCapability(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK,
+                helper.absolutePos(controller.east(2).above()), null);
+        helper.assertTrue(drive != null, "the drive takes cells");
+        var left = drive.insertItem(0, new ItemStack(BuiltInRegistries.ITEM.get(
+                ResourceLocation.fromNamespaceAndPath("neoecoae", "eco_computation_cell_l4"))), false);
+        helper.assertTrue(left.isEmpty(), "the drive took the cell");
+    }
+
+    private static void refused(GameTestHelper helper, Runnable action, String reason) {
+        try {
+            action.run();
+        } catch (IllegalArgumentException e) {
+            helper.assertTrue(e.getMessage().contains(reason), "refused for " + reason + ": " + e.getMessage());
+            return;
+        }
+        helper.fail("expected a refusal for " + reason);
     }
 
     /** The Federation computation systems are made on Neo ECO's Integrated Working Station, from Nexus Processors. */

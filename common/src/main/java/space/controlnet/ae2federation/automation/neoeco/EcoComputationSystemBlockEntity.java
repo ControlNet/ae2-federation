@@ -39,6 +39,16 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
         return FederationDomainNodeKind.COMPUTING_DEVICE;
     }
 
+    /**
+     * Its parallel cores' accelerators in CU and its computation cells' bytes in B/s (user decisions 2026-10-20);
+     * nothing while it is not formed.
+     */
+    @Override
+    public Capacity capacity() {
+        var cluster = getCluster();
+        return cluster == null ? Capacity.NONE : new Capacity(cluster.getCPUAccelerators(), cluster.getTotalStorage());
+    }
+
     @Override
     public String claim(ServerLevel level, @Nullable String stored) {
         return ComputingDevices.get(level).claim(stored, level, worldPosition);

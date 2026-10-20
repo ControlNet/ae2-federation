@@ -15,6 +15,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.function.Checker;
+import space.controlnet.ae2federation.function.Cost;
+import space.controlnet.ae2federation.function.Expr;
 import space.controlnet.ae2federation.function.FunctionDef;
 import space.controlnet.ae2federation.function.Ops;
 import space.controlnet.ae2federation.function.Runner;
@@ -64,6 +66,13 @@ public final class ProgramScheduler {
     private final Map<String, ArrayDeque<LogEntry>> logs = new HashMap<>();
     /** Pushed versions, prepared once per push; by the pushed file. */
     private final Map<String, ProgramRun.Prepared> prepared = new HashMap<>();
+    /** Each installation's cost, with the settings and pushed version it was worked out for; by installation ID. */
+    private final Map<String, Priced> costs = new HashMap<>();
+    /** The devices that started nothing last tick because they hold less than their installations reserve. */
+    private final java.util.Set<String> paused = new HashSet<>();
+
+    private record Priced(Installation installation, Map<String, String> texts, InstallationCost cost) {
+    }
 
     private ProgramScheduler(MinecraftServer server) {
         this.server = server;
@@ -145,7 +154,10 @@ public final class ProgramScheduler {
             push(file);
         }
         var definition = definition(file, function);
-        return devices().install(device, file, function, arguments(definition, args));
+        var values = arguments(definition, args);
+        admit(null, new Installation("", device, file, function, values, new Installation.Trigger.Manual(),
+                Installation.DEFAULT_INTERVAL, Installation.Overlap.IGNORE));
+        return devices().install(device, file, function, values);
     }
 
     /** Sets what starts the installation's runs; a condition must be a {@code bool} function that does not act. */
@@ -226,13 +238,102 @@ public final class ProgramScheduler {
     }
 
     private Installation update(Installation installation) {
+        admit(installed(installation.id()), installation);
         devices().update(installation);
         return installation;
+    }
+
+    /**
+     * Refuses an installation, or a change of one, that its device cannot hold beside the others it runs. A device
+     * that is not loaded cannot say its capacity, so it takes everything, and pauses when it loads if that does not
+     * fit (assistant choice).
+     */
+    private void admit(@org.jetbrains.annotations.Nullable Installation before, Installation after) {
+        var host = host(after.device()).orElse(null);
+        if (host == null) {
+            return;
+        }
+        var others = new HashMap<String, InstallationCost>();
+        for (var other : devices().installations()) {
+            if (other.device().equals(after.device()) && !other.id().equals(after.id())) {
+                others.put(other.id(), cost(other));
+            }
+        }
+        DeviceBudget.refusal(host.capacity(), others, before == null ? null : cost(before), price(after))
+                .ifPresent(reason -> {
+                    throw new IllegalArgumentException("the device cannot hold it: " + reason);
+                });
+    }
+
+    /** What an installation reserves on its device. */
+    public InstallationCost cost(String id) {
+        return cost(installed(id));
+    }
+
+    /** What an installation reserves on its device, worked out again only when it or its pushed version changed. */
+    private InstallationCost cost(Installation installation) {
+        var texts = devices().pushed(installation.file()).orElse(null);
+        var priced = costs.get(installation.id());
+        if (priced == null || !priced.installation().equals(installation) || priced.texts() != texts) {
+            priced = new Priced(installation, texts, price(installation));
+            costs.put(installation.id(), priced);
+        }
+        return priced.cost();
+    }
+
+    /**
+     * Works out an installation's cost from its pushed version: the installed function and its condition count their
+     * nodes, and only the installed function moves (a condition may only read). A version without the function costs
+     * nothing, as it cannot run.
+     */
+    private InstallationCost price(Installation installation) {
+        var texts = devices().pushed(installation.file());
+        if (texts.isEmpty()) {
+            return new InstallationCost(0, 0, 0);
+        }
+        var others = new LinkedHashMap<String, space.controlnet.ae2federation.function.Program>();
+        texts.get().forEach((name, text) -> {
+            if (!name.equals(installation.file())) {
+                others.put(name, ScriptParser.parse(text).program());
+            }
+        });
+        var program = ScriptParser.parse(texts.get().get(installation.file())).program();
+        var workspace = new Workspace(others, ProgramStore.catalog(server, null));
+        var definition = program.functions().stream().filter(f -> f.name().equals(installation.function()))
+                .findFirst();
+        if (definition.isEmpty()) {
+            return new InstallationCost(0, 0, 0);
+        }
+        var numbers = new HashMap<String, Long>();
+        for (int i = 0; i < installation.args().size() && i < definition.get().params().size(); i++) {
+            if (installation.args().get(i) instanceof Long number) {
+                numbers.put(definition.get().params().get(i).name(), number);
+            }
+        }
+        var functions = new ArrayList<>(List.of(installation.function()));
+        if (installation.trigger() instanceof Installation.Trigger.Condition condition
+                && program.functions().stream().anyMatch(f -> f.name().equals(condition.function()))) {
+            functions.add(condition.function());
+        }
+        var cost = Cost.of(program, installation.function(), numbers, workspace);
+        var resources = new RegistryResources(server.registryAccess());
+        return InstallationCost.of(Cost.nodes(program, functions, workspace), cost.moves(), installation.overlap(),
+                resource -> resource instanceof Expr.StrLit literal
+                        ? resources.key(literal.value()).map(key -> (long) key.getType().getAmountPerByte())
+                                .orElse(fewestPerByte())
+                        : fewestPerByte());
+    }
+
+    /** The least of any resource that fits in a byte: a resource not written out is taken to be the one that costs most. */
+    private static long fewestPerByte() {
+        return appeng.api.stacks.AEKeyTypes.getAll().stream().mapToLong(type -> type.getAmountPerByte()).min()
+                .orElse(8);
     }
 
     public boolean uninstall(String id) {
         stop(id, "uninstalled");
         logs.remove(id);
+        costs.remove(id);
         return devices().uninstall(id);
     }
 
@@ -260,6 +361,7 @@ public final class ProgramScheduler {
             if (installation.device().equals(device)) {
                 stop(installation.id(), "the device was broken");
                 logs.remove(installation.id());
+                costs.remove(installation.id());
             }
         }
     }
@@ -308,6 +410,8 @@ public final class ProgramScheduler {
     private void tick() {
         var now = server.overworld().getGameTime();
         var seen = new HashSet<String>();
+        var budgets = new HashMap<String, Optional<DeviceBudget>>();
+        var pausedNow = new HashSet<String>();
         var gridListeners = false;
         var blockListeners = false;
         for (var installation : devices().installations()) {
@@ -325,6 +429,21 @@ public final class ProgramScheduler {
                 }
                 continue;
             }
+            var budget = budgets.computeIfAbsent(installation.device(), this::budget);
+            if (budget.isEmpty()) {
+                continue;
+            }
+            if (budget.get().paused()) {
+                // Paused, not stopped: runs and triggers wait until the device holds its installations again.
+                if (pausedNow.add(installation.device()) && !paused.contains(installation.device())) {
+                    devices().installations().stream().filter(i -> i.device().equals(installation.device()))
+                            .forEach(i -> log(i.id(), "paused: the device holds less than its installations reserve"));
+                }
+                continue;
+            }
+            if (paused.contains(installation.device())) {
+                log(installation.id(), "resumed");
+            }
             if (installation.trigger() instanceof Installation.Trigger.Schedule schedule && now >= state.nextSchedule) {
                 state.gate.fire(state.runs.size());
                 state.nextSchedule = now + schedule.ticks();
@@ -341,7 +460,8 @@ public final class ProgramScheduler {
                 state.runs.clear();
             }
             if (action != TriggerGate.Action.NONE) {
-                start(installation, installation.function(), installation.args(), domain.get())
+                start(installation, installation.function(), installation.args(), domain.get(),
+                        budget.get().perCall(installation.id()))
                         .ifPresent(run -> {
                             log(installation.id(), "started");
                             state.runs.add(run);
@@ -350,6 +470,9 @@ public final class ProgramScheduler {
             state.runs.removeIf(run -> finished(installation.id(), run));
         }
         states.keySet().retainAll(seen);
+        costs.keySet().retainAll(seen);
+        paused.clear();
+        paused.addAll(pausedNow);
         ProgramEvents.listen(gridListeners, blockListeners);
     }
 
@@ -418,7 +541,8 @@ public final class ProgramScheduler {
         var id = state.installation.id();
         if (state.condition == null && now >= state.nextCondition) {
             state.nextCondition = now + state.installation.interval();
-            state.condition = start(state.installation, condition.function(), condition.args(), domain).orElse(null);
+            state.condition = start(state.installation, condition.function(), condition.args(), domain, 0)
+                    .orElse(null);
         }
         if (state.condition == null) {
             return;
@@ -438,14 +562,16 @@ public final class ProgramScheduler {
         }
     }
 
+    /** Starts a run whose moves take at most {@code perCall} bytes each. */
     private Optional<ProgramRun> start(Installation installation, String function, List<Object> args,
-            FederationDomainId domain) {
+            FederationDomainId domain, long perCall) {
         var texts = devices().pushed(installation.file());
         if (texts.isEmpty()) {
             log(installation.id(), "not started: " + installation.file() + " was never pushed");
             return Optional.empty();
         }
-        var host = new ProgramHost(server, domain, installation.id()).printTo(text -> log(installation.id(), text));
+        var host = new ProgramHost(server, domain, installation.id()).printTo(text -> log(installation.id(), text))
+                .limitMoves(perCall);
         try {
             var program = prepared.computeIfAbsent(installation.file(),
                     file -> ProgramRun.prepare(texts.get(), host.catalog()));
@@ -473,6 +599,18 @@ public final class ProgramScheduler {
 
     /** The device's domain while it is loaded; empty while it is unloaded, gone, or not yet published. */
     private Optional<FederationDomainId> domain(String device) {
+        return loaded(device).flatMap(loaded -> devices().domainOf(loaded.level(), device));
+    }
+
+    /** The device's block entity while it is loaded. */
+    private Optional<ComputingHost> host(String device) {
+        return loaded(device).map(Loaded::host);
+    }
+
+    private record Loaded(ServerLevel level, ComputingHost host) {
+    }
+
+    private Optional<Loaded> loaded(String device) {
         var entry = devices().entry(device);
         if (entry.isEmpty()) {
             return Optional.empty();
@@ -482,10 +620,23 @@ public final class ProgramScheduler {
                 : server.getLevel(ResourceKey.create(Registries.DIMENSION, location));
         var position = entry.get().position();
         if (level == null || !level.isLoaded(position)
-                || !(level.getBlockEntity(position) instanceof ComputingHost)) {
+                || !(level.getBlockEntity(position) instanceof ComputingHost host)) {
             return Optional.empty();
         }
-        return devices().domainOf(level, device);
+        return Optional.of(new Loaded(level, host));
+    }
+
+    /** The loaded device's capacity against what its installations reserve. */
+    private Optional<DeviceBudget> budget(String device) {
+        return host(device).map(host -> {
+            var reserved = new HashMap<String, InstallationCost>();
+            for (var installation : devices().installations()) {
+                if (installation.device().equals(device)) {
+                    reserved.put(installation.id(), cost(installation));
+                }
+            }
+            return DeviceBudget.of(host.capacity(), reserved);
+        });
     }
 
     /** A public function of the pushed version of a file. */

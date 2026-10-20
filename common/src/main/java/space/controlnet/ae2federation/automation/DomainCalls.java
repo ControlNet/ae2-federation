@@ -92,10 +92,11 @@ final class DomainCalls {
             case "ae2.craft" -> craft(key(args.get(0)), (Long) args.get(1), args.get(2));
             // A dry run has no jobs of its own to cancel.
             case "ae2.cancel" -> !simulate && ProgramCrafting.get(server).cancel(owner, key(args.get(0)));
-            case "ae2.import_from" -> importFrom(host, args.get(0), key(args.get(1)), (Long) args.get(2), args.get(3));
-            case "ae2.export_to" -> exportTo(host, args.get(0), key(args.get(1)), (Long) args.get(2), args.get(3));
-            case "ae2.move" -> (Long) args.get(3) > 0 && transfer(domainStorage(args.get(0)), domainStorage(args.get(1)),
-                    key(args.get(2)), (Long) args.get(3)) > 0;
+            case "ae2.import_from" -> importFrom(host, args.get(0), key(args.get(1)),
+                    host.movable(key(args.get(1)), (Long) args.get(2)), args.get(3));
+            case "ae2.export_to" -> exportTo(host, args.get(0), key(args.get(1)),
+                    host.movable(key(args.get(1)), (Long) args.get(2)), args.get(3));
+            case "ae2.move" -> moveWithin(host, args.get(0), args.get(1), key(args.get(2)), (Long) args.get(3));
             case "ae2.free_cpus" -> grids(args.get(0)).stream().mapToLong(ProgramCrafting::freeCpus).sum();
             case "ae2.energy" -> grids(args.get(0)).stream()
                     .mapToDouble(grid -> grid.getEnergyService().getStoredPower()).sum();
@@ -109,7 +110,8 @@ final class DomainCalls {
                     .orElse(0L);
             case "mc.storage" -> stacks(host.place(args.get(0)).filter(place -> !ProgramHost.own(place))
                     .map(DomainCalls::blockStock).orElseGet(KeyCounter::new));
-            case "mc.move" -> move(host, args.get(0), args.get(1), key(args.get(2)), (Long) args.get(3));
+            case "mc.move" -> move(host, args.get(0), args.get(1), key(args.get(2)),
+                    host.movable(key(args.get(2)), (Long) args.get(3)));
             case "mc.break_block" -> breakBlock(host, args.get(0));
             case "mc.place_block" -> placeBlock(host, args.get(0), key(args.get(1)));
             default -> throw new RunError("NotImplementedError", namespace + "." + name + " is not available yet");
@@ -327,6 +329,12 @@ final class DomainCalls {
                 return net.minecraft.network.chat.Component.literal("Federation domain");
             }
         };
+    }
+
+    private boolean moveWithin(ProgramHost host, @Nullable Object source, @Nullable Object target, AEKey key,
+            long amount) {
+        var movable = host.movable(key, amount);
+        return movable > 0 && transfer(domainStorage(source), domainStorage(target), key, movable) > 0;
     }
 
     private boolean importFrom(ProgramHost host, Object block, AEKey key, long amount, @Nullable Object network) {

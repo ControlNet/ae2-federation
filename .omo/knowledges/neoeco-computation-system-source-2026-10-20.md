@@ -96,3 +96,26 @@ Its unused Quantum Cube tile textures fail on dev as well.
 
 The NeoECO 21.2.1 controller has no tooltips on our items (`NETooltips` keys on Neo ECO's own items). Neo ECO's Jade
 plugin may still match our block entity, which subclasses its controller. Not checked.
+
+## Compute and bandwidth (step 3, 2026-10-20)
+
+Where things live:
+- `function/Cost.java` works out an installation's cost from the program alone. `Cost.of` gives the nodes and each
+  move's most. `Cost.nodes` counts the union of several roots, which covers the installed function plus its
+  condition.
+- `automation/InstallationCost.java` turns that into a reservation: CU = nodes, B/s = 20 x the largest move's bytes,
+  both x4 under Parallel. An unbounded move makes the installation elastic, with 1 or 4 shares and no fixed B/s.
+- `automation/DeviceBudget.java` is pure and unit-tested. It has `refusal(...)` for admission, and `of(...)` for
+  `paused()` and `perCall(id)`, the elastic bytes per move.
+- `ComputingHost.capacity()`: the creative device is `UNLIMITED`. The NeoECO device is
+  `(cluster.getCPUAccelerators(), cluster.getTotalStorage())`, and `NONE` when unformed. Both getters are computed
+  live, so a cell inserted shows at once.
+- `ProgramScheduler` holds an in-memory cost cache, keyed by the installation value and the pushed-texts map
+  reference. It admits on install and on any setter (via `update`), and pauses in `tick` before triggers and runs.
+  It passes `perCall` to `ProgramHost.limitMoves`, and `DomainCalls` clamps each move with `host.movable(key, amount)`.
+
+Numbers seen in game: two L4 parallel cores give 128 CU. An L4 cell gives 2^26 B/s. Fluid amounts are mB (AE2 ratio
+8,000 per byte).
+
+Compat tests use the drive's NeoForge item-handler capability to insert a cell. The compattest source set does not
+see NeoECO's classes.

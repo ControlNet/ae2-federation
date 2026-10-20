@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.function;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -40,6 +41,23 @@ public record Cost(int nodes, List<Move> moves) {
     /** The cost of {@code function} in {@code program}, its whole-number arguments by parameter name. */
     public static Cost of(Program program, String function, Map<String, Long> args, Workspace workspace) {
         return new Analysis(program, workspace).run(function, args);
+    }
+
+    /**
+     * The graph nodes of {@code functions} in {@code program} and of every function they call, each counted once: an
+     * installation's compute when it also has a condition to call.
+     */
+    public static int nodes(Program program, Collection<String> functions, Workspace workspace) {
+        var analysis = new Analysis(program, workspace);
+        for (var function : functions) {
+            var start = analysis.lookup(function);
+            if (start == null) {
+                throw new IllegalArgumentException("there is no function " + function);
+            }
+            analysis.closure(start);
+        }
+        return analysis.functions.values().stream()
+                .mapToInt(fn -> Canvas.of(fn.def(), Map.of(), Set.of()).nodes().size()).sum();
     }
 
     /** A function of the programs: {@code file} is {@code null} for the installed function's own file. */
@@ -113,8 +131,10 @@ public record Cost(int nodes, List<Move> moves) {
         }
 
         private void closure(Fn start) {
+            if (functions.putIfAbsent(start.key(), start) != null) {
+                return;
+            }
             var queue = new ArrayDeque<Fn>(List.of(start));
-            functions.put(start.key(), start);
             while (!queue.isEmpty()) {
                 var fn = queue.poll();
                 Effects.calls(fn.def().body(), call -> {

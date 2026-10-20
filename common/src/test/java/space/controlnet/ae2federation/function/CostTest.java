@@ -101,6 +101,24 @@ final class CostTest {
     }
 
     @Test
+    void anInstallationAndItsConditionCountTheFunctionsTheyShareOnce() {
+        var program = program("""
+                def _level(n: int) -> int:
+                    return n + 1
+
+                def low(n: int) -> bool:
+                    return _level(n) < 10
+
+                def main(n: int) -> int:
+                    return _level(n)
+                """);
+        assertEquals(nodes(function(program, "main")) + nodes(function(program, "low"))
+                + nodes(function(program, "_level")), Cost.nodes(program, List.of("main", "low"), WORKSPACE));
+        assertEquals(Cost.of(program, "main", Map.of(), WORKSPACE).nodes(),
+                Cost.nodes(program, List.of("main"), WORKSPACE));
+    }
+
+    @Test
     void aConstantAmountIsItsBound() {
         assertEquals(List.of(OptionalLong.of(16)), most("""
                 def feed_machine(port: Interface, item: Item) -> None:

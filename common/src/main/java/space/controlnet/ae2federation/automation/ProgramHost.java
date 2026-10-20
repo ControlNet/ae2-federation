@@ -55,6 +55,8 @@ public final class ProgramHost implements Evaluator.Host {
     private final DomainCalls domainCalls;
     /** Whether actions only say what they would do: the editor's dry run. */
     private final boolean simulate;
+    /** The most bytes one move takes: the run's share of its device's bandwidth when it is elastic. */
+    private long moveBytes = Long.MAX_VALUE;
     /** Where the program's printed lines go; nowhere until a run's log is given. */
     private java.util.function.Consumer<String> printed = text -> {
     };
@@ -88,6 +90,20 @@ public final class ProgramHost implements Evaluator.Host {
     public ProgramHost printTo(java.util.function.Consumer<String> log) {
         this.printed = log;
         return this;
+    }
+
+    /** Limits each move to {@code bytes} AE2 bytes of its resource. */
+    public ProgramHost limitMoves(long bytes) {
+        this.moveBytes = Math.max(0, bytes);
+        return this;
+    }
+
+    /**
+     * What a move of {@code amount} of {@code key} may take: all of it, or what its byte limit holds. A call asking for
+     * 1,000 when its share holds 200 moves 200 (user, 2026-10-20).
+     */
+    long movable(appeng.api.stacks.AEKey key, long amount) {
+        return Math.min(amount, InstallationCost.times(moveBytes, key.getType().getAmountPerByte()));
     }
 
     /** A selected block shows as the block there now, as {@code Block('minecraft:chest')}. */

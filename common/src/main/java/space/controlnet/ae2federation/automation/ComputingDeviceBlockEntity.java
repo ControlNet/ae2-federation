@@ -27,6 +27,11 @@ public final class ComputingDeviceBlockEntity extends DomainDeviceBlockEntity im
     }
 
     @Override
+    public Capacity capacity() {
+        return Capacity.UNLIMITED;
+    }
+
+    @Override
     public String claim(ServerLevel level, @Nullable String stored) {
         return ComputingDevices.get(level).claim(stored, level, worldPosition);
     }
