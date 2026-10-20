@@ -59,6 +59,25 @@ public final class BundleBeamMesh {
             ThreadLocal.withInitial(() -> new float[CableBeamMesh.MAX_SAMPLES * (MAX_SIDES + 1)]);
     private static final ThreadLocal<float[]> POINTS = ThreadLocal.withInitial(() -> new float[CableBeamMesh.MAX_SAMPLES * 3]);
 
+    /**
+     * cos and sin of {@code TAU * k / sides} for every side count up to {@link #MAX_SIDES}, {@code k} up to two past a
+     * full turn (a core cap reaches {@code k + 2}): taken per vertex, they were most of a mesh's cost.
+     */
+    private static final float[][] COS = new float[MAX_SIDES + 1][];
+    private static final float[][] SIN = new float[MAX_SIDES + 1][];
+
+    static {
+        for (int sides = 1; sides <= MAX_SIDES; sides++) {
+            COS[sides] = new float[sides + 3];
+            SIN[sides] = new float[sides + 3];
+            for (int k = 0; k < sides + 3; k++) {
+                double angle = Math.TAU * k / sides;
+                COS[sides][k] = (float) Math.cos(angle);
+                SIN[sides][k] = (float) Math.sin(angle);
+            }
+        }
+    }
+
     private BundleBeamMesh() {}
 
     /**
@@ -136,14 +155,7 @@ public final class BundleBeamMesh {
                     default -> (.31f + .02f * u) * scale;
                 };
                 float[] radii = RADII.get();
-                for (int i = 0; i < samples.length; i++) {
-                    var sample = samples[i];
-                    for (int k = 0; k <= sides; k++) {
-                        double angle = Math.TAU * k / sides;
-                        float shape = shape(sheath, angle, path, sample, points, i, world, time, style, u);
-                        radii[i * (MAX_SIDES + 1) + k] = base * shape;
-                    }
-                }
+                radii(radii, sheath, base, sides, path, points, world, time, style, u);
                 float r, g, b;
                 switch (sheath) {
                     // An alarm must read red: no pale sheath that would add up to white.
@@ -159,24 +171,39 @@ public final class BundleBeamMesh {
     }
 
     /**
-     * How far a sheath reaches at {@code angle} round sample {@code i}, as a share of its base radius: lobes that
-     * repeat every 2 blocks, as the beam clock does, swelled where a pulse passes. Across an elbow the value read
-     * along the first arm's axis fades into the second's, as an ordinary beam's pulses do.
+     * How far a sheath reaches round each sample, as its base radius times a shape: lobes that repeat every 2 blocks,
+     * as the beam clock does, swelled where a pulse passes. Across an elbow the shape read along the first arm's axis
+     * fades into the second's, as an ordinary beam's pulses do. The pulse and the lobes' phase along the run depend on
+     * the sample only, so they are taken once per sample, not once per side.
      */
-    private static float shape(int sheath, double angle, CableBeamMesh.Path path, CableBeamMesh.Sample sample,
-            float[] points, int i, int[] world, double time, CableBeamStyle style, float u) {
-        float first = along(sheath, angle, path.firstAxis(), points, i, world, time, style, u);
-        if (path.firstAxis() == path.secondAxis()) return first;
-        float second = along(sheath, angle, path.secondAxis(), points, i, world, time, style, u);
-        return first + (second - first) * sample.point().mix();
-    }
-
-    private static float along(int sheath, double angle, int axis, float[] points, int i, int[] world, double time,
-            CableBeamStyle style, float u) {
-        double position = (Math.floorMod(world[axis], 2) + points[i * 3 + axis]) / 2.0;
-        float wave = style.wave(position - time);
-        return 1 + DEPTH[sheath] * (float) Math.sin(LOBES[sheath] * angle + Math.TAU * (position - ROLL[sheath] * time))
-                + .18f * wave * u;
+    private static void radii(float[] radii, int sheath, float base, int sides, CableBeamMesh.Path path,
+            float[] points, int[] world, double time, CableBeamStyle style, float u) {
+        var samples = path.samples();
+        int first = path.firstAxis(), second = path.secondAxis();
+        boolean elbow = first != second;
+        for (int i = 0; i < samples.length; i++) {
+            double position = (Math.floorMod(world[first], 2) + points[i * 3 + first]) / 2.0;
+            float wave = style.wave(position - time);
+            double phase = Math.TAU * (position - ROLL[sheath] * time);
+            float wave2 = 0;
+            double phase2 = 0;
+            if (elbow) {
+                double position2 = (Math.floorMod(world[second], 2) + points[i * 3 + second]) / 2.0;
+                wave2 = style.wave(position2 - time);
+                phase2 = Math.TAU * (position2 - ROLL[sheath] * time);
+            }
+            float mix = samples[i].point().mix();
+            for (int k = 0; k <= sides; k++) {
+                double angle = Math.TAU * k / sides;
+                float shape = 1 + DEPTH[sheath] * (float) Math.sin(LOBES[sheath] * angle + phase) + .18f * wave * u;
+                if (elbow) {
+                    float along = 1 + DEPTH[sheath] * (float) Math.sin(LOBES[sheath] * angle + phase2)
+                            + .18f * wave2 * u;
+                    shape = shape + (along - shape) * mix;
+                }
+                radii[i * (MAX_SIDES + 1) + k] = base * shape;
+            }
+        }
     }
 
     private static void even(Sink sink, CableBeamMesh.Sample[] samples, float[] points, boolean straight, float radius,
@@ -220,8 +247,7 @@ public final class BundleBeamMesh {
 
     private static void around(Sink sink, CableBeamMesh.Sample sample, float[] points, int i, float radius, int k,
             int sides, float r, float g, float b, float alpha) {
-        double angle = Math.TAU * k / sides;
-        float c = (float) Math.cos(angle), s = (float) Math.sin(angle);
+        float c = COS[sides][k], s = SIN[sides][k];
         float nx = c * sample.nx() + s * sample.bx(), ny = c * sample.ny() + s * sample.by(),
                 nz = c * sample.nz() + s * sample.bz();
         sink.vertex(points[i * 3] + radius * nx, points[i * 3 + 1] + radius * ny, points[i * 3 + 2] + radius * nz,

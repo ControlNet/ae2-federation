@@ -43,6 +43,33 @@ final class BundleBeamTest {
     }
 
     @Test
+    void aCellOffItsLayersCornerKnowsFromItsOwnSegmentThatItDrawsNoBeam() {
+        // A cell's renderer skips reading its neighbours when its own segment says it draws nothing: that must be
+        // exactly what the full look says, at runs, branches, turns and ends, for 2x2, 3x3 and non-square bundles.
+        var sets = List.of(withBranch(), new BundleSet(), new BundleSet(), new BundleSet());
+        sets.get(1).form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(8, 2, 2), Direction.Axis.X));
+        sets.get(1).form(new BundleSegment(new BlockPos(3, 3, 0), new BlockPos(5, 6, 2), Direction.Axis.Y));
+        sets.get(2).form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(1, 1, 4), Direction.Axis.Z));
+        sets.get(2).form(new BundleSegment(new BlockPos(2, 0, 3), new BlockPos(5, 1, 4), Direction.Axis.X));
+        sets.get(3).form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(4, 0, 1), Direction.Axis.X));
+        int skipped = 0;
+        for (var set : sets) {
+            for (var segment : set.segments()) {
+                for (var cell : segment.cells()) {
+                    var own = BundleBeam.offCorner(cell, segment);
+                    if (own == null) continue;
+                    skipped++;
+                    assertEquals(beam(set, cell), Optional.of(own), cell.toString());
+                }
+            }
+        }
+        assertTrue(skipped > 50, "cells checked: " + skipped);
+        assertEquals(null, BundleBeam.offCorner(new BlockPos(1, 0, 1),
+                new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(4, 0, 1), Direction.Axis.X)),
+                "a 1x2 bundle draws a beam in every cell");
+    }
+
+    @Test
     void eachLayersCornerCellDrawsTheBeamAcrossTheWholeCrossSection() {
         var set = withBranch();
         var beam = beam(set, new BlockPos(4, 0, 0)).orElseThrow();
