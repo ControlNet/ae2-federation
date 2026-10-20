@@ -249,8 +249,9 @@ public final class NeoEcoComputingCompatGameTests {
         var installed = new java.util.ArrayList<String>();
         helper.startSequence()
                 .thenWaitUntil(() -> helper.assertTrue(helper.getBlockEntity(controller) instanceof ComputingHost host
-                        && host.id() != null && host.capacity().equals(new ComputingHost.Capacity(128, 0)),
-                        "a formed L4 system with two parallel cores and empty drives has 128 CU and no bandwidth"))
+                        && host.id() != null && host.capacity().equals(new ComputingHost.Capacity(128, 0, 4)),
+                        "a formed L4 system with two parallel cores, one threading core and empty drives has 128 CU,"
+                                + " no bandwidth and 4 installations"))
                 .thenExecute(() -> {
                     var device = ((ComputingHost) helper.getBlockEntity(controller)).id();
                     installed.add(scheduler.install(device, file, "ping", List.of()).id());
@@ -267,6 +268,9 @@ public final class NeoEcoComputingCompatGameTests {
                             .bandwidth(), 1L << 26, "an L4 cell gives its bytes");
                     installed.add(scheduler.install(device, file, "give", List.of("port")).id());
                     installed.add(scheduler.install(device, file, "drain", List.of("port")).id());
+                    refused(helper, () -> scheduler.install(device, file, "ping", List.of()), "4 installations");
+                    scheduler.uninstall(installed.remove(0));
+                    scheduler.uninstall(installed.remove(0));
                     // Fluids count in mB, 8,000 to a byte: 64,000 mB of water named by an argument is 8 bytes a tick.
                     var water = scheduler.install(device, file, "stock", List.of("base", "farm", "minecraft:water",
                             "64000")).id();
