@@ -275,7 +275,15 @@ public final class ProgramScheduler {
         var texts = devices().pushed(installation.file()).orElse(null);
         var priced = costs.get(installation.id());
         if (priced == null || !priced.installation().equals(installation) || priced.texts() != texts) {
-            priced = new Priced(installation, texts, price(installation));
+            InstallationCost cost;
+            try {
+                cost = price(installation);
+            } catch (RuntimeException e) {
+                // A program the analysis cannot handle must not stop the server tick; it costs nothing, once logged.
+                log(installation.id(), "cost not worked out: " + e.getMessage());
+                cost = new InstallationCost(0, 0, 0);
+            }
+            priced = new Priced(installation, texts, cost);
             costs.put(installation.id(), priced);
         }
         return priced.cost();
