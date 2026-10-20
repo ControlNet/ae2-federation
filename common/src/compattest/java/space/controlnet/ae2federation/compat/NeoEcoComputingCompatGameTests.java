@@ -47,13 +47,14 @@ public final class NeoEcoComputingCompatGameTests {
     }
 
     /**
-     * The Federation computation system: Neo ECO's computation structure with the Federation controller and a casing
-     * column where Neo ECO's ME interface would go. It forms, becomes a computing device of the domain of the Federation
-     * Cable at its front, which reaches it with a dense arm, and ME cables against its parts stay off their AE2 grid.
+     * The Federation computation system: Neo ECO's computation structure with the Federation controller and a
+     * communication interface where Neo ECO's ME interface would go. It forms and becomes a computing device of the
+     * domain of the Federation Cable against the interface, which reaches it with a dense arm. A cable at the
+     * controller's front stays apart (user, 2026-10-20), and ME cables against its parts stay off their AE2 grid.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 300)
-    public static void federationComputationSystemLinksAtItsFront(GameTestHelper helper) {
-        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+    public static void federationComputationSystemLinksThroughItsInterface(GameTestHelper helper) {
+        var controller = placeLinkedFederationComputationSystem(helper, "eco_computation_system_l4");
         var front = controller.north();
         helper.setBlock(front, space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get());
         // ME cables against its parts' outer faces, where an ME network would try to reach it.
@@ -70,14 +71,16 @@ public final class NeoEcoComputingCompatGameTests {
             helper.assertTrue(formed(state), "the Federation computation system forms without an ME interface");
             helper.assertTrue(helper.getBlockEntity(controller) instanceof ComputingHost host && host.id() != null,
                     "its controller is a computing device with an ID");
-            var node = FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(controller));
-            var domain = FederationDomainRegistryAccess.get(level).federationDomainOf(
-                    FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(front)));
-            helper.assertTrue(domain.isPresent() && domain.get().nodes().contains(node),
-                    "the cable at its front joins it to the domain");
+            helper.assertTrue(sharesDomain(helper, controller, CABLE),
+                    "the cable at its interface joins it to the domain");
+            helper.assertTrue(sharesDomain(helper, INTERFACE, CABLE), "the interface is a node of that domain");
+            helper.assertFalse(sharesDomain(helper, controller, front), "the cable at its front stays apart");
             helper.assertValueEqual(CableVisualConnections.kind(CableVisualConnections.connections(level,
-                    helper.absolutePos(front)), Direction.SOUTH), CableVisualConnections.DENSE,
-                    "the cable reaches the front with a dense arm");
+                    helper.absolutePos(CABLE)), Direction.EAST), CableVisualConnections.DENSE,
+                    "the cable reaches the interface with a dense arm");
+            helper.assertValueEqual(CableVisualConnections.kind(CableVisualConnections.connections(level,
+                    helper.absolutePos(front)), Direction.SOUTH), CableVisualConnections.NONE,
+                    "the cable at its front has no arm toward it");
             var drive = helper.getBlockEntity(controller.east(2).above());
             var grid = drive instanceof AENetworkedBlockEntity networked ? networked.getMainNode().getGrid() : null;
             helper.assertTrue(grid != null, "its parts are on one grid");
@@ -88,6 +91,89 @@ public final class NeoEcoComputingCompatGameTests {
                         "an ME cable at " + probe + " stays off the grid of its parts");
             }
         });
+    }
+
+    /** Without an interface it still forms, and a cable against its side face links nothing. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 300)
+    public static void federationComputationSystemFormsWithoutInterfaces(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        helper.setBlock(CABLE, space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get());
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(formed(helper.getBlockState(controller))
+                        && helper.getBlockEntity(controller) instanceof ComputingHost host && host.id() != null,
+                        "it forms with casing all over its side face"))
+                .thenExecuteAfter(20, () -> helper.assertFalse(sharesDomain(helper, controller, CABLE),
+                        "a cable against casing does not reach it"))
+                .thenSucceed();
+    }
+
+    /**
+     * Up to four interfaces, anywhere in the side face: a fifth, or one in another face, keeps the structure from
+     * forming (user, 2026-10-20).
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void federationComputationSystemTakesFourInterfacesInItsSideFace(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        var side = sideFace(controller);
+        for (var cell : side.subList(0, 4)) helper.setBlock(cell, communicationInterface());
+        var casing = helper.getBlockState(side.get(4));
+        var offSide = controller.east().south();
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(formed(helper.getBlockState(controller)),
+                        "it forms with four interfaces"))
+                .thenExecute(() -> helper.setBlock(side.get(4), communicationInterface()))
+                .thenWaitUntil(() -> helper.assertFalse(formed(helper.getBlockState(controller)),
+                        "a fifth interface keeps it from forming"))
+                .thenExecute(() -> helper.setBlock(side.get(4), casing))
+                .thenWaitUntil(() -> helper.assertTrue(formed(helper.getBlockState(controller)),
+                        "it forms again with four"))
+                .thenExecute(() -> helper.setBlock(offSide, communicationInterface()))
+                .thenWaitUntil(() -> helper.assertFalse(formed(helper.getBlockState(controller)),
+                        "an interface outside the side face keeps it from forming"))
+                .thenSucceed();
+    }
+
+    /**
+     * A 2x2 bundled cable links only to four interfaces that fill a 2x2 square of the side face (user, 2026-10-20):
+     * against three, it stays apart.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void aBundleLinksOnlyToAFilledSquareOfInterfaces(GameTestHelper helper) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        var side = sideFace(controller);
+        // The lower square: the bottom two rows of both columns.
+        var square = List.of(side.get(0), side.get(1), side.get(3), side.get(4));
+        for (var cell : square.subList(0, 3)) helper.setBlock(cell, communicationInterface());
+        var near = side.get(0).west();
+        var far = side.get(4).west(3);
+        for (var cell : BlockPos.betweenClosed(near.west(2), side.get(4).west())) {
+            helper.setBlock(cell.immutable(),
+                    space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get());
+        }
+        var level = helper.getLevel();
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(formed(helper.getBlockState(controller)),
+                        "it forms with three interfaces"))
+                .thenExecute(() -> {
+                    var bundles = space.controlnet.ae2federation.bundle.BundledCables.get(level);
+                    var segment = new space.controlnet.ae2federation.bundle.BundleSegment(
+                            helper.absolutePos(near.west(2)), helper.absolutePos(side.get(4).west()),
+                            Direction.Axis.X);
+                    helper.assertValueEqual(bundles.formable(level, segment), java.util.Optional.empty(),
+                            "the cables bundle");
+                    bundles.form(level, segment);
+                })
+                .thenExecuteAfter(20, () -> helper.assertFalse(sharesDomain(helper, controller, far),
+                        "against three interfaces the bundle stays apart"))
+                .thenExecute(() -> helper.setBlock(square.get(3), communicationInterface()))
+                .thenWaitUntil(() -> {
+                    helper.assertTrue(formed(helper.getBlockState(controller)), "it forms with the fourth");
+                    for (var cell : square) {
+                        helper.assertTrue(sharesDomain(helper, cell, far), "the bundle reaches interface " + cell);
+                    }
+                    helper.assertTrue(sharesDomain(helper, controller, far), "and through them the controller");
+                })
+                .thenSucceed();
     }
 
     /**
@@ -126,9 +212,7 @@ public final class NeoEcoComputingCompatGameTests {
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void federationComputationSystemRunsInstalledPrograms(GameTestHelper helper) {
-        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
-        helper.setBlock(controller.north(), space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE
-                .get());
+        var controller = placeLinkedFederationComputationSystem(helper, "eco_computation_system_l4");
         var file = "neoeco_sched_run";
         writeProgram(helper, file, """
                 def ping() -> str:
@@ -143,7 +227,7 @@ public final class NeoEcoComputingCompatGameTests {
         helper.startSequence()
                 .thenWaitUntil(() -> {
                     device[0] = helper.getBlockEntity(controller) instanceof ComputingHost host ? host.id() : null;
-                    helper.assertTrue(device[0] != null && sharesDomain(helper, controller, controller.north()),
+                    helper.assertTrue(device[0] != null && sharesDomain(helper, controller, CABLE),
                             "waiting for the device to join the cable's domain");
                 })
                 .thenExecute(() -> {
@@ -156,12 +240,12 @@ public final class NeoEcoComputingCompatGameTests {
                     casingState[0] = helper.getBlockState(casing);
                     helper.destroyBlock(casing);
                 })
-                .thenWaitUntil(() -> helper.assertFalse(sharesDomain(helper, controller, controller.north()),
+                .thenWaitUntil(() -> helper.assertFalse(sharesDomain(helper, controller, CABLE),
                         "a broken part takes it out of the cable's domain"))
                 .thenExecute(() -> helper.assertTrue(ComputingDevices.get(level).installation(installation[0])
                         .isPresent(), "its installation stays"))
                 .thenExecute(() -> helper.setBlock(casing, casingState[0]))
-                .thenWaitUntil(() -> helper.assertTrue(sharesDomain(helper, controller, controller.north()),
+                .thenWaitUntil(() -> helper.assertTrue(sharesDomain(helper, controller, CABLE),
                         "it rejoins the cable's domain once the part is back"))
                 .thenExecute(() -> scheduler.trigger(installation[0]))
                 .thenWaitUntil(() -> helper.assertValueEqual(log(scheduler, installation[0]),
@@ -179,9 +263,7 @@ public final class NeoEcoComputingCompatGameTests {
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void aLeverOnItsCasingStartsTheFederationComputationSystem(GameTestHelper helper) {
-        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
-        helper.setBlock(controller.north(), space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE
-                .get());
+        var controller = placeLinkedFederationComputationSystem(helper, "eco_computation_system_l4");
         var lever = controller.above(2);
         helper.setBlock(lever, Blocks.LEVER.defaultBlockState().setValue(BlockStateProperties.ATTACH_FACE,
                 AttachFace.FLOOR));
@@ -197,7 +279,7 @@ public final class NeoEcoComputingCompatGameTests {
         helper.startSequence()
                 .thenWaitUntil(() -> {
                     device[0] = helper.getBlockEntity(controller) instanceof ComputingHost host ? host.id() : null;
-                    helper.assertTrue(device[0] != null && sharesDomain(helper, controller, controller.north()),
+                    helper.assertTrue(device[0] != null && sharesDomain(helper, controller, CABLE),
                             "waiting for the device to join the cable's domain");
                 })
                 .thenExecute(() -> {
@@ -345,14 +427,12 @@ public final class NeoEcoComputingCompatGameTests {
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void anElasticMoveTakesItsShareOfTheFederationComputationSystem(GameTestHelper helper) {
-        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
-        helper.setBlock(controller.north(), space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE
-                .get());
-        var port = controller.north(2);
+        var controller = placeLinkedFederationComputationSystem(helper, "eco_computation_system_l4");
+        var port = CABLE.west();
         helper.setBlock(port, space.controlnet.ae2federation.automation.AutomationRegistration.INTERFACE.get()
                 .defaultBlockState().setValue(BlockStateProperties.FACING, Direction.NORTH));
-        var source = controller.north(3);
-        var target = controller.north(4);
+        var source = port.north();
+        var target = port.north(2);
         helper.setBlock(source, Blocks.CHEST);
         helper.setBlock(target, Blocks.CHEST);
         ((ChestBlockEntity) helper.getBlockEntity(source)).setItem(0, new ItemStack(Items.IRON_INGOT, 64));
@@ -439,9 +519,7 @@ public final class NeoEcoComputingCompatGameTests {
     /** Breaking the controller stops its runs, drops its installations and frees its ID. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void breakingTheFederationComputationSystemDropsItsInstallations(GameTestHelper helper) {
-        var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
-        helper.setBlock(controller.north(), space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE
-                .get());
+        var controller = placeLinkedFederationComputationSystem(helper, "eco_computation_system_l4");
         var file = "neoeco_sched_broken";
         writeProgram(helper, file, """
                 def slow() -> int:
@@ -455,7 +533,7 @@ public final class NeoEcoComputingCompatGameTests {
         helper.startSequence()
                 .thenWaitUntil(() -> {
                     device[0] = helper.getBlockEntity(controller) instanceof ComputingHost host ? host.id() : null;
-                    helper.assertTrue(device[0] != null && sharesDomain(helper, controller, controller.north()),
+                    helper.assertTrue(device[0] != null && sharesDomain(helper, controller, CABLE),
                             "waiting for the device to join the cable's domain");
                 })
                 .thenExecute(() -> {
@@ -505,6 +583,34 @@ public final class NeoEcoComputingCompatGameTests {
             throw new UncheckedIOException(e);
         }
         store.reload();
+    }
+
+    /** The default communication interface, in the cell where Neo ECO's ME interface would go, and its cable. */
+    private static final BlockPos INTERFACE = NeoEcoCompatGameTests.COMPUTATION;
+    private static final BlockPos CABLE = INTERFACE.west();
+
+    /**
+     * {@link #placeFederationComputationSystem} with casing where Neo ECO's ME interface would go, then a
+     * communication interface there and a Federation Cable against it, at {@link #CABLE}.
+     */
+    private static BlockPos placeLinkedFederationComputationSystem(GameTestHelper helper, String controllerId) {
+        var controller = placeFederationComputationSystem(helper, "computation_casing", controllerId);
+        helper.setBlock(INTERFACE, communicationInterface());
+        helper.setBlock(CABLE, space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get());
+        return controller;
+    }
+
+    /** The Federation communication interface, by its ID: the compatibility tests see no Neo ECO class. */
+    private static net.minecraft.world.level.block.Block communicationInterface() {
+        return BuiltInRegistries.BLOCK.get(ResourceLocation.fromNamespaceAndPath("ae2federation",
+                "eco_computation_interface"));
+    }
+
+    /** The side face of {@link #placeFederationComputationSystem}'s structure: front column, then back, bottom up. */
+    private static List<BlockPos> sideFace(BlockPos controller) {
+        var front = controller.west();
+        var back = front.south();
+        return List.of(front.below(), front, front.above(), back.below(), back, back.above());
     }
 
     /**

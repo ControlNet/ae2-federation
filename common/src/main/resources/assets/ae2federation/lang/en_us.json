@@ -50,6 +50,7 @@
   "block.ae2federation.eco_computation_system_l4": "ECO - N4 Federation Computation Subsystem Controller",
   "block.ae2federation.eco_computation_system_l6": "ECO - N6 Federation Computation Subsystem Controller",
   "block.ae2federation.eco_computation_system_l9": "ECO - N9 Federation Computation Subsystem Controller",
+  "block.ae2federation.eco_computation_interface": "Federation Computation Subsystem Communication Interface",
   "block.ae2federation.quantum_cube": "ME Federation Quantum Cube",
   "ae2federation.structure.forming": "This %s is forming; use it again in a moment.",
   "ae2federation.structure.unloaded": "This %s is not formed yet: part of it is in unloaded chunks.",

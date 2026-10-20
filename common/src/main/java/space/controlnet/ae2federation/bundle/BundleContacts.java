@@ -8,13 +8,15 @@ import java.util.function.Predicate;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import space.controlnet.ae2federation.router.CableLinkedBlock;
 import space.controlnet.ae2federation.router.RouterBlock;
 
 /**
  * Which faces of a Federation Cable may link. A bundle never links to an ordinary cable, and two bundles link only
  * where {@link BundleSet#linked} joins them. To a Router or Switch, a bundle links only through a whole contact: its
- * whole end face, or one layer of a side across that side's full width, lying against one formed device body.
+ * whole end face, or one layer of a side across that side's full width, lying against one formed device body or
+ * {@link BundleBody}.
  * Anything less counts as not connected.
  */
 public final class BundleContacts {
@@ -60,7 +62,7 @@ public final class BundleContacts {
             var device = cell.relative(face);
             if (level instanceof Level loaded && !loaded.isLoaded(device)) continue;
             var state = level.getBlockState(device);
-            if (!RouterBlock.formed(state) || body != null && state.getBlock() != body
+            if (!formed(state) || body != null && state.getBlock() != body
                     || !(state.getBlock() instanceof CableLinkedBlock linked && linked.linksCable(state, face.getOpposite()))) {
                 continue;
             }
@@ -133,13 +135,23 @@ public final class BundleContacts {
     /** Whether the devices beside {@code cells} are joined into one body along every edge between them. */
     private static boolean oneBody(BlockGetter level, List<BlockPos> cells, Direction face) {
         for (var cell : cells) {
-            int connections = RouterBlock.connections(level.getBlockState(cell.relative(face)));
+            int connections = connections(level.getBlockState(cell.relative(face)));
             for (var step : Direction.values()) {
                 if (step.getAxis() == face.getAxis() || !cells.contains(cell.relative(step))) continue;
                 if ((connections & 1 << step.get3DDataValue()) == 0) return false;
             }
         }
         return true;
+    }
+
+    /** Whether {@code state} belongs to a formed body: a Router-like device's, or a {@link BundleBody}'s. */
+    private static boolean formed(BlockState state) {
+        return state.getBlock() instanceof BundleBody body ? body.bodyFormed(state) : RouterBlock.formed(state);
+    }
+
+    private static int connections(BlockState state) {
+        return state.getBlock() instanceof BundleBody body ? body.bodyConnections(state)
+                : RouterBlock.connections(state);
     }
 
     private static boolean outsideBundles(Predicate<BlockPos> bundled, List<BlockPos> cells, Direction face) {

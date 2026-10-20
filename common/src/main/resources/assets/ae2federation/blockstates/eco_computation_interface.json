@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "formed=false": {
+      "model": "ae2federation:block/eco_computation/interface"
+    },
+    "facing=north,formed=true": {
+      "model": "ae2federation:block/eco_computation/interface_formed"
+    },
+    "facing=east,formed=true": {
+      "model": "ae2federation:block/eco_computation/interface_formed",
+      "y": 90
+    },
+    "facing=south,formed=true": {
+      "model": "ae2federation:block/eco_computation/interface_formed",
+      "y": 180
+    },
+    "facing=west,formed=true": {
+      "model": "ae2federation:block/eco_computation/interface_formed",
+      "y": 270
+    }
+  }
+}

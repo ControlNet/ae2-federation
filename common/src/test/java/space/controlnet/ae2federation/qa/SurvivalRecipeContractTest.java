@@ -52,6 +52,7 @@ final class SurvivalRecipeContractTest {
         for (var tier : List.of("l4", "l6", "l9")) {
             expected.put("eco_computation_system_" + tier, "ae2federation:eco_computation_system_" + tier + " x1");
         }
+        expected.put("eco_computation_interface", "ae2federation:eco_computation_interface x1");
         assertEquals(expected, results);
     }
 
@@ -206,6 +207,19 @@ final class SurvivalRecipeContractTest {
                     + energy.get(tier) + ","), recipe);
             assertTrue(recipe.contains("\"inputItems\":[" + items + "]"), recipe);
         });
+    }
+
+    // Neo ECO's computation interface recipe with a Federation Router in its centre and Nexus Processors above and
+    // below it (user, 2026-10-20); it loads only while the interface exists.
+    @Test
+    void federationComputationInterfaceIsNeoEcosWithARouterAndNexusProcessors() throws IOException {
+        var recipe = recipes().get("eco_computation_interface");
+        assertTrue(recipe.contains("\"neoforge:conditions\":[{\"type\":\"neoforge:item_exists\","
+                + "\"item\":\"ae2federation:eco_computation_interface\"}]"), recipe);
+        assertTrue(recipe.contains("\"pattern\":[\"ABA\",\"CDC\",\"ABA\"]"), recipe);
+        assertTrue(recipe.contains("\"key\":{\"A\":{\"item\":\"neoecoae:computation_casing\"},"
+                + "\"B\":{\"item\":\"ae2federation:nexus_processor\"},\"C\":{\"item\":\"ae2:singularity\"},"
+                + "\"D\":{\"item\":\"ae2federation:router\"}}"), recipe);
     }
 
     @Test

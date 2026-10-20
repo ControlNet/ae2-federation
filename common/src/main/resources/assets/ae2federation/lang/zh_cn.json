@@ -50,6 +50,7 @@
   "block.ae2federation.eco_computation_system_l4": "ECO - N4 联邦计算子系统主机",
   "block.ae2federation.eco_computation_system_l6": "ECO - N6 联邦计算子系统主机",
   "block.ae2federation.eco_computation_system_l9": "ECO - N9 联邦计算子系统主机",
+  "block.ae2federation.eco_computation_interface": "联邦计算子系统通讯接口",
   "block.ae2federation.quantum_cube": "ME联邦量子立方",
   "ae2federation.structure.forming": "该%s正在成形，请稍后再试。",
   "ae2federation.structure.unloaded": "该%s尚未成形：部分方块位于未加载的区块。",

@@ -18,6 +18,11 @@ public enum FederationDomainNodeKind {
     AUTOMATION_INTERFACE,
     /** A computing device, which runs the functions installed on it; a device, as an Endpoint. */
     COMPUTING_DEVICE,
+    /**
+     * A communication interface of a Federation computation system: links a cable to its controller, which counts as
+     * the device, so cable passes through it as through a Switch.
+     */
+    COMPUTING_INTERFACE,
     /** A node no structural rule treats specially, such as a test's synthetic node. */
     OTHER
 }

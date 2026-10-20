@@ -2,8 +2,9 @@ package space.controlnet.ae2federation.automation.neoeco;
 
 import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.blocks.entity.computation.ECOComputationSystemBlockEntity;
+import java.util.Map;
+import java.util.TreeMap;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -17,12 +18,15 @@ import space.controlnet.ae2federation.automation.ComputingHost;
 import space.controlnet.ae2federation.automation.DomainDevice;
 import space.controlnet.ae2federation.automation.ProgramScheduler;
 import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
-import space.controlnet.ae2federation.domain.port.FederationPort;
+import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainPortId;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 
 /**
  * The controller of a Federation computation system built from Neo ECO's computation parts: Neo ECO's own controller
- * block entity, so Neo ECO's structure checks find it, and a computing device of its Federation domain through its
- * front. Its installations are kept in {@link ComputingDevices}, as the Creative Computing Device's are.
+ * block entity, so Neo ECO's structure checks find it, and a computing device of its Federation domain through the
+ * structure's communication interfaces. Its installations are kept in {@link ComputingDevices}, as the Creative
+ * Computing Device's are.
  */
 public final class EcoComputationSystemBlockEntity extends ECOComputationSystemBlockEntity
         implements ComputingHost, DomainDevice.Host {
@@ -48,6 +52,23 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
         var cluster = getCluster();
         return cluster == null ? Capacity.NONE
                 : new Capacity(cluster.getCPUAccelerators(), cluster.getTotalStorage(), cluster.getMaxThreads());
+    }
+
+    /** A link to each communication interface of the formed structure, which names this node back. */
+    @Override
+    public Map<String, FederationDomainPortEvidence> remotePorts() {
+        var cluster = getCluster();
+        if (cluster == null || !(level instanceof ServerLevel serverLevel)) return Map.of();
+        var ports = new TreeMap<String, FederationDomainPortEvidence>();
+        cluster.getBlockEntities().forEachRemaining(member -> {
+            if (member instanceof EcoComputationInterfaceBlockEntity part) {
+                ports.put(EcoComputationInterfaceBlockEntity.portOf(part.getBlockPos()),
+                        new FederationDomainPortEvidence.Federation(new FederationDomainPortId(
+                                FederationDomainRegistryAccess.nodeId(serverLevel, part.getBlockPos()),
+                                EcoComputationInterfaceBlockEntity.CONTROLLER_PORT)));
+            }
+        });
+        return ports;
     }
 
     @Override
@@ -77,17 +98,13 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
                 : ComputingDevices.get(level).setAlias(level, id(), alias);
     }
 
-    public @Nullable FederationPort federationPort(@Nullable Direction face) {
-        return device.federationPort(face);
-    }
-
     /** Neo ECO's controller tick, then the device's. */
     public static void serverTick(Level level, BlockPos position, BlockState state, EcoComputationSystemBlockEntity entity) {
         entity.tick(level, position, state);
         entity.device.tick();
     }
 
-    /** A neighbour changed: a cable at the front, or a redstone signal that starts the redstone-triggered installations. */
+    /** A neighbour changed: a redstone signal starts the redstone-triggered installations. */
     public void neighborChanged(BlockPos neighborPosition) {
         device.neighborChanged(neighborPosition);
         if (!(level instanceof ServerLevel serverLevel)) {
@@ -104,7 +121,7 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
         }
     }
 
-    /** The structure formed or broke: the front links only while it is formed. */
+    /** The structure formed or broke: it links to the interfaces only while it is formed. */
     @Override
     public void updateState(boolean updateExposed) {
         super.updateState(updateExposed);

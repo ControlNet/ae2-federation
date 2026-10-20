@@ -163,6 +163,23 @@ final class CableCapacityCounterTest {
     }
 
     @Test
+    void aComputationSystemCountsOnceThroughAllItsInterfaces() {
+        var graph = new Graph();
+        var first = graph.node(FederationDomainNodeKind.CABLE);
+        var second = graph.node(FederationDomainNodeKind.CABLE);
+        var one = graph.node(FederationDomainNodeKind.COMPUTING_INTERFACE);
+        var two = graph.node(FederationDomainNodeKind.COMPUTING_INTERFACE);
+        var controller = graph.node(FederationDomainNodeKind.COMPUTING_DEVICE);
+        // Two cells of one bundle, each against an interface of the same system.
+        graph.link(first, second).link(first, one).link(second, two).link(one, controller).link(two, controller);
+        graph.link(first, graph.node(FederationDomainNodeKind.ENDPOINT));
+
+        var demand = graph.count();
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(first), "the system and the Endpoint");
+        assertFalse(demand.containsKey(one), "an interface carries no demand of its own");
+    }
+
+    @Test
     void aNetworkOnTwoSwitchesCountsOncePerRegionAndOnceInTheDomain() {
         var graph = new Graph();
         var left = graph.node(FederationDomainNodeKind.ROUTER);

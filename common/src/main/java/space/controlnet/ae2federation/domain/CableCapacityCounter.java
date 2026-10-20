@@ -90,7 +90,8 @@ public final class CableCapacityCounter {
     private static boolean passable(FederationDomainNodeKind kind) {
         return kind == FederationDomainNodeKind.CABLE || kind == FederationDomainNodeKind.SWITCH
                 || kind == FederationDomainNodeKind.P2P_TUNNEL || kind == FederationDomainNodeKind.BEAM_FORMER
-                || kind == FederationDomainNodeKind.QUANTUM_CUBE;
+                || kind == FederationDomainNodeKind.QUANTUM_CUBE
+                || kind == FederationDomainNodeKind.COMPUTING_INTERFACE;
     }
 
     /**

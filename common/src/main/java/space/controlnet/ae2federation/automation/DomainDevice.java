@@ -32,11 +32,19 @@ public final class DomainDevice {
         /** The node kind the block publishes. */
         FederationDomainNodeKind kind();
 
-        /** Claims the stored ID, or draws a new one, in the server-wide index. */
-        String claim(ServerLevel level, @Nullable String stored);
+        /**
+         * Claims the stored ID, or draws a new one, in the server-wide index; null for a node without an ID of its own,
+         * such as a computation system's interface.
+         */
+        @Nullable String claim(ServerLevel level, @Nullable String stored);
 
         /** The block was broken: frees its ID. */
         void release(ServerLevel level, String id);
+
+        /** Links to nodes that are not beside the block, named on both ends, as a Router's remote ports are. */
+        default Map<String, FederationDomainPortEvidence> remotePorts() {
+            return Map.of();
+        }
     }
 
     private final BlockEntity entity;
@@ -79,7 +87,7 @@ public final class DomainDevice {
             return;
         }
         var claimed = host.claim(serverLevel, id);
-        if (!claimed.equals(id)) {
+        if (!java.util.Objects.equals(claimed, id)) {
             id = claimed;
             entity.setChanged();
         }
@@ -103,6 +111,11 @@ public final class DomainDevice {
             }
         }
         publish();
+    }
+
+    /** The host's remote ports changed: publishes the node again on the next tick. */
+    public void remotePortsChanged() {
+        dirty = true;
     }
 
     /** A server tick: publishes the node again when a port's peer changed. */
@@ -137,6 +150,7 @@ public final class DomainDevice {
                                 peer.outwardFace().getSerializedName())));
             }
         });
+        evidence.putAll(host.remotePorts());
         if (FederationDomainRegistryAccess.get(serverLevel).upsertNode(new FederationDomainNodeEvidence(nodeId,
                 host.kind(), evidence))) {
             FederationBindingRefresh.request(serverLevel);

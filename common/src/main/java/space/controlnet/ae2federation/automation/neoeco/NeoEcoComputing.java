@@ -36,6 +36,12 @@ public final class NeoEcoComputing {
     public static final Map<ECOTier, DeferredBlock<EcoComputationSystemBlock>> CONTROLLERS = new EnumMap<>(ECOTier.class);
     public static final Map<ECOTier, DeferredHolder<BlockEntityType<?>, BlockEntityType<EcoComputationSystemBlockEntity>>>
             CONTROLLER_TYPES = new EnumMap<>(ECOTier.class);
+    /** The communication interface, through which cable reaches a controller. */
+    public static final DeferredBlock<EcoComputationInterfaceBlock> INTERFACE = BLOCKS.registerBlock(
+            "eco_computation_interface", EcoComputationInterfaceBlock::new,
+            BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).noOcclusion());
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<EcoComputationInterfaceBlockEntity>>
+            INTERFACE_TYPE;
 
     static {
         for (var tier : ECOTier.values()) {
@@ -66,6 +72,21 @@ public final class NeoEcoComputing {
         }
     }
 
+    static {
+        ITEMS.registerSimpleBlockItem(INTERFACE);
+        INTERFACE_TYPE = BLOCK_ENTITY_TYPES.register("eco_computation_interface", () -> {
+            var holder = new BlockEntityType<?>[1];
+            @SuppressWarnings("unchecked")
+            var type = (BlockEntityType<EcoComputationInterfaceBlockEntity>) BlockEntityType.Builder.of(
+                    (position, state) -> new EcoComputationInterfaceBlockEntity(holder[0], position, state),
+                    INTERFACE.get()).build(null);
+            holder[0] = type;
+            INTERFACE.get().setBlockEntity(EcoComputationInterfaceBlockEntity.class, type, null,
+                    EcoComputationInterfaceBlockEntity::serverTick);
+            return type;
+        });
+    }
+
     private NeoEcoComputing() {
     }
 
@@ -80,13 +101,12 @@ public final class NeoEcoComputing {
     private static void fillCreativeTab(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == FederationCreativeTab.MAIN.getKey()) {
             CONTROLLERS.values().forEach(event::accept);
+            event.accept(INTERFACE);
         }
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        for (var type : CONTROLLER_TYPES.values()) {
-            event.registerBlockEntity(FederationPortCapability.BLOCK, type.get(),
-                    EcoComputationSystemBlockEntity::federationPort);
-        }
+        event.registerBlockEntity(FederationPortCapability.BLOCK, INTERFACE_TYPE.get(),
+                EcoComputationInterfaceBlockEntity::federationPort);
     }
 }

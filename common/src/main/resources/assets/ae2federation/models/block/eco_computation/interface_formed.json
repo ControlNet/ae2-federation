@@ -1,0 +1,62 @@
+{
+  "parent": "block/block",
+  "render_type": "cutout",
+  "textures": {
+    "particle": "ae2federation:block/eco_computation/interface",
+    "block": "ae2federation:block/eco_computation/interface",
+    "lights": "ae2federation:block/eco_computation/interface_light"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        -0.04
+      ],
+      "to": [
+        16,
+        16,
+        -0.04
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#block"
+        }
+      }
+    },
+    {
+      "from": [
+        0,
+        0,
+        -0.02
+      ],
+      "to": [
+        16,
+        16,
+        -0.02
+      ],
+      "shade": false,
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#lights",
+          "neoforge_data": {
+            "block_light": 15,
+            "sky_light": 15
+          }
+        }
+      }
+    }
+  ]
+}
