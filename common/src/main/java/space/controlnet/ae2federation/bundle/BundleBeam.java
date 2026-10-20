@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.function.IntFunction;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
 /**
@@ -30,9 +31,7 @@ public record BundleBeam(Direction.Axis axis, int mask, int length, int side) {
         var axis = look.axis();
         int side = look.side();
         var none = new BundleBeam(axis, 0, 0, side);
-        for (var across : BundleSegment.across(axis)) {
-            if (pos.get(across) != segment.min().get(across)) return Optional.of(none);
-        }
+        if (offCorner(pos, segment) != null) return Optional.of(none);
         var before = Direction.fromAxisAndDirection(axis, Direction.AxisDirection.NEGATIVE);
         var after = before.getOpposite();
         if (look.jointsBefore() != 0) return Optional.of(none);
@@ -47,6 +46,19 @@ public record BundleBeam(Direction.Axis axis, int mask, int length, int side) {
             if (look.jointAfter(toward)) mask |= bit(toward);
         }
         return Optional.of(new BundleBeam(axis, mask, side, side));
+    }
+
+    /**
+     * The beam of a cell that draws none because it lies off the low corner of its layer in a 2x2 or 3x3 bundle, or
+     * null for any other cell. It needs only the cell's own segment, so such a cell need not read its neighbours.
+     */
+    public static @Nullable BundleBeam offCorner(BlockPos pos, BundleSegment segment) {
+        int side = segment.shape().filter(shape -> shape.narrow() == shape.wide()).map(BundleShape::narrow).orElse(0);
+        if (side == 0) return null;
+        for (var across : BundleSegment.across(segment.axis())) {
+            if (pos.get(across) != segment.min().get(across)) return new BundleBeam(segment.axis(), 0, 0, side);
+        }
+        return null;
     }
 
     /** How far the box reaches along {@code toward}'s axis, in blocks: across the bundle, or its length along it. */

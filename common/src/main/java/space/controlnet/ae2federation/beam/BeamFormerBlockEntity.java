@@ -140,7 +140,7 @@ public final class BeamFormerBlockEntity extends RouterBlockEntity {
         beamLoad = Double.isNaN(beamLoad) ? target
                 : CableBeamStyle.smooth(beamLoad, target, Math.max(0, nanos - beamNanos) / 1e9);
         beamNanos = nanos;
-        return beamLoad;
+        return CableBeamStyle.drawn(beamLoad, target);
     }
 
     @Override

@@ -5,6 +5,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -110,7 +111,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         // An unpowered domain's beams alarm at the width of no load.
         var style = cable.unpowered() ? CableBeamStyle.fromLoad(0, true)
                 : CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
-        int mask = cable.flowMask(), detail = CableBeamMesh.detail(distance);
+        int detail = CableBeamMesh.detail(distance);
         long tick = level.getGameTime();
         // A 2x2 or 3x3 bundle draws one beam down its middle, over the box its corner cell names.
         var bundle = cable.bundleBeam();
@@ -122,7 +123,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
             }
             return;
         }
-        emitCell(stack, buffers, mask, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail);
+        emitCell(stack, buffers, cable.flowMask(), pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail);
         endSceneBatch(level, buffers);
     }
 
@@ -151,17 +152,22 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
 
     /**
      * A plasma beam, glow then core. Its sheaths and halo fade toward their outlines as they turn from the eye: the
-     * cached mesh carries normals, and the fade is taken here per vertex, since it depends on the view.
+     * cached mesh carries normals, and the fade is taken here per vertex, since it depends on the view
+     * ({@link PlasmaFade}).
      */
     private static void emitPlasma(PoseStack stack, MultiBufferSource buffers, PlasmaLayer layers) {
         var pose = stack.last();
         var matrix = pose.pose();
         var normal = pose.transformNormal(0, 1, 0, new Vector3f());
-        // From the block to the eye's space: there the eye sits at the origin, or looks down -Z in an orthographic
-        // view, as a guidebook scene may use.
-        var view = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(matrix);
-        var turn = view.normal(new Matrix3f());
+        var modelView = RenderSystem.getModelViewMatrix();
         boolean orthographic = RenderSystem.getProjectionMatrix().m23() == 0;
+        if (PlasmaFade.movesOnly(matrix) && PlasmaFade.turnsOnly(modelView)) {
+            emitMoved(matrix, modelView, orthographic, normal, buffers, layers);
+            return;
+        }
+        // From the block to the eye's space, as a guidebook scene's scaled and turned pose needs.
+        var view = new Matrix4f(modelView).mul(matrix);
+        var turn = view.normal(new Matrix3f());
         var position = new Vector3f();
         var eye = new Vector3f();
         var facing = new Vector3f();
@@ -169,22 +175,41 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
             var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
             float[] layer = layers.get(pass == 0);
             for (int i = 0; i < layer.length; i += CableBeamFrame.BUNDLE_STRIDE) {
-                float alpha = layer[i + 6];
-                if (pass == 0) {
-                    view.transformPosition(layer[i], layer[i + 1], layer[i + 2], eye);
-                    turn.transform(layer[i + 7], layer[i + 8], layer[i + 9], facing).normalize();
-                    if (orthographic) eye.set(0, 0, 1);
-                    else eye.negate().normalize();
-                    alpha = Math.min(1, alpha * BundleBeamMesh.fade(facing.x(), facing.y(), facing.z(), eye.x(),
-                            eye.y(), eye.z()));
-                }
+                float alpha = pass != 0 ? layer[i + 6] : PlasmaFade.inEye(view, turn, orthographic, layer[i],
+                        layer[i + 1], layer[i + 2], layer[i + 7], layer[i + 8], layer[i + 9], layer[i + 6], eye, facing);
                 matrix.transformPosition(layer[i], layer[i + 1], layer[i + 2], position);
-                int color = FastColor.ARGB32.color((int) (alpha * 255), (int) (layer[i + 3] * 255),
-                        (int) (layer[i + 4] * 255), (int) (layer[i + 5] * 255));
-                out.addVertex(position.x(), position.y(), position.z(), color, .5f, .5f, OverlayTexture.NO_OVERLAY,
-                        LightTexture.FULL_BRIGHT, normal.x(), normal.y(), normal.z());
+                vertex(out, position.x(), position.y(), position.z(), alpha, layer, i, normal);
             }
         }
+    }
+
+    /** {@link #emitPlasma} for a pose that only moves the beam to the camera, under a model-view that only turns. */
+    private static void emitMoved(Matrix4f matrix, Matrix4f modelView, boolean orthographic, Vector3f normal,
+            MultiBufferSource buffers, PlasmaLayer layers) {
+        float ox = matrix.m30(), oy = matrix.m31(), oz = matrix.m32();
+        float ex = modelView.m02(), ey = modelView.m12(), ez = modelView.m22();
+        for (int pass = 0; pass < 2; pass++) {
+            var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
+            float[] layer = layers.get(pass == 0);
+            for (int i = 0; i < layer.length; i += CableBeamFrame.BUNDLE_STRIDE) {
+                float x = layer[i] + ox, y = layer[i + 1] + oy, z = layer[i + 2] + oz;
+                float alpha = layer[i + 6];
+                if (pass == 0) {
+                    alpha = orthographic
+                            ? PlasmaFade.movedOrthographic(ex, ey, ez, layer[i + 7], layer[i + 8], layer[i + 9], alpha)
+                            : PlasmaFade.moved(x, y, z, layer[i + 7], layer[i + 8], layer[i + 9], alpha);
+                }
+                vertex(out, x, y, z, alpha, layer, i, normal);
+            }
+        }
+    }
+
+    private static void vertex(VertexConsumer out, float x, float y, float z, float alpha, float[] layer, int i,
+            Vector3f normal) {
+        int color = FastColor.ARGB32.color((int) (alpha * 255), (int) (layer[i + 3] * 255),
+                (int) (layer[i + 4] * 255), (int) (layer[i + 5] * 255));
+        out.addVertex(x, y, z, color, .5f, .5f, OverlayTexture.NO_OVERLAY, LightTexture.FULL_BRIGHT, normal.x(),
+                normal.y(), normal.z());
     }
 
     /**
