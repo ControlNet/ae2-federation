@@ -23,6 +23,9 @@ final class BundleBeamMeshTest {
     /** A joint where the run turns upward. */
     private static final BundleBeam TURN = new BundleBeam(Direction.Axis.X, mask(Direction.WEST, Direction.UP), 2);
 
+    /** Taken from the 2x2 beam before the 3x3 one got scales of its own (commit 3d2ff190). */
+    private static final long TWO_BY_TWO_FINGERPRINT = 3090890168832736037L;
+
     private record Vertex(float x, float y, float z, float r, float g, float b, float a, float nx, float ny, float nz) {
     }
 
@@ -91,6 +94,56 @@ final class BundleBeamMeshTest {
         assertEquals(0, low, .2);
         assertEquals(3, high, .2);
         assertEquals(3, top, .2);
+    }
+
+    @Test
+    void a3x3CoreFitsTheBoreAtFullLoadDuringAnAlarm() {
+        var run = new BundleBeam(Direction.Axis.X, mask(Direction.EAST, Direction.WEST), 1, 3);
+        double widest = 0;
+        // An alarm breathes widest where its clock is at 0.
+        for (var v : emit(run, 0, 0, 0, CableBeamStyle.fromLoad(1.25, true), 0, false)) {
+            widest = Math.max(widest, Math.hypot(v.y() - 1.5, v.z() - 1.5));
+        }
+        assertTrue(widest > .2 && widest <= .225, "core " + widest);
+    }
+
+    @Test
+    void a3x3GlowIsTheTwoByTwoGlowOneAndAHalfTimesAsWide() {
+        var huge = new BundleBeam(Direction.Axis.X, mask(Direction.EAST, Direction.WEST), 1, 3);
+        for (double load : LOADS) {
+            var style = CableBeamStyle.fromLoad(load);
+            for (long tick = 0; tick < 64; tick += 13) {
+                double large = 0, wide = 0;
+                for (var v : emit(RUN, 0, tick, .5f, style, 0, true)) {
+                    large = Math.max(large, Math.hypot(v.y() - 1, v.z() - 1));
+                }
+                for (var v : emit(huge, 0, tick, .5f, style, 0, true)) {
+                    wide = Math.max(wide, Math.hypot(v.y() - 1.5, v.z() - 1.5));
+                }
+                assertEquals(1.5, wide / large, 1e-4, "load " + load + " tick " + tick);
+            }
+        }
+        assertEquals(both(RUN, CableBeamStyle.fromLoad(.6), 0).size(),
+                both(huge, CableBeamStyle.fromLoad(.6), 0).size(), "the same vertices, only wider");
+    }
+
+    @Test
+    void the2x2BeamIsUnchangedByThe3x3Scales() {
+        // Every 2x2 vertex, bit for bit, as before the 3x3 beam had scales of its own.
+        long hash = 17;
+        for (var beam : List.of(RUN, BRANCH, TURN)) {
+            for (double load : LOADS) {
+                for (int detail = 0; detail < 3; detail++) {
+                    for (var v : both(beam, CableBeamStyle.fromLoad(load), detail)) {
+                        for (float f : new float[] {v.x(), v.y(), v.z(), v.r(), v.g(), v.b(), v.a(), v.nx(), v.ny(),
+                                v.nz()}) {
+                            hash = hash * 31 + Float.floatToIntBits(f);
+                        }
+                    }
+                }
+            }
+        }
+        assertEquals(TWO_BY_TWO_FINGERPRINT, hash);
     }
 
     @Test
