@@ -78,7 +78,7 @@ final class FederationGraphView {
     /** Between an input row and the output label on the same line. */
     private static final int APART = 10;
     /** The canvas's margin around the cards. */
-    private static final int MARGIN = 10;
+    static final int MARGIN = 10;
     /** A function opens zoomed out to show it whole, but never below this, where the pixel font blurs. */
     private static final float MIN_OPEN_SCALE = 0.75f;
     /** Longer literals are cut on the card. */
@@ -338,6 +338,11 @@ final class FederationGraphView {
         if (own != null) return new Argument(own, false);
         var install = installed.apply(name).orElse(List.of());
         if (index < install.size()) return new Argument(install.get(index), false);
+        return plain(param);
+    }
+
+    /** A parameter's value when nothing is typed or installed for it: its default, else its type's plain value. */
+    private static Argument plain(Canvas.Param param) {
         if (!(param.defaultValue() instanceof Canvas.Input.Empty)) {
             return new Argument(param.defaultValue() instanceof Canvas.Input.Literal literal
                     && literal.value() instanceof Expr.StrLit string ? string.value()
@@ -372,23 +377,7 @@ final class FederationGraphView {
             drawn.put(card.id(), measure(card, font, dryValue(card, font), dryState(card),
                     card.card().node().kind() == Canvas.Kind.ENTRY ? params : List.of()));
         }
-        var boxes = Layout.of(shownGraph.canvas(), new Layout.Metrics() {
-            public int width(Layout.Card card) {
-                return drawn.get(card.id()).width();
-            }
-
-            public int height(Layout.Card card) {
-                return drawn.get(card.id()).height();
-            }
-
-            public int inputY(Layout.Card card, int row) {
-                return drawn.get(card.id()).rowY(row);
-            }
-
-            public int outputY(Layout.Card card) {
-                return FIRST;
-            }
-        });
+        var boxes = places(shownGraph, drawn);
         int right = 0;
         int bottom = 0;
         for (var box : boxes.values()) {
@@ -407,14 +396,47 @@ final class FederationGraphView {
         extentY = bottom + 2 * MARGIN;
     }
 
+    /** Where {@link Layout} puts each measured card, its top left without the canvas's margin. */
+    static Map<String, Layout.Rect> places(ScriptChecker.Graph shownGraph, Map<String, Drawn> drawn) {
+        return Layout.of(shownGraph.canvas(), new Layout.Metrics() {
+            public int width(Layout.Card card) {
+                return drawn.get(card.id()).width();
+            }
+
+            public int height(Layout.Card card) {
+                return drawn.get(card.id()).height();
+            }
+
+            public int inputY(Layout.Card card, int row) {
+                return drawn.get(card.id()).rowY(row);
+            }
+
+            public int outputY(Layout.Card card) {
+                return FIRST;
+            }
+        });
+    }
+
     /** The function's parameters with their dry-run values, for its card's rows. */
     private List<ParamRow> params(ScriptChecker.Graph shownGraph) {
         var params = shownGraph.canvas().nodes().get(0).params();
+        var texts = new ArrayList<String>();
+        for (int i = 0; i < params.size(); i++) texts.add(argument(function, params, i).text());
+        return params(params, texts);
+    }
+
+    /** The parameters with their plain values, as a function's card shows them before any dry run. */
+    static List<ParamRow> plainParams(ScriptChecker.Graph shownGraph) {
+        var params = shownGraph.canvas().nodes().get(0).params();
+        return params(params, params.stream().map(param -> plain(param).text()).toList());
+    }
+
+    private static List<ParamRow> params(List<Canvas.Param> params, List<String> texts) {
         var font = net.minecraft.client.Minecraft.getInstance().font;
         var rows = new ArrayList<ParamRow>();
         for (int i = 0; i < params.size(); i++) {
             var param = params.get(i);
-            var text = argument(function, params, i).text();
+            var text = texts.get(i);
             var icon = resource(param.type()) ? CompletionPopup.icon(text) : ItemStack.EMPTY;
             var shownText = icon.isEmpty() ? cut(text) : cut(icon.getHoverName().getString());
             rows.add(new ParamRow(param.name(), param.type(), text, shownText, icon,
@@ -606,7 +628,7 @@ final class FederationGraphView {
     }
 
     /** How the dry run met a card: not asked yet, reached, not reached, or stopped there. */
-    private enum DryState {
+    enum DryState {
         NONE,
         RAN,
         SKIPPED,
@@ -614,15 +636,15 @@ final class FederationGraphView {
     }
 
     /** A dry-run value on a card: its text, an item's icon, its well's width, and whether it is the error. */
-    private record DryValue(String text, ItemStack icon, int width, boolean error) {
+    record DryValue(String text, ItemStack icon, int width, boolean error) {
     }
 
     /** A parameter's row on the function's card: the dry run's value as text, and as shown. */
-    private record ParamRow(String name, TypeRef type, String text, String shown, ItemStack icon, int width) {
+    record ParamRow(String name, TypeRef type, String text, String shown, ItemStack icon, int width) {
     }
 
     /** What a row shows after its label: a variable's chip, or a literal in a field; nothing for a wire. */
-    private record Value(String text, ItemStack icon, boolean chip, int color, int width) {
+    record Value(String text, ItemStack icon, boolean chip, int color, int width) {
     }
 
     /** Where a row's value sits on its card, after its label. */
@@ -634,7 +656,7 @@ final class FederationGraphView {
      * A card measured for drawing: its rows' values, its size, where its first input row is, its dry-run value and
      * state, and the function's parameters on its own card.
      */
-    private record Drawn(GraphCards.Card card, List<Value> values, int width, int height, int firstRow,
+    record Drawn(GraphCards.Card card, List<Value> values, int width, int height, int firstRow,
             boolean execIn, @Nullable DryValue dry, DryState state, List<ParamRow> params) {
         int rowY(int row) {
             return FIRST + ROW * (firstRow + row);
@@ -645,7 +667,7 @@ final class FederationGraphView {
         }
     }
 
-    private static Drawn measure(GraphCards.Card card, net.minecraft.client.gui.Font font, @Nullable DryValue dry,
+    static Drawn measure(GraphCards.Card card, net.minecraft.client.gui.Font font, @Nullable DryValue dry,
             DryState state, List<ParamRow> params) {
         var values = new ArrayList<Value>();
         for (var row : card.rows()) values.add(value(row, font));
@@ -702,11 +724,11 @@ final class FederationGraphView {
     }
 
     /** A wire between two points of the canvas, in a colour and a width. */
-    private record Wire(float fromX, float fromY, float toX, float toY, int color, float width) {
+    record Wire(float fromX, float fromY, float toX, float toY, int color, float width) {
     }
 
     /** Exec links from their output to the next card's top left; values from their output to the row they feed. */
-    private static List<Wire> wires(ScriptChecker.Graph shownGraph, Map<String, Drawn> drawn,
+    static List<Wire> wires(ScriptChecker.Graph shownGraph, Map<String, Drawn> drawn,
             Map<String, Layout.Rect> boxes) {
         var wires = new ArrayList<Wire>();
         for (var link : shownGraph.canvas().links()) {
@@ -750,13 +772,16 @@ final class FederationGraphView {
         @OnlyIn(Dist.CLIENT)
         public void drawBackgroundAdditional(GUIContext context) {
             super.drawBackgroundAdditional(context);
-            float x = getPositionX();
-            float y = getPositionY();
-            for (var wire : wires) {
-                DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), FederationProcessingGraph
-                        .polyline(new WireCurve(x + wire.fromX(), y + wire.fromY(), x + wire.toX(), y + wire.toY())),
-                        wire.color(), wire.color(), wire.width());
-            }
+            paintWires(context.graphics, wires, getPositionX(), getPositionY());
+        }
+    }
+
+    /** The wires with the canvas's top left at {@code (x, y)}. */
+    static void paintWires(net.minecraft.client.gui.GuiGraphics graphics, List<Wire> wires, float x, float y) {
+        for (var wire : wires) {
+            DrawerHelper.drawTexLines(graphics, LDLibRenderTypes.graphWire(), FederationProcessingGraph
+                    .polyline(new WireCurve(x + wire.fromX(), y + wire.fromY(), x + wire.toX(), y + wire.toY())),
+                    wire.color(), wire.color(), wire.width());
         }
     }
 
@@ -825,6 +850,75 @@ final class FederationGraphView {
         for (int i = 0; i < 5; i++) {
             DrawerHelper.drawSolidRect(graphics, x + i, y + i, 1, 1, color);
             DrawerHelper.drawSolidRect(graphics, x + 4 - i, y + i, 1, 1, color);
+        }
+    }
+
+    /**
+     * A card's face at {@code (x, y)}, {@code w} by {@code h}: its head and title, pins and ports, and each row's
+     * label and value. The editor adds its remove button and the wire being dragged.
+     */
+    @OnlyIn(Dist.CLIENT)
+    static void paintCard(net.minecraft.client.gui.GuiGraphics graphics, Drawn drawn, float x, float y, float w,
+            float h) {
+        var font = net.minecraft.client.Minecraft.getInstance().font;
+        var card = drawn.card();
+        DrawerHelper.drawSolidRect(graphics, x, y, w, h, drawn.state() == DryState.FAILED ? FederationTheme.ERROR : EDGE);
+        DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, h - 2, FACE);
+        DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, HEAD, card.acts() ? ACTS : TITLE);
+        text(graphics, card.title(), x + 4, y + 2, EXEC);
+        if (drawn.execIn()) triangle(graphics, x - 3, y + FIRST - 3);
+        for (int i = 0; i < card.outputs().size(); i++) {
+            float cy = y + drawn.outputY(i);
+            triangle(graphics, x + w - 3, cy - 3);
+            var label = card.outputs().get(i).label();
+            if (!label.isEmpty()) text(graphics, label, x + w - 5 - font.width(label), cy - 4, LABEL);
+        }
+        if (card.result() != null) port(graphics, x + w - 3, y + FIRST - 2, color(card.result()));
+        for (int i = 0; i < card.rows().size(); i++) {
+            var row = card.rows().get(i);
+            float cy = y + drawn.rowY(i);
+            port(graphics, x - 3, cy - 2, color(row.type()));
+            text(graphics, row.label(), x + LABEL_X, cy - 4, LABEL);
+            var value = drawn.values().get(i);
+            if (value == null) continue;
+            float vx = x + valueX(row);
+            float vy = cy - 6;
+            if (value.chip()) {
+                float left = vx;
+                FederationTheme.painted((pen, px, py, pw, ph) -> pill(pen, px, py, pw, ph, value.color()))
+                        .draw(graphics, 0, 0, left, vy, value.width(), 11, 0);
+                text(graphics, value.text(), vx + 4, vy + 2, EXEC);
+            } else {
+                FederationTheme.FIELD.draw(graphics, 0, 0, vx, vy, value.width(), 11, 0);
+                float tx = vx + 3;
+                if (!value.icon().isEmpty()) {
+                    graphics.pose().pushPose();
+                    graphics.pose().translate(tx, vy + 1.5f, 0);
+                    graphics.pose().scale(0.5f, 0.5f, 1);
+                    graphics.renderItem(value.icon(), 0, 0);
+                    graphics.pose().popPose();
+                    tx += 10;
+                }
+                text(graphics, value.text(), tx, vy + 2, FIELD_TEXT);
+            }
+        }
+        for (int i = 0; i < drawn.params().size(); i++) {
+            var param = drawn.params().get(i);
+            float cy = y + drawn.rowY(card.rows().size() + i);
+            text(graphics, param.name(), x + LABEL_X, cy - 4, LABEL);
+            float vx = x + LABEL_X + font.width(param.name()) + GAP;
+            float vy = cy - 6;
+            FederationTheme.FIELD.draw(graphics, 0, 0, vx, vy, param.width(), 11, 0);
+            float tx = vx + 3;
+            if (!param.icon().isEmpty()) {
+                graphics.pose().pushPose();
+                graphics.pose().translate(tx, vy + 1.5f, 0);
+                graphics.pose().scale(0.5f, 0.5f, 1);
+                graphics.renderItem(param.icon(), 0, 0);
+                graphics.pose().popPose();
+                tx += 10;
+            }
+            text(graphics, param.shown(), tx, vy + 2, FIELD_TEXT);
         }
     }
 
@@ -978,73 +1072,15 @@ final class FederationGraphView {
             float x = getPositionX();
             float y = getPositionY();
             float w = getSizeWidth();
-            DrawerHelper.drawSolidRect(graphics, x, y, w, getSizeHeight(),
-                    drawn.state() == DryState.FAILED ? FederationTheme.ERROR : EDGE);
-            DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, getSizeHeight() - 2, FACE);
-            DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, HEAD, card.acts() ? ACTS : TITLE);
-            text(context, card.title(), x + 4, y + 2, EXEC);
+            paintCard(graphics, drawn, x, y, w, getSizeHeight());
             cross(graphics, close, x + w - CLOSE + 1, y + 3);
-            if (drawn.execIn()) triangle(graphics, x - 3, y + FIRST - 3);
-            for (int i = 0; i < card.outputs().size(); i++) {
-                float cy = y + drawn.outputY(i);
-                triangle(graphics, x + w - 3, cy - 3);
-                var label = card.outputs().get(i).label();
-                if (!label.isEmpty()) text(context, label, x + w - 5 - font.width(label), cy - 4, LABEL);
-            }
             if (openNext && execDragged(this)) {
                 float cy = y + drawn.outputY(card.outputs().size());
                 triangle(graphics, x + w - 3, cy - 3);
-                text(context, "next", x + w - 5 - font.width("next"), cy - 4, LABEL);
+                text(graphics, "next", x + w - 5 - font.width("next"), cy - 4, LABEL);
             }
-            if (card.result() != null) port(graphics, x + w - 3, y + FIRST - 2, color(card.result()));
             dragged(this, context, drag -> card.id().equals(drag.card()), drawn.execIn() ? x - 1 : x + w + 2,
                     y + FIRST);
-            for (int i = 0; i < card.rows().size(); i++) {
-                var row = card.rows().get(i);
-                float cy = y + drawn.rowY(i);
-                port(graphics, x - 3, cy - 2, color(row.type()));
-                text(context, row.label(), x + LABEL_X, cy - 4, LABEL);
-                var value = drawn.values().get(i);
-                if (value == null) continue;
-                float vx = x + valueX(row);
-                float vy = cy - 6;
-                if (value.chip()) {
-                    float left = vx;
-                    FederationTheme.painted((pen, px, py, pw, ph) -> pill(pen, px, py, pw, ph, value.color()))
-                            .draw(graphics, 0, 0, left, vy, value.width(), 11, 0);
-                    text(context, value.text(), vx + 4, vy + 2, EXEC);
-                } else {
-                    FederationTheme.FIELD.draw(graphics, 0, 0, vx, vy, value.width(), 11, 0);
-                    float tx = vx + 3;
-                    if (!value.icon().isEmpty()) {
-                        context.pose.pushPose();
-                        context.pose.translate(tx, vy + 1.5f, 0);
-                        context.pose.scale(0.5f, 0.5f, 1);
-                        graphics.renderItem(value.icon(), 0, 0);
-                        context.pose.popPose();
-                        tx += 10;
-                    }
-                    text(context, value.text(), tx, vy + 2, FIELD_TEXT);
-                }
-            }
-            for (int i = 0; i < drawn.params().size(); i++) {
-                var param = drawn.params().get(i);
-                float cy = y + drawn.rowY(card.rows().size() + i);
-                text(context, param.name(), x + LABEL_X, cy - 4, LABEL);
-                float vx = x + LABEL_X + font.width(param.name()) + GAP;
-                float vy = cy - 6;
-                FederationTheme.FIELD.draw(graphics, 0, 0, vx, vy, param.width(), 11, 0);
-                float tx = vx + 3;
-                if (!param.icon().isEmpty()) {
-                    context.pose.pushPose();
-                    context.pose.translate(tx, vy + 1.5f, 0);
-                    context.pose.scale(0.5f, 0.5f, 1);
-                    graphics.renderItem(param.icon(), 0, 0);
-                    context.pose.popPose();
-                    tx += 10;
-                }
-                text(context, param.shown(), tx, vy + 2, FIELD_TEXT);
-            }
         }
 
         /** A card the dry run did not reach is dimmed, its value well and all. */
@@ -1118,7 +1154,7 @@ final class FederationGraphView {
                 DrawerHelper.drawSolidRect(graphics, x, y + i, 1, Math.min(2, height - i), DRAFT_EDGE);
                 DrawerHelper.drawSolidRect(graphics, x + width - 1, y + i, 1, Math.min(2, height - i), DRAFT_EDGE);
             }
-            text(context, title(), x + 4, y + 2, EXEC);
+            text(graphics, title(), x + 4, y + 2, EXEC);
             cross(graphics, close, x + width - CLOSE + 1, y + 3);
             if (draft.execIn()) triangle(graphics, x - 3, y + FIRST - 3);
             if (draft.valueOut()) port(graphics, x + width - 3, y + FIRST - 2, color(draft.function().result()));
@@ -1126,7 +1162,7 @@ final class FederationGraphView {
             for (int i = 0; i < rows.size(); i++) {
                 float cy = y + FIRST + ROW * (firstRow + i);
                 port(graphics, x - 3, cy - 2, color(rows.get(i).type()));
-                text(context, rows.get(i).name(), x + LABEL_X, cy - 4, LABEL);
+                text(graphics, rows.get(i).name(), x + LABEL_X, cy - 4, LABEL);
             }
             dragged(this, context, drag -> drag.draft() == draft && drag.exec(), x - 1, y + FIRST);
             dragged(this, context, drag -> drag.draft() == draft && !drag.exec(), x + width + 2, y + FIRST);
@@ -1134,11 +1170,12 @@ final class FederationGraphView {
     }
 
     @OnlyIn(Dist.CLIENT)
-    private static void text(GUIContext context, String text, float x, float y, int color) {
-        context.pose.pushPose();
-        context.pose.translate(x, y, 0);
-        context.graphics.drawString(net.minecraft.client.Minecraft.getInstance().font, text, 0, 0, color, false);
-        context.pose.popPose();
+    private static void text(net.minecraft.client.gui.GuiGraphics graphics, String text, float x, float y,
+            int color) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y, 0);
+        graphics.drawString(net.minecraft.client.Minecraft.getInstance().font, text, 0, 0, color, false);
+        graphics.pose().popPose();
     }
 
     /** An exec pin: a six-pixel triangle pointing right. */
