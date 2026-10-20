@@ -180,7 +180,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                                         .getString().matches("CPU \\d+/\\d+"))))
                 .check("every card is named by its identity tag while unnamed", context -> context.all(".card-name").size()
                         == context.all(".graph-node-member").size()
-                        && context.all(".card-name").stream().allMatch(name -> name.text().matches("Network [0-9A-F]{4}")))
+                        && context.all(".card-name").stream().allMatch(name -> name.text().matches("Network [0-9A-F]{6}")))
                 .check("cards say where their network is", context -> context.all(".graph-node-member").stream()
                         .allMatch(card -> card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
                                 .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)

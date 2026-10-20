@@ -78,7 +78,7 @@ final class TaskThirtyThreeScenarioSupport {
 
     /** The workspace names an unnamed network by the first four hex digits of its identity, its card badge. */
     static String networkTag(String networkUuid) {
-        return networkUuid.substring(0, 4).toUpperCase(java.util.Locale.ROOT);
+        return space.controlnet.ae2federation.identity.NetworkId.tag(networkUuid);
     }
 
     static String networkName(String networkUuid) {

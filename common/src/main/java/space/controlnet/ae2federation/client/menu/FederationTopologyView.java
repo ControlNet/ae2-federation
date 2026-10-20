@@ -1784,8 +1784,7 @@ final class FederationTopologyView {
                 parts.forEach(part -> {
                     var id = part.getAsJsonObject().has("network") ? part.getAsJsonObject().get("network").getAsString() : "";
                     var known = network(id);
-                    names.add(known != null ? name(known).getString() : id.length() >= 8
-                            ? tr("network_name", id.substring(0, 8).toUpperCase(Locale.ROOT)).getString() : id);
+                    names.add(known != null ? name(known).getString() : displayName(id, "").getString());
                     if (!id.equals(network.id())) others.add(names.getLast());
                 });
                 keepOthers = List.copyOf(others);
@@ -2450,14 +2449,14 @@ final class FederationTopologyView {
         return FederationWorkspace.tr("capability." + capability.name().toLowerCase(Locale.ROOT));
     }
 
-    /** The network's name, or "Network 082A" by its identity tag while it has none. */
+    /** The network's name, or "Network 082A5C" by its identity tag while it has none. */
     static Component name(Network network) {
         return displayName(network.id(), network.name());
     }
 
     static Component displayName(String id, String name) {
         if (!name.isEmpty()) return Component.literal(name);
-        return tr("network_name", id.substring(0, 4).toUpperCase(Locale.ROOT));
+        return tr("network_name", NetworkId.tag(id));
     }
 
     /**
