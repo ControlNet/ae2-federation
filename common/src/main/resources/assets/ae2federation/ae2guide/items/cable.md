@@ -29,7 +29,10 @@ item_ids:
 Federation Cable links Switches, Routers, Federation Pattern Providers and Processing Endpoints into one
 [Federation domain](../mechanics.md). It connects on every side to another Federation Cable, to any face of a
 <ItemLink id="ae2federation:switch" /> or <ItemLink id="ae2federation:router" />, and to the front of a <ItemLink id="ae2federation:pattern_provider" />,
-<ItemLink id="ae2federation:processing_endpoint" /> or <ItemLink id="ae2federation:federation_p2p_tunnel" />.
+<ItemLink id="ae2federation:processing_endpoint" /> or <ItemLink id="ae2federation:federation_p2p_tunnel" />. It also joins the back of a
+<ItemLink id="ae2federation:beam_former" />, the front of a <ItemLink id="ae2federation:beam_converter" /> and the centre of a
+<ItemLink id="ae2federation:quantum_cube" /> face. A cable shows an arm toward every face it joins, and none toward a
+device that is not formed.
 
 It is not an ME cable: ME cables and devices do not attach to it, it carries no channels and it uses no power. It has
 no length limit. The pulses inside it are decoration; use **Live flow** in the Federation screen to see real traffic.

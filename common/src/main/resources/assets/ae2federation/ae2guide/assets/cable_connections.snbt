@@ -4,7 +4,7 @@
     data: [
         {pos: [4, 0, 0], state: "ae2federation:pattern_provider{facing:west}"},
         {pos: [3, 0, 0], state: "ae2federation:cable"},
-        {pos: [2, 0, 0], state: "ae2federation:router"},
+        {pos: [2, 0, 0], state: "ae2federation:router{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}"},
         {pos: [1, 0, 0], state: "ae2federation:cable"},
         {pos: [0, 0, 0], state: "ae2federation:processing_endpoint{facing:east}"}
     ],
@@ -12,7 +12,7 @@
     palette: [
         "ae2federation:pattern_provider{facing:west}",
         "ae2federation:cable",
-        "ae2federation:router",
+        "ae2federation:router{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}",
         "ae2federation:processing_endpoint{facing:east}"
     ]
 }

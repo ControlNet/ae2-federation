@@ -37,18 +37,6 @@ public final class BeamConverterBlockEntity extends RouterBlockEntity {
     }
 
     @Override
-    protected boolean links(Direction face) {
-        return RouterBlock.formed(getBlockState()) && faces(face);
-    }
-
-    /** The front, and faces toward the rest of the body. */
-    private boolean faces(Direction face) {
-        var state = getBlockState();
-        return face == state.getValue(BeamConverterBlock.FACING)
-                || (RouterBlock.connections(state) & 1 << face.get3DDataValue()) != 0;
-    }
-
-    @Override
     protected FederationDomainNodeKind kind() {
         return FederationDomainNodeKind.CONVERTER;
     }
@@ -56,7 +44,7 @@ public final class BeamConverterBlockEntity extends RouterBlockEntity {
     @Nullable
     @Override
     public FederationPort federationDomainPort(@Nullable Direction face) {
-        return face != null && faces(face) ? super.federationDomainPort(face) : null;
+        return face != null && BeamConverterBlock.faces(getBlockState(), face) ? super.federationDomainPort(face) : null;
     }
 
     /** The FE input on {@code side}: every face but the front. */

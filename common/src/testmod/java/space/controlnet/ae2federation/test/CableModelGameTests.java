@@ -40,13 +40,15 @@ public final class CableModelGameTests {
                 "A must join the cable B at full width");
         helper.assertTrue(straight(helper, b) && straight(helper, c), "B and C must be straight tubes");
 
+        // The arm reaches the Router once its body is formed, when its faces link.
         helper.setBlock(d, RouterRegistration.ROUTER.get());
-        helper.assertTrue(kind(helper, c, Direction.EAST) == CableVisualConnections.DENSE,
-                "C must narrow toward the Router");
-        helper.assertTrue(straight(helper, b) && !straight(helper, c),
-                "B must stay a tube and C, beside the Router, must become a core");
-        PolicyEvidence.write("cablenecksonlyatdevices", 4, Map.of("necks", "devices-only"));
-        helper.succeed();
+        helper.succeedWhen(() -> {
+            helper.assertTrue(kind(helper, c, Direction.EAST) == CableVisualConnections.DENSE,
+                    "C must narrow toward the Router");
+            helper.assertTrue(straight(helper, b) && !straight(helper, c),
+                    "B must stay a tube and C, beside the Router, must become a core");
+            PolicyEvidence.write("cablenecksonlyatdevices", 4, Map.of("necks", "devices-only"));
+        });
     }
 
     private static int kind(GameTestHelper helper, BlockPos cable, Direction side) {
