@@ -26,6 +26,10 @@ the merge's second parent), like PR #4 (see `large-cable-rings-2026-10-17.md`), 
 - 3x3 straight ring: inside the layer (model z 5..11), every `BundleLook.HUGE_RING_SPACING` = 3 layers in world
   coordinates (`floorMod(layer, 3) == 0`), not in a layer a branch leaves (`ringInside`, rings bit 2). The spacing is a
   guess, like the 2x2's 2.
+  - Never in a run's end layer (user, 2026-10-20: "the first thick ring is too close to the start"). A ring there
+    stood against the end face or the device; a 2x2 boundary ring could never stand there. Test
+    `no3x3RingStandsInARunsEndLayer`.
+  - A ring beside a joint's corner rings is still drawn: the user named the start only.
 - 3x3 corner rings: a 3x3 branch covers three layers of the run; `jointBefore/After` already say which one (after only
   = first, both = middle, before only = last), which picks the cell along the run in the corner frame.
 - One middle beam, as for 2x2 (`BundleBeam.side`): box `side` wide, 3 layers long at a joint (the far layer, looked up

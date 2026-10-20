@@ -143,6 +143,15 @@ final class BundleLookTest {
     }
 
     @Test
+    void no3x3RingStandsInARunsEndLayer() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(9, 2, 2), Direction.Axis.X));
+        for (int x = 0; x <= 9; x++) {
+            assertEquals(x == 3 || x == 6, look(set, new BlockPos(x, 1, 1), NO_DEVICES).ringInside(), "ring in x=" + x);
+        }
+    }
+
+    @Test
     void a3x3BranchMarksItsThreeLayersFirstMiddleAndLast() {
         var set = new BundleSet();
         set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(8, 2, 2), Direction.Axis.X));
