@@ -25,7 +25,9 @@ final class SurvivalRecipeContractTest {
     private static final Path DATA = ROOT.resolve("common/src/main/resources/data/ae2federation");
     private static final String PROCESSOR = "{\"item\":\"ae2federation:nexus_processor\"}";
     private static final String CORE = "{\"item\":\"ae2federation:nexus_core\"}";
-    private static final Pattern RESULT = Pattern.compile("\"result\":\\{\"count\":(\\d+),\"id\":\"([^\"]+)\"}");
+    // Neo ECO's Integrated Working Station names its result itemOutput.
+    private static final Pattern RESULT = Pattern.compile(
+            "\"(?:result|itemOutput)\":\\{\"count\":(\\d+),\"id\":\"([^\"]+)\"}");
 
     // Each item has one recipe, named after it; the press also has the copy every AE2 press has.
     @Test
@@ -47,6 +49,9 @@ final class SurvivalRecipeContractTest {
         expected.put("beam_converter", "ae2federation:beam_converter x1");
         expected.put("beam_former", "ae2federation:beam_former x1");
         expected.put("quantum_cube", "ae2federation:quantum_cube x8");
+        for (var tier : List.of("l4", "l6", "l9")) {
+            expected.put("eco_computation_system_" + tier, "ae2federation:eco_computation_system_" + tier + " x1");
+        }
         assertEquals(expected, results);
     }
 
@@ -172,6 +177,35 @@ final class SurvivalRecipeContractTest {
         assertTrue(recipe.contains("\"pattern\":[\"CRC\",\"RQR\",\"CLC\"]"), recipe);
         assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},\"L\":" + CORE
                 + ",\"Q\":{\"item\":\"ae2:quantum_link\"},\"R\":{\"item\":\"ae2:quantum_ring\"}}"), recipe);
+    }
+
+    // Neo ECO's own controller recipes on its Integrated Working Station, Nexus Processors in place of its
+    // Superconducting Processors (user, 2026-10-20); a tier above L4 upgrades the Federation controller below it. They
+    // load only while the controller exists, with Neo ECO 21.2.1 or later.
+    @Test
+    void federationComputationSystemsAreNeoEcosRecipesWithNexusProcessors() throws IOException {
+        var recipes = recipes();
+        var inputs = Map.of("l4", "{\"count\":4,\"item\":\"neoecoae:computation_casing\"},"
+                        + "{\"count\":2,\"item\":\"neoecoae:computation_parallel_core_l4\"},"
+                        + "{\"count\":16,\"item\":\"neoecoae:energized_superconductive_ingot\"},"
+                        + "{\"count\":16,\"item\":\"ae2federation:nexus_processor\"}",
+                "l6", "{\"count\":1,\"item\":\"ae2federation:eco_computation_system_l4\"},"
+                        + "{\"count\":2,\"item\":\"neoecoae:computation_parallel_core_l6\"},"
+                        + "{\"count\":32,\"item\":\"neoecoae:energized_superconductive_ingot\"},"
+                        + "{\"count\":32,\"item\":\"ae2federation:nexus_processor\"}",
+                "l9", "{\"count\":1,\"item\":\"ae2federation:eco_computation_system_l6\"},"
+                        + "{\"count\":2,\"item\":\"neoecoae:computation_parallel_core_l9\"},"
+                        + "{\"count\":64,\"item\":\"neoecoae:energized_superconductive_ingot\"},"
+                        + "{\"count\":64,\"item\":\"ae2federation:nexus_processor\"}");
+        var energy = Map.of("l4", 16000, "l6", 160000, "l9", 640000);
+        inputs.forEach((tier, items) -> {
+            var recipe = recipes.get("eco_computation_system_" + tier);
+            assertTrue(recipe.contains("\"neoforge:conditions\":[{\"type\":\"neoforge:item_exists\","
+                    + "\"item\":\"ae2federation:eco_computation_system_" + tier + "\"}]"), recipe);
+            assertTrue(recipe.contains("\"type\":\"neoecoae:integrated_working_station\",\"energy\":"
+                    + energy.get(tier) + ","), recipe);
+            assertTrue(recipe.contains("\"inputItems\":[" + items + "]"), recipe);
+        });
     }
 
     @Test

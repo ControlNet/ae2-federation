@@ -1,0 +1,32 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "ae2federation:eco_computation_system_l9"
+    }
+  ],
+  "type": "neoecoae:integrated_working_station",
+  "energy": 640000,
+  "inputItems": [
+    {
+      "count": 1,
+      "item": "ae2federation:eco_computation_system_l6"
+    },
+    {
+      "count": 2,
+      "item": "neoecoae:computation_parallel_core_l9"
+    },
+    {
+      "count": 64,
+      "item": "neoecoae:energized_superconductive_ingot"
+    },
+    {
+      "count": 64,
+      "item": "ae2federation:nexus_processor"
+    }
+  ],
+  "itemOutput": {
+    "count": 1,
+    "id": "ae2federation:eco_computation_system_l9"
+  }
+}
