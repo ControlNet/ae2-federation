@@ -14,9 +14,11 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import space.controlnet.ae2federation.FederationCreativeTab;
 import space.controlnet.ae2federation.domain.port.FederationPortCapability;
 
 /**
@@ -72,6 +74,13 @@ public final class NeoEcoComputing {
         ITEMS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
         modBus.addListener(NeoEcoComputing::registerCapabilities);
+        modBus.addListener(NeoEcoComputing::fillCreativeTab);
+    }
+
+    private static void fillCreativeTab(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == FederationCreativeTab.MAIN.getKey()) {
+            CONTROLLERS.values().forEach(event::accept);
+        }
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
