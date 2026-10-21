@@ -106,9 +106,8 @@ final class FederationGraphView {
     /** A dry-run value's well: its height, and the room an item icon takes before the text. */
     private static final int DRY_HEIGHT = 9;
     private static final int DRY_ICON = 10;
-    /** Laid over a card the dry run did not reach, and the colour its wires take. */
+    /** Laid over a card the dry run did not reach. */
     private static final int SKIPPED = 0x99201e27;
-    private static final int SKIPPED_WIRE = 0xff4a4655;
 
     /** A Library function being dragged onto the canvas. */
     record LibraryDrag(String namespace, String function) {
@@ -740,7 +739,8 @@ final class FederationGraphView {
             var start = boxes.get(link.from());
             boolean skipped = drawn.get(link.to()) != null && drawn.get(link.to()).state() == DryState.SKIPPED;
             wires.add(new Wire(start.right() + MARGIN + 3, start.y() + MARGIN + from.outputY(output),
-                    to.x() + MARGIN - 3, to.y() + MARGIN + FIRST, skipped ? SKIPPED_WIRE : EXEC, 1.6f));
+                    to.x() + MARGIN - 3, to.y() + MARGIN + FIRST, skipped ? FederationTheme.fadedWire(EXEC) : EXEC,
+                    FederationTheme.WIRE));
         }
         for (var card : shownGraph.cards()) {
             var d = drawn.get(card.id());
@@ -750,9 +750,10 @@ final class FederationGraphView {
                 var source = boxes.get(wire.node());
                 if (source == null) continue;
                 boolean skipped = drawn.get(wire.node()) != null && drawn.get(wire.node()).state() == DryState.SKIPPED;
+                int color = color(card.rows().get(i).type());
                 wires.add(new Wire(source.right() + MARGIN + 2, source.y() + MARGIN + FIRST, place.x() + MARGIN - 3,
-                        place.y() + MARGIN + d.rowY(i), skipped ? SKIPPED_WIRE : color(card.rows().get(i).type()),
-                        1.2f));
+                        place.y() + MARGIN + d.rowY(i), skipped ? FederationTheme.fadedWire(color) : color,
+                        FederationTheme.WIRE));
             }
         }
         return wires;

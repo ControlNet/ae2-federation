@@ -55,6 +55,10 @@ public final class FederationTheme {
     public static final int[] NETWORK_ACCENTS = {0xff61afef, 0xffd19a66, 0xffc678dd, 0xff98c379, 0xffe06c75,
             0xff56b6c2, 0xffe5c07b, 0xffbe5046};
 
+    /** A graph wire's width, as LDLib2's node graph draws its wires, and the chosen wire's, as it draws the hovered. */
+    public static final float WIRE = 4.9f;
+    public static final float WIRE_CHOSEN = 7.7f;
+
     public static final int PANEL = FACE;
     public static final int INSET = 0xffb9bbc6;
     public static final int PAPER = HIGHLIGHT;
@@ -221,6 +225,17 @@ public final class FederationTheme {
         provider.addResource("TOOLBAR_HOVER", TOOLBAR_HOVER);
         provider.addResource("TOOLBAR_ACTIVE", TOOLBAR_ACTIVE);
         instance.addBuiltinProvider(provider);
+    }
+
+    /**
+     * A wire not taken, or seen but not edited: its own colour, see-through, as LDLib2 draws an inactive wire. The wire
+     * shader keeps its core opaque whatever the alpha, so the colour is darkened as well.
+     */
+    public static int fadedWire(int color) {
+        int r = (color >> 16 & 0xff) * 2 / 5;
+        int g = (color >> 8 & 0xff) * 2 / 5;
+        int b = (color & 0xff) * 2 / 5;
+        return 0x77000000 | r << 16 | g << 8 | b;
     }
 
     public static int networkAccent(int index) {

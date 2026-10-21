@@ -1327,7 +1327,7 @@ public final class FederationProcessingGraph {
     static void dashed(GUIContext context, List<Vector2f> line, int color) {
         for (int index = 1; index < line.size(); index += 2) {
             DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(line.get(index - 1), line.get(index)),
-                    color, color, 2f);
+                    color, color, FederationTheme.WIRE);
         }
     }
 
@@ -1423,12 +1423,13 @@ public final class FederationProcessingGraph {
         @Override
         public void drawBackgroundAdditional(GUIContext context) {
             super.drawBackgroundAdditional(context);
-            // Other Providers' wires sit behind this one's, thin and muted: seen, not edited here.
+            // Other Providers' wires sit behind this one's, muted: seen, not edited here.
             for (var wire : otherWires) {
                 var ends = ends(otherPorts.get(wire.slot()), wire);
                 if (ends == null) continue;
-                int muted = 0x66000000 | (otherAccents.getOrDefault(wire.slot(), 0x625d70) & 0xffffff);
-                DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), polyline(curve(ends)), muted, muted, 1.5f);
+                int muted = FederationTheme.fadedWire(0xff000000 | otherAccents.getOrDefault(wire.slot(), 0x625d70));
+                DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), polyline(curve(ends)), muted, muted,
+                        FederationTheme.WIRE);
             }
             for (var wire : wires) {
                 var ends = ends(wire);
@@ -1439,7 +1440,7 @@ public final class FederationProcessingGraph {
                 // Wires take the colour of the Provider's network, as its card does in the overview.
                 int color = selected || related ? FederationTheme.SELECT : wireAccent;
                 DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), polyline(curve(ends)), color, color,
-                        selected ? 3f : 2f);
+                        selected ? FederationTheme.WIRE_CHOSEN : FederationTheme.WIRE);
             }
             long now = System.currentTimeMillis();
             int dots = 0;

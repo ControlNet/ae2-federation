@@ -1095,7 +1095,7 @@ final class FederationInstallView {
                 boolean chosen = wire.installation().equals(selected);
                 DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), FederationProcessingGraph
                         .polyline(new WireCurve(start.x, start.y, end.x, end.y)), wire.color(), wire.color(),
-                        chosen ? 3f : 1.5f);
+                        chosen ? FederationTheme.WIRE_CHOSEN : FederationTheme.WIRE);
             }
             // A dropped wire is dashed until the index lists its installation; a draft's while it is typed.
             long now = System.currentTimeMillis();

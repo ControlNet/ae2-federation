@@ -288,3 +288,16 @@ Additional acceptance should cover visible text and real pointer hit areas at GU
 long IDs/names; no-provider/no-results/loading states; selected graph neighbors; local view preservation on refresh;
 release confirmation; two-client stale revisions; and actual frame times for the agreed graph sizes. Functional scenario
 success alone is not a readability or visual-quality judgment.
+
+## Graph wires at LDLib2's node-graph width (2026-10-21)
+
+- Code graph, Install view and Processing mapping draw wires at `FederationTheme.WIRE` (4.9, the toolkit's
+  `WireElement` width); a chosen wire (Install) or selected wire (Processing) at `WIRE_CHOSEN` (7.7, its hover
+  width). Exec and value wires share the width; the Topology view's cable edges and the Statistics charts keep theirs.
+- `graph_wire.fsh` sets `alpha = length(beam) * v * vertexColor.a` with `beam` unbounded at the centre, so vertex
+  alpha only fades the glow: the core stays opaque. `FederationTheme.fadedWire` (skipped dry-run wires, other
+  Providers' wires) therefore also scales the colour to 2/5; the centre still saturates to a thin bright line, with no
+  glow. The old `0x66` alpha on other Providers' wires had never dimmed them.
+- Compare: `build/graph-wire-width-check/compare.png` and `compare-zoom.png` (run.sh before|after runs
+  `ui.automation,ui.mapping` at 1600x960). `ui.automation` fails step 523 (install aside check) at that window size
+  both before and after the change; `ui.mapping` passes.
