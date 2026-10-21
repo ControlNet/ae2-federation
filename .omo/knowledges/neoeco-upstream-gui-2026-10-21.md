@@ -25,6 +25,24 @@ package against each, diffed sources and resources). Upstream: DancingSnow0517/N
   getters, `createUI`, CPU-lifecycle reflection in `CraftingCpuLifecycle`) compiles, links and resolves on 21.2.9.
 - `NEBlock` no longer gives formed blocks light level 1 (shading differs slightly).
 
+## In-game check on 21.2.9 (2026-10-21)
+
+`build/neoeco-gui-check/compare.png` in the feature worktree: our N4 on 21.2.1, our N4 on 21.2.9, Neo ECO's C4 on
+21.2.9. On 21.2.9 our screen opens and its data is right, but the background is black (no panel, no inventory slot
+art) and the installation rows are the magenta missing texture; no crash, nothing logged. The side bar picks up
+Neo ECO's new button art. The new ECO-C screen: side bar (guide, builder, CPU mode, frequency, CPU list), title +
+tier badge, host column + 11-column drive grid, Controls (Swap/Cycle/Fast), CPU/Threads/Parallel panels with bars,
+inventory, and a status box (Online/Off, Freq, switch modules); an "i" endgame tooltip and a CPU-list drawer.
+
+`ComputationControllerUI.create(Config, ...)`: `Config` is a 34-component positional record (all ECO-CPU suppliers);
+layout fixed by a private JSON, all text and housings painted by one package-private artwork element, so a caller can
+change data and textures (`IECOTier.getPanelAtlas`, `IHostPanelTextureProvider`) but not layout or labels. Element ids
+(`computation_main`, `computation_toolbar`, ...) allow removing/adding children after `create`, but are not a
+contract. Only the drive grid and maybe the three stat panels map onto ECO - N; ID/alias/installations have no slot.
+
+Aiming in that world: a cable at (13,-59,-1) sits in front of the N4 controller and the player crawls under the
+overhang, so `tp 13.5 -60 -2.5 facing 13.5 -59.1 0` is what hits the controller (check with F3 "Targeted Block").
+
 ## Guards
 
 - We compile against 21.2.1 (`neoforge-1.21.1/build.gradle`, `neoEcoApi`); `neoforge.mods.toml` declares no
