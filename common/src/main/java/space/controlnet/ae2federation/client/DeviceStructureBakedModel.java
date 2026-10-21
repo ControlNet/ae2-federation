@@ -9,6 +9,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.Function;
@@ -88,10 +89,18 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
 
     /** The device's connected-face tiles, read as ARGB pixels from the active resource packs. */
     private static DeviceStructureGeometry geometry(String namespace, Device device) throws IOException {
+        return new DeviceStructureGeometry(device,
+                tiles(namespace, "textures/block/" + device.id() + "/" + device.id() + "_"));
+    }
+
+    /**
+     * The connected-face tiles at {@code prefix} followed by each name of {@link DeviceStructureGeometry#TILES} and
+     * {@code .png}, read as ARGB pixels from the active resource packs.
+     */
+    static Map<String, int[]> tiles(String namespace, String prefix) throws IOException {
         var tiles = new HashMap<String, int[]>();
         for (var name : DeviceStructureGeometry.TILES) {
-            var path = ResourceLocation.fromNamespaceAndPath(namespace,
-                    "textures/block/" + device.id() + "/" + device.id() + "_" + name + ".png");
+            var path = ResourceLocation.fromNamespaceAndPath(namespace, prefix + name + ".png");
             try (var stream = Minecraft.getInstance().getResourceManager().open(path);
                     var image = NativeImage.read(stream)) {
                 if (image.getWidth() != 16 || image.getHeight() != 16) {
@@ -108,7 +117,7 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
                 tiles.put(name, pixels);
             }
         }
-        return new DeviceStructureGeometry(device, tiles);
+        return tiles;
     }
 
     @Override
@@ -144,39 +153,50 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
         }
 
         private List<List<BakedQuad>> build(int connections) {
-            var sides = EnumSet.noneOf(Side.class);
-            for (var direction : Direction.values()) {
-                if ((connections & 1 << direction.get3DDataValue()) != 0) sides.add(side(direction));
-            }
-            var lists = new ArrayList<List<BakedQuad>>();
-            for (int i = 0; i < 7; i++) lists.add(new ArrayList<>());
-            var baker = new QuadBakingVertexConsumer();
-            for (var quad : geometry.build(sides)) {
-                var normal = DeviceStructureGeometry.normal(quad.positions());
-                var direction = Direction.getNearest(normal[0], normal[1], normal[2]);
-                var ordered = vanillaOrder(quad, direction);
-                var sprite = resolved.computeIfAbsent(quad.texture(), sprites);
-                baker.setDirection(direction);
-                baker.setSprite(sprite);
-                baker.setShade(true);
-                baker.setHasAmbientOcclusion(true);
-                baker.setTintIndex(-1);
-                for (int i = 0; i < 4; i++) {
-                    var p = quad.positions()[ordered[i]];
-                    var uv = quad.uv()[ordered[i]];
-                    baker.addVertex((float) p[0], (float) p[1], (float) p[2])
-                            .setColor(255, 255, 255, 255)
-                            .setUv(sprite.getU((float) uv[0]), sprite.getV((float) uv[1]))
-                            .setUv2(0, 0)
-                            .setNormal(direction.getStepX(), direction.getStepY(), direction.getStepZ());
-                }
-                var cull = onBlockFace(quad.positions()[0], direction) ? direction.get3DDataValue() : 6;
-                lists.get(cull).add(baker.bakeQuad());
-            }
-            var result = new ArrayList<List<BakedQuad>>();
-            for (var list : lists) result.add(List.copyOf(list));
-            return List.copyOf(result);
+            return bakeQuads(geometry.build(sides(connections)), texture -> resolved.computeIfAbsent(texture, sprites));
         }
+    }
+
+    /** The sides whose bits are set in {@code connections}, one bit per 3D data value. */
+    static Set<Side> sides(int connections) {
+        var sides = EnumSet.noneOf(Side.class);
+        for (var direction : Direction.values()) {
+            if ((connections & 1 << direction.get3DDataValue()) != 0) sides.add(side(direction));
+        }
+        return sides;
+    }
+
+    /** {@code quads} baked with the sprite of each one's texture, by cull face (index 6 holds the unculled ones). */
+    static List<List<BakedQuad>> bakeQuads(List<DeviceStructureGeometry.Quad> quads,
+            Function<String, TextureAtlasSprite> sprites) {
+        var lists = new ArrayList<List<BakedQuad>>();
+        for (int i = 0; i < 7; i++) lists.add(new ArrayList<>());
+        var baker = new QuadBakingVertexConsumer();
+        for (var quad : quads) {
+            var normal = DeviceStructureGeometry.normal(quad.positions());
+            var direction = Direction.getNearest(normal[0], normal[1], normal[2]);
+            var ordered = vanillaOrder(quad, direction);
+            var sprite = sprites.apply(quad.texture());
+            baker.setDirection(direction);
+            baker.setSprite(sprite);
+            baker.setShade(true);
+            baker.setHasAmbientOcclusion(true);
+            baker.setTintIndex(-1);
+            for (int i = 0; i < 4; i++) {
+                var p = quad.positions()[ordered[i]];
+                var uv = quad.uv()[ordered[i]];
+                baker.addVertex((float) p[0], (float) p[1], (float) p[2])
+                        .setColor(255, 255, 255, 255)
+                        .setUv(sprite.getU((float) uv[0]), sprite.getV((float) uv[1]))
+                        .setUv2(0, 0)
+                        .setNormal(direction.getStepX(), direction.getStepY(), direction.getStepZ());
+            }
+            var cull = onBlockFace(quad.positions()[0], direction) ? direction.get3DDataValue() : 6;
+            lists.get(cull).add(baker.bakeQuad());
+        }
+        var result = new ArrayList<List<BakedQuad>>();
+        for (var list : lists) result.add(List.copyOf(list));
+        return List.copyOf(result);
     }
 
     private static final Map<Direction, Side> SIDES = new EnumMap<>(Direction.class);

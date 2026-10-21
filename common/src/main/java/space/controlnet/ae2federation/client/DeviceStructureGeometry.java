@@ -68,10 +68,10 @@ public final class DeviceStructureGeometry {
         EDGES.put(Side.UP, new Side[] {Side.WEST, Side.EAST, Side.NORTH, Side.SOUTH});
         EDGES.put(Side.DOWN, new Side[] {Side.WEST, Side.EAST, Side.SOUTH, Side.NORTH});
     }
-    private static final int LEFT = 0;
-    private static final int RIGHT = 1;
-    private static final int TOP = 2;
-    private static final int BOTTOM = 3;
+    static final int LEFT = 0;
+    static final int RIGHT = 1;
+    static final int TOP = 2;
+    static final int BOTTOM = 3;
 
     private record Texel(String tile, boolean recessed) {
     }
@@ -98,7 +98,7 @@ public final class DeviceStructureGeometry {
     }
 
     /** How many rows (or columns) from the top (or left) edge the side tile covers completely. */
-    private static int band(int[] tile, boolean horizontal) {
+    static int band(int[] tile, boolean horizontal) {
         int count = 0;
         while (count < 8) {
             for (int i = 0; i < 16; i++) {
@@ -145,16 +145,7 @@ public final class DeviceStructureGeometry {
 
     /** 16x16 texels, indexed [v][u], for a face whose edges marked in {@code outside} lie on the body's outside. */
     private Texel[][] compose(boolean[] outside) {
-        var grid = new String[16][16];
-        for (var row : grid) java.util.Arrays.fill(row, "base");
-        if (outside[TOP]) lay(grid, "side_hor", 0, 16, 0, rows);
-        if (outside[BOTTOM]) lay(grid, "side_hor", 0, 16, 16 - rows, 16);
-        if (outside[LEFT]) lay(grid, "side_ver", 0, columns, 0, 16);
-        if (outside[RIGHT]) lay(grid, "side_ver", 16 - columns, 16, 0, 16);
-        if (outside[LEFT] && outside[TOP]) lay(grid, "corner", 0, columns, 0, rows);
-        if (outside[RIGHT] && outside[TOP]) lay(grid, "corner", 16 - columns, 16, 0, rows);
-        if (outside[LEFT] && outside[BOTTOM]) lay(grid, "corner", 0, columns, 16 - rows, 16);
-        if (outside[RIGHT] && outside[BOTTOM]) lay(grid, "corner", 16 - columns, 16, 16 - rows, 16);
+        var grid = tileGrid(tiles, rows, columns, outside);
         var result = new Texel[16][16];
         for (int v = 0; v < 16; v++) {
             for (int u = 0; u < 16; u++) {
@@ -165,7 +156,31 @@ public final class DeviceStructureGeometry {
         return result;
     }
 
-    private void lay(String[][] grid, String tile, int u0, int u1, int v0, int v1) {
+    /**
+     * Which tile each texel of a face shows, indexed [v][u], for a face whose edges marked in {@code outside} (by
+     * {@link #LEFT} to {@link #BOTTOM}) lie on the body's outside; {@code rows} and {@code columns} are the frame's
+     * width, from {@link #band}.
+     */
+    static String[][] tileGrid(Map<String, int[]> tiles, int rows, int columns, boolean[] outside) {
+        var grid = new String[16][16];
+        for (var row : grid) java.util.Arrays.fill(row, "base");
+        if (outside[TOP]) lay(tiles, grid, "side_hor", 0, 16, 0, rows);
+        if (outside[BOTTOM]) lay(tiles, grid, "side_hor", 0, 16, 16 - rows, 16);
+        if (outside[LEFT]) lay(tiles, grid, "side_ver", 0, columns, 0, 16);
+        if (outside[RIGHT]) lay(tiles, grid, "side_ver", 16 - columns, 16, 0, 16);
+        if (outside[LEFT] && outside[TOP]) lay(tiles, grid, "corner", 0, columns, 0, rows);
+        if (outside[RIGHT] && outside[TOP]) lay(tiles, grid, "corner", 16 - columns, 16, 0, rows);
+        if (outside[LEFT] && outside[BOTTOM]) lay(tiles, grid, "corner", 0, columns, 16 - rows, 16);
+        if (outside[RIGHT] && outside[BOTTOM]) lay(tiles, grid, "corner", 16 - columns, 16, 16 - rows, 16);
+        return grid;
+    }
+
+    /** A face's texture edges as the block sides they lie on: left, right, top, bottom. */
+    static Side[] edges(Side side) {
+        return EDGES.get(side).clone();
+    }
+
+    private static void lay(Map<String, int[]> tiles, String[][] grid, String tile, int u0, int u1, int v0, int v1) {
         var pixels = tiles.get(tile);
         for (int v = v0; v < v1; v++) {
             for (int u = u0; u < u1; u++) {
@@ -174,7 +189,7 @@ public final class DeviceStructureGeometry {
         }
     }
 
-    private static double[] toModel(Side side, double u, double v, double d) {
+    static double[] toModel(Side side, double u, double v, double d) {
         return switch (side) {
             case NORTH -> new double[] {16 - u, 16 - v, d};
             case SOUTH -> new double[] {u, 16 - v, 16 - d};
@@ -185,7 +200,7 @@ public final class DeviceStructureGeometry {
         };
     }
 
-    private static double[] toTexture(Side side, double[] point) {
+    static double[] toTexture(Side side, double[] point) {
         double x = point[0], y = point[1], z = point[2];
         return switch (side) {
             case NORTH -> new double[] {16 - x, 16 - y};

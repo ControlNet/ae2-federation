@@ -8,7 +8,7 @@
     "base": {
       "parent": "neoecoae:block/computation_controller/controller_formed_base_mirrored",
       "textures": {
-        "light": "neoecoae:block/compute/controller_formed/controller_formed_light_c_switch",
+        "light": "ae2federation:block/eco_computation/controller_formed_light_c_switch",
         "screen": "neoecoae:block/compute/controller/screen_on_c",
         "base": "ae2federation:block/eco_computation/controller_formed_switch"
       }

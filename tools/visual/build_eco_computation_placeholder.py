@@ -1,8 +1,12 @@
 """Write the temporary art of the Federation computation system, until the artist draws it: Neo ECO's computation
 controller textures with their AE purple (hues 210-300, such as the chips) turned Federation green, the hue of the
-Automation Interface (user, 2026-10-20), and its models and blockstates pointed at them. The communication interface is
-Neo ECO's computation interface turned green the same way, its blue lights too; formed, it is a plate just outside the
-formed controller's side face, which covers the cell. The artist of both mods allowed the recolour. Tier colours (L4 blue, L6 orange, L9
+Automation Interface (user, 2026-10-20), and its models and blockstates pointed at them. Neo ECO draws its ME interface
+into the formed side face, in the base and in the tier lights; that cell is painted over with its mirrored neighbour,
+so the side face shows only the communication interfaces actually built (user, 2026-10-21). The lights are copied
+unchanged otherwise, so the tier colours stay Neo ECO's. The communication interface's four connected-face tiles
+(interface_base, _corner, _side_hor, _side_ver) are the Router's, its core turned green: the client composes them
+like a Router's faces, framing a lone interface and joining a filled 2x2 square into one panel (user, 2026-10-21). The
+artist replaces those four files to change the look. The artist of both mods allowed the recolour. Tier colours (L4 blue, L6 orange, L9
 purple) live in textures this leaves to Neo ECO, so the tiers still read apart. The network switch variants map to
 the plain ones, since the Federation system refuses a switch. Reads from the Neo ECO jar Gradle resolved for the
 build (run `./gradlew :neoforge-1.21.1:compileJava` first).
@@ -22,7 +26,8 @@ SOURCE = 'assets/neoecoae/textures/block/compute/'
 TEXTURES = ['controller/screen_off', 'controller_formed/controller_formed', 'controller_formed/controller_formed_a',
             'controller_formed/controller_formed_switch']
 GREEN = 130 / 360
-INTERFACE = {'me_bus': 'interface', 'me_bus_light': 'interface_light'}
+LIGHTS = [f'controller_formed/controller_formed_light_{tier}{mirror}' for tier in 'abc' for mirror in ('', '_switch')]
+TILES = ('base', 'corner', 'side_hor', 'side_ver')
 
 
 def jar():
@@ -32,25 +37,70 @@ def jar():
     return found[0]
 
 
-def recolour(image, low=210 / 360):
+def recolour(image, low=210 / 360, high=300 / 360):
     out = image.copy()
     pixels = out.load()
     for y in range(out.height):
         for x in range(out.width):
             r, g, b, a = pixels[x, y]
             h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
-            if a == 0 or s < 0.15 or not low <= h <= 300 / 360:
+            if a == 0 or s < 0.15 or not low <= h <= high:
                 continue
             r2, g2, b2 = colorsys.hls_to_rgb(GREEN, l, s)
             pixels[x, y] = (round(r2 * 255), round(g2 * 255), round(b2 * 255), a)
     return out
 
 
+def without_me_interface(image, name):
+    """The formed side face (u 6-10, v 0-6 of 16) with Neo ECO's ME interface cell, the middle cell of its left
+    column (right when mirrored), painted over with the other column's middle cell, mirrored."""
+    out = image.copy()
+    unit = image.width // 16
+    x, cell = 6 * unit, 2 * unit
+    chip, other = (x + cell, x) if name.endswith('_switch') else (x, x + cell)
+    out.paste(image.crop((other, cell, other + cell, 2 * cell)).transpose(Image.FLIP_LEFT_RIGHT), (chip, cell))
+    return out
+
+
+def interface_tiles():
+    """The Router's four connected-face tiles with the core's teal (hues 180-210) turned green."""
+    tiles = {}
+    for name in TILES:
+        image = Image.open(ASSETS / f'textures/block/router/router_{name}.png').convert('RGBA')
+        tiles[name] = recolour(image, low=180 / 360, high=210 / 360) if name == 'base' else image
+    return tiles
+
+
+def compose(tiles):
+    """A lone block's face from the four tiles, as the client composes it: the frame laid round the base."""
+    def band(tile, horizontal):
+        count = 0
+        while count < 8 and all(tile.getpixel((i, count) if horizontal else (count, i))[3] for i in range(16)):
+            count += 1
+        return count
+    rows, columns = band(tiles['side_hor'], True), band(tiles['side_ver'], False)
+    face = tiles['base'].copy()
+    for name, us, vs in (('side_hor', range(16), [*range(rows), *range(16 - rows, 16)]),
+                         ('side_ver', [*range(columns), *range(16 - columns, 16)], range(16)),
+                         ('corner', [*range(columns), *range(16 - columns, 16)], [*range(rows), *range(16 - rows, 16)])):
+        for v in vs:
+            for u in us:
+                if tiles[name].getpixel((u, v))[3]:
+                    face.putpixel((u, v), tiles[name].getpixel((u, v)))
+    return face
+
+
 OUT.mkdir(parents=True, exist_ok=True)
 with zipfile.ZipFile(jar()) as archive:
     for name in TEXTURES:
         image = Image.open(io.BytesIO(archive.read(SOURCE + name + '.png'))).convert('RGBA')
-        recolour(image).save(OUT / (name.split('/')[-1] + '.png'))
+        image = recolour(image)
+        if name.startswith('controller_formed/'):
+            image = without_me_interface(image, name)
+        image.save(OUT / (name.split('/')[-1] + '.png'))
+    for name in LIGHTS:
+        image = Image.open(io.BytesIO(archive.read(SOURCE + name + '.png'))).convert('RGBA')
+        without_me_interface(image, name).save(OUT / (name.split('/')[-1] + '.png'))
     for tier in ('l4', 'l6', 'l9'):
         state = json.loads(archive.read(f'assets/neoecoae/blockstates/computation_system_{tier}.json'))
         names = set()
@@ -62,7 +112,7 @@ with zipfile.ZipFile(jar()) as archive:
         (ASSETS / 'blockstates' / f'eco_computation_system_{tier}.json').write_text(json.dumps(state, indent=2) + '\n')
         for name in sorted(names):
             text = archive.read(f'assets/neoecoae/models/block/computation_controller/{name}.json').decode()
-            for texture in TEXTURES:
+            for texture in TEXTURES + LIGHTS:
                 text = text.replace(f'"neoecoae:block/compute/{texture}"',
                                     f'"ae2federation:block/eco_computation/{texture.split("/")[-1]}"')
             model = json.loads(text)
@@ -80,24 +130,21 @@ with zipfile.ZipFile(jar()) as archive:
             (folder / f'{name}.json').write_text(json.dumps(model, indent=2) + '\n')
         (ASSETS / 'models/item' / f'eco_computation_system_{tier}.json').write_text(json.dumps(
             {'parent': f'ae2federation:block/eco_computation/controller_{tier}_off'}, indent=2) + '\n')
-    for name, own in INTERFACE.items():
-        image = Image.open(io.BytesIO(archive.read(SOURCE + name + '.png'))).convert('RGBA')
-        recolour(image, low=180 / 360).save(OUT / (own + '.png'))
-    model = json.loads(archive.read('assets/neoecoae/models/block/computation_interface.json'))
-    model['textures'] = {'particle': 'ae2federation:block/eco_computation/interface',
-                         'block': 'ae2federation:block/eco_computation/interface',
-                         'lights': 'ae2federation:block/eco_computation/interface_light'}
+    tiles = interface_tiles()
+    for name, tile in tiles.items():
+        tile.save(OUT / f'interface_{name}.png')
+    compose(tiles).save(OUT / 'interface.png')
     folder = ASSETS / 'models/block/eco_computation'
-    (folder / 'interface.json').write_text(json.dumps(model, indent=2) + '\n')
-    # Formed, the controller's model covers the side face: the interface is drawn as Neo ECO draws its own, both
-    # layers, on a plate a hair outside its north face, turned to face out.
-    plate = []
-    for element in model['elements']:
-        faces = {'north': element['faces']['north']}
-        plate.append({'from': [0, 0, -0.02 * (len(plate) + 1)], 'to': [16, 16, -0.02 * (len(plate) + 1)],
-                      **({'shade': element['shade']} if 'shade' in element else {}), 'faces': faces})
-    formed = {'parent': 'block/block', 'render_type': model['render_type'], 'textures': model['textures'],
-              'elements': list(reversed(plate))}
+    (folder / 'interface.json').write_text(json.dumps(
+        {'parent': 'minecraft:block/cube_all', 'textures': {'all': 'ae2federation:block/eco_computation/interface'}},
+        indent=2) + '\n')
+    # Formed, the controller's model covers the side face, so the interface is a plate a hair outside its north face,
+    # turned to face out. The client draws the composed tiles there instead; this plate shows without them.
+    face = {'uv': [0, 0, 16, 16], 'texture': '#face'}
+    formed = {'parent': 'block/block', 'render_type': 'cutout',
+              'textures': {'particle': 'ae2federation:block/eco_computation/interface',
+                           'face': 'ae2federation:block/eco_computation/interface'},
+              'elements': [{'from': [0, 0, -0.04], 'to': [16, 16, -0.04], 'faces': {'north': face}}]}
     (folder / 'interface_formed.json').write_text(json.dumps(formed, indent=2) + '\n')
     variants = {'formed=false': {'model': 'ae2federation:block/eco_computation/interface'}}
     for facing, turn in (('north', 0), ('east', 90), ('south', 180), ('west', 270)):

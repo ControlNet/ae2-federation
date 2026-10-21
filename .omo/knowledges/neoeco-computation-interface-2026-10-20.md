@@ -65,3 +65,21 @@ Evidence: `build/eco-interface-check/before-after.png`. Compat run: `python3 too
 
 - Zero interfaces no longer forms: `verifyStructure` requires 1..4. The assistant's earlier default (0 forms, links
   nothing) was rejected. Compat tests that build with casing only must place one interface at `INTERFACE`.
+
+## Composed interface faces (user, 2026-10-21)
+
+- Neo ECO draws its ME interface into the formed side face, in the base atlas and in every tier light layer (the
+  blue brackets). `build_eco_computation_placeholder.py` paints that cell (middle of the side face's left column;
+  right column in the `_switch` = mirrored atlases) over with the other column's middle cell, mirrored, in our base
+  copies and in our copies of `controller_formed_light_{a,b,c}{,_switch}` (copied, never recoloured: tier colours
+  stay Neo ECO's). The side face's atlas region is uv [6,0,10,6] of 16 for both layouts.
+- The formed interface is a flat plate 0.04 px outside its outward face, composed at runtime from four tiles
+  `textures/block/eco_computation/interface_{base,corner,side_hor,side_ver}.png` like a Router face
+  (`FacePlateGeometry`, `FacePlateBakedModel`). Rule B (user): only a filled 2x2 square joins, which is exactly the
+  `RouterBlock.CONNECTED` bits the block entity already sets, so the model reads them. `RouterBlock.connections`
+  returns 0 for non-Router blocks; read the bits directly.
+- The client code finds the interface by ID and never loads a Neo ECO class. Without the tiles the JSON plate
+  (standalone texture) shows.
+- Tiles are temporary: the Router's with the core teal turned green; the artist replaces the four files.
+- In game (build/eco-interface-face-check/before-after.png in the feature worktree): the plates read darker than the
+  glowing side face, since they carry no light layer.
