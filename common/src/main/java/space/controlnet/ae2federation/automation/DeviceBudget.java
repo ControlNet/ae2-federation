@@ -12,31 +12,54 @@ import org.jetbrains.annotations.Nullable;
  * reservations evenly, by their shares; a share only limits what each move takes, it never pauses the device. Nothing
  * depends on what runs do: the budget follows from the capacity and the installations alone.
  */
-final class DeviceBudget {
+public final class DeviceBudget {
     private final ComputingHost.Capacity capacity;
+    private final Reserved reserved;
     private final boolean paused;
     private final Map<String, Long> perCall = new HashMap<>();
+    private final Map<String, Long> bandwidth = new HashMap<>();
+
+    /**
+     * What a device's installations reserve together: compute, fixed bandwidth and their number, and whether any of
+     * them is elastic. It is all a new installation is judged by, so the Automation tab is sent it.
+     */
+    public record Reserved(long compute, long bandwidth, int installations, boolean elastic) {
+        public static final Reserved NOTHING = new Reserved(0, 0, 0, false);
+
+        static Reserved of(Iterable<InstallationCost> costs) {
+            long compute = 0;
+            long fixed = 0;
+            int installations = 0;
+            var elastic = false;
+            for (var cost : costs) {
+                compute = InstallationCost.plus(compute, cost.compute());
+                fixed = InstallationCost.plus(fixed, cost.bandwidth());
+                installations++;
+                elastic |= cost.elastic();
+            }
+            return new Reserved(compute, fixed, installations, elastic);
+        }
+    }
 
     private DeviceBudget(ComputingHost.Capacity capacity, Map<String, InstallationCost> costs) {
         this.capacity = capacity;
-        long compute = 0;
-        long fixed = 0;
+        this.reserved = Reserved.of(costs.values());
         long shares = 0;
         for (var cost : costs.values()) {
-            compute = InstallationCost.plus(compute, cost.compute());
-            fixed = InstallationCost.plus(fixed, cost.bandwidth());
             shares += cost.shares();
         }
-        this.paused = !capacity.unlimited() && (compute > capacity.compute() || fixed > capacity.bandwidth()
-                || costs.size() > capacity.installations());
-        if (!capacity.unlimited() && shares > 0) {
-            var share = Math.max(0, capacity.bandwidth() - fixed) / shares;
-            costs.forEach((id, cost) -> {
-                if (cost.elastic()) {
-                    perCall.put(id, share / InstallationCost.TICKS);
-                }
-            });
-        }
+        this.paused = !capacity.unlimited() && (reserved.compute() > capacity.compute()
+                || reserved.bandwidth() > capacity.bandwidth() || costs.size() > capacity.installations());
+        var share = capacity.unlimited() || shares == 0 ? 0
+                : Math.max(0, capacity.bandwidth() - reserved.bandwidth()) / shares;
+        costs.forEach((id, cost) -> {
+            if (!cost.elastic()) {
+                bandwidth.put(id, cost.bandwidth());
+            } else if (!capacity.unlimited()) {
+                perCall.put(id, share / InstallationCost.TICKS);
+                bandwidth.put(id, InstallationCost.times(share, cost.shares()));
+            }
+        });
     }
 
     static DeviceBudget of(ComputingHost.Capacity capacity, Map<String, InstallationCost> costs) {
@@ -45,6 +68,18 @@ final class DeviceBudget {
 
     ComputingHost.Capacity capacity() {
         return capacity;
+    }
+
+    Reserved reserved() {
+        return reserved;
+    }
+
+    /**
+     * The bytes a second an installation has: its reservation, or an elastic one's shares of what is left; no limit on
+     * an unlimited device.
+     */
+    long bandwidth(String id) {
+        return bandwidth.getOrDefault(id, Long.MAX_VALUE);
     }
 
     /** Whether the device starts no runs: its fixed reservations do not fit its capacity. */
@@ -72,17 +107,22 @@ final class DeviceBudget {
                 && after.bandwidth() <= before.bandwidth() && (!after.elastic() || before.elastic())) {
             return Optional.empty();
         }
-        if (before == null && others.size() + 1 > capacity.installations()) {
+        return refusal(capacity, Reserved.of(others.values()), before == null, after);
+    }
+
+    /** Why the device cannot hold one more installation costing {@code after} beside what the others reserve. */
+    public static Optional<String> refusal(ComputingHost.Capacity capacity, Reserved others, InstallationCost after) {
+        return capacity.unlimited() ? Optional.empty() : refusal(capacity, others, true, after);
+    }
+
+    private static Optional<String> refusal(ComputingHost.Capacity capacity, Reserved others, boolean adding,
+            InstallationCost after) {
+        if (adding && others.installations() + 1 > capacity.installations()) {
             return Optional.of("the device holds " + capacity.installations() + " installations and has none free");
         }
-        long compute = 0;
-        long fixed = 0;
-        var elastic = after.elastic();
-        for (var cost : others.values()) {
-            compute = InstallationCost.plus(compute, cost.compute());
-            fixed = InstallationCost.plus(fixed, cost.bandwidth());
-            elastic |= cost.elastic();
-        }
+        long compute = others.compute();
+        long fixed = others.bandwidth();
+        var elastic = after.elastic() || others.elastic();
         if (InstallationCost.plus(compute, after.compute()) > capacity.compute()) {
             return Optional.of("it needs " + after.compute() + " CU and the device has "
                     + Math.max(0, capacity.compute() - compute) + " of " + capacity.compute() + " free");

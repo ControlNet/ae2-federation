@@ -431,8 +431,9 @@ public final class ProgramSchedulerGameTests {
                     .orElseThrow();
             helper.assertTrue(file.current() && file.pushed() && file.problems() == 0, "Pushed and clean: " + file);
             helper.assertValueEqual(file.version(), ProgramSync.version(edited), "Version");
+            helper.assertTrue(file.functions().get(0).cost() != null, "A drop is priced: " + file.functions().get(0));
             helper.assertValueEqual(file.functions().get(0), new ProgramSync.FunctionInfo("light",
-                    List.of("port: Interface"), "bool", true), "Signature");
+                    List.of("port: Interface"), "bool", true, file.functions().get(0).cost()), "Signature");
             var installed = sync.handle(6, "install", List.of(scene.device(), "sched_sync", "light",
                     scene.interfaceId()));
             helper.assertTrue(installed.ok(), installed.message());

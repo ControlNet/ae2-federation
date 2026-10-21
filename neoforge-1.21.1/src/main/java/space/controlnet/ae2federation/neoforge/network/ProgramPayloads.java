@@ -12,6 +12,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import space.controlnet.ae2federation.automation.ChunkAssembler;
 import space.controlnet.ae2federation.automation.ClientPrograms;
+import space.controlnet.ae2federation.automation.ComputingHost;
+import space.controlnet.ae2federation.automation.DeviceBudget;
+import space.controlnet.ae2federation.automation.InstallationCost;
 import space.controlnet.ae2federation.automation.ProgramSync;
 
 /**
@@ -156,6 +159,7 @@ public final class ProgramPayloads {
                 fout.writeCollection(function.params(), FriendlyByteBuf::writeUtf);
                 fout.writeUtf(function.result());
                 fout.writeBoolean(function.acts());
+                fout.writeNullable(function.cost(), ProgramPayloads::writeCost);
             });
         });
         buffer.writeCollection(index.devices(), ProgramPayloads::writeDevice);
@@ -176,20 +180,23 @@ public final class ProgramPayloads {
             out.writeVarInt(installation.interval());
             out.writeUtf(installation.overlap());
             out.writeVarInt(installation.running());
+            writeCost(out, installation.cost());
+            out.writeLong(installation.bandwidth());
         });
     }
 
     static ProgramSync.Index readIndex(FriendlyByteBuf buffer) {
         var files = buffer.readList(in -> new ProgramSync.FileInfo(in.readUtf(), in.readUtf(), in.readBoolean(),
                 in.readBoolean(), in.readVarInt(), in.readList(fin -> new ProgramSync.FunctionInfo(fin.readUtf(),
-                        fin.readList(FriendlyByteBuf::readUtf), fin.readUtf(), fin.readBoolean()))));
+                        fin.readList(FriendlyByteBuf::readUtf), fin.readUtf(), fin.readBoolean(),
+                        fin.readNullable(ProgramPayloads::readCost)))));
         var devices = buffer.readList(ProgramPayloads::readDevice);
         var interfaces = buffer.readList(ProgramPayloads::readDevice);
         var networks = buffer.readList(in -> new ProgramSync.NetworkInfo(in.readUtf(), in.readUtf(), in.readUtf(),
                 in.readUtf()));
         var installations = buffer.readList(in -> new ProgramSync.InstallationInfo(in.readUtf(), in.readUtf(),
                 in.readUtf(), in.readUtf(), List.copyOf(in.readList(FriendlyByteBuf::readUtf)), in.readUtf(),
-                in.readVarInt(), in.readUtf(), in.readVarInt()));
+                in.readVarInt(), in.readUtf(), in.readVarInt(), readCost(in), in.readLong()));
         return new ProgramSync.Index(List.copyOf(files), List.copyOf(devices), List.copyOf(interfaces),
                 List.copyOf(networks), List.copyOf(installations));
     }
@@ -201,11 +208,33 @@ public final class ProgramPayloads {
         buffer.writeBlockPos(device.position());
         buffer.writeUtf(device.domain());
         buffer.writeUtf(device.block());
+        buffer.writeNullable(device.budget(), (out, budget) -> {
+            out.writeLong(budget.capacity().compute());
+            out.writeLong(budget.capacity().bandwidth());
+            out.writeLong(budget.capacity().installations());
+            out.writeLong(budget.reserved().compute());
+            out.writeLong(budget.reserved().bandwidth());
+            out.writeVarInt(budget.reserved().installations());
+            out.writeBoolean(budget.reserved().elastic());
+        });
     }
 
     private static ProgramSync.DeviceInfo readDevice(FriendlyByteBuf buffer) {
         return new ProgramSync.DeviceInfo(buffer.readUtf(), buffer.readUtf(), buffer.readUtf(), buffer.readBlockPos(),
-                buffer.readUtf(), buffer.readUtf());
+                buffer.readUtf(), buffer.readUtf(), buffer.readNullable(in -> new ProgramSync.Budget(
+                        new ComputingHost.Capacity(in.readLong(), in.readLong(), in.readLong()),
+                        new DeviceBudget.Reserved(in.readLong(), in.readLong(), in.readVarInt(), in.readBoolean()))));
+    }
+
+    /** Costs are sent whole: they may be the largest long, for a reservation that saturated. */
+    private static void writeCost(FriendlyByteBuf buffer, InstallationCost cost) {
+        buffer.writeLong(cost.compute());
+        buffer.writeLong(cost.bandwidth());
+        buffer.writeVarInt(cost.shares());
+    }
+
+    private static InstallationCost readCost(FriendlyByteBuf buffer) {
+        return new InstallationCost(buffer.readLong(), buffer.readLong(), buffer.readVarInt());
     }
 
     public static void register(IEventBus modBus) {

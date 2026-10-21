@@ -40,8 +40,13 @@ import space.controlnet.ae2federation.persistence.NetworkNames;
  * player may do this.
  */
 public final class ProgramSync {
-    /** A function as the tab lists it: its parameters as written ({@code item: Item}), and whether it acts. */
-    public record FunctionInfo(String name, List<String> params, String result, boolean acts) {
+    /**
+     * A function as the tab lists it: its parameters as written ({@code item: Item}), whether it acts, and what it
+     * would reserve if it were dropped on a device now ({@link ProgramScheduler#dropCost}), or {@code null} when that
+     * cannot be worked out.
+     */
+    public record FunctionInfo(String name, List<String> params, String result, boolean acts,
+            @Nullable InstallationCost cost) {
     }
 
     /**
@@ -54,10 +59,14 @@ public final class ProgramSync {
 
     /**
      * A computing device or an Automation Interface: its alias is empty when it has none, and its block's registry ID
-     * is empty while its chunk is not loaded.
+     * is empty while its chunk is not loaded. A loaded computing device has its budget; an interface never has one.
      */
     public record DeviceInfo(String id, String alias, String dimension, BlockPos position, String domain,
-            String block) {
+            String block, @Nullable Budget budget) {
+    }
+
+    /** A computing device's capacity and what its installations reserve on it. */
+    public record Budget(ComputingHost.Capacity capacity, DeviceBudget.Reserved reserved) {
     }
 
     /**
@@ -69,10 +78,11 @@ public final class ProgramSync {
 
     /**
      * An installation, with each argument as the text a request takes back ({@link Installation#text}) and its trigger
-     * as {@link TriggerText} writes it.
+     * as {@link TriggerText} writes it; what it reserves, and the bytes a second it has: its reservation, or an
+     * elastic one's share, {@link Long#MAX_VALUE} on an unlimited device and -1 while its device is not loaded.
      */
     public record InstallationInfo(String id, String device, String file, String function, List<String> args,
-            String trigger, int interval, String overlap, int running) {
+            String trigger, int interval, String overlap, int running, InstallationCost cost, long bandwidth) {
     }
 
     /**
@@ -105,6 +115,8 @@ public final class ProgramSync {
     private final MinecraftServer server;
     private final Set<UUID> subscribers = new LinkedHashSet<>();
     private final ChunkAssembler<String> uploads = new ChunkAssembler<>();
+    /** Each computing device's capacity when the index was last checked; empty while it is not loaded. */
+    private Map<String, java.util.Optional<ComputingHost.Capacity>> capacities = Map.of();
 
     private ProgramSync(MinecraftServer server) {
         this.server = server;
@@ -122,6 +134,7 @@ public final class ProgramSync {
         var sync = SERVICES.get(server);
         if (sync != null) {
             sync.uploads.expire(server.overworld().getGameTime());
+            sync.watchCapacities();
         }
     }
 
@@ -330,6 +343,25 @@ public final class ProgramSync {
         subscribers.forEach(id -> toClient.index(server.getPlayerList().getPlayer(id), index));
     }
 
+    /**
+     * Once a second while the tab is open, re-sends the index when a computing device's capacity changed, as when a
+     * part of its structure is broken, or it loaded or unloaded: nothing else tells the tab. What installations
+     * reserve changes only with them, which re-sends it already.
+     */
+    private void watchCapacities() {
+        if (subscribers.isEmpty() || server.overworld().getGameTime() % 20 != 0) {
+            return;
+        }
+        var scheduler = ProgramScheduler.get(server);
+        var now = new java.util.HashMap<String, java.util.Optional<ComputingHost.Capacity>>();
+        ComputingDevices.get(server.overworld()).entries().keySet()
+                .forEach(id -> now.put(id, scheduler.budget(id).map(DeviceBudget::capacity)));
+        if (!now.equals(capacities)) {
+            capacities = Map.copyOf(now);
+            changed();
+        }
+    }
+
     /** What the tab lists: every program, computing device, Automation Interface, domain network and installation. */
     public Index index() {
         var library = ProgramStore.get(server).library();
@@ -349,7 +381,7 @@ public final class ProgramSync {
                             .map(param -> param.name() + ": " + param.type()).toList(),
                             f.result() != null ? f.result().toString()
                                     : results.containsKey(f.name()) ? results.get(f.name()).toString() : "",
-                            acting.contains(f.name())))
+                            acting.contains(f.name()), scheduler.dropCost(name, f.name()).orElse(null)))
                     .toList();
             var pushed = devices.pushed(name);
             files.add(new FileInfo(name, version(text), pushed.map(texts -> texts.get(name).equals(text)).orElse(false),
@@ -359,8 +391,10 @@ public final class ProgramSync {
         devices.entries().forEach((id, entry) -> {
             var level = level(entry.dimension());
             var domain = level == null ? "" : devices.domainOf(level, id).map(found -> found.value()).orElse("");
+            var budget = scheduler.budget(id).map(found -> new Budget(found.capacity(), found.reserved()))
+                    .orElse(null);
             deviceInfos.add(new DeviceInfo(id, entry.alias(), entry.dimension(), entry.position(), domain,
-                    block(level, entry.position())));
+                    block(level, entry.position()), budget));
         });
         var interfaces = AutomationInterfaces.get(server.overworld());
         var interfaceInfos = new ArrayList<DeviceInfo>();
@@ -368,7 +402,7 @@ public final class ProgramSync {
             var level = level(entry.dimension());
             var domain = level == null ? "" : interfaces.domainOf(level, id).map(found -> found.value()).orElse("");
             interfaceInfos.add(new DeviceInfo(id, entry.alias(), entry.dimension(), entry.position(), domain,
-                    block(level, entry.position())));
+                    block(level, entry.position()), null));
         });
         var shortIds = NetworkShortIds.get(server);
         var names = NetworkNames.get(server.overworld());
@@ -381,7 +415,9 @@ public final class ProgramSync {
                 installation.id(), installation.device(), installation.file(), installation.function(),
                 installation.args().stream().map(Installation::text).toList(), TriggerText.format(installation.trigger()),
                 installation.interval(), installation.overlap().name().toLowerCase(Locale.ROOT),
-                scheduler.running(installation.id()))).toList();
+                scheduler.running(installation.id()), scheduler.cost(installation.id()),
+                scheduler.budget(installation.device()).map(budget -> budget.bandwidth(installation.id()))
+                        .orElse(-1L))).toList();
         return new Index(List.copyOf(files), List.copyOf(deviceInfos), List.copyOf(interfaceInfos),
                 List.copyOf(networks), installations);
     }

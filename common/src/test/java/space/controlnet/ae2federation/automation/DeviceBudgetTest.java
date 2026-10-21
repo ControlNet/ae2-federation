@@ -167,4 +167,44 @@ final class DeviceBudgetTest {
         assertFalse(DeviceBudget.of(one, Map.of("a", cost(1))).paused());
         assertTrue(DeviceBudget.of(one, Map.of("a", cost(1), "b", cost(1))).paused());
     }
+    /** What the tab is sent: the sums of what the installations reserve, and whether any of them is elastic. */
+    @Test
+    void theReservedSumsAreWhatTheInstallationsReserve() {
+        var costs = new LinkedHashMap<String, InstallationCost>();
+        costs.put("fixed", cost(10, move(ITEM, 8 * 20)));
+        costs.put("other", cost(5, move(ITEM, 8)));
+        assertEquals(new DeviceBudget.Reserved(15, 420, 2, false), DeviceBudget.of(DEVICE, costs).reserved());
+        costs.put("elastic", cost(1, unbounded()));
+        assertEquals(new DeviceBudget.Reserved(16, 420, 3, true), DeviceBudget.of(DEVICE, costs).reserved());
+    }
+
+    /** A dragged function is judged by the sums alone, exactly as the server judges it when it is installed. */
+    @Test
+    void aNewInstallationIsJudgedTheSameByTheSums() {
+        var costs = new LinkedHashMap<String, InstallationCost>();
+        costs.put("fixed", cost(40, move(ITEM, 8 * 30)));
+        costs.put("elastic", cost(1, unbounded()));
+        var reserved = DeviceBudget.of(DEVICE, costs).reserved();
+        for (var after : List.of(cost(23), cost(24), cost(1, move(ITEM, 8 * 19)), cost(1, move(ITEM, 8 * 20)),
+                cost(1, unbounded()))) {
+            assertEquals(DeviceBudget.refusal(DEVICE, costs, null, after), DeviceBudget.refusal(DEVICE, reserved, after));
+        }
+        var full = new ComputingHost.Capacity(64, 1_000, 2);
+        assertTrue(DeviceBudget.refusal(full, reserved, cost(1)).orElseThrow().contains("installations"));
+        assertEquals(Optional.empty(), DeviceBudget.refusal(ComputingHost.Capacity.UNLIMITED, reserved, cost(999)));
+    }
+
+    /** The bandwidth an installation has: its reservation, or for an elastic one the shares it holds now. */
+    @Test
+    void anInstallationsBandwidthIsItsReservationOrItsShare() {
+        var costs = new LinkedHashMap<String, InstallationCost>();
+        costs.put("fixed", cost(1, move(ITEM, 8 * 20)));
+        costs.put("one", cost(1, unbounded()));
+        costs.put("four", cost(1, Installation.Overlap.PARALLEL, unbounded()));
+        var budget = DeviceBudget.of(DEVICE, costs);
+        assertEquals(400, budget.bandwidth("fixed"));
+        assertEquals(120, budget.bandwidth("one"));
+        assertEquals(480, budget.bandwidth("four"));
+        assertEquals(Long.MAX_VALUE, DeviceBudget.of(ComputingHost.Capacity.UNLIMITED, costs).bandwidth("one"));
+    }
 }

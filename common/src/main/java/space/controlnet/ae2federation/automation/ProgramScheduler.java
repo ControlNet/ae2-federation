@@ -298,34 +298,82 @@ public final class ProgramScheduler {
         if (texts.isEmpty()) {
             return new InstallationCost(0, 0, 0);
         }
-        var others = new LinkedHashMap<String, space.controlnet.ae2federation.script.Program>();
-        texts.get().forEach((name, text) -> {
-            if (!name.equals(installation.file())) {
-                others.put(name, ScriptParser.parse(text).program());
-            }
-        });
-        var program = ScriptParser.parse(texts.get().get(installation.file())).program();
-        var workspace = new Workspace(others, ProgramStore.catalog(server, null));
-        var definition = program.functions().stream().filter(f -> f.name().equals(installation.function()))
-                .findFirst();
-        if (definition.isEmpty()) {
-            return new InstallationCost(0, 0, 0);
-        }
+        var definition = ScriptParser.parse(texts.get().get(installation.file())).program().functions().stream()
+                .filter(f -> f.name().equals(installation.function())).findFirst();
         var given = new HashMap<String, Object>();
-        for (int i = 0; i < installation.args().size() && i < definition.get().params().size(); i++) {
+        for (int i = 0; definition.isPresent() && i < installation.args().size()
+                && i < definition.get().params().size(); i++) {
             var value = installation.args().get(i);
             if (value instanceof Long || value instanceof String) {
                 given.put(definition.get().params().get(i).name(), value);
             }
         }
-        var functions = new ArrayList<>(List.of(installation.function()));
-        if (installation.trigger() instanceof Installation.Trigger.Condition condition
-                && program.functions().stream().anyMatch(f -> f.name().equals(condition.function()))) {
-            functions.add(condition.function());
+        var condition = installation.trigger() instanceof Installation.Trigger.Condition found ? found.function()
+                : null;
+        return price(texts.get(), installation.file(), installation.function(), given, condition,
+                installation.overlap());
+    }
+
+    /**
+     * What a function would reserve if it were dropped on a device now: as {@link #install} would install it, from
+     * its pushed version, or the library's when it was never pushed, with no arguments typed yet, so each parameter
+     * counts at its default. Empty when that version does not parse or has no such function.
+     */
+    public Optional<InstallationCost> dropCost(String file, String function) {
+        var texts = devices().pushed(file).orElseGet(() -> {
+            var library = ProgramStore.get(server).library();
+            var closure = new LinkedHashMap<String, String>();
+            if (!library.names().contains(file)) {
+                return closure;
+            }
+            var waiting = new ArrayDeque<String>(List.of(file));
+            while (!waiting.isEmpty()) {
+                var name = waiting.poll();
+                if (library.names().contains(name) && closure.putIfAbsent(name, library.text(name)) == null) {
+                    waiting.addAll(library.calledFiles(name));
+                }
+            }
+            return closure;
+        });
+        if (!texts.containsKey(file)) {
+            return Optional.empty();
         }
-        var cost = Cost.of(program, installation.function(), given, workspace);
+        try {
+            var parsed = ScriptParser.parse(texts.get(file));
+            if (!parsed.ok() || parsed.program().functions().stream().noneMatch(f -> f.name().equals(function))) {
+                return Optional.empty();
+            }
+            return Optional.of(price(texts, file, function, Map.of(), null, Installation.Overlap.IGNORE));
+        } catch (RuntimeException e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * The cost of {@code function} of {@code file} among {@code texts}: it and its {@code condition} count their nodes,
+     * and only the function moves (a condition may only read). A version without the function costs nothing, as it
+     * cannot run.
+     */
+    private InstallationCost price(Map<String, String> texts, String file, String function, Map<String, Object> given,
+            @org.jetbrains.annotations.Nullable String condition, Installation.Overlap overlap) {
+        var others = new LinkedHashMap<String, space.controlnet.ae2federation.script.Program>();
+        texts.forEach((name, text) -> {
+            if (!name.equals(file)) {
+                others.put(name, ScriptParser.parse(text).program());
+            }
+        });
+        var program = ScriptParser.parse(texts.get(file)).program();
+        var workspace = new Workspace(others, ProgramStore.catalog(server, null));
+        if (program.functions().stream().noneMatch(f -> f.name().equals(function))) {
+            return new InstallationCost(0, 0, 0);
+        }
+        var functions = new ArrayList<>(List.of(function));
+        if (condition != null && program.functions().stream().anyMatch(f -> f.name().equals(condition))) {
+            functions.add(condition);
+        }
+        var cost = Cost.of(program, function, given, workspace);
         var registry = new RegistryResources(server.registryAccess());
-        return InstallationCost.of(Cost.nodes(program, functions, workspace), cost.moves(), installation.overlap(),
+        return InstallationCost.of(Cost.nodes(program, functions, workspace), cost.moves(), overlap,
                 resources -> perByte(resources, registry));
     }
 
@@ -649,7 +697,7 @@ public final class ProgramScheduler {
     }
 
     /** The loaded device's capacity against what its installations reserve. */
-    private Optional<DeviceBudget> budget(String device) {
+    Optional<DeviceBudget> budget(String device) {
         return host(device).map(host -> {
             var reserved = new HashMap<String, InstallationCost>();
             for (var installation : devices().installations()) {
