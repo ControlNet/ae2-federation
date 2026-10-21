@@ -80,6 +80,9 @@ Evidence: `build/eco-interface-check/before-after.png`. Compat run: `python3 too
   returns 0 for non-Router blocks; read the bits directly.
 - The client code finds the interface by ID and never loads a Neo ECO class. Without the tiles the JSON plate
   (standalone texture) shows.
-- Tiles are temporary: the Router's with the core teal turned green; the artist replaces the four files.
-- In game (build/eco-interface-face-check/before-after.png in the feature worktree): the plates read darker than the
-  glowing side face, since they carry no light layer.
+- Tiles are temporary: the Router's own, Federation teal core included (user rejected a green core, 2026-10-21),
+  with the frame's dark ring painted white so the interface blends into the side face (user disliked the dark
+  border). Side effect: adjacent unjoined interfaces (an L) no longer show a dividing line, only their edge marks.
+  The artist replaces the four files.
+- In game (build/eco-interface-teal-check/before-after.png in the feature worktree). The side face is shaded like
+  any west/east face (0.6); Neo ECO's glowing lines around it are unshaded light layers.

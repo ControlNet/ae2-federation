@@ -4,8 +4,10 @@ Automation Interface (user, 2026-10-20), and its models and blockstates pointed 
 into the formed side face, in the base and in the tier lights; that cell is painted over with its mirrored neighbour,
 so the side face shows only the communication interfaces actually built (user, 2026-10-21). The lights are copied
 unchanged otherwise, so the tier colours stay Neo ECO's. The communication interface's four connected-face tiles
-(interface_base, _corner, _side_hor, _side_ver) are the Router's, its core turned green: the client composes them
-like a Router's faces, framing a lone interface and joining a filled 2x2 square into one panel (user, 2026-10-21). The
+(interface_base, _corner, _side_hor, _side_ver) are the Router's, Federation teal and all (user, 2026-10-21), with the
+frame's dark ring painted white, so an interface sits in the side face as a light square, as Neo ECO's own did, and
+blends with the face's light rim (user asked for no dark border, 2026-10-21). The client composes them like a
+Router's faces, framing a lone interface and joining a filled 2x2 square into one panel (user, 2026-10-21). The
 artist replaces those four files to change the look. The artist of both mods allowed the recolour. Tier colours (L4 blue, L6 orange, L9
 purple) live in textures this leaves to Neo ECO, so the tiers still read apart. The network switch variants map to
 the plain ones, since the Federation system refuses a switch. Reads from the Neo ECO jar Gradle resolved for the
@@ -37,14 +39,14 @@ def jar():
     return found[0]
 
 
-def recolour(image, low=210 / 360, high=300 / 360):
+def recolour(image, low=210 / 360):
     out = image.copy()
     pixels = out.load()
     for y in range(out.height):
         for x in range(out.width):
             r, g, b, a = pixels[x, y]
             h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
-            if a == 0 or s < 0.15 or not low <= h <= high:
+            if a == 0 or s < 0.15 or not low <= h <= 300 / 360:
                 continue
             r2, g2, b2 = colorsys.hls_to_rgb(GREEN, l, s)
             pixels[x, y] = (round(r2 * 255), round(g2 * 255), round(b2 * 255), a)
@@ -62,12 +64,22 @@ def without_me_interface(image, name):
     return out
 
 
+ROUTER_DARK_RING = {(0x41, 0x3F, 0x54), (0x4D, 0x4D, 0x67)}
+ROUTER_WHITE = (0xF2, 0xF2, 0xF2, 255)
+
+
 def interface_tiles():
-    """The Router's four connected-face tiles with the core's teal (hues 180-210) turned green."""
+    """The Router's four connected-face tiles, the frame's dark ring painted white; the teal marks across it stay."""
     tiles = {}
     for name in TILES:
         image = Image.open(ASSETS / f'textures/block/router/router_{name}.png').convert('RGBA')
-        tiles[name] = recolour(image, low=180 / 360, high=210 / 360) if name == 'base' else image
+        if name != 'base':
+            pixels = image.load()
+            for y in range(image.height):
+                for x in range(image.width):
+                    if pixels[x, y][3] and pixels[x, y][:3] in ROUTER_DARK_RING:
+                        pixels[x, y] = ROUTER_WHITE
+        tiles[name] = image
     return tiles
 
 
