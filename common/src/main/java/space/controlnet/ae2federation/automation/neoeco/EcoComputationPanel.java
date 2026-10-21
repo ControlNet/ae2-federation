@@ -3,7 +3,6 @@ package space.controlnet.ae2federation.automation.neoeco;
 import appeng.client.Point;
 import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.Scrollbar;
-import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.crafting.display.format.NEByteFormatter;
 import cn.dancingsnow.neoecoae.gui.common.GuideButton;
 import cn.dancingsnow.neoecoae.gui.common.HostElements;
@@ -35,6 +34,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import org.lwjgl.glfw.GLFW;
@@ -47,11 +47,11 @@ import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.persistence.NetworkNameBook;
 
 /**
- * The controller screen of an ECO - N system: Neo ECO's computation controller screen, its atlas, side buttons, guide
- * and Structure Builder, with the crafting CPU readouts swapped for the device's (the board "ECO - N4 option A", user
- * decisions 2026-10-20). The left box shows the ID with a copy button, the alias, compute, bandwidth and installations,
- * used against what the device holds, and the selected installation below; the right list shows this device's
- * installations, read only. Neo ECO's CPU mode, frequency and planner buttons are left out.
+ * The controller screen of an ECO - N system: Neo ECO 21.2.1's computation controller screen and atlas, its side
+ * buttons, guide and Structure Builder, with the crafting CPU readouts swapped for the device's (the board "ECO - N4
+ * option A", user decisions 2026-10-20). The left box shows the ID with a copy button, the alias, compute, bandwidth
+ * and installations, used against what the device holds, and the selected installation below; the right list shows
+ * this device's installations, read only. Neo ECO's CPU mode, frequency and planner buttons are left out.
  */
 final class EcoComputationPanel extends BindableValue<CompoundTag> {
     static final int WIDTH = 261, HEIGHT = 214, ROWS = 8;
@@ -64,6 +64,12 @@ final class EcoComputationPanel extends BindableValue<CompoundTag> {
             DIVIDER_Y = 84;
     /** The system's page, from the guide pack that loads with Neo ECO, as this screen does. */
     private static final String GUIDE_PAGE = "ae2federation:items/eco_computation_system.md";
+    /**
+     * Neo ECO 21.2.1's computation controller atlas, shipped with this mod: 21.2.2 moved it and 21.2.3 redrew it, which
+     * left this screen without its art.
+     */
+    private static final ResourceLocation ATLAS =
+            ResourceLocation.fromNamespaceAndPath("ae2federation", "textures/gui/eco_computation_controller.png");
     private static final IGuiTexture BACKGROUND = sprite(0, 0, WIDTH, HEIGHT);
     private static final IGuiTexture NORMAL = sprite(0, 222, ROW_WIDTH, ROW_HEIGHT);
     private static final IGuiTexture SELECTED = sprite(69, 222, ROW_WIDTH, ROW_HEIGHT);
@@ -346,7 +352,7 @@ final class EcoComputationPanel extends BindableValue<CompoundTag> {
     }
 
     private static IGuiTexture sprite(int x, int y, int width, int height) {
-        return SpriteTexture.of(NeoECOAE.id("textures/gui/eco_cpu_controller.png")).setSprite(x, y, width, height);
+        return SpriteTexture.of(ATLAS).setSprite(x, y, width, height);
     }
 
     private static UIElement hitbox(int x, int y, int width, int height) {
