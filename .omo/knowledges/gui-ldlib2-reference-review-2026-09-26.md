@@ -34,6 +34,21 @@ Source: https://github.com/Low-Drag-MC/KilaGraph/blob/0f1b272cc2a61ddee01a8c23ff
 
 No new rendering or runtime compatibility test was performed for this follow-up.
 
+## KilaGraph adds no graph visuals of its own (checked 2026-10-21)
+
+KilaGraph `1.21` branch at `5a3563c` (v21.1.0.16, LDLib2 2.2.41, range `[2.2.33,)`), read from source:
+`KGGraphView` (21 lines) only extends LDLib2's Node Graph Toolkit `GraphView` and widens the item library's
+description panel; `RenderTypeGraphView` adds shader settings/preview tool panels. It ships no stylesheet, no GUI
+textures and no node, port or wire element subclasses. Nodes, ports, wires, LOD and styles are all LDLib2's
+toolkit, which our LDLib2 dependency already contains. KilaGraph's value is content (Blueprint node library, graph
+executor, shader graphs), so it cannot improve how our graphs look beyond what LDLib2 itself offers.
+
+Toolkit view elements are model-bound (`NodeElement(AbstractNodeModel)`, `PortElement`/`WireElement(WireModel)`;
+wire colours come from port data types), so adopting them means building toolkit models. The parts usable without
+models: the wire shader (`LDLibRenderTypes.graphWire()` + `DrawerHelper.drawTexLines`, already used by all four of
+our in-game graphs), `WireElement.roundCorners(points, 6, 8)` (public static), and its techniques (two-colour wires,
+hover width 0.7 -> 1.1 x 7, inactive alpha 0x77, SIMPLIFIED flat lines, BLOCK skip, segment hit tests).
+
 ## Scope and evidence
 
 This is an investigation and redesign recommendation, not an implementation or a new runtime qualification.
