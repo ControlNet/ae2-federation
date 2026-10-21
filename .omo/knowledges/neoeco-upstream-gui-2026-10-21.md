@@ -43,15 +43,20 @@ contract. Only the drive grid and maybe the three stat panels map onto ECO - N; 
 Aiming in that world: a cable at (13,-59,-1) sits in front of the N4 controller and the player crawls under the
 overhang, so `tp 13.5 -60 -2.5 facing 13.5 -59.1 0` is what hits the controller (check with F3 "Targeted Block").
 
+## Decision and fix (user, 2026-10-21: option a)
+
+- 89376e7b: the panel draws from `ae2federation:textures/gui/eco_computation_controller.png`, an unmodified copy of
+  the 21.2.1 atlas (sha256 4b8634d8...), with `eco_computation_controller_license.txt` beside it (GPLv3 text; our
+  AGPL-3.0 combines under section 13 of each). Before/after on 21.2.9: `build/neoeco-gui-check/before-after.png`.
+- The side bar still uses Neo ECO's own button art, so its icons follow whichever Neo ECO is installed.
+- Compile jar and the `neoecoae`, `neoecoprototype`, `addons-all` compat profiles moved to 21.2.9 (Modrinth
+  `26GPFo2j`); `useless-mod-addons` stays on 21.2.0 on purpose (requested-amount fallback). NeoECOPrototype 1.3.3
+  accepts `[21.2.1-beta2,)`. LDLib2 stays 2.2.34 for compiling; Neo ECO 21.2.2+ needs LDLib2 >= 2.2.40 at run time,
+  which the profiles (2.2.41) provide.
+- Not adopted: rebuilding on `ComputationControllerUI` (option b). Revisit only if upstream adds layout extension
+  points; a drive grid inside our own panel is the cheaper way to get in-screen cell handling.
+
 ## Guards
 
-- We compile against 21.2.1 (`neoforge-1.21.1/build.gradle`, `neoEcoApi`); `neoforge.mods.toml` declares no
-  `neoecoae` range; `NeoEcoSupport.available()` requires >= 21.2.1 with no upper bound; every compat profile pins
-  21.2.0 or 21.2.1, so nothing tests 21.2.2+.
-
-## Options (pending the user's decision)
-
-- (a) Ship our own copy of the 21.2.1 atlas (GPLv3 art) under `ae2federation:`: smallest change, look frozen at 21.2.1.
-- (b) Rebuild on the public `ComputationControllerUI` with our Federation panel: matches "keep Neo ECO's GUI", but its
-  `Config` wants about 30 ECO-CPU suppliers.
-- Either way: raise the compile jar and the `neoecoae` compat profiles to 21.2.9 (Modrinth version `26GPFo2j`).
+- `neoforge.mods.toml` declares no `neoecoae` range; `NeoEcoSupport.available()` requires >= 21.2.1 with no upper
+  bound.
