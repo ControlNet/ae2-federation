@@ -35,6 +35,9 @@ import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.automation.AutomationRegistration;
 import space.controlnet.ae2federation.automation.ClientPrograms;
+import space.controlnet.ae2federation.automation.ComputingHost;
+import space.controlnet.ae2federation.automation.DeviceBudget;
+import space.controlnet.ae2federation.automation.InstallationCost;
 import space.controlnet.ae2federation.automation.InstallationLog;
 import space.controlnet.ae2federation.automation.ProgramEvents;
 import space.controlnet.ae2federation.automation.ProgramSync;
@@ -51,6 +54,11 @@ import space.controlnet.ae2federation.client.policy.WireCurve;
  * trigger does while it runs and whether it runs, with Uninstall, Open in editor and Run now. A click on an argument
  * or the rate limit edits it in place, sent on Enter or when the field loses focus; chips choose the trigger and what
  * a trigger does while it runs. The server's answer comes back as a new index, which rebuilds the aside.
+ *
+ * <p>A device with a capacity shows it in one row under its kind ({@code AutoCapD}): compute and bandwidth reserved
+ * of all, each underlined by a bar as wide as its figures, and its installations of its threads. Bandwidth left to
+ * elastic installations is drawn dim green. While a function is dragged, each device's ring says whether it can take
+ * it, by the server's own rule, and the device under the pointer previews its cost on the bars.
  */
 final class FederationInstallView {
     /** Programs take these colours in the index's order: their squares, ports and wires. */
@@ -69,6 +77,9 @@ final class FederationInstallView {
     private static final int LOG_PERIOD = 20;
     /** Secondary text in a value field, darker than the theme's muted text to read on the field. */
     private static final int FIELD_MUTED = 0xff575468;
+    /** A meter's bar: bandwidth elastic installations share, and a dragged function's cost while it fits. */
+    private static final int METER_SHARED = 0xff2f6b46;
+    private static final int METER_PREVIEW = 0xffb8ffd0;
 
     private final ScrollerView canvasScroll;
     private final ScrollerView aside;
@@ -280,7 +291,10 @@ final class FederationInstallView {
 
     private UIElement deviceCard(ProgramSync.DeviceInfo device, List<ProgramSync.InstallationInfo> installations) {
         // Every device of the domain takes a dragged wire: lit while one is dragged (AutoInstallDrag).
-        var card = card(() -> dragged() != null ? FederationTheme.OK : CARD_RING);
+        var card = card(() -> {
+            var drag = dragged();
+            return drag == null ? CARD_RING : fits(device, drag) ? FederationTheme.OK : FederationTheme.ERROR;
+        });
         card.setId("auto_install_device_" + device.id());
         card.addClass("install-device");
         card.addEventListener(UIEvents.DRAG_ENTER, event -> {
@@ -306,10 +320,90 @@ final class FederationInstallView {
         lines.addClass("install-device-lines");
         lines.addChild(label("install-title", Component.literal(deviceName(device))));
         lines.addChild(label("install-muted", deviceLine(device)));
+        var budget = device.budget();
+        if (budget != null && !budget.capacity().unlimited()) {
+            lines.addChild(meters(device.id(), budget));
+            head.addClass("metered");
+        }
         head.addChildren(port, lines);
         card.addChild(head);
         for (var installation : installations) card.addChild(installationRow(installation));
         return card;
+    }
+
+    /**
+     * A device's capacity row: compute and fixed bandwidth reserved of all, each underlined by its bar, and its
+     * installations of its threads; a figure over its capacity is red. A structure that is not formed has none: dashes.
+     */
+    private UIElement meters(String device, ProgramSync.Budget budget) {
+        var capacity = budget.capacity();
+        var reserved = budget.reserved();
+        var row = new UIElement();
+        row.addClass("install-meters");
+        var formed = !capacity.equals(ComputingHost.Capacity.NONE);
+        row.addChild(label("install-meter-name", tr("meter.compute")));
+        row.addChild(formed ? meter(reserved.compute(), capacity.compute(), false,
+                () -> preview(device, InstallationCost::compute)) : dash());
+        row.addChild(label("install-meter-name gap", tr("meter.bandwidth")));
+        row.addChild(formed ? meter(reserved.bandwidth(), capacity.bandwidth(), reserved.elastic(),
+                () -> preview(device, cost -> cost.elastic() ? 0 : cost.bandwidth())) : dash());
+        row.addChild(label("install-meter-name gap", tr("meter.threads")));
+        row.addChild(formed ? figure(reserved.installations() + "/" + capacity.installations(),
+                reserved.installations() > capacity.installations()) : dash());
+        return row;
+    }
+
+    /** Used of all, underlined by a bar of the same width: green, red when over, dim green where elastic ones share. */
+    private static UIElement meter(long used, long total, boolean shared, java.util.function.LongSupplier preview) {
+        var meter = new UIElement();
+        meter.addClass("install-meter");
+        meter.addChild(figure(FederationTopologyView.compact(used) + "/" + FederationTopologyView.compact(total),
+                used > total));
+        meter.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) -> {
+            int bar = (int) y + (int) height - 2;
+            pen.rect(x, bar, width, 2, FederationTheme.WELL);
+            // A capacity of nothing draws an empty bar, or a full red one while something is reserved on it.
+            float fill = total <= 0 ? (used > 0 ? 1 : 0) : Math.min(1f, (float) used / total);
+            pen.rect(x, bar, width * fill, 2, used > total ? FederationTheme.ERROR : FederationTheme.OK);
+            long extra = preview.getAsLong();
+            if (extra > 0) {
+                float more = total <= 0 ? 1 : Math.min(1 - fill, (float) extra / total);
+                pen.rect(x + width * fill, bar, width * more, 2,
+                        extra > total - used ? FederationTheme.ERROR : METER_PREVIEW);
+            } else if (shared) {
+                pen.rect(x + width * fill, bar, width * (1 - fill), 2, METER_SHARED);
+            }
+        })));
+        return meter;
+    }
+
+    private static Label figure(String text, boolean over) {
+        return label("install-meter-value", Component.literal(text)
+                .withColor((over ? FederationTheme.ERROR : FederationTheme.DARK_TEXT) & 0xffffff));
+    }
+
+    private static Label dash() {
+        return label("install-meter-value",
+                Component.literal("\u2014").withColor(FederationTheme.DARK_MUTED & 0xffffff));
+    }
+
+    /** What the dragged function would add to a meter of the device under the pointer; 0 elsewhere. */
+    private long preview(String device, java.util.function.ToLongFunction<InstallationCost> part) {
+        var drag = dragged();
+        if (drag == null || !hoverDevice.equals(device)) return 0;
+        var function = function(drag.file(), drag.function());
+        return function == null || function.cost() == null ? 0 : part.applyAsLong(function.cost());
+    }
+
+    /**
+     * Whether the device can take the dragged function, by the rule the server installs by. One it cannot judge, not
+     * loaded or with a function it could not price, is let through: the server answers on the drop.
+     */
+    private boolean fits(ProgramSync.DeviceInfo device, FunctionDrag drag) {
+        var budget = device.budget();
+        var function = function(drag.file(), drag.function());
+        if (budget == null || function == null || function.cost() == null) return true;
+        return DeviceBudget.refusal(budget.capacity(), budget.reserved(), function.cost()).isEmpty();
     }
 
     /**
@@ -521,6 +615,7 @@ final class FederationInstallView {
                             .request("overlap", List.of(installation.id(), mode), answer)));
         }
         aside.addScrollViewChild(fact(tr("if_running"), overlap));
+        aside.addScrollViewChild(fact(tr("cost"), cost(installation)));
         stateValue = label("install-value-text", Component.empty());
         stateValue.setId("auto_install_state");
         stateRow = fact(tr("state"), stateValue);
@@ -918,6 +1013,25 @@ final class FederationInstallView {
         value.addChild(label("install-value-text", name.equals(arg) ? Component.literal(arg)
                 : Component.literal(name + " ").append(Component.literal(arg).withColor(FIELD_MUTED))));
         return value;
+    }
+
+    /**
+     * What an installation reserves: its compute, and its bandwidth, or for an elastic one the share it has now, then
+     * "shared"; no figure while that is unknown (its device not loaded) or unlimited.
+     */
+    private static Component cost(ProgramSync.InstallationInfo installation) {
+        var cost = installation.cost();
+        var text = Component.literal(FederationTopologyView.compact(cost.compute()) + " ")
+                .append(tr("meter.compute"));
+        if (!cost.elastic()) {
+            return text.append(" \u00b7 " + FederationTopologyView.compact(cost.bandwidth()) + " ")
+                    .append(tr("meter.bandwidth"));
+        }
+        var share = installation.bandwidth();
+        var known = share >= 0 && share != Long.MAX_VALUE;
+        text.append(" \u00b7 ");
+        if (known) text.append(FederationTopologyView.compact(share) + " ").append(tr("meter.bandwidth")).append(" ");
+        return text.append(tr("shared").withColor(FederationTheme.TEXT_MUTED & 0xffffff));
     }
 
     private static UIElement fact(Component name, Component value) {
