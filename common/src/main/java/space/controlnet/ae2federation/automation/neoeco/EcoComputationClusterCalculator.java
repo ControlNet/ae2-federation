@@ -14,8 +14,8 @@ import net.minecraft.world.level.block.Block;
 
 /**
  * Neo ECO's computation system geometry, with one change: the side face, the 2x3 end where Neo ECO wants its ME
- * interface and may take a network switch, holds casing and up to {@value #MAX_INTERFACES} Federation communication
- * interfaces instead, in any of its cells (user, 2026-10-20). So a Federation computation system has no way into an ME
+ * interface and may take a network switch, holds casing and one to {@value #MAX_INTERFACES} Federation communication
+ * interfaces instead, in any of its cells (user, 2026-10-20; at least one, user 2026-10-21). So a Federation computation system has no way into an ME
  * network and never becomes an AE2 crafting CPU, and no switch pools its capacity with a Neo ECO system on ME. Neo ECO
  * routes every member's check to the controller's calculator, so registering this for the controller's and the
  * interface's block entity types covers the whole structure.
@@ -45,7 +45,7 @@ final class EcoComputationClusterCalculator extends NEComputationClusterCalculat
                 return false;
             }
         }
-        return interfaces <= MAX_INTERFACES && super.verifyStructure(level, controllerPos, tier, front, back, top,
+        return interfaces >= 1 && interfaces <= MAX_INTERFACES && super.verifyStructure(level, controllerPos, tier, front, back, top,
                 down, expandSide, expandSide, expandSide, mirrored);
     }
 

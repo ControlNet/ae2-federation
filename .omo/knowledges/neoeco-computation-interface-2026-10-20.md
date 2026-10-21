@@ -2,8 +2,8 @@
 
 Commit `9adf4a6c` on `feature/function-system`. The user's rules: the controller links no cable. There are 1-4
 interfaces, only in the side face (the 2x3 end where Neo ECO wants its ME interface), in any of its six cells. A 2x2
-bundle links only when four interfaces fill a 2x2 square. Two defaults were my own choice: 0 interfaces forms and links
-nothing, and auto-build places one interface at Neo ECO's interface cell.
+bundle links only when four interfaces fill a 2x2 square. At least one interface is required (user, 2026-10-21), and
+auto-build places one at Neo ECO's interface cell (user confirmed 2026-10-21).
 
 ## Structure check
 
@@ -60,3 +60,8 @@ Evidence: `build/eco-interface-check/before-after.png`. Compat run: `python3 too
 - Verified in game (build/eco-interface-check/build/built.png): Build forms the structure with a green interface.
 - The panel's "network online" flag must count only foreign nodes: the controller's domain always holds its own
   interfaces, so it checks `domain.nodes().size() > 1 + remotePorts().size()`.
+
+## At least one interface (user, 2026-10-21)
+
+- Zero interfaces no longer forms: `verifyStructure` requires 1..4. The assistant's earlier default (0 forms, links
+  nothing) was rejected. Compat tests that build with casing only must place one interface at `INTERFACE`.

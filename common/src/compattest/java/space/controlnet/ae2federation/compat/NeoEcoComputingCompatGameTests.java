@@ -93,17 +93,20 @@ public final class NeoEcoComputingCompatGameTests {
         });
     }
 
-    /** Without an interface it still forms, and a cable against its side face links nothing. */
+    /** It needs at least one interface (user, 2026-10-21): with casing all over its side face it does not form. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 300)
-    public static void federationComputationSystemFormsWithoutInterfaces(GameTestHelper helper) {
+    public static void federationComputationSystemNeedsAnInterface(GameTestHelper helper) {
         var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
-        helper.setBlock(CABLE, space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get());
+        var casing = helper.getBlockState(INTERFACE);
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(formed(helper.getBlockState(controller))
-                        && helper.getBlockEntity(controller) instanceof ComputingHost host && host.id() != null,
-                        "it forms with casing all over its side face"))
-                .thenExecuteAfter(20, () -> helper.assertFalse(sharesDomain(helper, controller, CABLE),
-                        "a cable against casing does not reach it"))
+                .thenExecuteAfter(40, () -> helper.assertFalse(formed(helper.getBlockState(controller)),
+                        "it does not form with casing all over its side face"))
+                .thenExecute(() -> helper.setBlock(INTERFACE, communicationInterface()))
+                .thenWaitUntil(() -> helper.assertTrue(formed(helper.getBlockState(controller)),
+                        "it forms with one interface"))
+                .thenExecute(() -> helper.setBlock(INTERFACE, casing))
+                .thenWaitUntil(() -> helper.assertFalse(formed(helper.getBlockState(controller)),
+                        "it breaks up once its last interface is gone"))
                 .thenSucceed();
     }
 
@@ -183,6 +186,7 @@ public final class NeoEcoComputingCompatGameTests {
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 400)
     public static void federationComputationSystemRefusesANetworkSwitch(GameTestHelper helper) {
         var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l9");
+        helper.setBlock(INTERFACE, communicationInterface());
         var side = controller.west();
         helper.startSequence()
                 .thenWaitUntil(() -> helper.assertTrue(formed(helper.getBlockState(controller)),
@@ -306,6 +310,7 @@ public final class NeoEcoComputingCompatGameTests {
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 400)
     public static void federationComputationSystemReservesComputeAndBandwidth(GameTestHelper helper) {
         var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        helper.setBlock(INTERFACE, communicationInterface());
         var file = "neoeco_budget";
         var statements = String.join("\n", java.util.Collections.nCopies(40, "    x = 1"));
         writeProgram(helper, file, """
@@ -375,6 +380,7 @@ public final class NeoEcoComputingCompatGameTests {
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void federationComputationSystemPausesWhileItHoldsTooLittle(GameTestHelper helper) {
         var controller = placeFederationComputationSystem(helper, "computation_casing", "eco_computation_system_l4");
+        helper.setBlock(INTERFACE, communicationInterface());
         var file = "neoeco_pause";
         writeProgram(helper, file, """
                 def ping() -> str:

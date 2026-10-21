@@ -30,11 +30,11 @@ jobs. It needs Neo ECO 21.2.1 or later.
 * **Building:** as Neo ECO's structure, with two differences: our controller, and Computation Casing where Neo ECO
   puts its ME interface. A network switch module is refused. The controller's tier must be at least that of the
   cores. The controller's Structure Builder builds it with one communication interface.
-* **Linking:** the controller takes no cable. Up to four
+* **Linking:** the controller takes no cable. One to four
   <ItemLink id="ae2federation:eco_computation_interface" />s go anywhere in the side face, the 2x3 end where Neo ECO
   puts its ME interface. Once the structure has formed, each takes one <ItemLink id="ae2federation:cable" /> on its
   outer face, which joins the system to the domain. A 2x2 bundled cable links only to four interfaces that fill a 2x2
-  square. A fifth interface, or one in another face, keeps the structure from forming. No ME network joins the
+  square. Without an interface, with a fifth, or with one in another face, the structure does not form. No ME network joins the
   structure, and it is not a crafting CPU.
 * **Compute:** the accelerators of its parallel cores, 64, 192 or 576 CU per core for tier 4, 6 or 9.
 * **Bandwidth:** the bytes of the flash crystal matrices in its drives, 67,108,864 (CE4), 268,435,456 (CE6) or
