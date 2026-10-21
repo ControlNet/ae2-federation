@@ -1,6 +1,6 @@
 # ME Federation Automation Interface, H1 (2026-10-18)
 
-Branch `feature/function-system`. Decisions are in `docs/ideas/function-system.md` ("Interaction interface" and
+Branch `feature/function-system`. Decisions are in `docs/ideas/script-system.md` ("Interaction interface" and
 "The interface as built").
 
 ## Adding a domain device: the places to touch

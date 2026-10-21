@@ -21,8 +21,8 @@ import space.controlnet.ae2federation.automation.NetworkShortIds;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
-import space.controlnet.ae2federation.function.Checker;
-import space.controlnet.ae2federation.function.TypeRef;
+import space.controlnet.ae2federation.script.Checker;
+import space.controlnet.ae2federation.script.TypeRef;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
 

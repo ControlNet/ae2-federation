@@ -14,14 +14,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.domain.FederationDomainId;
-import space.controlnet.ae2federation.function.Checker;
-import space.controlnet.ae2federation.function.Cost;
-import space.controlnet.ae2federation.function.FunctionDef;
-import space.controlnet.ae2federation.function.Ops;
-import space.controlnet.ae2federation.function.Runner;
-import space.controlnet.ae2federation.function.ScriptParser;
-import space.controlnet.ae2federation.function.TypeRef;
-import space.controlnet.ae2federation.function.Workspace;
+import space.controlnet.ae2federation.script.Checker;
+import space.controlnet.ae2federation.script.Cost;
+import space.controlnet.ae2federation.script.FunctionDef;
+import space.controlnet.ae2federation.script.Ops;
+import space.controlnet.ae2federation.script.Runner;
+import space.controlnet.ae2federation.script.ScriptParser;
+import space.controlnet.ae2federation.script.TypeRef;
+import space.controlnet.ae2federation.script.Workspace;
 
 /**
  * Runs the installed functions. Each server tick it fires the schedule and condition triggers, starts what the
@@ -117,7 +117,7 @@ public final class ProgramScheduler {
             }
         }
         var catalog = ProgramStore.catalog(server, null);
-        var programs = new LinkedHashMap<String, space.controlnet.ae2federation.function.Program>();
+        var programs = new LinkedHashMap<String, space.controlnet.ae2federation.script.Program>();
         texts.forEach((name, text) -> {
             var parsed = ScriptParser.parse(text);
             if (!parsed.ok()) {
@@ -298,7 +298,7 @@ public final class ProgramScheduler {
         if (texts.isEmpty()) {
             return new InstallationCost(0, 0, 0);
         }
-        var others = new LinkedHashMap<String, space.controlnet.ae2federation.function.Program>();
+        var others = new LinkedHashMap<String, space.controlnet.ae2federation.script.Program>();
         texts.get().forEach((name, text) -> {
             if (!name.equals(installation.file())) {
                 others.put(name, ScriptParser.parse(text).program());
@@ -550,7 +550,7 @@ public final class ProgramScheduler {
                                     place.get().level()), place.get().position(), event.name())) {
                         state.gate.fire(state.runs.size());
                     }
-                } catch (space.controlnet.ae2federation.function.RunError e) {
+                } catch (space.controlnet.ae2federation.script.RunError e) {
                     // The interface left the domain: nothing to watch until it is back.
                 }
             }
@@ -675,7 +675,7 @@ public final class ProgramScheduler {
     /** The pushed version of {@code file}, checked among the other pushed files. */
     private Checker.Result checked(String file) {
         var texts = devices().pushed(file).orElseThrow();
-        var others = new LinkedHashMap<String, space.controlnet.ae2federation.function.Program>();
+        var others = new LinkedHashMap<String, space.controlnet.ae2federation.script.Program>();
         texts.forEach((name, text) -> {
             if (!name.equals(file)) {
                 others.put(name, ScriptParser.parse(text).program());

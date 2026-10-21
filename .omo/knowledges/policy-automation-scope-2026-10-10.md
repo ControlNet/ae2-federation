@@ -22,7 +22,7 @@ every rule. Other applications remain in scope for discussion; no additional act
 The user explicitly confirmed redstone output as an automation action direction, including standalone
 uses outside production. Strength/pulse semantics and a physical output carrier are still undecided.
 
-Latest refinement supersedes separate function editors: use one general function system, edited in the
+Latest refinement supersedes separate function editors: use one general script system, edited in the
 automation GUI. Policy customization is a specialized use, e.g. boolean predicates or filter-returning
 functions. Policy function selection/argument binding is a UI recommendation. Read-only queries versus
 effectful actions is an assistant-proposed boundary to prevent permission checks from submitting jobs or

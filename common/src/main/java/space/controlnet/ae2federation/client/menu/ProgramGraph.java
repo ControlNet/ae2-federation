@@ -6,7 +6,7 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import space.controlnet.ae2federation.client.automation.ScriptChecker;
-import space.controlnet.ae2federation.function.Canvas;
+import space.controlnet.ae2federation.script.Canvas;
 
 /**
  * A function's graph as the Automation tab draws it, for pages outside the editor such as the guide: the same cards,

@@ -16,11 +16,11 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationDomainId;
-import space.controlnet.ae2federation.function.Evaluator;
-import space.controlnet.ae2federation.function.ListValue;
-import space.controlnet.ae2federation.function.Ops;
-import space.controlnet.ae2federation.function.RunError;
-import space.controlnet.ae2federation.function.TypeRef;
+import space.controlnet.ae2federation.script.Evaluator;
+import space.controlnet.ae2federation.script.ListValue;
+import space.controlnet.ae2federation.script.Ops;
+import space.controlnet.ae2federation.script.RunError;
+import space.controlnet.ae2federation.script.TypeRef;
 
 /**
  * Performs a program's library calls in the world, for a program running in one Federation domain.

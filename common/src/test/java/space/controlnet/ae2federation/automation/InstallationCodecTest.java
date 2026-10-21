@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.function.ListValue;
+import space.controlnet.ae2federation.script.ListValue;
 
 /** Installations survive a save with their arguments and trigger. */
 final class InstallationCodecTest {

@@ -15,8 +15,8 @@ import space.controlnet.ae2federation.automation.LibraryRows;
 import space.controlnet.ae2federation.client.automation.CompletionPopup;
 import space.controlnet.ae2federation.client.automation.PythonLanguage;
 import space.controlnet.ae2federation.client.automation.ScriptEditor;
-import space.controlnet.ae2federation.function.Signature;
-import space.controlnet.ae2federation.function.StandardLibrary;
+import space.controlnet.ae2federation.script.Signature;
+import space.controlnet.ae2federation.script.StandardLibrary;
 
 /**
  * The Automation tab's Library panel, under the programs: the standard library's namespaces, opened with a click, and

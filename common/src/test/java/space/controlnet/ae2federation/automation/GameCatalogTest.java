@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.function.Candidate;
-import space.controlnet.ae2federation.function.TypeRef;
+import space.controlnet.ae2federation.script.Candidate;
+import space.controlnet.ae2federation.script.TypeRef;
 
 /** Interfaces and networks named by ID or by alias; resources passed through to the game's registries. */
 final class GameCatalogTest {

@@ -5,7 +5,7 @@ Status: preliminary user-proposed direction; the computing device's role was set
 behavior remains open.
 Phase 0 prototype (2026-10-18, branch `feature/function-system`, no game code): shared IR with graph and script
 views, query/action split, checks, evaluator and compute measure; see the
-[plan](../../.omo/plans/function-system.md). Open: first use, script language, first action.
+[plan](../../.omo/plans/script-system.md). Open: first use, script language, first action.
 
 ## Intent
 
@@ -27,9 +27,9 @@ forms to discuss, not separately confirmed requirements. The physical output loc
 and behavior when automation stops or unloads remain undecided. Do not assume every Federation block gains
 redstone output or introduce a new output block as an already selected requirement.
 
-## Shared function system and unified authoring
+## Shared script system and unified authoring
 
-Layers, vocabulary and the bottom-up order are on the [function system architecture](function-system.md) page.
+Layers, vocabulary and the bottom-up order are on the [script system architecture](script-system.md) page.
 Decision 2026-10-18 (user): policies are not bound to functions; an automation changes them through a built-in such
 as `ae2f.set_policy(...)`, so this automation system is the only place programs run. The paragraphs below
 about Policy bindings and read-only queries are kept as the record of the earlier direction.

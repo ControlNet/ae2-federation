@@ -7,9 +7,9 @@ import java.util.Map;
 import java.util.Set;
 import net.minecraft.server.MinecraftServer;
 import space.controlnet.ae2federation.domain.FederationDomainId;
-import space.controlnet.ae2federation.function.DryRun;
-import space.controlnet.ae2federation.function.RunError;
-import space.controlnet.ae2federation.function.ScriptParser;
+import space.controlnet.ae2federation.script.DryRun;
+import space.controlnet.ae2federation.script.RunError;
+import space.controlnet.ae2federation.script.ScriptParser;
 
 /**
  * The editor's dry run as the tab asks for it: the server runs a function of a program's saved text at once, with

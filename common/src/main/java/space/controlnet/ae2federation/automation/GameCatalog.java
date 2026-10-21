@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Supplier;
-import space.controlnet.ae2federation.function.Candidate;
-import space.controlnet.ae2federation.function.Catalog;
-import space.controlnet.ae2federation.function.TypeRef;
+import space.controlnet.ae2federation.script.Candidate;
+import space.controlnet.ae2federation.script.Catalog;
+import space.controlnet.ae2federation.script.TypeRef;
 
 /**
  * The game's {@link Catalog}: interfaces and networks named by ID or by alias, and resources from the registries. The

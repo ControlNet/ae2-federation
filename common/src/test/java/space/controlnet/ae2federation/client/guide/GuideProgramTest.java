@@ -12,9 +12,9 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import space.controlnet.ae2federation.client.automation.PythonLanguage;
-import space.controlnet.ae2federation.function.Candidate;
-import space.controlnet.ae2federation.function.Catalog;
-import space.controlnet.ae2federation.function.TypeRef;
+import space.controlnet.ae2federation.script.Candidate;
+import space.controlnet.ae2federation.script.Catalog;
+import space.controlnet.ae2federation.script.TypeRef;
 
 /** The guide's programs: coloured as the editor colours them, and every example file checks clean. */
 final class GuideProgramTest {

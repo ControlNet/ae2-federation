@@ -2,7 +2,7 @@ package space.controlnet.ae2federation.automation;
 
 import java.util.ArrayList;
 import java.util.List;
-import space.controlnet.ae2federation.function.Ops;
+import space.controlnet.ae2federation.script.Ops;
 
 /**
  * A trigger as one line of text, as the commands take it and the Automation tab sends it: {@code manual},

@@ -6,7 +6,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.jetbrains.annotations.Nullable;
-import space.controlnet.ae2federation.function.Signature;
+import space.controlnet.ae2federation.script.Signature;
 
 /**
  * The Automation tab's Library panel as rows: each namespace, sorted, with its function count; under an open one its

@@ -13,7 +13,7 @@ import net.minecraft.world.level.storage.LevelResource;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
-import space.controlnet.ae2federation.function.Library;
+import space.controlnet.ae2federation.script.Library;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.persistence.NetworkNames;
 

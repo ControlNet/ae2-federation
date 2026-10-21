@@ -12,9 +12,9 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import space.controlnet.ae2federation.function.Library;
-import space.controlnet.ae2federation.function.ListValue;
-import space.controlnet.ae2federation.function.Ops;
+import space.controlnet.ae2federation.script.Library;
+import space.controlnet.ae2federation.script.ListValue;
+import space.controlnet.ae2federation.script.Ops;
 
 /**
  * {@code /ae2federation programs reload} reads the programs folder again; {@code list} shows each program with its

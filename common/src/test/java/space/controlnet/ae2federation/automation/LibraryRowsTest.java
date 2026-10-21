@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.function.Signature;
-import space.controlnet.ae2federation.function.StandardLibrary;
-import space.controlnet.ae2federation.function.TypeRef;
+import space.controlnet.ae2federation.script.Signature;
+import space.controlnet.ae2federation.script.StandardLibrary;
+import space.controlnet.ae2federation.script.TypeRef;
 
 /** The Library panel's rows: namespaces with their counts, and the functions of the open ones or of a search. */
 final class LibraryRowsTest {

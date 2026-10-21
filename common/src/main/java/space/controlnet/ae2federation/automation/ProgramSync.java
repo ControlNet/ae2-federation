@@ -25,11 +25,11 @@ import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
-import space.controlnet.ae2federation.function.ListValue;
-import space.controlnet.ae2federation.function.Ops;
-import space.controlnet.ae2federation.function.RunError;
-import space.controlnet.ae2federation.function.ScriptParser;
-import space.controlnet.ae2federation.function.TypeRef;
+import space.controlnet.ae2federation.script.ListValue;
+import space.controlnet.ae2federation.script.Ops;
+import space.controlnet.ae2federation.script.RunError;
+import space.controlnet.ae2federation.script.ScriptParser;
+import space.controlnet.ae2federation.script.TypeRef;
 import space.controlnet.ae2federation.persistence.NetworkNames;
 
 /**

@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import space.controlnet.ae2federation.function.Library;
+import space.controlnet.ae2federation.script.Library;
 
 /**
  * The client's copy of the programs it edits, one {@code .ae2f} file each in a folder per server or world, so edits

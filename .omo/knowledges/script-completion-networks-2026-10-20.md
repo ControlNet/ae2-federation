@@ -1,6 +1,6 @@
 # Script editor: network completion and Ctrl+Space (2026-10-20)
 
-User report, five points; four are in the function-system editor:
+User report, five points; four are in the script-system editor:
 
 1. **Value and type ran together** ("network-abcdefNetwork"). `CompletionPopup` drew a candidate's detail right after
    its label. Now `separation(candidate)` puts `GAP` between them, except before a function signature, which starts

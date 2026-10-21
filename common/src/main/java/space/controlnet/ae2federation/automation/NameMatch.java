@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import space.controlnet.ae2federation.function.Candidate;
+import space.controlnet.ae2federation.script.Candidate;
 
 /**
  * How a typed text finds a resource by its shown name: from the name's start, as written (ignoring case) or by pinyin,

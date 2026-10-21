@@ -7,7 +7,7 @@ import java.util.Optional;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import space.controlnet.ae2federation.function.ListValue;
+import space.controlnet.ae2federation.script.ListValue;
 
 /** Installations in NBT, with their argument values: None, bool, int, float, str and lists of them. */
 public final class InstallationCodec {

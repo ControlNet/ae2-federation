@@ -9,7 +9,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.function.Cost;
+import space.controlnet.ae2federation.script.Cost;
 
 /**
  * What installations reserve on a computing device and what the device lets them do (user decisions 2026-10-20):

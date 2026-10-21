@@ -29,10 +29,10 @@ import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.automation.RegistryResources;
 import space.controlnet.ae2federation.client.automation.ScriptChecker;
 import space.controlnet.ae2federation.client.automation.ScriptEditor;
-import space.controlnet.ae2federation.function.DryRun;
-import space.controlnet.ae2federation.function.DryRunNotes;
-import space.controlnet.ae2federation.function.ScriptParser;
-import space.controlnet.ae2federation.function.ScriptProblems;
+import space.controlnet.ae2federation.script.DryRun;
+import space.controlnet.ae2federation.script.DryRunNotes;
+import space.controlnet.ae2federation.script.ScriptParser;
+import space.controlnet.ae2federation.script.ScriptProblems;
 
 /**
  * The Programs and Automation tabs: the edit view, and the install view ({@link FederationInstallView}). The

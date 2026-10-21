@@ -32,14 +32,14 @@ import space.controlnet.ae2federation.automation.ProgramDryRun;
 import space.controlnet.ae2federation.client.automation.CompletionPopup;
 import space.controlnet.ae2federation.client.automation.ScriptChecker;
 import space.controlnet.ae2federation.client.policy.WireCurve;
-import space.controlnet.ae2federation.function.Canvas;
-import space.controlnet.ae2federation.function.Expr;
-import space.controlnet.ae2federation.function.GraphCards;
-import space.controlnet.ae2federation.function.Layout;
-import space.controlnet.ae2federation.function.ScriptPrinter;
-import space.controlnet.ae2federation.function.Signature;
-import space.controlnet.ae2federation.function.StandardLibrary;
-import space.controlnet.ae2federation.function.TypeRef;
+import space.controlnet.ae2federation.script.Canvas;
+import space.controlnet.ae2federation.script.Expr;
+import space.controlnet.ae2federation.script.GraphCards;
+import space.controlnet.ae2federation.script.Layout;
+import space.controlnet.ae2federation.script.ScriptPrinter;
+import space.controlnet.ae2federation.script.Signature;
+import space.controlnet.ae2federation.script.StandardLibrary;
+import space.controlnet.ae2federation.script.TypeRef;
 
 /**
  * The Automation tab's graph view of the shown program, as the {@code AutoGraph} board draws it: a tab per function,

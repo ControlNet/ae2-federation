@@ -13,16 +13,16 @@ import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.slf4j.Logger;
-import space.controlnet.ae2federation.function.Canvas;
-import space.controlnet.ae2federation.function.Catalog;
-import space.controlnet.ae2federation.function.Checker;
-import space.controlnet.ae2federation.function.Completion;
-import space.controlnet.ae2federation.function.Completions;
-import space.controlnet.ae2federation.function.GraphCards;
-import space.controlnet.ae2federation.function.Program;
-import space.controlnet.ae2federation.function.ScriptParser;
-import space.controlnet.ae2federation.function.ScriptProblems;
-import space.controlnet.ae2federation.function.Workspace;
+import space.controlnet.ae2federation.script.Canvas;
+import space.controlnet.ae2federation.script.Catalog;
+import space.controlnet.ae2federation.script.Checker;
+import space.controlnet.ae2federation.script.Completion;
+import space.controlnet.ae2federation.script.Completions;
+import space.controlnet.ae2federation.script.GraphCards;
+import space.controlnet.ae2federation.script.Program;
+import space.controlnet.ae2federation.script.ScriptParser;
+import space.controlnet.ae2federation.script.ScriptProblems;
+import space.controlnet.ae2federation.script.Workspace;
 
 /**
  * Checks and completes the shown program off the client thread, so typing never waits for it: one worker thread,

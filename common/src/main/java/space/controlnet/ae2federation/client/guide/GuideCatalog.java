@@ -7,9 +7,9 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import space.controlnet.ae2federation.automation.RegistryResources;
-import space.controlnet.ae2federation.function.Candidate;
-import space.controlnet.ae2federation.function.Catalog;
-import space.controlnet.ae2federation.function.TypeRef;
+import space.controlnet.ae2federation.script.Candidate;
+import space.controlnet.ae2federation.script.Catalog;
+import space.controlnet.ae2federation.script.TypeRef;
 
 /**
  * What a guide page's program is checked against: resources from the game's registries, and every interface and

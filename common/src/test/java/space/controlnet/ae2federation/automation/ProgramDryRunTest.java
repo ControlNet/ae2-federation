@@ -6,9 +6,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.function.DryRun;
-import space.controlnet.ae2federation.function.RunError;
-import space.controlnet.ae2federation.function.Runner;
+import space.controlnet.ae2federation.script.DryRun;
+import space.controlnet.ae2federation.script.RunError;
+import space.controlnet.ae2federation.script.Runner;
 
 /** The dry run's answer as it travels to the editor: text, put back together on the client. */
 final class ProgramDryRunTest {

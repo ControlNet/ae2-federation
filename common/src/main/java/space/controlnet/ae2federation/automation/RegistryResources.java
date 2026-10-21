@@ -14,7 +14,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluids;
-import space.controlnet.ae2federation.function.Candidate;
+import space.controlnet.ae2federation.script.Candidate;
 
 /**
  * Resources as AE2 sees them: an ID is a resource of every AE2 key type that reads it back as itself, so addon types

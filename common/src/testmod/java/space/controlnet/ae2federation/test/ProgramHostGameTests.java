@@ -32,7 +32,7 @@ import space.controlnet.ae2federation.automation.ProgramRun;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
-import space.controlnet.ae2federation.function.Runner;
+import space.controlnet.ae2federation.script.Runner;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingFixtures;
 import space.controlnet.ae2federation.test.router.RouterEvidence;

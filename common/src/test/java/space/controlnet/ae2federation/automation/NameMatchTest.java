@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.function.Candidate;
+import space.controlnet.ae2federation.script.Candidate;
 
 /** A resource's shown name matches what is typed from its start: as written, or by the pinyin of its characters. */
 final class NameMatchTest {

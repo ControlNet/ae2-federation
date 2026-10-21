@@ -2,7 +2,7 @@ package space.controlnet.ae2federation.automation;
 
 import java.util.List;
 import java.util.function.ToLongFunction;
-import space.controlnet.ae2federation.function.Cost;
+import space.controlnet.ae2federation.script.Cost;
 
 /**
  * What an installation reserves on its device (user decisions 2026-10-20): compute in CU, its graph nodes, and fixed

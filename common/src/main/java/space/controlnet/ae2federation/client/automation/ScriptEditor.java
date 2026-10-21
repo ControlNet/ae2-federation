@@ -23,10 +23,10 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.automation.ResourceStrings;
-import space.controlnet.ae2federation.function.Candidate;
-import space.controlnet.ae2federation.function.Completions;
-import space.controlnet.ae2federation.function.DryRunNotes;
-import space.controlnet.ae2federation.function.ScriptProblems;
+import space.controlnet.ae2federation.script.Candidate;
+import space.controlnet.ae2federation.script.Completions;
+import space.controlnet.ae2federation.script.DryRunNotes;
+import space.controlnet.ae2federation.script.ScriptProblems;
 
 /**
  * The Automation tab's script editor: LDLib2's code editor with the scripts' colours ({@link PythonLanguage}) and a

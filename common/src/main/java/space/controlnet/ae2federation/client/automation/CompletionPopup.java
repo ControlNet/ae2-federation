@@ -20,8 +20,8 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.client.menu.FederationTheme;
-import space.controlnet.ae2federation.function.Candidate;
-import space.controlnet.ae2federation.function.Completions;
+import space.controlnet.ae2federation.script.Candidate;
+import space.controlnet.ae2federation.script.Completions;
 
 /**
  * The script editor's completion list, under the caret: the candidates, and the chosen one's summary below them.

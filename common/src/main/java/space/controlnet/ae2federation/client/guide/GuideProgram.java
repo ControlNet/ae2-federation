@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Map;
 import space.controlnet.ae2federation.client.automation.PythonLanguage;
 import space.controlnet.ae2federation.client.automation.ScriptChecker;
-import space.controlnet.ae2federation.function.Catalog;
-import space.controlnet.ae2federation.function.ScriptProblems;
-import space.controlnet.ae2federation.function.Workspace;
+import space.controlnet.ae2federation.script.Catalog;
+import space.controlnet.ae2federation.script.ScriptProblems;
+import space.controlnet.ae2federation.script.Workspace;
 
 /**
  * A program shown on a guide page: its lines coloured as the script editor colours them, and the graph of one of its

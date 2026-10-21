@@ -11,7 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import net.minecraft.network.chat.Style;
-import space.controlnet.ae2federation.function.StandardLibrary;
+import space.controlnet.ae2federation.script.StandardLibrary;
 
 /**
  * The script editor's colours, line by line, as the design board 「自动化页签」 draws them: keywords, the names a
