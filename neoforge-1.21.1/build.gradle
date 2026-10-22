@@ -324,6 +324,25 @@ neoForge {
             logLevel = org.slf4j.event.Level.INFO
             taskBefore(prepareStructureSceneClientOptions)
         }
+        // Renders a region of a saved world in run-structure-scene/saves, powered, as GuideME draws a scene, and quits
+        // (testmod TeaserScene): -PteaserWorld=<save> -PteaserBox=x0,y0,z0,x1,y1,z1 -PteaserPower=x,y,z (a creative
+        // energy cell outside the box) -PteaserScale=<pixels per GUI unit, 18> -PteaserViews=<yaw:pitch,...>
+        // -PteaserFull=true (every Federation cable at full load) -PteaserOut=<dir>.
+        teaserClient {
+            client()
+            gameDirectory = project.file('run-structure-scene')
+            sourceSet = testmod
+            systemProperty('ae2federation.teaser.out', rootProject.file(providers.gradleProperty('teaserOut')
+                    .getOrElse('build/teaser-check')).absolutePath)
+            systemProperty('ae2federation.teaser.world', providers.gradleProperty('teaserWorld').getOrElse('teaser'))
+            systemProperty('ae2federation.teaser.box', providers.gradleProperty('teaserBox').getOrElse(''))
+            systemProperty('ae2federation.teaser.power', providers.gradleProperty('teaserPower').getOrElse(''))
+            systemProperty('ae2federation.teaser.scale', providers.gradleProperty('teaserScale').getOrElse('18'))
+            systemProperty('ae2federation.teaser.views', providers.gradleProperty('teaserViews').getOrElse('225:30,135:30'))
+            systemProperty('ae2federation.teaser.full', providers.gradleProperty('teaserFull').getOrElse('false'))
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareStructureSceneClientOptions)
+        }
         beamPreviewClient {
             client()
             gameDirectory = project.file('run-logo')
