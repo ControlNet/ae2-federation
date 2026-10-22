@@ -166,6 +166,11 @@ public final class WebSockets {
         return connection != null && connection.socket != null && !connection.closed ? connection : null;
     }
 
+    /** Refuses a URL that is not ws or wss with {@code ValueError}, as {@link #connect} does. */
+    public static void check(String url) {
+        uri(url);
+    }
+
     private static URI uri(String url) {
         try {
             var uri = new URI(url);

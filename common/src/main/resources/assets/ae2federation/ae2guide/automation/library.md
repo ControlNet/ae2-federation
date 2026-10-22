@@ -98,7 +98,8 @@ A websocket URL starts with `ws://` or `wss://`. Connections belong to the insta
 and close when the installation is removed. An installation keeps at most 4 open. `net.connect` and `net.send` wait
 like `net.http`; messages arrive in the background, and `net.receive` reads them in order, `None` when none is
 waiting. Unread messages beyond the newest 256 are dropped, and one over 100,000 characters closes the connection.
-What arrived before a close can still be read. A dry run opens nothing: `net.receive` gives `None`.
+What arrived before a close can still be read. A dry run opens nothing: `net.receive` gives `None`. To start a
+run when a message arrives, install it on the event `ws_message`.
 
 Python's built-ins `int`, `float`, `str`, `bool`, `list`, `dict`, `set`, `range`, `len`, `abs`, `min`, `max`, `sum`,
 `round`, `any` and `all` work as in Python, as do the methods of lists, strings, dicts and sets. `print(...)` writes one line to the

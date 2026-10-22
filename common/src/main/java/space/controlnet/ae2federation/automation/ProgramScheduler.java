@@ -18,6 +18,8 @@ import space.controlnet.ae2federation.script.Checker;
 import space.controlnet.ae2federation.script.Cost;
 import space.controlnet.ae2federation.script.FunctionDef;
 import space.controlnet.ae2federation.script.Ops;
+import space.controlnet.ae2federation.script.Pending;
+import space.controlnet.ae2federation.script.RunError;
 import space.controlnet.ae2federation.script.Runner;
 import space.controlnet.ae2federation.script.ScriptParser;
 import space.controlnet.ae2federation.script.TypeRef;
@@ -53,6 +55,9 @@ public final class ProgramScheduler {
         Object polled;
         boolean hasPolled;
         long nextPoll = Long.MIN_VALUE;
+        /** A websocket event's connection while it opens, and the last problem logged about it. */
+        Pending connecting;
+        String socketProblem;
 
         State(Installation installation) {
             this.installation = installation;
@@ -184,7 +189,7 @@ public final class ProgramScheduler {
         return update(installation.withTrigger(trigger));
     }
 
-    /** Checks an event's name and arguments: a resource, or an interface and a reach from 1 to 4. */
+    /** Checks an event's name and arguments: a resource, an interface and a reach from 1 to 4, or a websocket URL. */
     private static Installation.Trigger.Event event(Installation.Trigger.Event event) {
         var spec = ProgramEvents.EVENTS.get(event.name());
         if (spec == null) {
@@ -219,6 +224,17 @@ public final class ProgramScheduler {
                     throw new IllegalArgumentException("the reach must be from 1 to 4");
                 }
                 yield new Installation.Trigger.Event(event.name(), List.of(args.get(0), reach));
+            }
+            case SOCKET -> {
+                if (args.size() != 1) {
+                    throw new IllegalArgumentException(event.name() + " takes a websocket URL");
+                }
+                try {
+                    WebSockets.check(args.get(0));
+                } catch (RunError e) {
+                    throw new IllegalArgumentException(e.getMessage());
+                }
+                yield new Installation.Trigger.Event(event.name(), List.of(args.get(0)));
             }
         };
     }
@@ -403,9 +419,7 @@ public final class ProgramScheduler {
     }
 
     public boolean uninstall(String id) {
-        stop(id, "uninstalled");
-        logs.remove(id);
-        costs.remove(id);
+        forget(id, "uninstalled");
         return devices().uninstall(id);
     }
 
@@ -431,9 +445,7 @@ public final class ProgramScheduler {
     public void deviceGone(String device) {
         for (var installation : devices().installations()) {
             if (installation.device().equals(device)) {
-                stop(installation.id(), "the device was broken");
-                logs.remove(installation.id());
-                costs.remove(installation.id());
+                forget(installation.id(), "the device was broken");
             }
         }
     }
@@ -462,6 +474,14 @@ public final class ProgramScheduler {
             states.put(installation.id(), state);
         }
         return state;
+    }
+
+    /** The installation goes away: its runs stop, and its log, cost and connections go with it. */
+    private void forget(String id, String reason) {
+        stop(id, reason);
+        logs.remove(id);
+        costs.remove(id);
+        WebSockets.of(server).closeOwner(id);
     }
 
     private void stop(String id, String reason) {
@@ -562,7 +582,8 @@ public final class ProgramScheduler {
                 return false;
             }
             drop(entry.getValue());
-            // The installation is gone: its connections go with it. A changed or restarted one keeps them.
+            // The installation is gone without uninstall: its connections go with it. A changed or restarted one keeps
+            // them.
             WebSockets.of(server).closeOwner(entry.getKey());
             return true;
         });
@@ -628,6 +649,53 @@ public final class ProgramScheduler {
                     // The interface left the domain: nothing to watch until it is back.
                 }
             }
+            case SOCKET -> checkSocket(state, (String) event.args().get(0), now);
+        }
+    }
+
+    /**
+     * Keeps the installation's connection to the URL open, trying again every interval while it is down, and fires
+     * when a message arrived on it. The run reads the messages with {@code net.receive}; the connection is the one
+     * its {@code net} calls use.
+     */
+    private void checkSocket(State state, String url, long now) {
+        var id = state.installation.id();
+        var sockets = WebSockets.of(server);
+        if (state.connecting != null && state.connecting.done()) {
+            try {
+                state.connecting.value();
+                state.socketProblem = null;
+                log(id, "listening on " + url);
+            } catch (RunError e) {
+                socketProblem(state, e.getMessage());
+            }
+            state.connecting = null;
+        }
+        if (state.connecting == null && !sockets.connected(id, url) && now >= state.nextPoll) {
+            state.nextPoll = now + state.installation.interval();
+            try {
+                state.connecting = sockets.connect(id, url);
+                // A new connection: every message on it is new.
+                state.polled = 0L;
+                state.hasPolled = true;
+            } catch (RunError e) {
+                socketProblem(state, e.getMessage());
+            }
+        }
+        long received = sockets.received(id, url);
+        // A connection opened before this state only sets the baseline.
+        if (state.hasPolled && received > (Long) state.polled) {
+            state.gate.fire(state.runs.size());
+        }
+        state.polled = received;
+        state.hasPolled = true;
+    }
+
+    /** Logs why the connection is down, once until it changes; trying again every interval goes on. */
+    private void socketProblem(State state, String problem) {
+        if (!problem.equals(state.socketProblem)) {
+            state.socketProblem = problem;
+            log(state.installation.id(), "event not connected: " + problem);
         }
     }
 

@@ -745,6 +745,7 @@ final class FederationInstallView {
             case NETWORK -> List.<String>of();
             case RESOURCE -> List.of("resource: Resource");
             case BLOCK -> List.of("interface: Interface", "reach: int = 1");
+            case SOCKET -> List.of("url: str");
         }, "", spec.description())).toList();
     }
 
@@ -992,7 +993,7 @@ final class FederationInstallView {
     /** Entries the scheduler writes when a run could not start or went wrong. */
     private static boolean failed(String text) {
         return text.startsWith("failed") || text.startsWith("not started") || text.startsWith("condition failed")
-                || text.startsWith("event not read");
+                || text.startsWith("event not read") || text.startsWith("event not connected");
     }
 
     /** An argument as its field shows it: an item or fluid by its icon and name, an interface by its alias. */

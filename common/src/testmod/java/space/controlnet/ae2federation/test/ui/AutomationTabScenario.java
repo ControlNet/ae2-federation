@@ -636,7 +636,7 @@ public final class AutomationTabScenario implements UIScenario {
                 // An event: typing lists the events containing the text, Enter takes the first.
                 .click("#auto_install_trigger_on")
                 .check("Event opens its field with every event listed", context ->
-                        context.all("#auto_install_choose .install-choice").size() == 11)
+                        context.all("#auto_install_choose .install-choice").size() == 12)
                 .step("type part of a name", context -> context.el("#auto_install_choose text-field")
                         .as(TextField.class).setText("c", true))
                 .frames(2).screenshot("ui-automation-install-event")

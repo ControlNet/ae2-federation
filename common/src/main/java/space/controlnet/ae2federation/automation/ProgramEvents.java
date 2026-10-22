@@ -26,7 +26,8 @@ import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
  * The curated events an installation can start on (user, 2026-10-18), and what happened this tick. Network events
  * come from AE2's public Grid events and count when a network of the device's domain posts them; resource events are
  * read every interval and count when the value changed; block events come from NeoForge's and count at the block an
- * interface points at. No mixins.
+ * interface points at. A websocket event keeps the installation's connection open and counts when a message arrives
+ * on it. No mixins.
  */
 public final class ProgramEvents {
     public enum Kind {
@@ -35,7 +36,9 @@ public final class ProgramEvents {
         /** Of one resource in the domain; its argument is the resource. */
         RESOURCE,
         /** At a block in front of an interface; its arguments are the interface and the reach (1 to 4, default 1). */
-        BLOCK
+        BLOCK,
+        /** On the installation's websocket connection; its argument is the URL. */
+        SOCKET
     }
 
     public record Spec(String name, Kind kind, String description) {
@@ -56,7 +59,8 @@ public final class ProgramEvents {
                 new Spec("spatial_io", Kind.NETWORK, "A Spatial IO Port of the domain was used."),
                 new Spec("block_changed", Kind.BLOCK, "The block was placed, broken or changed."),
                 new Spec("crop_grew", Kind.BLOCK, "The crop grew."),
-                new Spec("right_clicked", Kind.BLOCK, "A player right-clicked the block.")}) {
+                new Spec("right_clicked", Kind.BLOCK, "A player right-clicked the block."),
+                new Spec("ws_message", Kind.SOCKET, "A message arrived on the websocket connection.")}) {
             events.put(spec.name(), spec);
         }
         EVENTS = Collections.unmodifiableMap(events);

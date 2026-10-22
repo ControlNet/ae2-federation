@@ -193,6 +193,7 @@
     {"id":"programs.device-broken","backend":"gametest","testId":"breakingthedevicestopsitsrunsanddropsitsinstallations","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.block-events","backend":"gametest","testId":"blockeventsstartattheblockaninterfacepointsat","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.stock-event","backend":"gametest","testId":"astockchangestartsarun","structure":"ae2federation_test:harness_native_smoke","assertions":1},
+    {"id":"programs.websocket-event","backend":"gametest","testId":"awebsocketmessagestartsarun","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.tab-traffic","backend":"gametest","testId":"thetabstrafficuploadsinstallsandruns","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.tab-arguments","backend":"gametest","testId":"thetabeditsargumentsandlistsaliases","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"bundle.whole-end-faces","backend":"gametest","testId":"bundlelinksthroughwholeendfaces","structure":"ae2federation_test:harness_native_smoke","assertions":6},

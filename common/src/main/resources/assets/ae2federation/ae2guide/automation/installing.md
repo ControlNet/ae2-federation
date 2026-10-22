@@ -44,6 +44,8 @@ running, and its log. Click an argument or a number to change it.
 * For a resource: `stock_changed`, `crafting_changed`, `craftable_changed`.
 * For the domain's networks: `network_boot`, `power_changed`, `controller_changed`, `cpus_changed`, `spatial_io`.
 * For the block an interface points at, up to 4 blocks away: `block_changed`, `crop_grew`, `right_clicked`.
+* For a websocket URL: `ws_message`. The installation keeps the connection open, trying again every min gap while
+  it is down, and a run starts when a message arrives. The run reads it with `net.receive`.
 
 **Min gap:** a run starts at most once in this many ticks; 20 unless changed. Triggers that come during the gap make
 one run after it.

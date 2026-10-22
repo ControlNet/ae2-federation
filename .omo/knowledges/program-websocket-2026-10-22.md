@@ -35,3 +35,20 @@ Bind `127.0.0.1` explicitly.
 Checks: `WebSocketsTest` (8, against the test-only `test/automation/WebSocketEchoServer`, a hand-written RFC 6455
 server, since neither the JDK nor the game ships one), GameTest `programs.host-websocket`
 (`programtalksoverawebsocket`).
+
+## ws_message event
+
+- `ProgramEvents.Kind.SOCKET`, `Spec("ws_message", ...)`, argument `url: str` (checked with `WebSockets.check`).
+- `ProgramScheduler.checkSocket`: keeps the installation's connection to the URL open (owner = installation ID, the
+  same connection the run's `net` calls use), retries every interval (min gap) while down, logs
+  `listening on <url>` once open and `event not connected: <error>` once per distinct problem (shown red in the
+  Install view). Fires when `WebSockets.received` grows; a connection it opens resets the baseline to 0, one opened
+  earlier (by a run) only sets the baseline. The run reads messages itself with `net.receive`.
+- Bug fixed with it: `uninstall` and `deviceGone` remove the state through `stop()`, so the `removeIf` branch never
+  closed their connections; both now go through `forget(id, reason)`, which also closes them.
+- The first connect in a fresh JVM takes about 20 GameTest ticks (HttpClient start-up); tests wait with
+  `Steps.until(...)` instead of a fixed delay.
+
+Checks: GameTest `programs.websocket-event` (`awebsocketmessagestartsarun`); `AutomationTabScenario` now counts 12
+events. Pre-existing, not from this work: the scenario's check "the aside shows the arguments, trigger, gap, overlap
+and state" fails at d3e6b62f too (the aside's values now include the Cost row).

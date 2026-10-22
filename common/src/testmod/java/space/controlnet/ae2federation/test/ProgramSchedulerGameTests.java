@@ -41,6 +41,7 @@ import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.test.automation.WebSocketEchoServer;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
 
@@ -390,6 +391,64 @@ public final class ProgramSchedulerGameTests {
         }).finish(fixtures::close);
     }
 
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void aWebsocketMessageStartsARun(GameTestHelper helper) {
+        // A websocket server on this machine stands in for the outside world.
+        WebSocketEchoServer echo;
+        try {
+            echo = new WebSocketEchoServer();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        var url = echo.url("feed");
+        var scene = Scene.build(helper, "sched_socket", """
+                def drain() -> str:
+                    got: list[str] = []
+                    message = net.receive("%s")
+                    while message is not None:
+                        got.append(message)
+                        message = net.receive("%s")
+                    return ",".join(got)
+                """.formatted(url, url));
+        scene.whenReady(() -> {
+            var installation = scene.scheduler().install(scene.device(), "sched_socket", "drain", List.of());
+            scene.installed(installation);
+            helper.assertValueEqual(assertRefused(() -> scene.scheduler().setTrigger(installation.id(),
+                    new Installation.Trigger.Event("ws_message", List.of("http://example.org/")))),
+                    "url must start with ws:// or wss://: 'http://example.org/'", "Only websocket URLs");
+            scene.scheduler().setTrigger(installation.id(), new Installation.Trigger.Event("ws_message", List.of(url)));
+            scene.scheduler().setInterval(installation.id(), 5);
+        }).until(() -> helper.assertValueEqual(scene.log(0), List.of("listening on " + url),
+                "The installation connects to wait for messages")).then(1, () -> {
+            helper.assertValueEqual(echo.clients(), 1, "One connection");
+            push(echo, "iron 64");
+        }).then(20, () -> {
+            helper.assertValueEqual(scene.log(0), List.of("listening on " + url, "started", "done: 'iron 64'"),
+                    "The message started a run, which read it");
+            push(echo, "copper 9");
+        }).then(20, () -> {
+            helper.assertValueEqual(scene.log(0).subList(3, scene.log(0).size()),
+                    List.of("started", "done: 'copper 9'"), "The next message started another");
+            scene.scheduler().uninstall(scene.installations().get(0).id());
+        }).until(() -> helper.assertValueEqual(echo.clients(), 0, "Removing the installation closes its connection"))
+                .finish(() -> {
+            try {
+                echo.close();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
+    }
+
+    private static void push(WebSocketEchoServer echo, String text) {
+        try {
+            echo.push(text);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     /** The Automation tab's traffic, without the network: uploads in chunks, push, install, run, the index. */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
@@ -610,6 +669,12 @@ public final class ProgramSchedulerGameTests {
 
             Steps then(int ticks, Runnable step) {
                 sequence = sequence.thenExecuteAfter(ticks, step);
+                return this;
+            }
+
+            /** Waits until {@code condition} passes, then goes on at once. */
+            Steps until(Runnable condition) {
+                sequence = sequence.thenWaitUntil(condition);
                 return this;
             }
 

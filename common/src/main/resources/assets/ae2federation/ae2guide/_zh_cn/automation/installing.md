@@ -37,6 +37,7 @@ navigation:
 * 针对一种资源： `stock_changed`、`crafting_changed`、`craftable_changed`。
 * 针对联邦域的网络： `network_boot`、`power_changed`、`controller_changed`、`cpus_changed`、`spatial_io`。
 * 针对接口所指的方块（最远4格）： `block_changed`、`crop_grew`、`right_clicked`。
+* 针对一个websocket URL： `ws_message`。 安装会保持这个连接打开， 断开时每隔最小间隔重试一次； 有消息到达时启动一次运行， 运行用`net.receive`读取消息。
 
 **最小间隔**： 每隔这么多刻最多启动一次运行， 默认20。 间隔内到来的触发合并成间隔结束后的一次运行。
 
