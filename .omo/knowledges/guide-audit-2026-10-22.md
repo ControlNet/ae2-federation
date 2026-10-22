@@ -59,17 +59,29 @@ into the feature branch.
 - Contract constraints: `GuidePagesContractTest` (required pages, Chinese mirror with identical frontmatter except
   the title, every snbt shown, one owner per item id, links resolve, optional packs' pages included).
 
-## Three levels, stock GuideME sidebar (2026-10-22)
+## Three sidebar levels (2026-10-22)
 
 Tree: `index.md` (900) -> getting-started 100, mechanics/index 200, crafting/index 300, items/index 400,
 examples/index 500, troubleshooting 600 -> each section's pages (the optional packs' examples under examples/index).
-Section pages list their pages by hand. `GuidePagesContractTest.SECTIONS` and
-`pagesHangAtMostThreeLevelsDeepAndChineseCopiesKeepTheirPlace` hold the rule.
+`GuidePagesContractTest.SECTIONS` and `pagesHangAtMostThreeLevelsDeepAndChineseCopiesKeepTheirPlace` hold the depth;
+`sectionPagesLinkEveryPageUnderThem` requires each section page (EN and ZH) to link every page under it, or to use
+`<SubPages />`. The examples section uses `<SubPages />`, because pack examples exist only with their mods; GuideME
+lists the children it finds, in navigation order, packs included.
 
 Stock GuideME's sidebar (`GuideNavBar.recreateRows`, 21.1.1 to 21.1.19) builds rows for a root and its direct
-children only. In game (`build/guide-three-levels-check/no-mixin-*.png`) the four sections show without fold arrows
-and their pages are reached through the section pages' link lists. A client mixin that built every level
-(48b0d0d5) worked in game but the owner had it removed; five roots (e9049bbb) were rejected before that.
+children only, and `Row.isVisible` checks the direct parent only. Data Energistics (`data_energistics`, 3.3.x) ships
+mixins on the same two classes that nest every GuideME guide; that is why NeoECO AE, NeoECO Prototype and AE2
+Lightning Tech, which also write three levels with no mixin of their own, look nested in packs that include it.
+
+Our `GuideNavBarMixin` + `GuideNavBarRowMixin` do the same when Data Energistics is absent: a recursive
+`recreateRows` (rows built through a `MethodHandles.lookup()` constructor handle; the private inner `Row` is a
+nestmate of `GuideNavBar`, where the merged code runs), a redirect of `LytParagraph.layout` in `updateLayout` for the
+extra indent, and on the row: fold with every ancestor, move a nested parent's arrow in, 10 px per level below what
+GuideME draws. When `ModList` has `data_energistics`, our `recreateRows` returns without cancelling, so its injection
+runs, and ours change nothing (no nesting recorded). Verified in game both ways: `build/guide-three-levels-check/`.
+To run the guide client with Data Energistics: put its pinned jar in `neoforge-1.21.1/run-guide/mods` and add
+`-Pae2_version=19.2.18 -Pldlib2_version=2.2.42 --dependency-verification=lenient --no-configuration-cache` (DE 3.3.3
+needs AE2 >= 19.2.18 and LDLib2 >= 2.2.40); remove the jar afterwards.
 
 A plain YAML value holding ": " (an English title like `Federation: How It Works`) makes GuideME log "Failed to parse
 frontmatter" and drop the page from navigation, silently in the sidebar; quote such titles. The contract test checks

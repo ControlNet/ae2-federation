@@ -10,14 +10,8 @@ navigation:
 
 针对常见目标的完整搭建。 每个示例都写明涉及哪些网络、样板和合成CPU在哪里、需要哪条规则或映射， 以及材料怎样送进去、怎样回来。 建议从第一个开始： 每个示例都在前面的基础上多讲一个概念。
 
-* [共享仓库](shared-warehouse.md)
-* [下界前哨](nether-outpost.md)
-* [向装配工坊下单](remote-assembly.md)
-* [合作工坊](partner-workshops.md)
-* [市场枢纽](market-hub.md)
-* [接单的工厂](order-desk.md)
-* [外包熔炉](endpoint-furnaces.md)
+<SubPages />
 
-装了相应模组时， 侧边栏里这些示例之后还会出现用到那些模组的示例。
+装了相应模组后， 用到那些模组的示例也会列在这里。
 
 示例只讲联邦带来的部分。 机器本身怎样搭建和供能， 请看那台机器自己的指南。

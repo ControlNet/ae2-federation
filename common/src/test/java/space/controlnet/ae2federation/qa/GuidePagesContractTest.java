@@ -185,6 +185,29 @@ final class GuidePagesContractTest {
     }
 
     @Test
+    void sectionPagesLinkEveryPageUnderThem() throws IOException {
+        for (var section : SECTIONS) {
+            var folder = Path.of(section).getParent();
+            for (var language : List.of(GUIDE, GUIDE.resolve("_zh_cn"))) {
+                var body = Files.readString(language.resolve(section));
+                // <SubPages /> lists the children GuideME finds, the optional packs' pages too.
+                if (body.contains("<SubPages />")) {
+                    continue;
+                }
+                for (var guide : guides()) {
+                    for (var page : pages(guide.root())) {
+                        if (frontmatter(guide.root().resolve(page)).contains("  parent: " + section + "\n")) {
+                            var link = "](" + folder.relativize(Path.of(page)).toString().replace('\\', '/') + ")";
+                            assertTrue(body.contains(link), language.relativize(language.resolve(section)) + " links "
+                                    + page + ", or lists its pages with <SubPages />");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     void linksPointAtPagesThatExist() throws IOException {
         for (var guide : guides()) {
             for (var root : List.of(guide.root(), guide.root().resolve("_zh_cn"))) {
