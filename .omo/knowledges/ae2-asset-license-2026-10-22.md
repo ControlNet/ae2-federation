@@ -38,3 +38,10 @@ separate asset licence and no CC BY-NC-SA notice. Its mods.toml credits "Ridanis
 GitHub history shows Ridanisaurus, the holder of AE2's 2020 texture copyright, committing "Textures Update"
 (2024-06-30, 109 PNGs) and "GUI Update" (2024-07-05, 24 PNGs). So most of its AE2-style art was redrawn by AE2's own
 texture artist; textures added since by GlodBlock and others carry no explicit licence statement.
+
+## How Advanced AE handles it (checked 2026-10-22)
+
+Advanced AE (pedroksl) declares only LGPL-3.0 (`LICENSE.md`, `license="LGPL-3.0"` in the 1.6.12 jar), with no asset
+licence or CC BY-NC-SA notice. The jar credits "Ridanisaurus Rid for texture style, Jm³ and Sea_Kerman for models";
+the README thanks Jm³ for the base models and textures. Texture commits are by the author (78) and one contributor,
+none by Ridanisaurus: AE2's artist is credited for the style, not as author, and no permission is documented.
