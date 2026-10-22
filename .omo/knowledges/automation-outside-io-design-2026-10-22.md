@@ -1,7 +1,8 @@
 # Programs outside the game: files, HTTP, websockets (design, 2026-10-22)
 
 Status: agreed. Order (user): dicts and sets (done), `fs` (done, `program-fs-2026-10-22.md`), `net.http` (done,
-`program-http-2026-10-22.md`; headers are a dict, not lines), websockets, then the config section.
+`program-http-2026-10-22.md`; headers are a dict, not lines), websockets (functions done,
+`program-websocket-2026-10-22.md`; the `ws_message` event next), then the config section.
 
 ## Scope decided by the user
 
@@ -64,7 +65,7 @@ Today `Evaluator.Host.call` is synchronous and only `mc.wait` suspends a run (`R
 - `ProgramHost` completes the futures on the pool and reads them only on the server thread, through this poll.
 - `ProgramScheduler.closeServer` shuts the pool and cancels open requests.
 
-## Websockets (phase 3, outline only)
+## Websockets (phase 3; functions built as outlined, see `program-websocket-2026-10-22.md`)
 
 `ProgramEvents` passes no value into a run, and its events take fixed arguments. A socket made at run time cannot be
 an event argument. A workable shape:
@@ -74,9 +75,8 @@ an event argument. A workable shape:
 - A new event kind `SOCKET` takes the URL as its argument: `ws_message` starts a run when a message is queued.
 - A connection lives as long as its installation: removing the installation, breaking the device or stopping the
   server closes it.
-- Config `allowWebsockets`; at most 4 open connections per device; each message at most 100,000 characters.
-
-To be settled before phase 3.
+- Config `allowWebsockets`; at most 4 open connections per installation (built per installation, not per device);
+  each message at most 100,000 characters.
 
 ## Phases
 

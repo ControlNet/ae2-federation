@@ -92,6 +92,7 @@ public final class ProgramScheduler {
     public static void closeServer(MinecraftServer server) {
         SERVICES.remove(server);
         HttpRequests.closeServer(server);
+        WebSockets.closeServer(server);
         ProgramEvents.listen(false, false);
         ProgramEvents.clear();
     }
@@ -561,6 +562,8 @@ public final class ProgramScheduler {
                 return false;
             }
             drop(entry.getValue());
+            // The installation is gone: its connections go with it. A changed or restarted one keeps them.
+            WebSockets.of(server).closeOwner(entry.getKey());
             return true;
         });
         costs.keySet().retainAll(seen);

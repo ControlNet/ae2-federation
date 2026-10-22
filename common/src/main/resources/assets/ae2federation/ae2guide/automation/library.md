@@ -84,10 +84,21 @@ the run. A file holds text of up to 100,000 characters, and the folder at most 1
 | Function | Gives |
 | --- | --- |
 | `net.http(method, url, body="", headers={})` | **action:** sends an HTTP request and gives its `Response` |
+| `net.connect(url)` | **action:** opens a websocket connection, or keeps the open one |
+| `net.send(url, text)` | **action:** sends a text message on the connection |
+| `net.receive(url)` | the oldest message not read yet, or `None` |
+| `net.connected(url)` | whether the connection is open |
+| `net.disconnect(url)` | **action:** closes the connection; `False` if there was none |
 
 The run waits for the answer without using up actions, at most 10 seconds. Any status, 404 too, is an answer; a
 request that gets none, times out or would bring back more than 100,000 characters stops the run. Header names in
 the answer are lower case. A dry run sends nothing and gives `Response(0, "", {})`.
+
+A websocket URL starts with `ws://` or `wss://`. Connections belong to the installation: they stay open between runs,
+and close when the installation is removed. An installation keeps at most 4 open. `net.connect` and `net.send` wait
+like `net.http`; messages arrive in the background, and `net.receive` reads them in order, `None` when none is
+waiting. Unread messages beyond the newest 256 are dropped, and one over 100,000 characters closes the connection.
+What arrived before a close can still be read. A dry run opens nothing: `net.receive` gives `None`.
 
 Python's built-ins `int`, `float`, `str`, `bool`, `list`, `dict`, `set`, `range`, `len`, `abs`, `min`, `max`, `sum`,
 `round`, `any` and `all` work as in Python, as do the methods of lists, strings, dicts and sets. `print(...)` writes one line to the

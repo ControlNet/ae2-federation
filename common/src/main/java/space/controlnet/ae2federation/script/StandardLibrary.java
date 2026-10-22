@@ -273,7 +273,34 @@ public final class StandardLibrary {
                                 return answer.status == 200
                             """, arg("method", "HttpMethod"), arg("url", "str"),
                             new Signature.Arg("body", type("str"), "\"\""),
-                            new Signature.Arg("headers", type("dict[str, str]"), "{}"))));
+                            new Signature.Arg("headers", type("dict[str, str]"), "{}")),
+                    act("connect", "bool",
+                            "Opens a websocket connection for this installation, or keeps the open one.", """
+                            def follow(url: str) -> bool:
+                                return net.connected(url) or net.connect(url)
+                            """, arg("url", "str")),
+                    act("send", "bool", "Sends a text message on the installation's connection.", """
+                            def say_stock(url: str) -> None:
+                                net.connect(url)
+                                net.send(url, "iron " + str(ae2.amount("minecraft:iron_ingot")))
+                            """, arg("url", "str"), arg("text", "str")),
+                    fn("receive", "Optional[str]", "The oldest message not read yet; None if there is none.", """
+                            def obey(url: str, lamp: Interface) -> None:
+                                message = net.receive(url)
+                                if message == "on":
+                                    mc.set_redstone(lamp, 15)
+                                elif message == "off":
+                                    mc.set_redstone(lamp, 0)
+                            """, arg("url", "str")),
+                    fn("connected", "bool", "Whether the installation's connection is open.", """
+                            def keep_connected(url: str) -> None:
+                                if not net.connected(url):
+                                    net.connect(url)
+                            """, arg("url", "str")),
+                    act("disconnect", "bool", "Closes the connection; False if there was none.", """
+                            def hang_up(url: str) -> bool:
+                                return net.disconnect(url)
+                            """, arg("url", "str"))));
 
     private StandardLibrary() {
     }

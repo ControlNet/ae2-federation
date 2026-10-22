@@ -53,6 +53,8 @@ public final class ProgramHost implements Evaluator.Host {
 
     private final MinecraftServer server;
     private final FederationDomainId domain;
+    /** Whose run this is: an installation's ID, which also keeps its websocket connections. */
+    private final String owner;
     private final GameCatalog catalog;
     private final DomainCalls domainCalls;
     /** The world's workspace folder, for the {@code fs} functions. */
@@ -73,6 +75,7 @@ public final class ProgramHost implements Evaluator.Host {
     private ProgramHost(MinecraftServer server, FederationDomainId domain, String owner, boolean simulate) {
         this.server = server;
         this.domain = domain;
+        this.owner = owner;
         this.simulate = simulate;
         this.catalog = ProgramStore.catalog(server, domain);
         this.domainCalls = new DomainCalls(server, domain, owner, catalog, simulate);
@@ -160,6 +163,12 @@ public final class ProgramHost implements Evaluator.Host {
             case "net.http" -> simulate ? notSent()
                     : HttpRequests.of(server).send((String) args.get(0), (String) args.get(1), (String) args.get(2),
                             (DictValue) args.get(3));
+            case "net.connect" -> simulate ? (Object) true : WebSockets.of(server).connect(owner, (String) args.get(0));
+            case "net.send" -> simulate ? (Object) true
+                    : WebSockets.of(server).send(owner, (String) args.get(0), (String) args.get(1));
+            case "net.receive" -> simulate ? null : WebSockets.of(server).receive(owner, (String) args.get(0));
+            case "net.connected" -> !simulate && WebSockets.of(server).connected(owner, (String) args.get(0));
+            case "net.disconnect" -> !simulate && WebSockets.of(server).disconnect(owner, (String) args.get(0));
             default -> domainCalls.call(this, namespace, name, args);
         };
     }

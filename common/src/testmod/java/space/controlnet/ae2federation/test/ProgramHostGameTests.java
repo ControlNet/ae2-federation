@@ -271,6 +271,40 @@ public final class ProgramHostGameTests {
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
+    public static void programTalksOverAWebSocket(GameTestHelper helper) {
+        var fixtures = build(helper, Blocks.STONE.defaultBlockState());
+        var server = helper.getLevel().getServer();
+        // A websocket server on this machine stands in for the outside world.
+        var echo = echoServer();
+        run(helper, fixtures, "host_websocket", """
+                def run() -> str:
+                    url = "%s"
+                    opened = net.connect(url)
+                    sent = net.send(url, "iron 64")
+                    answer = net.receive(url)
+                    tries = 0
+                    while answer is None and tries < 100:
+                        mc.wait(1)
+                        answer = net.receive(url)
+                        tries += 1
+                    return " ".join([str(opened), str(sent), str(answer), str(net.connected(url))])
+                """.formatted(echo.url("feed")), "True True echo: iron 64 True",
+                "A program connects, sends a message and reads the answer, waiting over ticks", () -> {
+                    helper.assertValueEqual(echo.received(), List.of("iron 64"), "The server got the message");
+                    var sockets = space.controlnet.ae2federation.automation.WebSockets.of(server);
+                    helper.assertTrue(sockets.connected("gametest:host_websocket", echo.url("feed")),
+                            "The connection outlives the run that opened it");
+                    sockets.closeOwner("gametest:host_websocket");
+                    try {
+                        echo.close();
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
     public static void programMovesBetweenItsNetworks(GameTestHelper helper) {
         var fixtures = build(helper, Blocks.AIR.defaultBlockState());
         // The north chest's network starts with ten iron; the other cell is empty.
@@ -485,6 +519,14 @@ public final class ProgramHostGameTests {
                     store.reload();
                 })
                 .thenSucceed();
+    }
+
+    private static space.controlnet.ae2federation.test.automation.WebSocketEchoServer echoServer() {
+        try {
+            return new space.controlnet.ae2federation.test.automation.WebSocketEchoServer();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static void write(ProgramStore store, String name, String text) {

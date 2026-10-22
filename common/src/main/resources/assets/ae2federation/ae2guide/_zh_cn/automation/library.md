@@ -78,7 +78,14 @@ AE2会在接下来几刻里规划任务， 规划好后交给空闲的CPU。 规
 | 函数 | 结果 |
 | --- | --- |
 | `net.http(method, url, body="", headers={})` | **操作**： 发送一个HTTP请求， 给出它的`Response` |
+| `net.connect(url)` | **操作**： 打开一个websocket连接； 已经打开时保持原连接 |
+| `net.send(url, text)` | **操作**： 在连接上发送一条文本消息 |
+| `net.receive(url)` | 最早一条还没读的消息； 没有时为`None` |
+| `net.connected(url)` | 连接是否打开 |
+| `net.disconnect(url)` | **操作**： 关闭连接； 本来就没有时为`False` |
 
 运行会等待回答， 等待不占用操作， 最多10秒。 任何状态码（包括404）都算回答； 没有回答、超时或回答超过100,000个字符时， 运行停止。 回答里的头部名字是小写的。 试运行不发送请求， 给出`Response(0, "", {})`。
+
+websocket的URL以`ws://`或`wss://`开头。 连接属于安装： 两次运行之间保持打开， 安装被移除时关闭。 一个安装最多同时打开4个连接。 `net.connect`和`net.send`像`net.http`一样等待； 消息在后台到达， `net.receive`按顺序读取， 没有消息时为`None`。 没读的消息只保留最新的256条， 超过100,000个字符的消息会关闭连接。 关闭前到达的消息仍然可以读。 试运行不打开连接： `net.receive`给出`None`。
 
 Python内置的`int`、`float`、`str`、`bool`、`list`、`dict`、`set`、`range`、`len`、`abs`、`min`、`max`、`sum`、`round`、`any`和`all`， 以及列表、字符串、字典和集合的方法， 都和Python中一样。 `print(...)`往安装的日志里写一行。
