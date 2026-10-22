@@ -159,10 +159,11 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
         return facePorts.get(face).node();
     }
 
+    /** AE2 asks with a null side for a node not tied to a face; the nodes here all sit on faces. */
     @Nullable
     @Override
-    public IGridNode getGridNode(Direction face) {
-        return boundaryNode(face);
+    public IGridNode getGridNode(@Nullable Direction face) {
+        return face == null ? null : boundaryNode(face);
     }
 
     public Map<Direction, RouterPortBinding> bindings() {

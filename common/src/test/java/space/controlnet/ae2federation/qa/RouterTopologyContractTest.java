@@ -16,7 +16,7 @@ final class RouterTopologyContractTest {
     private static final Path ROOT = Path.of("..").toAbsolutePath().normalize();
 
     @Test
-    void manifestRegistersExactlySixExecutableRouterCases() throws IOException {
+    void manifestRegistersTheExecutableRouterCases() throws IOException {
         var manifest = Files.readString(ROOT.resolve("tests/scenarios/manifest.json"));
         var entries = Pattern.compile("\\{[^{}]*\"id\":\"(router\\.[^\"]+)\"[^{}]*}").matcher(manifest);
         var cases = new TreeSet<String>();
@@ -26,7 +26,8 @@ final class RouterTopologyContractTest {
             assertTrue(Pattern.compile("\"testId\":\"router[a-z]+\"").matcher(entries.group()).find());
         }
         assertEquals(Set.of("router.mixed-six-faces", "router.six-independent-me", "router.repeat-network",
-                "router.port-replacement", "router.reject-unsupported", "router.adjacent-federation"), cases);
+                "router.port-replacement", "router.reject-unsupported", "router.adjacent-federation",
+                "router.null-side-node"), cases);
     }
 
     @Test
