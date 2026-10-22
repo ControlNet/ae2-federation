@@ -32,10 +32,4 @@ navigation:
 
 ## 本节内容
 
-* [规则](rules.md)
-* [能量](power.md)
-* [网络容量](capacity.md)
-* [联邦粗线缆](bundled-cables.md)
-* [远距离连接](long-distance.md)
-* [联邦界面](federation-screen.md)
-* [统计](statistics.md)
+<SubPages />

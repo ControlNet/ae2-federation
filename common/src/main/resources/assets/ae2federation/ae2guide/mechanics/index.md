@@ -42,10 +42,4 @@ A domain short of either **stops**: its networks keep working on their own and s
 
 ## In this section
 
-* [Rules](rules.md)
-* [Power](power.md)
-* [Network Capacity](capacity.md)
-* [Bundled Cables](bundled-cables.md)
-* [Long-Distance Links](long-distance.md)
-* [The Federation Screen](federation-screen.md)
-* [Statistics](statistics.md)
+<SubPages />

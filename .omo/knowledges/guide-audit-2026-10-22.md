@@ -65,8 +65,9 @@ Tree: `index.md` (900) -> getting-started 100, mechanics/index 200, crafting/ind
 examples/index 500, troubleshooting 600 -> each section's pages (the optional packs' examples under examples/index).
 `GuidePagesContractTest.SECTIONS` and `pagesHangAtMostThreeLevelsDeepAndChineseCopiesKeepTheirPlace` hold the depth;
 `sectionPagesLinkEveryPageUnderThem` requires each section page (EN and ZH) to link every page under it, or to use
-`<SubPages />`. The examples section uses `<SubPages />`, because pack examples exist only with their mods; GuideME
-lists the children it finds, in navigation order, packs included.
+`<SubPages />`. Mechanics, items and examples use `<SubPages />` (titles only, navigation order; for examples it
+also lists pack examples, which exist only with their mods). Crafting links its two pages in its comparison table,
+and the root page keeps its hand list because each entry has a description.
 
 Stock GuideME's sidebar (`GuideNavBar.recreateRows`, 21.1.1 to 21.1.19) builds rows for a root and its direct
 children only, and `Row.isVisible` checks the direct parent only. Data Energistics (`data_energistics`, 3.3.x) ships
