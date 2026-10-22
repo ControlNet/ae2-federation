@@ -8,7 +8,7 @@ navigation:
 
 # Library
 
-Programs reach the game through three namespaces. The **Library** panel in the Programs tab lists the same functions,
+Programs reach the game through three namespaces, and files through a fourth. The **Library** panel in the Programs tab lists the same functions,
 each with a short example. Functions marked **action** take one game tick each.
 
 A `network` parameter is optional: left out, the call works on every network of the domain, each through its own
@@ -64,6 +64,21 @@ request until it reaches storage.
 | `mc.move_fe(source, target, amount)` | **action:** moves FE between two blocks |
 | `mc.wait(ticks)` | **action:** pauses the run for `ticks` ticks; it does not use up the tick's action |
 
-Python's built-ins `int`, `float`, `str`, `bool`, `list`, `range`, `len`, `abs`, `min`, `max`, `sum`, `round`,
-`any` and `all` work as in Python, as do the methods of lists and strings. `print(...)` writes one line to the
+## fs: files
+
+Files live in the world's workspace folder, `<world>/ae2federation/workspace`, which every program of the world
+shares. A path is relative, with `/` between names, as in `"logs/iron.txt"`; one that leads out of the folder stops
+the run. A file holds text of up to 100,000 characters, and the folder at most 16 MB.
+
+| Function | Gives |
+| --- | --- |
+| `fs.read(path)` | the file's text, or `None` if there is none |
+| `fs.exists(path)` | whether the file or folder is there |
+| `fs.list(path="")` | the names in a folder, in order; folders end with `/` |
+| `fs.write(path, text)` | **action:** writes the file, making its folders |
+| `fs.append(path, text)` | **action:** adds to the end of the file, making it if needed |
+| `fs.delete(path)` | **action:** deletes a file or an empty folder; `False` if there was nothing |
+
+Python's built-ins `int`, `float`, `str`, `bool`, `list`, `dict`, `set`, `range`, `len`, `abs`, `min`, `max`, `sum`,
+`round`, `any` and `all` work as in Python, as do the methods of lists, strings, dicts and sets. `print(...)` writes one line to the
 installation's log.

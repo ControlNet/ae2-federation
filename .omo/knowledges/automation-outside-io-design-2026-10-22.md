@@ -1,6 +1,7 @@
 # Programs outside the game: files, HTTP, websockets (design, 2026-10-22)
 
-Status: agreed; dicts and sets done first, `fs` next.
+Status: agreed. Order (user): dicts and sets (done), `fs` (done, `program-fs-2026-10-22.md`), `net.http`,
+websockets, then the config section.
 
 ## Scope decided by the user
 

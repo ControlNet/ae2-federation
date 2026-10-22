@@ -194,6 +194,38 @@ public final class ProgramHostGameTests {
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
+    public static void programKeepsFilesInTheWorldsWorkspace(GameTestHelper helper) {
+        var fixtures = build(helper, Blocks.STONE.defaultBlockState());
+        var level = helper.getLevel();
+        var server = level.getServer();
+        var folder = ProgramHost.workspace(server).resolve("gametest");
+        removeFolder(folder);
+        run(helper, fixtures, "host_files", """
+                def run() -> str:
+                    wrote = fs.write("gametest/notes.txt", "iron 64;")
+                    added = fs.append("gametest/notes.txt", "gold 32")
+                    text = fs.read("gametest/notes.txt")
+                    names = fs.list("gametest")
+                    deleted = fs.delete("gametest/notes.txt")
+                    emptied = fs.delete("gametest")
+                    return " ".join([str(wrote), str(added), str(text), str(names), str(deleted), str(emptied),
+                                     str(fs.exists("gametest")), str(fs.read("gametest/notes.txt"))])
+                """, "True True iron 64;gold 32 ['notes.txt'] True True False None",
+                "A program writes, adds to, reads, lists and deletes a file in the world's workspace", () -> {
+                    helper.assertFalse(Files.exists(folder), "The program removed its folder");
+                    // A dry run checks a change but leaves the disk alone.
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
+                    var domain = AutomationInterfaces.get(level).domainOf(level, automationInterface.id())
+                            .orElseThrow();
+                    var dry = ProgramHost.dryRun(server, domain);
+                    helper.assertValueEqual(dry.call("fs", "write", List.of("gametest/dry.txt", "x")), true,
+                            "A dry run's write answers as if done");
+                    helper.assertFalse(Files.exists(folder), "A dry run's write leaves nothing on disk");
+                });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
     public static void programMovesBetweenItsNetworks(GameTestHelper helper) {
         var fixtures = build(helper, Blocks.AIR.defaultBlockState());
         // The north chest's network starts with ten iron; the other cell is empty.
@@ -413,6 +445,15 @@ public final class ProgramHostGameTests {
     private static void write(ProgramStore store, String name, String text) {
         try {
             Files.writeString(store.folder().resolve(name + ".ae2f"), text);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static void removeFolder(java.nio.file.Path folder) {
+        if (!Files.exists(folder)) return;
+        try (var all = Files.walk(folder)) {
+            for (var path : all.sorted(java.util.Comparator.reverseOrder()).toList()) Files.delete(path);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

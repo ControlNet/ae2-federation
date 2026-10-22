@@ -53,6 +53,8 @@ public final class ProgramHost implements Evaluator.Host {
     private final FederationDomainId domain;
     private final GameCatalog catalog;
     private final DomainCalls domainCalls;
+    /** The world's workspace folder, for the {@code fs} functions. */
+    private final WorkspaceFiles files;
     /** Whether actions only say what they would do: the editor's dry run. */
     private final boolean simulate;
     /** The most bytes one move takes: the run's share of its device's bandwidth when it is elastic. */
@@ -72,6 +74,13 @@ public final class ProgramHost implements Evaluator.Host {
         this.simulate = simulate;
         this.catalog = ProgramStore.catalog(server, domain);
         this.domainCalls = new DomainCalls(server, domain, owner, catalog, simulate);
+        this.files = new WorkspaceFiles(workspace(server), () -> WorkspaceFiles.DEFAULT_CAP_BYTES);
+    }
+
+    /** {@code <world>/ae2federation/workspace}, beside the programs folder. */
+    public static java.nio.file.Path workspace(MinecraftServer server) {
+        return server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("ae2federation")
+                .resolve("workspace");
     }
 
     /**
@@ -140,6 +149,12 @@ public final class ProgramHost implements Evaluator.Host {
             case "mc.time" -> server.overworld().getGameTime();
             case "mc.fe" -> energy(args.get(0)).map(energy -> (long) energy.getEnergyStored()).orElse(0L);
             case "mc.move_fe" -> moveEnergy(args.get(0), args.get(1), (Long) args.get(2));
+            case "fs.read" -> files.read((String) args.get(0));
+            case "fs.exists" -> files.exists((String) args.get(0));
+            case "fs.list" -> files.list((String) args.get(0));
+            case "fs.write" -> files.write((String) args.get(0), (String) args.get(1), simulate);
+            case "fs.append" -> files.append((String) args.get(0), (String) args.get(1), simulate);
+            case "fs.delete" -> files.delete((String) args.get(0), simulate);
             default -> domainCalls.call(this, namespace, name, args);
         };
     }

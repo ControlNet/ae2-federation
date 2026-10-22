@@ -4,7 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The game's standard library as the language sees it: the {@code ae2}, {@code ae2f} and {@code mc} namespaces, the
+ * The game's standard library as the language sees it: the {@code ae2}, {@code ae2f}, {@code mc} and {@code fs}
+ * namespaces, the
  * typed strings, the closed sets some of them hold, and the built-in records. Signatures and an example of each
  * function only; the host performs the calls. Settled with the user in rounds
  * (docs/ideas/script-system.md, "Standard library discussion").
@@ -222,7 +223,45 @@ public final class StandardLibrary {
                     act("move_fe", "bool", "Moves FE from one block to another.", """
                             def charge(port_from: Interface, port_to: Interface) -> None:
                                 mc.move_fe(ae2f.select(port_from), ae2f.select(port_to), 10000)
-                            """, arg("source", "Block"), arg("target", "Block"), amount())));
+                            """, arg("source", "Block"), arg("target", "Block"), amount())),
+            "fs", List.of(
+                    fn("read", "Optional[str]",
+                            "The text of a file in the world's workspace folder; None if there is none.", """
+                            def saved_limit() -> int:
+                                text = fs.read("limits/iron.txt")
+                                if text is None:
+                                    return 64
+                                return int(text)
+                            """, arg("path", "str")),
+                    fn("exists", "bool", "Whether a file or folder is in the workspace.", """
+                            def first_run() -> bool:
+                                return not fs.exists("state/started.txt")
+                            """, arg("path", "str")),
+                    fn("list", "list[str]", "The names in a workspace folder, in order; folders end with \"/\".", """
+                            def order_files() -> list[str]:
+                                names: list[str] = []
+                                for name in fs.list("orders"):
+                                    if name.endswith(".txt"):
+                                        names.append(name)
+                                return names
+                            """, new Signature.Arg("path", type("str"), "\"\"")),
+                    act("write", "bool", "Writes the text to a workspace file, making its folders.", """
+                            def save_stock() -> None:
+                                fs.write("stock/iron.txt", str(ae2.amount("minecraft:iron_ingot")))
+                            """, arg("path", "str"), arg("text", "str")),
+                    act("append", "bool", "Adds the text to the end of a workspace file, making it if needed.", """
+                            def log_iron() -> None:
+                                line = str(mc.time()) + " " + str(ae2.amount("minecraft:iron_ingot")) + "\\n"
+                                fs.append("logs/iron.txt", line)
+                            """, arg("path", "str"), arg("text", "str")),
+                    act("delete", "bool", "Deletes a workspace file or empty folder; False if there was nothing.", """
+                            def take_order() -> str:
+                                text = fs.read("orders/next.txt")
+                                if text is None:
+                                    return ""
+                                fs.delete("orders/next.txt")
+                                return text
+                            """, arg("path", "str"))));
 
     private StandardLibrary() {
     }
