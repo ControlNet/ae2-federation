@@ -15,7 +15,7 @@ Transfinite is installed.
 **You need:** network B with a formed Matter Fabrication Well, its controller
 (<ItemLink id="molecularmanipulator:matter_fabrication_controller" />) on B's cable, and a
 <ItemLink id="molecularmanipulator:matter_fabrication_pattern_assembly" /> in one of its service positions; your main
-network (network A) with a crafting CPU, a crafting terminal, storage and power; a <ItemLink id="ae2federation:switch" />.
+network (network A) with a crafting CPU, a crafting terminal, storage and power; a <ItemLink id="ae2federation:switch" />; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/matter_fabrication_well.snbt" />
@@ -33,6 +33,9 @@ network (network A) with a crafting CPU, a crafting terminal, storage and power;
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="0 0 4" max="7 4 10">
     A corner of the formed well, around its controller; the whole well is 41 by 41 blocks
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 3 1" max="4 5 2">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

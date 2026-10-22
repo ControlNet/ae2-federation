@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 一个发电厂网络把基地的电存在Mekanism的感应矩阵里， 通过ME能量给另外两个网络供电： 城区和它的工坊。 三个网络都没有能源元件， 感应矩阵是唯一储存电力的地方。 这一页出现， 是因为安装了Mekanism。
 
-**需要**： 一个发电厂网络， 带一台感应矩阵（<ItemLink id="mekanism:induction_casing" />、<ItemLink id="mekanism:induction_port" />、一个<ItemLink id="mekanism:basic_induction_cell" />和一个<ItemLink id="mekanism:basic_induction_provider" />）和一个<ItemLink id="ae2:energy_acceptor" />； 一个城区网络， 带合成CPU、合成终端和存储； 一个工坊网络， 带一个样板供应器和一台分子装配室； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。
+**需要**： 一个发电厂网络， 带一台感应矩阵（<ItemLink id="mekanism:induction_casing" />、<ItemLink id="mekanism:induction_port" />、一个<ItemLink id="mekanism:basic_induction_cell" />和一个<ItemLink id="mekanism:basic_induction_provider" />）和一个<ItemLink id="ae2:energy_acceptor" />； 一个城区网络， 带合成CPU、合成终端和存储； 一个工坊网络， 带一个样板供应器和一台分子装配室； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/power_plant.snbt" />
@@ -25,6 +25,9 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
     一个交换机： 每个面加入它接触的网络
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
+    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

@@ -18,7 +18,7 @@ cell on the Endpoint's subnet. This page appears because Applied Flux and Create
 <ItemLink id="ae2federation:cable" />; an <ItemLink id="createaddition:electric_motor" />; a
 <ItemLink id="create:shaft" />, a <ItemLink id="create:cogwheel" />, a <ItemLink id="create:chute" /> and a
 <ItemLink id="create:millstone" />; a <ItemLink id="ae2:storage_bus" />. How FE gets into the cells is in
-[Applied Flux's guide](appflux:appflux/flux_cells.md).
+[Applied Flux's guide](appflux:appflux/flux_cells.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/induction_motor.snbt" />
@@ -44,6 +44,9 @@ cell on the Endpoint's subnet. This page appears because Applied Flux and Create
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="1.7 2.125 0.125" max="2 2.875 0.875">
     Storage Bus on the Millstone's side
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

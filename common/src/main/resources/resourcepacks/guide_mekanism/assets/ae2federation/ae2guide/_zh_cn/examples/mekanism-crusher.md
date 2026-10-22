@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 在主网络上请求沙砾， 而粉碎圆石的Mekanism粉碎机待在它自己的小网络里。 这一页出现， 是因为安装了Mekanism。
 
-**需要**： 带合成CPU、合成终端并存有圆石的主网络； 一个<ItemLink id="ae2federation:pattern_provider" />； 一个<ItemLink id="ae2federation:processing_endpoint" />； <ItemLink id="ae2federation:cable" />； 一台<ItemLink id="mekanism:crusher" />； 一个充好电的<ItemLink id="mekanism:basic_energy_cube" />； 一个漏斗和一个<ItemLink id="ae2:storage_bus" />。
+**需要**： 带合成CPU、合成终端并存有圆石的主网络； 一个<ItemLink id="ae2federation:pattern_provider" />； 一个<ItemLink id="ae2federation:processing_endpoint" />； <ItemLink id="ae2federation:cable" />； 一台<ItemLink id="mekanism:crusher" />； 一个充好电的<ItemLink id="mekanism:basic_energy_cube" />； 一个漏斗和一个<ItemLink id="ae2:storage_bus" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/mekanism_crusher.snbt" />
@@ -31,6 +31,9 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="0 2 0" max="1 3 1">
     基础能量立方： 朝向粉碎机的一面输出能量
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
+    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

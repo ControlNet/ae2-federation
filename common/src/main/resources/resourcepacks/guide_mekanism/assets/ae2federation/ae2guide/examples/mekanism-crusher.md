@@ -14,7 +14,7 @@ cobblestone. This page appears because Mekanism is installed.
 **You need:** your main network with a crafting CPU, a crafting terminal and cobblestone in storage; a
 <ItemLink id="ae2federation:pattern_provider" />; a <ItemLink id="ae2federation:processing_endpoint" />;
 <ItemLink id="ae2federation:cable" />; a <ItemLink id="mekanism:crusher" />; a charged
-<ItemLink id="mekanism:basic_energy_cube" />; a hopper and a <ItemLink id="ae2:storage_bus" />.
+<ItemLink id="mekanism:basic_energy_cube" />; a hopper and a <ItemLink id="ae2:storage_bus" />; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/mekanism_crusher.snbt" />
@@ -35,6 +35,9 @@ cobblestone. This page appears because Mekanism is installed.
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="0 2 0" max="1 3 1">
     Basic Energy Cube: its side towards the Crusher outputs energy
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

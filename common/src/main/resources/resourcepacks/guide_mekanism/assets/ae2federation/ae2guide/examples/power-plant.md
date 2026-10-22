@@ -16,7 +16,7 @@ power. This page appears because Mekanism is installed.
 <ItemLink id="mekanism:induction_port" />, a <ItemLink id="mekanism:basic_induction_cell" /> and a
 <ItemLink id="mekanism:basic_induction_provider" />) and an <ItemLink id="ae2:energy_acceptor" />; a district network
 with a crafting CPU, a crafting terminal and storage; a workshop network with a pattern provider and a molecular
-assembler; a <ItemLink id="ae2federation:switch" /> all three touch.
+assembler; a <ItemLink id="ae2federation:switch" /> all three touch; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/power_plant.snbt" />
@@ -31,6 +31,9 @@ assembler; a <ItemLink id="ae2federation:switch" /> all three touch.
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
     One Switch: each face joins the network it touches
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

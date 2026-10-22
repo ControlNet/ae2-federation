@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 在主网络上请求石头， 而负责烧制的熔炉各自待在自己的小网络里。 处理样板留在主网络上， 不需要规则， 也不共享存储。
 
-**需要**： 带合成CPU、合成终端并存有圆石的主网络； 一个<ItemLink id="ae2federation:pattern_provider" />； 每座熔炉一个<ItemLink id="ae2federation:processing_endpoint" />、一座熔炉、一个漏斗和一个<ItemLink id="ae2:storage_bus" />； <ItemLink id="ae2federation:cable" />。
+**需要**： 带合成CPU、合成终端并存有圆石的主网络； 一个<ItemLink id="ae2federation:pattern_provider" />； 每座熔炉一个<ItemLink id="ae2federation:processing_endpoint" />、一座熔炉、一个漏斗和一个<ItemLink id="ae2:storage_bus" />； <ItemLink id="ae2federation:cable" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/endpoint_furnaces.snbt" />
@@ -37,6 +37,9 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#cdc35c" min="4 1 0" max="6 4 1">
     第二座熔炉的子网络
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="7 1 0" max="8 3 1">
+    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

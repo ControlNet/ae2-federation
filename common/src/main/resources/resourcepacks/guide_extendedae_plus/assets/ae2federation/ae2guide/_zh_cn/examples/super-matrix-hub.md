@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 一个工厂网络有一台装满合成样板的超级装配矩阵， 两个基地网络同时向它下单， 各用自己的合成CPU。 工厂还给两个基地供电。 这一页出现， 是因为安装了ExtendedAE-Plus。
 
-**需要**： 工厂网络上一台已成型的超级装配矩阵， 装好样板， 再加一个能源元件； 两个基地网络， 每个都有合成CPU、合成终端和存储； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 矩阵怎么搭见[ExtendedAE-Plus的指南](extendedae_plus:introduction/devices/super_assembler_matrix.md)。
+**需要**： 工厂网络上一台已成型的超级装配矩阵， 装好样板， 再加一个能源元件； 两个基地网络， 每个都有合成CPU、合成终端和存储； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 矩阵怎么搭见[ExtendedAE-Plus的指南](extendedae_plus:introduction/devices/super_assembler_matrix.md)； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/super_matrix_hub.snbt" />
@@ -25,6 +25,9 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
     一个交换机： 每个面加入它接触的网络
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
+    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

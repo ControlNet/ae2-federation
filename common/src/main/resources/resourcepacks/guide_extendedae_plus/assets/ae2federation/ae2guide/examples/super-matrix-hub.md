@@ -15,7 +15,7 @@ because ExtendedAE-Plus is installed.
 **You need:** a formed Super Assembler Matrix on the factory network, with its patterns and an energy cell; two district
 networks, each with a crafting CPU, a crafting terminal and storage; a <ItemLink id="ae2federation:switch" /> all three
 touch. How to build the matrix is in
-[ExtendedAE-Plus' guide](extendedae_plus:introduction/devices/super_assembler_matrix.md).
+[ExtendedAE-Plus' guide](extendedae_plus:introduction/devices/super_assembler_matrix.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/super_matrix_hub.snbt" />
@@ -30,6 +30,9 @@ touch. How to build the matrix is in
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
     One Switch: each face joins the network it touches
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
