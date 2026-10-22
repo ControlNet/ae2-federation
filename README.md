@@ -42,4 +42,7 @@ Link separate Applied Energistics 2 networks so they can share items, crafting, 
 
 ## License
 
-The code is licensed under [AGPL-3.0](LICENSE). The art assets are All Rights Reserved.
+The code is licensed under [AGPL-3.0](LICENSE). The art assets are All Rights Reserved, except the in-development
+placeholder textures recoloured from [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2)
+art. Those are adapted from AE2's textures (© 2020 Ridanisaurus Rid, © 2013–2020 AlgorithmX2 et al) and are licensed
+under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/).
