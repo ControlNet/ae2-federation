@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: Create Crushing Wheels
   icon: create:crushing_wheel
-  position: 60
+  position: 560
 ---
 
 # Create Crushing Wheels
@@ -14,7 +14,7 @@ crushes the cobblestone. This page appears because Create is installed.
 **You need:** your main network with a crafting CPU, a crafting terminal and cobblestone in storage; a
 <ItemLink id="ae2federation:pattern_provider" />; a <ItemLink id="ae2federation:processing_endpoint" />;
 <ItemLink id="ae2federation:cable" />; two <ItemLink id="create:crushing_wheel" />; a <ItemLink id="create:chute" />;
-a <ItemLink id="ae2:storage_bus" />; rotational power for the wheels.
+a <ItemLink id="ae2:storage_bus" />; rotational power for the wheels; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/create_crushing_wheels.snbt" />
@@ -35,6 +35,9 @@ a <ItemLink id="ae2:storage_bus" />; rotational power for the wheels.
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="1 3 1" max="2 4 2">
     Shafts behind the wheels, to your rotational power
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

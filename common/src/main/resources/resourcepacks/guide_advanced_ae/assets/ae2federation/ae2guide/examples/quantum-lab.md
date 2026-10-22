@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A Quantum Lab
   icon: advanced_ae:quantum_core
-  position: 76
+  position: 576
 ---
 
 # A Quantum Lab
@@ -16,7 +16,7 @@ installed.
 **You need:** a lab network with a formed <ItemLink id="advanced_ae:quantum_core" />-based Quantum Computer, a
 crafting terminal, storage and an energy cell; two workshop networks, each with a pattern provider and a molecular
 assembler; a <ItemLink id="ae2federation:switch" /> all three touch. How to build the Quantum Computer is in
-[Advanced AE's guide](advanced_ae:aae_intro/quantum_computer.md).
+[Advanced AE's guide](advanced_ae:aae_intro/quantum_computer.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="3" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/quantum_lab.snbt" />
@@ -31,6 +31,9 @@ assembler; a <ItemLink id="ae2federation:switch" /> all three touch. How to buil
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="4 0 0" max="5 1 1">
     One Switch: each face joins the network it touches
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="4 1 0" max="5 3 1">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

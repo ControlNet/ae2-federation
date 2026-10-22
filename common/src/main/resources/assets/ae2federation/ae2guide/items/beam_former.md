@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Beam Former
   icon: ae2federation:beam_former
-  position: 128
+  position: 433
 categories:
 - network infrastructure
 item_ids:
@@ -16,7 +16,7 @@ item_ids:
 
 Two Beam Formers facing each other link their Federation cables through the air, as if cable ran between their
 fronts. Build one at each end of a straight line, with nothing solid between them, and the two ends join one
-[Federation domain](../mechanics.md).
+[Federation domain](../mechanics/index.md).
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/beam_former.snbt" />
@@ -38,7 +38,7 @@ fronts. Build one at each end of a straight line, with nothing solid between the
 ## Building
 
 A Beam Former is one block, or a square of 2×2 or 3×3 blocks one block thick. It faces where you look when you place
-it. Its front sends the beam; its back joins Federation cable, a [bundle](../bundled-cables.md) of the same square or
+it. Its front sends the beam; its back joins Federation cable, a [bundle](../mechanics/bundled-cables.md) of the same square or
 any Federation block, like a Router face.
 
 Right-click a formed 2×2 or 3×3 with a wrench to turn it front to back. A single block turns to face the side you
@@ -58,11 +58,11 @@ Look at a former with Jade to see its beam: linked and how long, blocked and whe
 
 ## Capacity and power
 
-A linked pair counts as cable of its square for [network capacity](../network-capacity.md): a single pair carries one
+A linked pair counts as cable of its square for [network capacity](../mechanics/capacity.md): a single pair carries one
 cable's limit, a 2×2 pair six cables', and a 3×3 pair has no limit. The beam shows its load like a cable's.
 
 The domain pays for each linked pair once, by its square and length, on top of its other blocks:
-the square's blocks × L^1.05 AE per tick, L being the blocks between the fronts (at least 2).
+2 × (the square's blocks) × L^1.05 FE per tick, L being the blocks between the fronts (at least 2).
 
 | Pair | Blocks between | FE per tick |
 |---|---|---|

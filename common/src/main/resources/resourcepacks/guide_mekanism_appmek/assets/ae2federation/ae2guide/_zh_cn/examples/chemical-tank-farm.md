@@ -3,14 +3,14 @@ navigation:
   parent: examples/index.md
   title: 化学品储罐区
   icon: mekanism:dynamic_tank
-  position: 50
+  position: 550
 ---
 
 # 化学品储罐区
 
 **目标**： 把Mekanism的化学品存放在一个储罐区网络里， 放在动态储罐和化学品元件中， 再通过存储规则从另一个网络的终端里使用它们。 这一页出现， 是因为安装了Mekanism和Applied Mekanistics。
 
-**需要**： 一个储罐区网络， 带能源元件、装着<ItemLink id="appmek:chemical_storage_cell_1k" />的驱动器、一个动态储罐（<ItemLink id="mekanism:dynamic_tank" />和一个<ItemLink id="mekanism:dynamic_valve" />）和一个<ItemLink id="ae2:storage_bus" />； 一个带终端的工坊网络； 一个两者都接触的<ItemLink id="ae2federation:switch" />。
+**需要**： 一个储罐区网络， 带能源元件、装着<ItemLink id="appmek:chemical_storage_cell_1k" />的驱动器、一个动态储罐（<ItemLink id="mekanism:dynamic_tank" />和一个<ItemLink id="mekanism:dynamic_valve" />）和一个<ItemLink id="ae2:storage_bus" />； 一个带终端的工坊网络； 一个两者都接触的<ItemLink id="ae2federation:switch" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/chemical_tank_farm.snbt" />
@@ -25,6 +25,9 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="0 0 1" max="3 3 4">
     最小的动态储罐， 3×3×3， 存储总线装在它正面中央的动态储罐阀门上
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="5 1 0" max="6 3 1">
+    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

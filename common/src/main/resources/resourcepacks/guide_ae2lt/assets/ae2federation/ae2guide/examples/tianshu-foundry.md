@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A Tianshu District and Foundry
   icon: ae2lt:tianshu_supercomputer_controller
-  position: 72
+  position: 572
 ---
 
 # A Tianshu District and Foundry
@@ -17,7 +17,7 @@ work together through one Switch. This page appears because AE2 Lightning Tech i
 network with a formed Tianshu Matter Warping Matrix (<ItemLink id="ae2lt:matter_warping_matrix_controller" />) and a
 crafting pattern from two planks to four sticks; a <ItemLink id="ae2federation:switch" /> both touch. How to build them
 is in AE2 Lightning Tech's guide: [the Supercomputer](ae2lt:tianshu/construction.md) and
-[the Matrix](ae2lt:matrix/construction.md).
+[the Matrix](ae2lt:matrix/construction.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="2" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/tianshu_foundry.snbt" />
@@ -29,6 +29,9 @@ is in AE2 Lightning Tech's guide: [the Supercomputer](ae2lt:tianshu/construction
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="8 0 0" max="9 1 1">
     One Switch: each face joins the network it touches
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="8 1 0" max="9 3 1">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

@@ -1,19 +1,19 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: Bundled Cables
   icon: ae2federation:cable
-  position: 24
+  position: 245
 ---
 
 # Bundled Cables
 
-One <ItemLink id="ae2federation:cable" /> carries at most 8 networks and devices (see [Network Capacity](network-capacity.md)).
+One <ItemLink id="ae2federation:cable" /> carries at most 8 networks and devices (see [Network Capacity](capacity.md)).
 A **bundled cable** turns a block of Federation Cables into one thick cable that carries more: one shell the size of
 its cross-section, with a beam for each cable running inside it.
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/bundled_cables.snbt" />
+  <ImportStructure src="../assets/bundled_cables.snbt" />
   <BoxAnnotation color="#dddddd" min="0 0 2" max="1 2 4">
     Router, 2×2: covers the whole end face, so the bundle connects
   </BoxAnnotation>
@@ -44,7 +44,7 @@ along the bundle. Right-click air to start over.
 
 ## Capacity
 
-A bundle counts its networks and devices like any other cable (see [Network Capacity](network-capacity.md)); only its
+A bundle counts its networks and devices like any other cable (see [Network Capacity](capacity.md)); only its
 limit is larger:
 
 | Cross-section | Cables' worth | With the default 8 |
@@ -67,8 +67,8 @@ Sneak to place a single ordinary cable instead.
 
 ## Connections
 
-* A bundle never connects to ordinary Federation Cables, and two bundles side by side stay apart. To go from a bundle
-  to ordinary cables, run both into a <ItemLink id="ae2federation:router" />.
+* A bundle joins ordinary Federation Cables only through a <ItemLink id="ae2federation:router" />: run both into
+  it. Two bundles side by side stay separate.
 * A bundle connects only to device faces that take Federation cable and are built of enough blocks: a Router or
   <ItemLink id="ae2federation:switch" /> face, a <ItemLink id="ae2federation:beam_former" />'s back, a
   <ItemLink id="ae2federation:beam_converter" />'s front or a <ItemLink id="ae2federation:quantum_cube" />'s face centre.
@@ -76,7 +76,7 @@ Sneak to place a single ordinary cable instead.
 * A **side** connects to a device that covers the side's full width: a 2×2 bundle's side connects to a Router face
   1×2 across it, but not to a single Router block.
 
-Anything less is not connected. With Jade installed, looking at a bundle shows its cross-section, its capacity and how
+With Jade installed, looking at a bundle shows its cross-section, its capacity and how
 many ends and sides are connected, and names a device that covers only part of a face.
 
 ## Taking a bundle apart

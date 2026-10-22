@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: automation/index.md
+  parent: items/index.md
   title: 联邦计算系统
   icon: ae2federation:eco_computation_system_l4
-  position: 157
+  position: 470
 categories:
 - devices
 item_ids:

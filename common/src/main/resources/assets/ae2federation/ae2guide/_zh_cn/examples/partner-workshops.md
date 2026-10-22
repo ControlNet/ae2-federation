@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: 合作工坊
   icon: ae2:pattern_provider
-  position: 22
+  position: 522
 ---
 
 # 合作工坊
@@ -18,7 +18,7 @@ navigation:
     工坊A： 合成终端、合成CPU、存储、木棍样板， 以及给两个工坊供电的能源元件
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="4 0.25 0.25" max="4.375 0.75 0.75">
-    桥接器： 装在A的线缆上， 外侧接触B的线缆
+    联邦桥： 装在A的线缆上， 外侧接触B的线缆
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="4 2 1">
     工坊B： 合成终端、合成CPU、存储和木板样板
@@ -38,7 +38,7 @@ navigation:
 
 ## 搭建
 
-1. **放置桥接器**： 装在一个工坊的线缆上， 外侧接触另一个工坊的线缆。
+1. **放置联邦桥**： 装在一个工坊的线缆上， 外侧接触另一个工坊的线缆。
 2. **打开“A使用B的”和“B使用A的”合成规则**。 每个工坊都用自己的存储付账， 所以不需要存储规则。
 3. **打开这对网络的ME能量**， 让B靠A的能源元件运行。
 4. **在A下单木板**， 再**在B下单木棍**。 每个工坊都能在自己的可合成物品里看到对方的配方。

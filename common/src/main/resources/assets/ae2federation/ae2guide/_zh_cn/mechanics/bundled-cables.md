@@ -1,17 +1,17 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: 联邦粗线缆
   icon: ae2federation:cable
-  position: 24
+  position: 245
 ---
 
 # 联邦粗线缆
 
-一根<ItemLink id="ae2federation:cable" />最多承载8个网络和设备（见[网络容量](network-capacity.md)）。 **粗线缆**把一整块联邦线缆合成一根承载更多的粗线缆： 外壳只有一个， 大小和截面相同， 里面每根线缆各有一道光在流动。
+一根<ItemLink id="ae2federation:cable" />最多承载8个网络和设备（见[网络容量](capacity.md)）。 **粗线缆**把一整块联邦线缆合成一根承载更多的粗线缆： 外壳只有一个， 大小和截面相同， 里面每根线缆各有一道光在流动。
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/bundled_cables.snbt" />
+  <ImportStructure src="../assets/bundled_cables.snbt" />
   <BoxAnnotation color="#dddddd" min="0 0 2" max="1 2 4">
     2×2路由器： 盖住整个端面， 所以粗线缆接上了
   </BoxAnnotation>
@@ -39,7 +39,7 @@ navigation:
 
 ## 容量
 
-粗线缆和普通线缆一样计算它承载的网络和设备（见[网络容量](network-capacity.md)）， 只是上限更大：
+粗线缆和普通线缆一样计算它承载的网络和设备（见[网络容量](capacity.md)）， 只是上限更大：
 
 | 截面 | 相当于几根线缆 | 默认每根8时 |
 |---|---|---|
@@ -60,11 +60,11 @@ navigation:
 
 ## 连接
 
-* 粗线缆从不连接普通联邦线缆， 两根并排的粗线缆也互不相连。 要从粗线缆接到普通线缆， 把两者都接到一台<ItemLink id="ae2federation:router" />上。
-* 粗线缆只连接由足够多方块搭成、 能接联邦线缆的设备面： 路由器或<ItemLink id="ae2federation:switch" />的面、 <ItemLink id="ae2federation:beam_former" />的背面、 <ItemLink id="ae2federation:beam_converter" />的前面， 或<ItemLink id="ae2federation:quantum_cube" />一面的中心。 它的**端面**要被一台设备整个盖住才会连接： 2×2的粗线缆需要2×2的路由器面。
+* 粗线缆只能通过<ItemLink id="ae2federation:router" />接到普通联邦线缆： 把两者都接到路由器上。 两根并排的粗线缆互不相连。
+* 粗线缆只连接由足够多方块搭成、能接联邦线缆的设备面： 路由器或<ItemLink id="ae2federation:switch" />的面、<ItemLink id="ae2federation:beam_former" />的背面、<ItemLink id="ae2federation:beam_converter" />的前面， 或<ItemLink id="ae2federation:quantum_cube" />一面的中心。 它的**端面**要被一台设备整个盖住才会连接： 2×2的粗线缆需要2×2的路由器面。
 * **侧面**连接盖住侧面全宽的设备： 2×2粗线缆的侧面可以连接横跨它的1×2路由器面， 但不能连接单个路由器方块。
 
-不满足这些的都算没有连接。 装了Jade时， 看向粗线缆会显示它的截面、容量和接上的端面与侧面数量， 并指出只盖住一部分的设备。
+装了Jade时， 看向粗线缆会显示它的截面、容量和接上的端面与侧面数量， 并指出只盖住一部分的设备。
 
 ## 拆开粗线缆
 

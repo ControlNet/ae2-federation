@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A Local Endpoint
   icon: extendedae:ex_pattern_provider
-  position: 70
+  position: 570
 ---
 
 # A Local Endpoint

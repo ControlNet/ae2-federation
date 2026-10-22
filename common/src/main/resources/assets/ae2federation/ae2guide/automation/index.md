@@ -3,7 +3,7 @@ navigation:
   parent: index.md
   title: Federation Automation
   icon: ae2federation:automation_interface
-  position: 38
+  position: 550
 ---
 
 # Federation Automation

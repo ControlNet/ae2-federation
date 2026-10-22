@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Router
   icon: ae2federation:router
-  position: 120
+  position: 425
 categories:
 - network infrastructure
 item_ids:
@@ -14,19 +14,18 @@ item_ids:
 
 <BlockImage id="ae2federation:router" scale="6" />
 
-The Router ends cable segments, so that a [Federation domain](../mechanics.md) can grow without filling its cables
-(see [Network Capacity](../network-capacity.md)). Each of its faces links onwards to
+The Router ends cable segments, so that a [Federation domain](../mechanics/index.md) can grow without filling its cables
+(see [Network Capacity](../mechanics/capacity.md)). Each of its faces links onwards to
 <ItemLink id="ae2federation:cable" />, a <ItemLink id="ae2federation:switch" />, a Pattern Provider front or an
-Endpoint front. You do not need a Router to build a domain: Federation Cable connects and branches on its own.
+Endpoint front. Federation Cable connects and branches by itself, so a domain needs Routers only for capacity.
 
-It does not attach ME networks: an ME cable or device touching a face stays unconnected. Bring networks in with a
-Switch. Right-click a Router to open the Federation screen for its domain.
+A Router's faces take Federation blocks only; ME networks join the domain through a Switch. Each Router block uses
+2 FE per tick ([Power](../mechanics/power.md)). Right-click a Router to open the Federation screen for its domain.
 
 ## Ending segments
 
-Federation Cables joined to each other form one segment, and a segment counts the networks and devices around it.
-A Router ends every segment it touches. A segment that touches only one Router counts just its own **subdomain**:
-the networks on its Switches and the Endpoints and Providers on it.
+A Router ends every cable segment it touches. A segment that touches only one Router counts just its own
+**subdomain**: the networks on its Switches and the Endpoints and Providers on it.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/router_segments.snbt" />
@@ -56,7 +55,7 @@ the networks on its Switches and the Endpoints and Providers on it.
 
 Put a Federation Cable where the Router is, and the three arms become one segment that carries all four. A segment
 that runs between two Routers carries traffic for the whole domain and counts everything in it, so keep such trunks
-short, or build them as a [bundled cable](../bundled-cables.md).
+short, or build them as a [bundled cable](../mechanics/bundled-cables.md).
 
 ## Bigger Routers
 
@@ -84,7 +83,7 @@ two of its blocks still touches only one Router. Every outer face links like a s
   build on it as usual. With Jade installed, looking at a Router shows "Structure: 3×2×1" or the reason it is not
   formed.
 
-A formed Router is how a [bundled cable](../bundled-cables.md) meets ordinary cables: a bundle connects only to a
+A formed Router is how a [bundled cable](../mechanics/bundled-cables.md) meets ordinary cables: a bundle connects only to a
 Router or Switch face that covers its whole end or side, and the Router's other faces take ordinary Federation Cables.
 
 <RecipeFor id="ae2federation:router" />

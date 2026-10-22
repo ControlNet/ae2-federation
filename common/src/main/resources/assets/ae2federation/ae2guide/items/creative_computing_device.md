@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: automation/index.md
+  parent: items/index.md
   title: Creative ME Federation Computing Device
   icon: ae2federation:creative_computing_device
-  position: 156
+  position: 465
 categories:
 - devices
 item_ids:
@@ -19,7 +19,7 @@ meant for testing; in survival, the Federation computation system built on Neo E
 programs.
 
 * **All six faces:** take <ItemLink id="ae2federation:cable" /> only. The device joins the domain through them and
-  counts 1 toward the cable's [capacity](../network-capacity.md), like an Endpoint. It uses no power.
+  counts 1 toward the cable's [capacity](../mechanics/capacity.md), like an Endpoint. It uses no power.
 * **Programs** installed on it act through the domain's
   <ItemLink id="ae2federation:automation_interface" />s. Install them in the Federation screen's Automation tab
   ([Installing and Triggers](../automation/installing.md)).

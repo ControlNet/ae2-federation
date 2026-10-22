@@ -3,7 +3,7 @@ navigation:
   parent: index.md
   title: 联邦自动化
   icon: ae2federation:automation_interface
-  position: 38
+  position: 550
 ---
 
 # 联邦自动化

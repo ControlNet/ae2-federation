@@ -102,8 +102,8 @@ final class GuidePagesContractTest {
                         guide.root() + " must not replace a base page");
             }
         }
-        assertTrue(pages(GUIDE).containsAll(Set.of("index.md", "getting-started.md", "mechanics.md",
-                "remote-processing.md", "troubleshooting.md")));
+        assertTrue(pages(GUIDE).containsAll(Set.of("index.md", "getting-started.md", "mechanics/index.md",
+                "crafting/index.md", "items/index.md", "examples/index.md", "troubleshooting.md")));
     }
 
     /** Each optional pack is registered with the mods it needs, has its pack metadata, and names itself in both languages. */
@@ -153,30 +153,62 @@ final class GuidePagesContractTest {
     }
 
     /**
-     * Every page hangs under the Federation entry, directly or through another page: the examples hang under the
-     * examples page. GuideME resolves a parent against the namespace root, not relative to the page.
+     * The guide is three levels deep: the Federation entry, its section pages, and the pages of each section.
      */
+    static final Set<String> SECTIONS = Set.of("mechanics/index.md", "crafting/index.md", "items/index.md",
+            "examples/index.md", "automation/index.md");
+
     @Test
-    void pagesHangUnderTheFederationEntryAndChineseCopiesKeepTheirPlace() throws IOException {
+    void pagesHangAtMostThreeLevelsDeepAndChineseCopiesKeepTheirPlace() throws IOException {
         for (var guide : guides()) {
-            var pages = new TreeSet<>(pages(guide.root()));
-            pages.addAll(pages(GUIDE));
             for (var page : pages(guide.root())) {
                 var english = frontmatter(guide.root().resolve(page));
                 var chinese = frontmatter(guide.root().resolve("_zh_cn").resolve(page));
                 assertTrue(english.contains("navigation:"), page);
-                assertEquals(page.equals("index.md"), !english.contains("parent:"), page);
-                var ancestor = page;
-                for (int depth = 0; !ancestor.equals("index.md"); depth++) {
-                    var parent = Pattern.compile("(?m)^  parent: (\\S+)$").matcher(frontmatter(guide.find(ancestor)));
-                    assertTrue(parent.find() && pages.contains(parent.group(1)) && depth < pages.size(),
-                            page + " must hang under index.md through existing pages");
-                    ancestor = parent.group(1);
+                for (var matter : List.of(english, chinese)) {
+                    // GuideME's YAML parser rejects a plain value holding ": ", and the page then has no navigation.
+                    var value = Pattern.compile("(?m)^\\s*[\\w-]+: (.*)$").matcher(matter);
+                    while (value.find()) {
+                        assertTrue(!value.group(1).contains(": ") || value.group(1).startsWith("\""),
+                                page + ": quote the frontmatter value " + value.group(1));
+                    }
                 }
-                assertTrue(!page.startsWith("examples/") || page.equals("examples/index.md")
-                        || english.contains("  parent: examples/index.md\n"), page + " belongs under the examples page");
+                assertEquals(page.equals("index.md"), !english.contains("parent:"), page + " is the only root");
+                if (!page.equals("index.md")) {
+                    var parent = Pattern.compile("(?m)^  parent: (\\S+)$").matcher(english);
+                    assertTrue(parent.find(), page);
+                    assertTrue(parent.group(1).equals("index.md")
+                            || !SECTIONS.contains(page) && SECTIONS.contains(parent.group(1)),
+                            page + " must hang under the Federation entry or one of its sections");
+                    var section = page.contains("/") ? page.substring(0, page.indexOf('/')) + "/index.md" : null;
+                    assertTrue(section == null || !SECTIONS.contains(section) || page.equals(section)
+                            || parent.group(1).equals(section), page + " belongs under " + section);
+                }
                 assertEquals(english.replaceAll("(?m)^  title: .*$", ""), chinese.replaceAll("(?m)^  title: .*$", ""),
                         "Only the title may differ between " + page + " and its Chinese copy");
+            }
+        }
+    }
+
+    @Test
+    void sectionPagesLinkEveryPageUnderThem() throws IOException {
+        for (var section : SECTIONS) {
+            var folder = Path.of(section).getParent();
+            for (var language : List.of(GUIDE, GUIDE.resolve("_zh_cn"))) {
+                var body = Files.readString(language.resolve(section));
+                // <SubPages /> lists the children GuideME finds, the optional packs' pages too.
+                if (body.contains("<SubPages />")) {
+                    continue;
+                }
+                for (var guide : guides()) {
+                    for (var page : pages(guide.root())) {
+                        if (frontmatter(guide.root().resolve(page)).contains("  parent: " + section + "\n")) {
+                            var link = "](" + folder.relativize(Path.of(page)).toString().replace('\\', '/') + ")";
+                            assertTrue(body.contains(link), language.relativize(language.resolve(section)) + " links "
+                                    + page + ", or lists its pages with <SubPages />");
+                        }
+                    }
+                }
             }
         }
     }

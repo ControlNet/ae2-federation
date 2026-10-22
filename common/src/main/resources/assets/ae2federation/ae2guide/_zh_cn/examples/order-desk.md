@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: 接单的工厂
   icon: ae2:molecular_assembler
-  position: 27
+  position: 527
 ---
 
 # 接单的工厂
@@ -18,7 +18,7 @@ navigation:
     顾客： 合成终端、合成CPU， 以及放着付账原料的驱动器
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0.25 0.25" max="3.375 0.75 0.75">
-    桥接器： 装在顾客的线缆上， 外侧接触工厂的线缆
+    联邦桥： 装在顾客的线缆上， 外侧接触工厂的线缆
   </BoxAnnotation>
   <BoxAnnotation color="#5ccd78" min="0 0 0" max="3 2 1">
     工厂： 样板供应器， 旁边是分子装配室； 放私人库存的驱动器， 以及给两个网络供电的能源元件
@@ -37,7 +37,7 @@ navigation:
 
 ## 搭建
 
-1. **放置桥接器**： 装在顾客的线缆上， 让它的外侧接触工厂的线缆。
+1. **放置联邦桥**： 装在顾客的线缆上， 让它的外侧接触工厂的线缆。
 2. **打开这对网络的ME能量**， 让顾客靠工厂的能源元件运行。
 3. **打开“顾客使用工厂的”合成规则**， 存储规则保持关闭。
 4. **在顾客的终端下单**。 工厂的配方列在顾客的可合成物品里。
