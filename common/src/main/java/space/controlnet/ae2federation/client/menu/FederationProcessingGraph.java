@@ -1323,10 +1323,13 @@ public final class FederationProcessingGraph {
         return 2;
     }
 
-    /** A dashed curve: a wire the player made that the server has not confirmed yet, or one being dragged. */
-    static void dashed(GUIContext context, List<Vector2f> line, int color) {
+    /**
+     * A dashed curve: a wire the player made that the server has not confirmed yet, one being dragged, or one the dry
+     * run did not take.
+     */
+    static void dashed(net.minecraft.client.gui.GuiGraphics graphics, List<Vector2f> line, int color) {
         for (int index = 1; index < line.size(); index += 2) {
-            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(line.get(index - 1), line.get(index)),
+            DrawerHelper.drawTexLines(graphics, LDLibRenderTypes.graphWire(), List.of(line.get(index - 1), line.get(index)),
                     color, color, FederationTheme.WIRE);
         }
     }
@@ -1457,7 +1460,7 @@ public final class FederationProcessingGraph {
             pendingWires.forEach((wire, sent) -> {
                 var ends = ends(wire);
                 if (ends == null || wires.contains(wire) || now - sent > PENDING_MILLIS) return;
-                dashed(context, polyline(curve(ends)), 0xffefeaf8);
+                dashed(context.graphics, polyline(curve(ends)), 0xffefeaf8);
             });
             var drag = dragged();
             var ui = getModularUI();
@@ -1467,7 +1470,7 @@ public final class FederationProcessingGraph {
                 var from = portPoint(ports.get(drag.slot()));
                 float mouseX = ui.getLastMouseX();
                 float mouseY = ui.getLastMouseY();
-                dashed(context, polyline(new space.controlnet.ae2federation.client.policy.WireCurve(from.x, from.y, mouseX, mouseY)), color);
+                dashed(context.graphics, polyline(new space.controlnet.ae2federation.client.policy.WireCurve(from.x, from.y, mouseX, mouseY)), color);
                 int x = Math.round(mouseX);
                 int y = Math.round(mouseY);
                 context.graphics.fill(x - 3, y - 3, x + 3, y + 3, color);

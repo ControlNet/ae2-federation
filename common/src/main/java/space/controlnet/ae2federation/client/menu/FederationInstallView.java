@@ -1111,7 +1111,7 @@ final class FederationInstallView {
                 var from = functionPorts.get(wire.function());
                 var to = devicePorts.get(wire.device());
                 if (from == null || to == null) continue;
-                FederationProcessingGraph.dashed(context, FederationProcessingGraph.polyline(new WireCurve(
+                FederationProcessingGraph.dashed(context.graphics, FederationProcessingGraph.polyline(new WireCurve(
                         from.getPositionX() + from.getSizeWidth() + 1, from.getPositionY() + from.getSizeHeight() / 2,
                         to.getPositionX() - 1, to.getPositionY() + to.getSizeHeight() / 2)), wire.color());
             }
@@ -1124,7 +1124,7 @@ final class FederationInstallView {
                 var to = devicePorts.get(hoverDevice);
                 float endX = to == null ? ui.getLastMouseX() : to.getPositionX() - 1;
                 float endY = to == null ? ui.getLastMouseY() : to.getPositionY() + to.getSizeHeight() / 2;
-                FederationProcessingGraph.dashed(context, FederationProcessingGraph.polyline(
+                FederationProcessingGraph.dashed(context.graphics, FederationProcessingGraph.polyline(
                         new WireCurve(startX, startY, endX, endY)), 0xffefeaf8);
             }
         }

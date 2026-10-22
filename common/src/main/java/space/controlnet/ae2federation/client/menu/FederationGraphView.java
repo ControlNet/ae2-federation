@@ -722,8 +722,8 @@ final class FederationGraphView {
         return text.length() <= MAX_TEXT ? text : text.substring(0, MAX_TEXT - 3) + "...";
     }
 
-    /** A wire between two points of the canvas, in a colour and a width. */
-    record Wire(float fromX, float fromY, float toX, float toY, int color, float width) {
+    /** A wire between two points of the canvas, in its colour; dashed and faded when the dry run did not take it. */
+    record Wire(float fromX, float fromY, float toX, float toY, int color, boolean skipped) {
     }
 
     /** Exec links from their output to the next card's top left; values from their output to the row they feed. */
@@ -739,8 +739,7 @@ final class FederationGraphView {
             var start = boxes.get(link.from());
             boolean skipped = drawn.get(link.to()) != null && drawn.get(link.to()).state() == DryState.SKIPPED;
             wires.add(new Wire(start.right() + MARGIN + 3, start.y() + MARGIN + from.outputY(output),
-                    to.x() + MARGIN - 3, to.y() + MARGIN + FIRST, skipped ? FederationTheme.fadedWire(EXEC) : EXEC,
-                    FederationTheme.WIRE));
+                    to.x() + MARGIN - 3, to.y() + MARGIN + FIRST, EXEC, skipped));
         }
         for (var card : shownGraph.cards()) {
             var d = drawn.get(card.id());
@@ -750,10 +749,8 @@ final class FederationGraphView {
                 var source = boxes.get(wire.node());
                 if (source == null) continue;
                 boolean skipped = drawn.get(wire.node()) != null && drawn.get(wire.node()).state() == DryState.SKIPPED;
-                int color = color(card.rows().get(i).type());
                 wires.add(new Wire(source.right() + MARGIN + 2, source.y() + MARGIN + FIRST, place.x() + MARGIN - 3,
-                        place.y() + MARGIN + d.rowY(i), skipped ? FederationTheme.fadedWire(color) : color,
-                        FederationTheme.WIRE));
+                        place.y() + MARGIN + d.rowY(i), color(card.rows().get(i).type()), skipped));
             }
         }
         return wires;
@@ -780,9 +777,14 @@ final class FederationGraphView {
     /** The wires with the canvas's top left at {@code (x, y)}. */
     static void paintWires(net.minecraft.client.gui.GuiGraphics graphics, List<Wire> wires, float x, float y) {
         for (var wire : wires) {
-            DrawerHelper.drawTexLines(graphics, LDLibRenderTypes.graphWire(), FederationProcessingGraph
-                    .polyline(new WireCurve(x + wire.fromX(), y + wire.fromY(), x + wire.toX(), y + wire.toY())),
-                    wire.color(), wire.color(), wire.width());
+            var line = FederationProcessingGraph
+                    .polyline(new WireCurve(x + wire.fromX(), y + wire.fromY(), x + wire.toX(), y + wire.toY()));
+            if (wire.skipped()) {
+                FederationProcessingGraph.dashed(graphics, line, FederationTheme.fadedWire(wire.color()));
+            } else {
+                DrawerHelper.drawTexLines(graphics, LDLibRenderTypes.graphWire(), line, wire.color(), wire.color(),
+                        FederationTheme.WIRE);
+            }
         }
     }
 
@@ -820,7 +822,7 @@ final class FederationGraphView {
         var mouse = element.getLocalMouse(ui.getLastMouseX(), ui.getLastMouseY());
         // An exec wire comes into its statement from the output it is dragged to; a value wire leaves its value.
         var curve = drag.exec() ? new WireCurve(mouse.x, mouse.y, x, y) : new WireCurve(x, y, mouse.x, mouse.y);
-        FederationProcessingGraph.dashed(context, FederationProcessingGraph.polyline(curve), drag.color());
+        FederationProcessingGraph.dashed(context.graphics, FederationProcessingGraph.polyline(curve), drag.color());
     }
 
     /** Whether an exec wire is being dragged, so the cards show where it may go. */

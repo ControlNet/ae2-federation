@@ -298,6 +298,9 @@ success alone is not a readability or visual-quality judgment.
   alpha only fades the glow: the core stays opaque. `FederationTheme.fadedWire` (skipped dry-run wires, other
   Providers' wires) therefore also scales the colour to 2/5; the centre still saturates to a thin bright line, with no
   glow. The old `0x66` alpha on other Providers' wires had never dimmed them.
+- A skipped dry-run wire is therefore also dashed (owner, 2026-10-22): `FederationGraphView.Wire.skipped` makes
+  `paintWires` draw `FederationProcessingGraph.dashed` (now taking `GuiGraphics`) in `fadedWire` of its colour.
+  Compare: `build/graph-wire-width-check/compare-dashed.png` (original, solid faded, dashed).
 - Compare: `build/graph-wire-width-check/compare.png` and `compare-zoom.png` (run.sh before|after runs
   `ui.automation,ui.mapping` at 1600x960). `ui.automation` fails step 523 (install aside check) at that window size
   both before and after the change; `ui.mapping` passes.
