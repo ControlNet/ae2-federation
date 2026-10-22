@@ -36,6 +36,9 @@ jobs. It needs Neo ECO 21.2.1 or later.
   outer face, which joins the system to the domain. A 2x2 bundled cable links only to four interfaces that fill a 2x2
   square. Without an interface, with a fifth, or with one in another face, the structure does not form. No ME network joins the
   structure, and it is not a crafting CPU.
+* **Power and capacity:** it uses no FE ([Power](../mechanics/power.md)). The whole system counts 1 toward the
+  cable's [capacity](../mechanics/capacity.md); its communication interfaces pass the domain on like cable and count
+  nothing themselves.
 * **Compute:** the accelerators of its parallel cores, 64, 192 or 576 CU per core for tier 4, 6 or 9.
 * **Bandwidth:** the bytes of the flash crystal matrices in its drives, 67,108,864 (CE4), 268,435,456 (CE6) or
   1,073,741,824 (CE9) B/s per matrix. Right-click the controller with matrices to fill empty drives.

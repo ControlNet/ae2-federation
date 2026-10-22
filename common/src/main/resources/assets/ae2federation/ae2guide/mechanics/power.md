@@ -30,7 +30,7 @@ Every Federation block in a domain uses FE every tick, and the domain draws it f
 | <ItemLink id="ae2federation:switch" />, <ItemLink id="ae2federation:router" /> | 2 |
 | <ItemLink id="ae2federation:pattern_provider" />, <ItemLink id="ae2federation:processing_endpoint" />, <ItemLink id="ae2federation:automation_interface" /> | 2 |
 | <ItemLink id="ae2federation:quantum_cube" />, formed | 44 |
-| <ItemLink id="ae2federation:bridge" />, <ItemLink id="ae2federation:federation_p2p_tunnel" />, <ItemLink id="ae2federation:beam_converter" />, <ItemLink id="ae2federation:beam_former" /> | 0 |
+| <ItemLink id="ae2federation:bridge" />, <ItemLink id="ae2federation:federation_p2p_tunnel" />, <ItemLink id="ae2federation:beam_converter" />, <ItemLink id="ae2federation:beam_former" />, computing devices | 0 |
 
 * A bigger Switch or Router uses 2 for each of its blocks, and each cable in a [bundle](bundled-cables.md) uses 0.5.
 * A linked pair of Beam Formers adds 2 × (blocks in its square) × L^1.05 FE, L being the blocks between the fronts

@@ -47,8 +47,8 @@ the count fits again.
 ## What counts
 
 * **Each ME network on a Switch counts 1**, once, however many Switch faces it touches.
-* **Each Processing Endpoint, Federation Pattern Provider and Automation Interface counts 1.** A Provider counts as a
-  device of its own, even when its network is also on a Switch.
+* **Each Processing Endpoint, Federation Pattern Provider, Automation Interface and computing device counts 1.** A
+  Provider counts as a device of its own, even when its network is also on a Switch.
 
 A network counts as soon as it joins the domain, whatever its rules and power.
 

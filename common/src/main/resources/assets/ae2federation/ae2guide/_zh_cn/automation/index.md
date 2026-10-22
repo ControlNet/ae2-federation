@@ -13,7 +13,7 @@ navigation:
   <ItemImage id="ae2federation:creative_computing_device" scale="3" />
 </Row>
 
-联邦自动化为联邦域运行小程序。 程序读取联邦域的存储、合成、规则和周围的世界， 并据此操作： 发起合成任务、 在网络和方块之间搬运资源、 修改规则、 发出红石信号。
+联邦自动化为联邦域运行小程序。 程序读取联邦域的存储、合成、规则和周围的世界， 并据此操作： 发起合成任务、在网络和方块之间搬运资源、修改规则、发出红石信号。
 
 <FederationProgram src="../assets/programs/low_iron_alarm.ae2f" />
 
@@ -27,7 +27,7 @@ navigation:
 
 ## 各页内容
 
-* [编写程序](writing-programs.md)： 程序标签页、 脚本和图两种视图， 以及推送。
+* [编写程序](writing-programs.md)： 程序标签页、脚本和图两种视图， 以及推送。
 * [语言](language.md)： 程序可以使用的Python子集。
 * [函数库](library.md)： `ae2`、`ae2f`和`mc`里的函数。
 * [安装与触发](installing.md)： 把函数装到设备上， 以及什么会启动它。

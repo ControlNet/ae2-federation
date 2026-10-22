@@ -10,7 +10,7 @@ navigation:
 
 Right-click any Switch, Router or Bridge from within eight blocks to open its domain's Federation screen. Every block of
 a domain opens the same screen, and it closes when you move more than eight blocks away. Its tabs on the left are
-**Topology**, **Processing** and **Statistics**.
+**Topology**, **Processing**, **Statistics**, **Programs** and **Automation**.
 
 ## Topology
 
@@ -40,3 +40,9 @@ provider sends to which Endpoint. See [Crafting Across Networks](../crafting/ind
 
 The Statistics tab charts the domain's networks over the last 24 hours: ME power, stored items, what moved between
 them, crafting, CPUs, channels and Federation power. [Statistics](statistics.md) explains each chart.
+
+## Programs and Automation
+
+The Programs tab is where the server's [Federation programs](../automation/index.md) are written, and the Automation tab
+installs their functions on this domain's computing devices. See [Writing Programs](../automation/writing-programs.md)
+and [Installing and Triggers](../automation/installing.md).

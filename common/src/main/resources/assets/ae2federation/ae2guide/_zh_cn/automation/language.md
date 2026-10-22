@@ -12,16 +12,16 @@ navigation:
 
 ## 可以使用
 
-* `def`， 每个参数和返回值都要写类型； 默认值、 文档字符串和注释。
+* `def`， 每个参数和返回值都要写类型； 默认值、文档字符串和注释。
 * `if`、`elif`、`else`、`while`、`for x in xs`、`break`、`continue`、`return`、`pass`。
 * 赋值， 包括`+=`等算术赋值。
-* `int`、`float`、`str`、`bool`、`None`、列表、`range`、 `stack.amount`这样的字段、 下标和切片， 以及列表和字符串的方法。
+* `int`、`float`、`str`、`bool`、`None`、列表、`range`、`stack.amount`这样的字段、下标和切片， 以及列表和字符串的方法。
 * 关键字参数， 例如`ae2f.select(port, side="down")`。
 * 只有带类型字段的类可以当作记录使用： `Order("minecraft:iron_ingot", 64)`。
 
 ## 不能使用
 
-导入、 异常（`try`、`raise`）、 带方法的类、 lambda、 推导式、 生成器、 字典、 集合、 元组、 嵌套函数和`global`。 函数不是值： 只能定义和调用。
+导入、异常（`try`、`raise`）、带方法的类、lambda、推导式、生成器、字典、集合、元组、嵌套函数和`global`。 函数不是值： 只能定义和调用。
 
 ## 类型
 

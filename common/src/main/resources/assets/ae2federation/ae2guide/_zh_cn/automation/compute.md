@@ -18,7 +18,7 @@ navigation:
 
 ## 带宽
 
-带宽按AE2字节计算函数搬运的量， 和AE2存储元件的算法一样： 8个物品或8,000 mB流体为1字节。 只有`ae2.import_from`、`ae2.export_to`、`ae2.move`和`mc.move`计入； 合成、 红石、 方块和FE都不占带宽。
+带宽按AE2字节计算函数搬运的量， 和AE2存储元件的算法一样： 8个物品或8,000 mB流体为1字节。 只有`ae2.import_from`、`ae2.export_to`、`ae2.move`和`mc.move`计入； 合成、红石、方块和FE都不占带宽。
 
 一个安装预留的带宽是它所有调用中最大一次搬运量的20倍， 因为一次运行每刻最多搬运一次。
 
@@ -26,7 +26,7 @@ navigation:
 
 这个函数每次最多搬运64个物品（`min(missing, 64)`）， 即8字节， 所以预留160 B/s。
 
-* 游戏通过常量、 安装参数、 算术、 `min`和调用外围的条件来推算数量的上限。 在`if missing > 0`里， `target - ae2.amount(item, farm)`最多是`target`。
+* 游戏通过常量、安装参数、算术、`min`和调用外围的条件来推算数量的上限。 在`if missing > 0`里， `target - ae2.amount(item, farm)`最多是`target`。
 * 程序里写出或作为参数给出的水按流体计算； `Item`参数按物品计算。 从世界里读出的资源按字节最多的种类计算。
 
 ## 弹性安装

@@ -24,7 +24,7 @@ navigation:
 | <ItemLink id="ae2federation:switch" />、<ItemLink id="ae2federation:router" /> | 2 |
 | <ItemLink id="ae2federation:pattern_provider" />、<ItemLink id="ae2federation:processing_endpoint" />、<ItemLink id="ae2federation:automation_interface" /> | 2 |
 | 已成形的<ItemLink id="ae2federation:quantum_cube" /> | 44 |
-| <ItemLink id="ae2federation:bridge" />、<ItemLink id="ae2federation:federation_p2p_tunnel" />、<ItemLink id="ae2federation:beam_converter" />、<ItemLink id="ae2federation:beam_former" /> | 0 |
+| <ItemLink id="ae2federation:bridge" />、<ItemLink id="ae2federation:federation_p2p_tunnel" />、<ItemLink id="ae2federation:beam_converter" />、<ItemLink id="ae2federation:beam_former" />、计算设备 | 0 |
 
 * 更大的交换机或路由器按每个方块2计算， [粗线缆](bundled-cables.md)里的每根线缆按0.5计算。
 * 一对已连接的光束成型器额外消耗2 ×（截面方块数）× L^1.05 FE， L是两个正面之间的方块数（至少为2）： 相距16格的一对单格成型器每tick消耗37 FE。
