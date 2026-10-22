@@ -427,6 +427,63 @@ public final class NeoEcoComputingCompatGameTests {
     }
 
     /**
+     * A block event that happens while the device is paused starts its run once the device resumes. Taking out the
+     * cell leaves no bandwidth for a fixed reservation, which pauses it; putting the cell back resumes it.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void aPausedDeviceKeepsItsEventsForLater(GameTestHelper helper) {
+        var controller = placeLinkedFederationComputationSystem(helper, "eco_computation_system_l4");
+        var port = CABLE.west();
+        helper.setBlock(port, space.controlnet.ae2federation.automation.AutomationRegistration.INTERFACE.get()
+                .defaultBlockState().setValue(BlockStateProperties.FACING, Direction.NORTH));
+        var target = port.north();
+        var file = "neoeco_pause_event";
+        writeProgram(helper, file, """
+                def ping() -> str:
+                    return "ping"
+
+                def hold(port: Interface) -> None:
+                    mc.move(ae2f.select(port, 1), ae2f.select(port, 2), "minecraft:iron_ingot", 8)
+                """);
+        var scheduler = ProgramScheduler.get(helper.getLevel().getServer());
+        var installed = new java.util.ArrayList<String>();
+        var watcher = new String[1];
+        var paused = "paused: the device holds less than its installations reserve";
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(helper.getBlockEntity(controller) instanceof ComputingHost host
+                        && host.id() != null
+                        && helper.getBlockEntity(port) instanceof AutomationInterfaceBlockEntity automationInterface
+                        && automationInterface.id() != null && sharesDomain(helper, controller, port),
+                        "waiting for it to form beside the interface"))
+                .thenExecute(() -> insertCell(helper, controller))
+                .thenWaitUntil(() -> helper.assertTrue(((ComputingHost) helper.getBlockEntity(controller)).capacity()
+                        .bandwidth() > 0, "waiting for the cell's bandwidth"))
+                .thenExecute(() -> {
+                    var device = ((ComputingHost) helper.getBlockEntity(controller)).id();
+                    var portId = ((AutomationInterfaceBlockEntity) helper.getBlockEntity(port)).id();
+                    installed.add(scheduler.install(device, file, "hold", List.of(portId)).id());
+                    watcher[0] = scheduler.install(device, file, "ping", List.of()).id();
+                    installed.add(watcher[0]);
+                    scheduler.setTrigger(watcher[0], new Installation.Trigger.Event("block_changed", List.of(portId)));
+                    drive(helper, controller).extractItem(0, 1, false);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(log(scheduler, watcher[0]).contains(paused),
+                        "without its cell the device holds no bandwidth and pauses"))
+                .thenExecute(() -> helper.setBlock(target, Blocks.STONE))
+                .thenExecuteAfter(20, () -> helper.assertValueEqual(log(scheduler, watcher[0]), List.of(paused),
+                        "a paused device starts nothing on the event"))
+                .thenExecute(() -> insertCell(helper, controller))
+                .thenWaitUntil(() -> helper.assertValueEqual(log(scheduler, watcher[0]),
+                        List.of(paused, "resumed", "started", "done: 'ping'"),
+                        "the event that came while it was paused starts its run once it resumes"))
+                .thenExecute(() -> {
+                    installed.forEach(scheduler::uninstall);
+                    deleteProgram(helper, file);
+                })
+                .thenSucceed();
+    }
+
+    /**
      * An elastic installation shares the bandwidth the fixed ones leave, and a move takes at most its share's bytes per
      * tick: asked for 64 iron, it moves 16 (user decision 2026-10-20). A fixed installation is sized to leave 40 to 59
      * B/s, two bytes a tick.
@@ -488,12 +545,16 @@ public final class NeoEcoComputingCompatGameTests {
 
     /** An L4 computation cell into the upper drive of {@link #placeFederationComputationSystem}'s structure. */
     private static void insertCell(GameTestHelper helper, BlockPos controller) {
+        var left = drive(helper, controller).insertItem(0, new ItemStack(BuiltInRegistries.ITEM.get(
+                ResourceLocation.fromNamespaceAndPath("neoecoae", "eco_computation_cell_l4"))), false);
+        helper.assertTrue(left.isEmpty(), "the drive took the cell");
+    }
+
+    private static net.neoforged.neoforge.items.IItemHandler drive(GameTestHelper helper, BlockPos controller) {
         var drive = helper.getLevel().getCapability(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK,
                 helper.absolutePos(controller.east(2).above()), null);
         helper.assertTrue(drive != null, "the drive takes cells");
-        var left = drive.insertItem(0, new ItemStack(BuiltInRegistries.ITEM.get(
-                ResourceLocation.fromNamespaceAndPath("neoecoae", "eco_computation_cell_l4"))), false);
-        helper.assertTrue(left.isEmpty(), "the drive took the cell");
+        return drive;
     }
 
     private static void refused(GameTestHelper helper, Runnable action, String reason) {

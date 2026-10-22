@@ -509,6 +509,10 @@ public final class ProgramScheduler {
                     devices().installations().stream().filter(i -> i.device().equals(installation.device()))
                             .forEach(i -> log(i.id(), "paused: the device holds less than its installations reserve"));
                 }
+                // Events last one tick: note them now, so their runs start once the device resumes.
+                if (installation.trigger() instanceof Installation.Trigger.Event event) {
+                    checkEvent(state, event, domain.get(), now);
+                }
                 continue;
             }
             if (paused.contains(installation.device())) {

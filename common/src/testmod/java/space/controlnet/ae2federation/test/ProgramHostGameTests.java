@@ -279,6 +279,51 @@ public final class ProgramHostGameTests {
     }
 
     /**
+     * The crafting scene with a second network (a powered ME Chest north of the Switch). A job counts in
+     * {@code ae2.crafting} from the moment it is asked for, while AE2 still plans it, and {@code ae2.cancel} cancels it
+     * only on the network it names.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void programCountsAJobAndCancelsItOnItsNetwork(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true);
+        var switchAt = new BlockPos(1, 3, 1);
+        var interfaceAt = switchAt.above(2);
+        new RouterFixtures(helper).placeSwitch(switchAt);
+        helper.setBlock(switchAt.north().west(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        helper.setBlock(switchAt.north(), AEBlocks.ME_CHEST.block());
+        helper.setBlock(switchAt.above(), RouterRegistration.FEDERATION_CABLE.get());
+        helper.setBlock(interfaceAt, AutomationRegistration.INTERFACE.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.UP));
+        var stocked = new boolean[] { false };
+        run(helper, interfaceAt, 2, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the pattern");
+            if (!stocked[0]) {
+                crafting.insertMaterials(2);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the planks");
+            }
+        }, "host_crafting_cancel", """
+                def run() -> str:
+                    networks = ae2f.networks()
+                    crafter = networks[0]
+                    other = networks[1]
+                    if not ae2.craftable("minecraft:stick", crafter):
+                        crafter = networks[1]
+                        other = networks[0]
+                    started = ae2.craft("minecraft:stick", 4)
+                    asked = ae2.crafting("minecraft:stick")
+                    elsewhere = ae2.cancel("minecraft:stick", other)
+                    kept = ae2.crafting("minecraft:stick", crafter)
+                    here = ae2.cancel("minecraft:stick", crafter)
+                    return " ".join([str(started), str(asked), str(elsewhere), str(kept), str(here),
+                                     str(ae2.crafting("minecraft:stick"))])
+                """, "True 4 False 4 True 0",
+                "A requested job counts at once, survives a cancel on another network and stops on its own",
+                crafting::close);
+    }
+
+    /**
      * Switch at the centre's west with an ME Chest (item cell) and a Creative Energy Cell on top and a second ME
      * Chest to the north with its own cell (two networks; the cells must not touch), cable at the centre, interface
      * east of it facing the {@code target} block.

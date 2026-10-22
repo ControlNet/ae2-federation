@@ -22,7 +22,7 @@ import org.jetbrains.annotations.Nullable;
  * requires the private cluster activeCpus map empty and every loaded member's previousState null. This avoids its
  * mutating getActiveCPUs accessor and refuses deferred restores. No job is scheduled here.
  */
-final class CraftingCpuLifecycle {
+public final class CraftingCpuLifecycle {
     record Observation(@Nullable ICraftingLink link, ServerLevel level, BlockPos position, boolean nativeCpu) {}
 
     private CraftingCpuLifecycle() {}
@@ -54,6 +54,25 @@ final class CraftingCpuLifecycle {
         if (access == null) return -1;
         try {
             return ((Number) access.waiting().invoke(access.logic().read(cpu), key)).longValue();
+        } catch (ReflectiveOperationException | RuntimeException unavailable) {
+            return -1;
+        }
+    }
+
+    /**
+     * What the CPU's job will still produce of {@code key}: the outputs of pushed patterns it waits for plus those of
+     * the patterns it has not pushed yet; -1 when the CPU cannot say, as an addon CPU without the second count.
+     */
+    public static long stillToMake(ICraftingCPU cpu, AEKey key) {
+        if (cpu instanceof CraftingCPUCluster nativeCpu) {
+            return nativeCpu.craftingLogic.getWaitingFor(key) + nativeCpu.craftingLogic.getPendingOutputs(key);
+        }
+        var access = ACCESS.get(cpu.getClass());
+        if (access == null || access.pending() == null) return -1;
+        try {
+            var logic = access.logic().read(cpu);
+            return ((Number) access.waiting().invoke(logic, key)).longValue()
+                    + ((Number) access.pending().invoke(logic, key)).longValue();
         } catch (ReflectiveOperationException | RuntimeException unavailable) {
             return -1;
         }
@@ -171,7 +190,7 @@ final class CraftingCpuLifecycle {
         Object read(Object target) throws ReflectiveOperationException;
     }
 
-    private record Access(Reader owner, Reader logic, Method link, Method waiting) {}
+    private record Access(Reader owner, Reader logic, Method link, Method waiting, @Nullable Method pending) {}
     private static final ClassValue<Access> ACCESS = new ClassValue<>() {
         @Override
         protected Access computeValue(Class<?> type) {
@@ -181,7 +200,8 @@ final class CraftingCpuLifecycle {
                     var logic = type.getField("craftingLogic");
                     return new Access(cpu -> ((IActionSource) source.invoke(cpu)).machine().orElse(null),
                             logic::get, logic.getType().getMethod("getLastLink"),
-                            logic.getType().getMethod("getWaitingFor", AEKey.class));
+                            logic.getType().getMethod("getWaitingFor", AEKey.class),
+                            optionalMethod(logic.getType(), "getPendingOutputs"));
                 } catch (ReflectiveOperationException unavailable) {
                     return null;
                 }
@@ -204,10 +224,19 @@ final class CraftingCpuLifecycle {
                 var owner = type.getMethod(ownerMethod);
                 return new Access(owner::invoke, logic::invoke,
                         logic.getReturnType().getMethod("getLastLink"),
-                        logic.getReturnType().getMethod("getWaitingFor", AEKey.class));
+                        logic.getReturnType().getMethod("getWaitingFor", AEKey.class),
+                        optionalMethod(logic.getReturnType(), "getPendingOutputs"));
             } catch (ReflectiveOperationException unavailable) {
                 return null;
             }
         }
     };
+
+    private static @Nullable Method optionalMethod(Class<?> type, String name) {
+        try {
+            return type.getMethod(name, AEKey.class);
+        } catch (NoSuchMethodException absent) {
+            return null;
+        }
+    }
 }

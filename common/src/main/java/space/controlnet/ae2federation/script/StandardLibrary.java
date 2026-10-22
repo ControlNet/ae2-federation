@@ -47,7 +47,8 @@ public final class StandardLibrary {
                                     return ae2.craft(item, amount)
                                 return False
                             """, arg("resource", "Resource"), network()),
-                    fn("crafting", "int", "How much of the resource running jobs are still making.",
+                    fn("crafting", "int",
+                            "How much of the resource running and requested jobs will still put into storage.",
                             """
                             def iron_on_the_way() -> int:
                                 return ae2.amount("minecraft:iron_ingot") + ae2.crafting("minecraft:iron_ingot")
@@ -59,12 +60,13 @@ public final class StandardLibrary {
                                     if missing > 0:
                                         ae2.craft(resource, missing)
                             """, network()),
-                    act("craft", "bool", "Starts a crafting job; False if it could not start.", """
+                    act("craft", "bool",
+                            "Asks for a crafting job; False if nothing makes the resource or no CPU is free.", """
                             def keep_iron() -> None:
                                 if ae2.amount("minecraft:iron_ingot") < 64:
                                     ae2.craft("minecraft:iron_ingot", 64)
                             """, arg("resource", "Resource"), amount(), network()),
-                    act("cancel", "bool", "Cancels the jobs this program started for the resource.", """
+                    act("cancel", "bool", "Cancels the jobs this installation started for the resource.", """
                             def stop_iron_when_full() -> None:
                                 if ae2.amount("minecraft:iron_ingot") >= 1000:
                                     ae2.cancel("minecraft:iron_ingot")
@@ -139,7 +141,7 @@ public final class StandardLibrary {
                                     ae2f.set_rule(base, farm, "power", "off")
                             """, arg("provider", "Network"), arg("consumer", "Network"),
                             arg("capability", "Capability"), arg("mode", "RuleMode")),
-                    act("set_filter", "bool", "Sets which resources pass while the rule is on.",
+                    act("set_filter", "bool", "Sets which resources a storage rule passes while it is on.",
                             """
                             def lend_only_iron(base: Network, outpost: Network) -> None:
                                 ae2f.set_rule(base, outpost, "storage", "on")

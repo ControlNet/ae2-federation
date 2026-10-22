@@ -86,12 +86,12 @@ final class DomainCalls {
             case "ae2.storage" -> stacks(stock(args.get(0)));
             case "ae2.craftable" -> grids(args.get(1)).stream()
                     .anyMatch(grid -> grid.getCraftingService().isCraftable(key(args.get(0))));
-            case "ae2.crafting" -> grids(args.get(1)).stream()
-                    .mapToLong(grid -> grid.getCraftingService().getRequestedAmount(key(args.get(0)))).sum();
+            case "ae2.crafting" -> ProgramCrafting.get(server).delivering(grids(args.get(1)), key(args.get(0)));
             case "ae2.patterns" -> patterns(args.get(0));
             case "ae2.craft" -> craft(key(args.get(0)), (Long) args.get(1), args.get(2));
             // A dry run has no jobs of its own to cancel.
-            case "ae2.cancel" -> !simulate && ProgramCrafting.get(server).cancel(owner, key(args.get(0)));
+            case "ae2.cancel" -> !simulate
+                    && ProgramCrafting.get(server).cancel(owner, key(args.get(0)), grids(args.get(1)));
             case "ae2.import_from" -> importFrom(host, args.get(0), key(args.get(1)),
                     host.movable(key(args.get(1)), (Long) args.get(2)), args.get(3));
             case "ae2.export_to" -> exportTo(host, args.get(0), key(args.get(1)),
