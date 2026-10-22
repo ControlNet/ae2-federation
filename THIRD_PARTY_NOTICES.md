@@ -1,7 +1,7 @@
 # Third-Party Notices
 
 AE2 Federation is an independent addon for Applied Energistics 2. It is not affiliated with Mojang, Microsoft, the
-Applied Energistics 2 team or any other mod listed here. Each project below stays the property of its authors.
+Applied Energistics 2 team or any other mod listed here. Each project listed here belongs to its authors.
 
 This file covers what the released JAR and this repository contain and what they rely on:
 
@@ -25,7 +25,7 @@ download page.
 | NeoForge | `neoforge` | required | `[21.1.216,)` (`21.1.250`) | LGPL-2.1 |
 | Applied Energistics 2 | `ae2` | required | `[19.2.9,)` (`19.2.17`) | API: MIT. Mod: LGPL-3.0. **Textures and models: CC BY-NC-SA 3.0.** Text and translations: CC0 |
 | LDLib2 | `ldlib2` | required | `[2.2.34,)` (`2.2.34`) | LGPL-3.0 |
-| GuideME | `guideme` | compile-time only; at run time the copy AE2 requires | `21.1.1` | LGPL-3.0; some embedded libraries MIT and Apache-2.0 |
+| GuideME | `guideme` | compile-time only; at run time we use the GuideME that AE2 requires | `21.1.1` | LGPL-3.0; some embedded libraries MIT and Apache-2.0 |
 | Jade | `jade` | optional; only our Jade plugin class refers to it | `15.10.6` | CC BY-NC-SA 4.0, per its mod metadata |
 | Just Enough Characters | `jecharacters` | optional; looked up at run time for pinyin search, nothing compiled against it | — | MIT |
 
@@ -51,7 +51,7 @@ scenes. None of their code, assets or JARs is included:
 | `guide_omnisequence` | OmniSequence: Transfinite |
 | `guide_useless_mod` | Useless Mod |
 
-Mods used only to test compatibility are listed under *Compatibility testing*; none of them is part of a release.
+Mods used only to test compatibility are listed under *Compatibility testing*.
 
 Upstream projects: <https://github.com/neoforged/NeoForge> ·
 <https://github.com/AppliedEnergistics/Applied-Energistics-2> · <https://github.com/Low-Drag-MC/LDLib2> ·
@@ -60,11 +60,10 @@ Upstream projects: <https://github.com/neoforged/NeoForge> ·
 
 ## Compatibility testing
 
-The test suite runs AE2 Federation together with other mods and modpacks to check that they work together. None
-of them is part of AE2 Federation, committed to this repository or included in a release. The compatibility runs
-download each JAR from its official download page at the URL pinned, with its SHA-512, in `tests/compat/mods.json`,
-and Gradle resolves the test source sets' mods from Modrinth or the mod's own Maven; both land in git-ignored build
-directories. This list records what we test against and grants no rights to any of it.
+The test suite runs AE2 Federation together with the mods and modpacks below to check that they work together. The
+compatibility runs download each JAR from its official download page, at the URL and SHA-512 pinned in
+`tests/compat/mods.json`. Gradle resolves the test source sets' mods from Modrinth or the mod's own Maven. Both land
+in git-ignored build directories, so no tested mod is committed to this repository or included in a release.
 
 Licences are as each mod's Modrinth page publishes them; ¹ marks a mod not on Modrinth, whose licence is the one in
 its JAR's metadata.
@@ -108,7 +107,7 @@ its JAR's metadata.
 | Titanium | 1.21-4.0.50 | LGPL-3.0 (its repository and JAR; Modrinth lists MIT) |
 | Useless Mod ¹ | 2.4.5.10 | MIT |
 
-The Gradle test source sets compile against a few more, resolved by Gradle and used only by those tests:
+The Gradle test source sets also compile against these mods, which only those tests use:
 
 | Mod | Version | Licence as published upstream |
 |---|---|---|
@@ -135,8 +134,8 @@ One source file ships code adapted from other projects. It keeps their notice in
 
 Changes: dense cable paths only, the artist's core and line textures, a 12-voxel core with 10-voxel dense arms,
 connection kinds taken from Federation ports instead of AE2's `AECableType`, and the faces a translucent shell would
-show inside itself left out. The collars are the artist's, not AE2's. The adapted parts stay under the LGPL; AE2
-Federation as a whole is distributed under the AGPL-3.0, with which the LGPL-3.0 is compatible.
+show inside itself left out. The collars are the artist's, not AE2's. The adapted parts stay under the LGPL, and AE2
+Federation as a whole is distributed under the AGPL-3.0-only, which the LGPL-3.0 allows.
 
 ## Fonts
 
@@ -149,8 +148,8 @@ CJK and full-width punctuation, with the layout, vertical-metrics and hinting ta
 `tools/visual/build_canvas_font.py` builds it. The licence text and this change note ship next to the font, in
 `assets/ae2federation/font/canvas_cjk_license.txt`.
 
-`font/canvas.json` puts the subset in front of Minecraft's own `minecraft:default` font, which it refers to and does
-not copy.
+`assets/ae2federation/font/canvas.json` puts the subset in front of Minecraft's own `minecraft:default` font, which
+it references by ID.
 
 ## Images
 
@@ -162,10 +161,10 @@ not copy.
 **The teaser is adapted from Applied Energistics 2's subnetwork image.** That image is the scene of AE2's guide page
 `ae2-mechanics/subnetworks` (structure `guidebook/assets/assemblies/subnet_demonstration.snbt` in the
 [AE2 repository](https://github.com/AppliedEnergistics/Applied-Energistics-2)), which
-[AE2's website](https://appliedenergistics.org/) shows on its home page. Our teaser rebuilds the same build in the
-same layout, seen from the same angle, with AE2 Federation's devices and Federation Cable in place of some of AE2's
-blocks and cables. It is our own render of that build; no pixels of
-AE2's image are reused. The build's design and composition are the Applied Energistics 2 authors'.
+[AE2's website](https://appliedenergistics.org/) shows on its home page. We rebuilt that structure in the same layout,
+with AE2 Federation's devices and Federation Cable in place of some of AE2's blocks and cables, and rendered it in
+game from the same angle, so the teaser reuses no pixels of AE2's image. The design and composition of the build are
+the Applied Energistics 2 authors'.
 
 All of these are images of the game. The Applied Energistics 2 artwork in them belongs to its authors under
 CC BY-NC-SA 3.0 (see *Dependencies*), and the Minecraft content belongs to Mojang, shown under Minecraft's usage
