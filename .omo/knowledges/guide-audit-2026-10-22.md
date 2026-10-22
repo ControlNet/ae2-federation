@@ -59,28 +59,17 @@ into the feature branch.
 - Contract constraints: `GuidePagesContractTest` (required pages, Chinese mirror with identical frontmatter except
   the title, every snbt shown, one owner per item id, links resolve, optional packs' pages included).
 
-## Three sidebar levels through a client mixin (2026-10-22)
-
-Stock GuideME shows two levels: `GuideNavBar.recreateRows` (21.1.1 and 21.1.19, the latest 21.1 release) adds a row
-for each root node and its direct children only, and `Row.isVisible` checks the direct parent only. Our `index.md` is
-already a root of AE2's guide, so stock GuideME hides any page whose parent is another of our pages; before this work
-the seven example pages were missing that way, with no warning. GuideME offers no sidebar hook.
-
-The owner wants three levels: AE2 Federation -> sections -> pages. Two client mixins add them:
-
-- `GuideNavBarMixin` replaces `recreateRows` with a recursive build (rows are created through a `MethodHandles.lookup()`
-  constructor handle; the private inner `Row` is a nestmate of `GuideNavBar`, where the merged code runs), and
-  redirects `LytParagraph.layout` in `updateLayout` to add each nested row's extra indent.
-- `GuideNavBarRowMixin` (targets `guideme.internal.screen.GuideNavBar$Row`) hides a row whose ancestor is folded,
-  moves a nested parent's fold arrow (drawn at `getBounds().x() + 5`) in with its text, and computes the extra indent:
-  10 px per level below what GuideME itself draws. Rows GuideME would build itself keep their exact look, so AE2's own
-  sections are unchanged.
+## Three levels, stock GuideME sidebar (2026-10-22)
 
 Tree: `index.md` (900) -> getting-started 100, mechanics/index 200, crafting/index 300, items/index 400,
 examples/index 500, troubleshooting 600 -> each section's pages (the optional packs' examples under examples/index).
 Section pages list their pages by hand. `GuidePagesContractTest.SECTIONS` and
-`pagesHangAtMostThreeLevelsDeepAndChineseCopiesKeepTheirPlace` hold the rule. History: five roots (e9049bbb) were
-replaced by this. Screenshots: `build/guide-three-levels-check/`.
+`pagesHangAtMostThreeLevelsDeepAndChineseCopiesKeepTheirPlace` hold the rule.
+
+Stock GuideME's sidebar (`GuideNavBar.recreateRows`, 21.1.1 to 21.1.19) builds rows for a root and its direct
+children only. In game (`build/guide-three-levels-check/no-mixin-*.png`) the four sections show without fold arrows
+and their pages are reached through the section pages' link lists. A client mixin that built every level
+(48b0d0d5) worked in game but the owner had it removed; five roots (e9049bbb) were rejected before that.
 
 A plain YAML value holding ": " (an English title like `Federation: How It Works`) makes GuideME log "Failed to parse
 frontmatter" and drop the page from navigation, silently in the sidebar; quote such titles. The contract test checks

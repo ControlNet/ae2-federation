@@ -148,7 +148,6 @@ final class GuidePagesContractTest {
 
     /**
      * The guide is three levels deep: the Federation entry, its section pages, and the pages of each section.
-     * GuideME's own sidebar shows two levels; {@code GuideNavBarMixin} adds the third, and nothing goes deeper.
      */
     static final Set<String> SECTIONS = Set.of("mechanics/index.md", "crafting/index.md", "items/index.md",
             "examples/index.md");
