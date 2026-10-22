@@ -48,8 +48,8 @@ into the feature branch.
 - Approved tree: index, Getting Started, mechanics/ (domains, rules + re-export incl. across domains, two kinds of
   power, capacity, bundled cables, long-distance links, Federation screen + statistics), crafting/ (AE2 providers via
   a rule; Federation Provider + Endpoint), items/, examples/, Troubleshooting.
-- Every page must be reachable from the sidebar: no page without `navigation`, and every page hangs directly
-  under one of the guide's roots (see the sidebar limit below).
+- Every page must be reachable from the sidebar: no page without `navigation`, and no page deeper than the third
+  level (see the sidebar section below).
 - Beam Converters go into complete builds only (Getting Started and every example, the optional packs' too).
   Scenes that illustrate one concept (shapes, connections, bundles) stay as they are; the text says once that a
   domain needs FE.
@@ -59,32 +59,32 @@ into the feature branch.
 - Contract constraints: `GuidePagesContractTest` (required pages, Chinese mirror with identical frontmatter except
   the title, every snbt shown, one owner per item id, links resolve, optional packs' pages included).
 
-## GuideME sidebar shows two levels only (found 2026-10-22)
+## Three sidebar levels through a client mixin (2026-10-22)
 
-`GuideNavBar.recreateRows` (GuideME 21.1.1, and still on GuideME main) adds a row for each root node and for its
-direct children, nothing deeper. Our `index.md` is already a root of AE2's guide, so a page whose parent is another of
-our pages never appears in the sidebar: before the restructure the seven example pages were missing this way, and
-after grouping into folders the mechanics, crafting, item and example pages would all have been. GuideME logs no
-warning for it.
+Stock GuideME shows two levels: `GuideNavBar.recreateRows` (21.1.1 and 21.1.19, the latest 21.1 release) adds a row
+for each root node and its direct children only, and `Row.isVisible` checks the direct parent only. Our `index.md` is
+already a root of AE2's guide, so stock GuideME hides any page whose parent is another of our pages; before this work
+the seven example pages were missing that way, with no warning. GuideME offers no sidebar hook.
 
-First fix (eb4ec28d): flatten everything under `index.md`. The owner then preferred sections that fold, so the guide
-is now five roots of AE2's guide, each with its pages as direct children:
+The owner wants three levels: AE2 Federation -> sections -> pages. Two client mixins add them:
 
-| Root page | Sidebar title | Position | Children |
-|---|---|---|---|
-| `index.md` | AE2 Federation | 900 | getting-started, troubleshooting |
-| `mechanics/index.md` | Federation: How It Works / 联邦：工作方式 | 910 | rules ... statistics |
-| `crafting/index.md` | Federation: Crafting / 联邦：跨网络合成 | 920 | ae2-providers, processing-endpoints |
-| `items/index.md` | Federation: Items and Blocks / 联邦：物品与方块 | 930 | every item page |
-| `examples/index.md` | Federation: Examples / 联邦：使用示例 | 940 | every example, the optional packs' too |
+- `GuideNavBarMixin` replaces `recreateRows` with a recursive build (rows are created through a `MethodHandles.lookup()`
+  constructor handle; the private inner `Row` is a nestmate of `GuideNavBar`, where the merged code runs), and
+  redirects `LytParagraph.layout` in `updateLayout` to add each nested row's extra indent.
+- `GuideNavBarRowMixin` (targets `guideme.internal.screen.GuideNavBar$Row`) hides a row whose ancestor is folded,
+  moves a nested parent's fold arrow (drawn at `getBounds().x() + 5`) in with its text, and computes the extra indent:
+  10 px per level below what GuideME itself draws. Rows GuideME would build itself keep their exact look, so AE2's own
+  sections are unchanged.
 
-AE2's own roots use positions 0-50. Section pages list their pages by hand. `GuidePagesContractTest.ROOTS` and
-`pagesHangDirectlyUnderARootAndChineseCopiesKeepTheirPlace` hold the rule. Root titles stay short enough for one
-sidebar line ("Federation: Crafting Across Networks" wrapped).
+Tree: `index.md` (900) -> getting-started 100, mechanics/index 200, crafting/index 300, items/index 400,
+examples/index 500, troubleshooting 600 -> each section's pages (the optional packs' examples under examples/index).
+Section pages list their pages by hand. `GuidePagesContractTest.SECTIONS` and
+`pagesHangAtMostThreeLevelsDeepAndChineseCopiesKeepTheirPlace` hold the rule. History: five roots (e9049bbb) were
+replaced by this. Screenshots: `build/guide-three-levels-check/`.
 
 A plain YAML value holding ": " (an English title like `Federation: How It Works`) makes GuideME log "Failed to parse
 frontmatter" and drop the page from navigation, silently in the sidebar; quote such titles. The contract test checks
-it. Screenshots: `build/guide-restructure-check/{before,after}-sidebar-*.png`.
+it.
 
 ## Guide screenshots without disturbing other clients
 

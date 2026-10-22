@@ -1,8 +1,9 @@
 ---
 navigation:
-  title: 联邦：物品与方块
+  parent: index.md
+  title: 物品与方块
   icon: ae2federation:switch
-  position: 930
+  position: 400
 ---
 
 # 物品与方块

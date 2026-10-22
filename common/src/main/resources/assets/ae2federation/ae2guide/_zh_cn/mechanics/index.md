@@ -1,8 +1,9 @@
 ---
 navigation:
-  title: 联邦：工作方式
+  parent: index.md
+  title: 联邦的工作方式
   icon: ae2federation:cable
-  position: 910
+  position: 200
 ---
 
 # 联邦的工作方式

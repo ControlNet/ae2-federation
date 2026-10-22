@@ -147,15 +147,14 @@ final class GuidePagesContractTest {
     }
 
     /**
-     * GuideME's sidebar shows a root and its direct children only, so the guide is split into roots of AE2's guide: the
-     * Federation entry and one per section. Every other page hangs directly under one of them; a page any deeper would
-     * be missing from the sidebar.
+     * The guide is three levels deep: the Federation entry, its section pages, and the pages of each section.
+     * GuideME's own sidebar shows two levels; {@code GuideNavBarMixin} adds the third, and nothing goes deeper.
      */
-    static final Set<String> ROOTS = Set.of("index.md", "mechanics/index.md", "crafting/index.md",
-            "items/index.md", "examples/index.md");
+    static final Set<String> SECTIONS = Set.of("mechanics/index.md", "crafting/index.md", "items/index.md",
+            "examples/index.md");
 
     @Test
-    void pagesHangDirectlyUnderARootAndChineseCopiesKeepTheirPlace() throws IOException {
+    void pagesHangAtMostThreeLevelsDeepAndChineseCopiesKeepTheirPlace() throws IOException {
         for (var guide : guides()) {
             for (var page : pages(guide.root())) {
                 var english = frontmatter(guide.root().resolve(page));
@@ -169,14 +168,17 @@ final class GuidePagesContractTest {
                                 page + ": quote the frontmatter value " + value.group(1));
                     }
                 }
-                assertEquals(ROOTS.contains(page), !english.contains("parent:"), page + " is a root exactly when listed");
-                if (!ROOTS.contains(page)) {
+                assertEquals(page.equals("index.md"), !english.contains("parent:"), page + " is the only root");
+                if (!page.equals("index.md")) {
                     var parent = Pattern.compile("(?m)^  parent: (\\S+)$").matcher(english);
-                    assertTrue(parent.find() && ROOTS.contains(parent.group(1)),
-                            page + " must hang directly under a root, or the sidebar hides it");
+                    assertTrue(parent.find(), page);
+                    assertTrue(parent.group(1).equals("index.md")
+                            || !SECTIONS.contains(page) && SECTIONS.contains(parent.group(1)),
+                            page + " must hang under the Federation entry or one of its sections");
+                    var section = page.contains("/") ? page.substring(0, page.indexOf('/')) + "/index.md" : null;
+                    assertTrue(section == null || !SECTIONS.contains(section) || page.equals(section)
+                            || parent.group(1).equals(section), page + " belongs under " + section);
                 }
-                assertTrue(!page.startsWith("examples/") || page.equals("examples/index.md")
-                        || english.contains("  parent: examples/index.md\n"), page + " belongs under the examples root");
                 assertEquals(english.replaceAll("(?m)^  title: .*$", ""), chinese.replaceAll("(?m)^  title: .*$", ""),
                         "Only the title may differ between " + page + " and its Chinese copy");
             }

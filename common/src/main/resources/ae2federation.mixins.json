@@ -21,7 +21,9 @@
     "compat.LDLibTextThreadMixin",
     "compat.GuideTooltipThreadMixin",
     "client.MouseHandlerAccess",
-    "client.GuideBuilderMixin"
+    "client.GuideBuilderMixin",
+    "client.GuideNavBarMixin",
+    "client.GuideNavBarRowMixin"
   ],
   "injectors": {
     "defaultRequire": 1

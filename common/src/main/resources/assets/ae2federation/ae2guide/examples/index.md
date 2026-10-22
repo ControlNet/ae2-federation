@@ -1,8 +1,9 @@
 ---
 navigation:
-  title: "Federation: Examples"
+  parent: index.md
+  title: Examples
   icon: ae2federation:bridge
-  position: 940
+  position: 500
 ---
 
 # Examples

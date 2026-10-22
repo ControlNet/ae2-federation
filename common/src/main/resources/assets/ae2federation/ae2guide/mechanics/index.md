@@ -1,8 +1,9 @@
 ---
 navigation:
-  title: "Federation: How It Works"
+  parent: index.md
+  title: How Federation Works
   icon: ae2federation:cable
-  position: 910
+  position: 200
 ---
 
 # How Federation Works
