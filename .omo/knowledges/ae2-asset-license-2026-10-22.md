@@ -30,3 +30,11 @@ Router/Switch/cable textures scored low and look original. The Beam Converter (t
 2026-10-17 in e9a996cc, after v0.0.7) uses `tools/visual/build_converter_placeholder.py`, which recolours the
 Federation Pattern Provider textures above, so it inherits the AE2 derivation; the Beam Former and Quantum Cube
 placeholders come from the same script.
+
+## How ExtendedAE handles it (checked 2026-10-22)
+
+ExtendedAE (GlodBlock) declares only LGPL-3.0 (`LICENSE.txt`, `license="LGPL-3.0"` in the 2.2.39 jar); there is no
+separate asset licence and no CC BY-NC-SA notice. Its mods.toml credits "Ridanisaurus for the new textures", and the
+GitHub history shows Ridanisaurus, the holder of AE2's 2020 texture copyright, committing "Textures Update"
+(2024-06-30, 109 PNGs) and "GUI Update" (2024-07-05, 24 PNGs). So most of its AE2-style art was redrawn by AE2's own
+texture artist; textures added since by GlodBlock and others carry no explicit licence statement.
