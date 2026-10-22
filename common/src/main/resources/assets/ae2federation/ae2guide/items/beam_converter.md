@@ -39,18 +39,10 @@ storage, crafting, processing or power until it has FE again.
 
 ## What a domain uses
 
-| Block | FE per tick, each block |
-|---|---|
-| <ItemLink id="ae2federation:cable" /> | 0.5 |
-| <ItemLink id="ae2federation:switch" />, <ItemLink id="ae2federation:router" /> | 2 |
-| <ItemLink id="ae2federation:pattern_provider" />, <ItemLink id="ae2federation:processing_endpoint" /> | 2 |
-| <ItemLink id="ae2federation:quantum_cube" />, formed | 44 |
-| <ItemLink id="ae2federation:federation_p2p_tunnel" />, Beam Converter, <ItemLink id="ae2federation:beam_former" /> | 0 |
-
-A bigger Switch or Router uses 2 for each of its blocks, and each cable in a bundle uses 0.5. The server can scale
-every cost, or turn the requirement off; then no domain needs a converter. A linked pair of
-[Beam Formers](beam_former.md) costs more the longer its beam; see its page. A
-[Quantum Cube](quantum_cube.md) uses 44 for each block of a formed cube, linked or not.
+Every Switch, Router, cable, Pattern Provider, Endpoint and formed Quantum Cube uses FE every tick, and each linked
+pair of Beam Formers adds a cost by its length. A domain of Bridges alone uses none. [Power](../mechanics/power.md)
+has the full table, the server options, and where FE comes from: vanilla and AE2 produce none, so pipe it in from
+another mod's generator.
 
 ## Size
 

@@ -14,13 +14,13 @@ item_ids:
 
 <BlockImage id="ae2federation:router" scale="6" />
 
-路由器给线缆分段， 让[联邦域](../mechanics/index.md)变大时线缆不至于满载（见[网络容量](../mechanics/capacity.md)）。 它的每个面都能继续连接<ItemLink id="ae2federation:cable" />、<ItemLink id="ae2federation:switch" />， 以及样板供应器前面或处理端点前面。 搭建联邦域不需要路由器： 联邦线缆本身就能连接和分岔。
+路由器给线缆分段， 让[联邦域](../mechanics/index.md)变大时线缆不至于满载（见[网络容量](../mechanics/capacity.md)）。 它的每个面都能继续连接<ItemLink id="ae2federation:cable" />、<ItemLink id="ae2federation:switch" />， 以及样板供应器前面或处理端点前面。 联邦线缆本身就能连接和分岔， 所以联邦域只在需要容量时才用路由器。
 
-它不接入ME网络： 接触它的ME线缆或设备不会连上。 要把网络接进来， 请用交换机。 右键路由器可以打开它所在联邦域的联邦界面。
+路由器的面只接联邦方块； ME网络通过交换机接入联邦域。 每个路由器方块每tick消耗2 FE（[能量](../mechanics/power.md)）。 右键路由器可以打开它所在联邦域的联邦界面。
 
 ## 分段
 
-彼此相连的联邦线缆组成一段， 每段线缆计入它周围的网络和设备。 路由器会把碰到它的每一段线缆分开。 只碰到一台路由器的一段线缆， 只计它自己的**子域**： 它上面交换机接入的网络， 以及接在它上面的处理端点和样板供应器。
+路由器会把碰到它的每一段线缆分开。 只碰到一台路由器的一段线缆， 只计它自己的**子域**： 它上面交换机接入的网络， 以及接在它上面的处理端点和样板供应器。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/router_segments.snbt" />

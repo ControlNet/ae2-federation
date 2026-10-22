@@ -18,7 +18,7 @@ item_ids:
 
 The Bridge joins two networks that sit side by side, with no Switch needed. Place it on a cable of one network, so
 that its outer side touches a cable or device of the other network. The two sides stay separate networks; the Bridge
-uses no channel and no idle power.
+uses no channel, no idle power and no FE, so a Bridge's domain needs no Beam Converter.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/bridge.snbt" />
@@ -44,8 +44,8 @@ uses network B's storage, and both run on network A's energy cell through ME pow
   <Energy first="a" second="b" />
 </FederationTopology>
 
-A Bridge forms a small [Federation domain](../mechanics/index.md) with just those two networks. It does not connect to
-Federation Cable, so Pattern Providers and Endpoints cannot reach other networks through it.
+A Bridge forms a small [Federation domain](../mechanics/index.md) with just those two networks. It joins no Federation
+Cable; Pattern Providers and Endpoints reach other networks through Switches and cable.
 
 Right-click it to open the Federation screen for the two networks. If it is not connected correctly, right-clicking
 shows what is wrong instead; see [Troubleshooting](../troubleshooting.md). Like other AE2 cable parts, sneak and

@@ -12,8 +12,8 @@ navigation:
 
 **需要**：
 
-* 网络A上： 一个已成形的ECO存储系统， 包括主机（<ItemLink id="neoecoae:storage_system_l4" />）、 装着ECO存储矩阵（例如<ItemLink id="neoecoae:eco_item_storage_cell_16m" />）的驱动器（<ItemLink id="neoecoae:eco_drive" />）， 以及<ItemLink id="neoecoae:storage_interface" />； 一个已成形的ECO计算系统， 包括主机（<ItemLink id="neoecoae:computation_system_l4" />）、 一个装着闪存晶阵（例如<ItemLink id="neoecoae:eco_computation_cell_l4" />）的驱动器（<ItemLink id="neoecoae:computation_drive" />）， 以及<ItemLink id="neoecoae:computation_interface" />； 一个合成终端； 电源。
-* 网络B上： 一个已成形的ECO合成系统， 包括主机（<ItemLink id="neoecoae:crafting_system_l4" />）、 装着样板的<ItemLink id="neoecoae:crafting_pattern_bus" />， 以及<ItemLink id="neoecoae:crafting_interface" />。 它不需要自己的电源。
+* 网络A上： 一个已成形的ECO存储系统， 包括主机（<ItemLink id="neoecoae:storage_system_l4" />）、装着ECO存储矩阵（例如<ItemLink id="neoecoae:eco_item_storage_cell_16m" />）的驱动器（<ItemLink id="neoecoae:eco_drive" />）， 以及<ItemLink id="neoecoae:storage_interface" />； 一个已成形的ECO计算系统， 包括主机（<ItemLink id="neoecoae:computation_system_l4" />）、一个装着闪存晶阵（例如<ItemLink id="neoecoae:eco_computation_cell_l4" />）的驱动器（<ItemLink id="neoecoae:computation_drive" />）， 以及<ItemLink id="neoecoae:computation_interface" />； 一个合成终端； 电源。
+* 网络B上： 一个已成形的ECO合成系统， 包括主机（<ItemLink id="neoecoae:crafting_system_l4" />）、装着样板的<ItemLink id="neoecoae:crafting_pattern_bus" />， 以及<ItemLink id="neoecoae:crafting_interface" />。 它不需要自己的电源。
 * 一个<ItemLink id="ae2federation:switch" />。
 
 <GameScene zoom="2" interactive={true} background="transparent">
@@ -47,7 +47,7 @@ navigation:
 
 ## 搭建
 
-1. **搭好三个系统**， 方法见Neo ECO自己的指南： [存储系统](neoecoae:neoecoae_intro/storage_system.md)、 [合成系统](neoecoae:neoecoae_intro/crafting_system.md)和[计算系统](neoecoae:neoecoae_intro/computation_system.md)。 每种最小的都长5格、高3格、深2格。 把存储系统和计算系统的通讯接口接到网络A的线缆上， 把合成系统的通讯接口接到网络B的线缆上。
+1. **搭好三个系统**， 方法见Neo ECO自己的指南： [存储系统](neoecoae:neoecoae_intro/storage_system.md)、[合成系统](neoecoae:neoecoae_intro/crafting_system.md)和[计算系统](neoecoae:neoecoae_intro/computation_system.md)。 每种最小的都长5格、高3格、深2格。 把存储系统和计算系统的通讯接口接到网络A的线缆上， 把合成系统的通讯接口接到网络B的线缆上。
 2. **装满它们**。 在存储系统的驱动器里放入ECO存储矩阵， 并存好订单要用的原料； 在合成系统的样板总线里放入样板。 在计算系统的一个驱动器里放入闪存晶阵： 没有它， 计算系统就没有空间运行任务。
 3. **把网络A和网络B分别接到交换机的不同面上**。
 4. **在联邦界面里， 在“A使用B的”下打开合成规则**（不需要存储规则）， 再打开这对网络的**ME能量**： 合成系统从此靠网络A的电源运行。

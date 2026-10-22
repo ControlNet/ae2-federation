@@ -20,8 +20,8 @@ The Switch brings ME networks into a [Federation domain](../mechanics/index.md).
 * touched by <ItemLink id="ae2federation:cable" />, a <ItemLink id="ae2federation:router" />, another Switch, a
   Pattern Provider front or an Endpoint front, the face links the domain onwards.
 
-Up to six different networks can meet at one Switch block, and its faces never join them into one network. Two faces
-on the same network are fine and count once.
+Up to six different networks can meet at one Switch block, and they stay separate networks. Two faces on the same
+network are fine and count once. Each Switch block uses 2 FE per tick ([Power](../mechanics/power.md)).
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/switch_hub.snbt" />

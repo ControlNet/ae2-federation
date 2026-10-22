@@ -59,6 +59,12 @@ Formation Core. Another mod's Ender Pearl dust works as well.
 
 <RecipeFor id="ae2federation:nexus_core" />
 
-Used in: <ItemLink id="ae2federation:bridge" />, <ItemLink id="ae2federation:cable" />,
-<ItemLink id="ae2federation:router" />, <ItemLink id="ae2federation:switch" />, <ItemLink id="ae2federation:pattern_provider" /> and
+Used in: <ItemLink id="ae2federation:switch" />,
+<ItemLink id="ae2federation:router" />,
+<ItemLink id="ae2federation:bridge" />,
+<ItemLink id="ae2federation:cable" />,
+<ItemLink id="ae2federation:beam_converter" />,
+<ItemLink id="ae2federation:beam_former" />,
+<ItemLink id="ae2federation:quantum_cube" />,
+<ItemLink id="ae2federation:pattern_provider" /> and
 <ItemLink id="ae2federation:processing_endpoint" />.

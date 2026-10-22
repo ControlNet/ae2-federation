@@ -62,7 +62,7 @@ A linked pair counts as cable of its square for [network capacity](../mechanics/
 cable's limit, a 2×2 pair six cables', and a 3×3 pair has no limit. The beam shows its load like a cable's.
 
 The domain pays for each linked pair once, by its square and length, on top of its other blocks:
-the square's blocks × L^1.05 AE per tick, L being the blocks between the fronts (at least 2).
+2 × (the square's blocks) × L^1.05 FE per tick, L being the blocks between the fronts (at least 2).
 
 | Pair | Blocks between | FE per tick |
 |---|---|---|

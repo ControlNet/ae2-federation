@@ -16,7 +16,7 @@ item_ids:
   <ImportStructure src="../assets/bridge_part.snbt" />
 </GameScene>
 
-桥接器直接连接两个紧挨着的网络， 不需要交换机。 把它装在一个网络的线缆上， 让它的外侧接触另一个网络的线缆或设备。 两侧仍是各自独立的网络； 桥接器不占用频道， 也没有待机耗电。
+联邦桥直接连接两个紧挨着的网络， 不需要交换机。 把它装在一个网络的线缆上， 让它的外侧接触另一个网络的线缆或设备。 两侧仍是各自独立的网络； 联邦桥不占用频道， 没有待机耗电， 也不消耗FE， 所以联邦桥的联邦域不需要光束转换器。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/bridge.snbt" />
@@ -27,7 +27,7 @@ item_ids:
     网络B： 一个驱动器， 没有自己的电源
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0.25 0.25" max="3.375 0.75 0.75">
-    桥接器： 装在网络A的线缆上， 外侧接触网络B的线缆
+    联邦桥： 装在网络A的线缆上， 外侧接触网络B的线缆
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -41,7 +41,7 @@ item_ids:
   <Energy first="a" second="b" />
 </FederationTopology>
 
-桥接器只和这两个网络组成一个小[联邦域](../mechanics/index.md)。 它不连接联邦线缆， 所以联邦样板供应器和处理端点不能通过它连到其他网络。
+联邦桥只和这两个网络组成一个小[联邦域](../mechanics/index.md)。 它不接联邦线缆； 联邦样板供应器和处理端点要通过交换机和线缆连到其他网络。
 
 右键它打开这两个网络的联邦界面。 如果连接不正确， 右键会改为显示问题所在， 参见[排错](../troubleshooting.md)。 和AE2的其他线缆部件一样， 潜行时用扳手可以把它拆下。
 

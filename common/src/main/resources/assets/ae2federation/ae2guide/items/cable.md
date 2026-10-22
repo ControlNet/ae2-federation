@@ -34,8 +34,9 @@ Federation Cable links Switches, Routers, Federation Pattern Providers and Proce
 <ItemLink id="ae2federation:quantum_cube" /> face. A cable shows an arm toward every face it joins, and none toward a
 device that is not formed.
 
-It is not an ME cable: ME cables and devices do not attach to it, it carries no channels and it uses no power. It has
-no length limit. The pulses inside it are decoration; use **Live flow** in the Federation screen to see real traffic.
+Federation Cable stays outside ME networks: ME cables and devices do not attach to it, and it carries no channels.
+Each cable uses 0.5 FE per tick from the domain's Beam Converter; see [Power](../mechanics/power.md). It has no length
+limit. The pulses inside it are decoration; **Show live flow** in the Federation screen shows real traffic.
 Each cable counts the networks, Endpoints and Pattern Providers it carries; see [Network Capacity](../mechanics/capacity.md). A wrench turns a block of Federation Cables into one
 [bundled cable](../mechanics/bundled-cables.md) that carries more.
 

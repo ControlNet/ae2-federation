@@ -17,16 +17,15 @@ item_ids:
 The Router ends cable segments, so that a [Federation domain](../mechanics/index.md) can grow without filling its cables
 (see [Network Capacity](../mechanics/capacity.md)). Each of its faces links onwards to
 <ItemLink id="ae2federation:cable" />, a <ItemLink id="ae2federation:switch" />, a Pattern Provider front or an
-Endpoint front. You do not need a Router to build a domain: Federation Cable connects and branches on its own.
+Endpoint front. Federation Cable connects and branches by itself, so a domain needs Routers only for capacity.
 
-It does not attach ME networks: an ME cable or device touching a face stays unconnected. Bring networks in with a
-Switch. Right-click a Router to open the Federation screen for its domain.
+A Router's faces take Federation blocks only; ME networks join the domain through a Switch. Each Router block uses
+2 FE per tick ([Power](../mechanics/power.md)). Right-click a Router to open the Federation screen for its domain.
 
 ## Ending segments
 
-Federation Cables joined to each other form one segment, and a segment counts the networks and devices around it.
-A Router ends every segment it touches. A segment that touches only one Router counts just its own **subdomain**:
-the networks on its Switches and the Endpoints and Providers on it.
+A Router ends every cable segment it touches. A segment that touches only one Router counts just its own
+**subdomain**: the networks on its Switches and the Endpoints and Providers on it.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/router_segments.snbt" />
