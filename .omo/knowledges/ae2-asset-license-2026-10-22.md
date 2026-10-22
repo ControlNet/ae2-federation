@@ -65,3 +65,16 @@ lightness order + alpha mask, 16-64 px wide, trivial textures skipped; >=0.95 co
   says third-party resources keep their original licence, yet names no AE2 file.
 - aeallpattern `META-INF/NOTICE.md` lists every asset adapted from AE2 Lightning Tech with source revision and
   changes: the most careful notice seen, though it covers another addon's art, not AE2's.
+
+## Nexus item icons, pixel by pixel (dev = v0.0.7, unchanged)
+
+| ours | AE2 | silhouette pixels differing | identical-colour pixels |
+|---|---|---|---|
+| `nexus_processor` | `calculation_processor` | 0 / 256 | 69% (only the accent pixels recoloured) |
+| `nexus_processor_press` | `calculation_processor_press` | 0 / 256 | 95% (8 pixels changed) |
+| `printed_nexus_circuit` | `printed_calculation_processor` | 0 / 256 | 0% (whole palette shifted, same layout) |
+| `nexus_core` | `formation_core` | 36 / 256 (side lugs reshaped) | 64% |
+
+Controls against `logic_processor` / `logic_processor_press` give 33-40 differing silhouette pixels and 13-34%
+identical colours, so the match is to those specific files, not to AE2's general style. Diff sheet:
+`build/ae2-license-check/nexus-items-vs-ae2.png` (ours | AE2 | diff: grey identical, red recoloured, yellow shape).
