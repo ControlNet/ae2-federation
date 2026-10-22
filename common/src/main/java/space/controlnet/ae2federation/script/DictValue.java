@@ -32,7 +32,7 @@ public final class DictValue {
         return entries.get(Ops.hashKey(key));
     }
 
-    void put(Object key, Object value) {
+    public void put(Object key, Object value) {
         var hash = Ops.hashKey(key);
         var entry = entries.get(hash);
         if (entry != null) {

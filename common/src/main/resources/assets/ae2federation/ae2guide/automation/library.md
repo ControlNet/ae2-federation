@@ -8,7 +8,7 @@ navigation:
 
 # Library
 
-Programs reach the game through three namespaces, and files through a fourth. The **Library** panel in the Programs tab lists the same functions,
+Programs reach the game through three namespaces, files through `fs` and the web through `net`. The **Library** panel in the Programs tab lists the same functions,
 each with a short example. Functions marked **action** take one game tick each.
 
 A `network` parameter is optional: left out, the call works on every network of the domain, each through its own
@@ -78,6 +78,16 @@ the run. A file holds text of up to 100,000 characters, and the folder at most 1
 | `fs.write(path, text)` | **action:** writes the file, making its folders |
 | `fs.append(path, text)` | **action:** adds to the end of the file, making it if needed |
 | `fs.delete(path)` | **action:** deletes a file or an empty folder; `False` if there was nothing |
+
+## net: the web
+
+| Function | Gives |
+| --- | --- |
+| `net.http(method, url, body="", headers={})` | **action:** sends an HTTP request and gives its `Response` |
+
+The run waits for the answer without using up actions, at most 10 seconds. Any status, 404 too, is an answer; a
+request that gets none, times out or would bring back more than 100,000 characters stops the run. Header names in
+the answer are lower case. A dry run sends nothing and gives `Response(0, "", {})`.
 
 Python's built-ins `int`, `float`, `str`, `bool`, `list`, `dict`, `set`, `range`, `len`, `abs`, `min`, `max`, `sum`,
 `round`, `any` and `all` work as in Python, as do the methods of lists, strings, dicts and sets. `print(...)` writes one line to the

@@ -409,7 +409,7 @@ final class CompletionTest {
         var param = labels(at("def f(x: I|"));
         assertTrue(param.containsAll(List.of("Item", "Interface", "int")), param.toString());
         assertFalse(param.contains("str"));
-        assertTrue(labels(at("def f(x: int) -> |")).containsAll(List.of("None", "bool", "list")));
+        assertTrue(labels(at("def f(x: int) -> |")).containsAll(List.of("None", "bool", "list", "dict", "set")));
         assertEquals(List.of("list"), labels(at("""
                 def f() -> None:
                     xs: li|

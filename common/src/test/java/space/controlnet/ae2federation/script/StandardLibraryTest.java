@@ -65,7 +65,7 @@ final class StandardLibraryTest {
                 .forEach(s -> actions.add(namespace + "." + s.name())));
         assertEquals(java.util.Set.of("ae2.craft", "ae2.cancel", "ae2.import_from", "ae2.export_to", "ae2.move",
                 "ae2f.set_rule", "ae2f.set_filter", "mc.move", "mc.set_redstone", "mc.break_block", "mc.place_block", "mc.wait",
-                "mc.move_fe", "fs.write", "fs.append", "fs.delete"), actions);
+                "mc.move_fe", "fs.write", "fs.append", "fs.delete", "net.http"), actions);
     }
 
     /** Every example is a whole function that checks against the real library and calls the function it shows. */

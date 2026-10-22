@@ -61,6 +61,11 @@ public final class DryRun {
                 break;
             }
             if (status == Runner.Status.WAITING) {
+                if (runner.awaiting()) {
+                    // A dry run's host answers at once; an answer still to come would never end this loop.
+                    runner.cancel();
+                    break;
+                }
                 runner.wake();
             }
         }

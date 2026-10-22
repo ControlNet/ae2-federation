@@ -430,6 +430,7 @@
   "ae2federation.function.fs.write": "Writes the text to a workspace file, making its folders.",
   "ae2federation.function.fs.append": "Adds the text to the end of a workspace file, making it if needed.",
   "ae2federation.function.fs.delete": "Deletes a workspace file or empty folder; False if there was nothing.",
+  "ae2federation.function.net.http": "Sends an HTTP request and gives the answer; waiting for it takes no actions.",
   "ae2federation.ui.automation.devices": "Computing Device",
   "ae2federation.ui.automation.no_devices": "No computing devices in this domain",
   "ae2federation.ui.automation.kind.creative_computing_device": "Creative",

@@ -17,8 +17,8 @@ import space.controlnet.ae2federation.script.Lexer.Token;
  * replaced by {@code pass}, so a broken line never hides the variables and functions around it.
  */
 public final class Completion {
-    static final List<String> TYPES = java.util.stream.Stream.of(List.of("int", "float", "str", "bool", "None", "list"),
-            StandardLibrary.TYPED_STRINGS, StandardLibrary.OPAQUE, List.copyOf(StandardLibrary.RECORDS.keySet()))
+    static final List<String> TYPES = java.util.stream.Stream.of(
+            List.of("int", "float", "str", "bool", "None", "list", "dict", "set"), StandardLibrary.TYPED_STRINGS, StandardLibrary.OPAQUE, List.copyOf(StandardLibrary.RECORDS.keySet()))
             .flatMap(List::stream).toList();
     static final List<String> STATEMENT_KEYWORDS = List.of("if", "elif", "else", "for", "while", "return", "break",
             "continue", "pass");

@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The game's standard library as the language sees it: the {@code ae2}, {@code ae2f}, {@code mc} and {@code fs}
- * namespaces, the
+ * The game's standard library as the language sees it: the {@code ae2}, {@code ae2f}, {@code mc}, {@code fs} and
+ * {@code net} namespaces, the
  * typed strings, the closed sets some of them hold, and the built-in records. Signatures and an example of each
  * function only; the host performs the calls. Settled with the user in rounds
  * (docs/ideas/script-system.md, "Standard library discussion").
@@ -13,21 +13,23 @@ import java.util.Map;
 public final class StandardLibrary {
     /** Strings whose static type says what they name; completion and the checker know their values. */
     public static final List<String> TYPED_STRINGS = List.of("Item", "Fluid", "Resource", "Interface", "Network",
-            "Side", "Capability", "RuleMode", "FilterMode");
+            "Side", "Capability", "RuleMode", "FilterMode", "HttpMethod");
 
     /** Typed strings with a fixed set of values, known without the game. */
     public static final Map<String, List<String>> ENUMERATIONS = Map.of(
             "Side", List.of("up", "down", "north", "south", "west", "east"),
             "Capability", List.of("storage", "crafting", "power"),
             "RuleMode", List.of("off", "on", "reexport"),
-            "FilterMode", List.of("all", "allow", "deny"));
+            "FilterMode", List.of("all", "allow", "deny"),
+            "HttpMethod", List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"));
 
     /** Values the program can hold but not build: a block selected through an interface. */
     public static final List<String> OPAQUE = List.of("Block");
 
     /** Built-in records and their fields, all read-only. */
     public static final Map<String, List<Signature.Arg>> RECORDS = Map.of(
-            "Stack", List.of(arg("resource", "Resource"), arg("amount", "int")));
+            "Stack", List.of(arg("resource", "Resource"), arg("amount", "int")),
+            "Response", List.of(arg("status", "int"), arg("text", "str"), arg("headers", "dict[str, str]")));
 
     public static final Map<String, List<Signature>> NAMESPACES = Map.of(
             "ae2", List.of(
@@ -261,7 +263,17 @@ public final class StandardLibrary {
                                     return ""
                                 fs.delete("orders/next.txt")
                                 return text
-                            """, arg("path", "str"))));
+                            """, arg("path", "str"))),
+            "net", List.of(
+                    act("http", "Response",
+                            "Sends an HTTP request and gives the answer; waiting for it takes no actions.", """
+                            def report_iron(url: str) -> bool:
+                                amount = ae2.amount("minecraft:iron_ingot")
+                                answer = net.http("POST", url, str(amount), {"Content-Type": "text/plain"})
+                                return answer.status == 200
+                            """, arg("method", "HttpMethod"), arg("url", "str"),
+                            new Signature.Arg("body", type("str"), "\"\""),
+                            new Signature.Arg("headers", type("dict[str, str]"), "{}"))));
 
     private StandardLibrary() {
     }

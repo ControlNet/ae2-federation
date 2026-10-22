@@ -16,9 +16,11 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationDomainId;
+import space.controlnet.ae2federation.script.DictValue;
 import space.controlnet.ae2federation.script.Evaluator;
 import space.controlnet.ae2federation.script.ListValue;
 import space.controlnet.ae2federation.script.Ops;
+import space.controlnet.ae2federation.script.RecordValue;
 import space.controlnet.ae2federation.script.RunError;
 import space.controlnet.ae2federation.script.TypeRef;
 
@@ -155,8 +157,20 @@ public final class ProgramHost implements Evaluator.Host {
             case "fs.write" -> files.write((String) args.get(0), (String) args.get(1), simulate);
             case "fs.append" -> files.append((String) args.get(0), (String) args.get(1), simulate);
             case "fs.delete" -> files.delete((String) args.get(0), simulate);
+            case "net.http" -> simulate ? notSent()
+                    : HttpRequests.of(server).send((String) args.get(0), (String) args.get(1), (String) args.get(2),
+                            (DictValue) args.get(3));
             default -> domainCalls.call(this, namespace, name, args);
         };
+    }
+
+    /** What {@code net.http} gives in a dry run, which sends nothing: status 0 and no text. */
+    private static RecordValue notSent() {
+        var fields = new java.util.LinkedHashMap<String, Object>();
+        fields.put("status", 0L);
+        fields.put("text", "");
+        fields.put("headers", new DictValue());
+        return new RecordValue("Response", fields, true);
     }
 
     private Block select(String name, long reach, @Nullable String side) {

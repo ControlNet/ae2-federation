@@ -430,6 +430,7 @@
   "ae2federation.function.fs.write": "把文本写入工作区的一个文件，需要时创建所在的文件夹。",
   "ae2federation.function.fs.append": "把文本加到工作区一个文件的末尾，文件不存在时先创建。",
   "ae2federation.function.fs.delete": "删除工作区的一个文件或空文件夹；本来就没有时为 False。",
+  "ae2federation.function.net.http": "发送一个 HTTP 请求并给出回答；等待回答不占用操作。",
   "ae2federation.ui.automation.devices": "计算设备",
   "ae2federation.ui.automation.no_devices": "本域没有计算设备",
   "ae2federation.ui.automation.kind.creative_computing_device": "创造",

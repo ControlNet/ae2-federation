@@ -91,6 +91,7 @@ public final class ProgramScheduler {
 
     public static void closeServer(MinecraftServer server) {
         SERVICES.remove(server);
+        HttpRequests.closeServer(server);
         ProgramEvents.listen(false, false);
         ProgramEvents.clear();
     }
@@ -464,8 +465,19 @@ public final class ProgramScheduler {
 
     private void stop(String id, String reason) {
         var state = states.remove(id);
+        if (state != null) {
+            drop(state);
+        }
         if (state != null && !state.runs.isEmpty()) {
             log(id, "stopped " + state.runs.size() + " run(s): " + reason);
+        }
+    }
+
+    /** Gives up the answers the state's runs still wait for, such as HTTP responses. */
+    private static void drop(State state) {
+        state.runs.forEach(run -> run.runner().cancel());
+        if (state.condition != null) {
+            state.condition.runner().cancel();
         }
     }
 
@@ -531,6 +543,7 @@ public final class ProgramScheduler {
             var action = state.gate.poll(now, state.runs.size());
             if (action == TriggerGate.Action.RESTART) {
                 log(installation.id(), "stopped " + state.runs.size() + " run(s) for a restart");
+                state.runs.forEach(run -> run.runner().cancel());
                 state.runs.clear();
             }
             if (action != TriggerGate.Action.NONE) {
@@ -543,7 +556,13 @@ public final class ProgramScheduler {
             }
             state.runs.removeIf(run -> finished(installation.id(), run));
         }
-        states.keySet().retainAll(seen);
+        states.entrySet().removeIf(entry -> {
+            if (seen.contains(entry.getKey())) {
+                return false;
+            }
+            drop(entry.getValue());
+            return true;
+        });
         costs.keySet().retainAll(seen);
         paused.clear();
         paused.addAll(pausedNow);

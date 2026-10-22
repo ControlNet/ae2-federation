@@ -227,6 +227,50 @@ public final class ProgramHostGameTests {
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
+    public static void programAsksALocalWebServer(GameTestHelper helper) {
+        var fixtures = build(helper, Blocks.STONE.defaultBlockState());
+        var level = helper.getLevel();
+        var server = level.getServer();
+        // A web server on this machine stands in for the outside world.
+        var seen = new java.util.concurrent.atomic.AtomicInteger();
+        com.sun.net.httpserver.HttpServer web;
+        try {
+            web = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        web.createContext("/echo", exchange -> {
+            seen.incrementAndGet();
+            var body = ("got " + new String(exchange.getRequestBody().readAllBytes(),
+                    java.nio.charset.StandardCharsets.UTF_8)).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("X-Seen", exchange.getRequestHeaders().getFirst("X-Token"));
+            exchange.sendResponseHeaders(201, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        web.start();
+        var url = "http://127.0.0.1:" + web.getAddress().getPort() + "/echo";
+        run(helper, fixtures, "host_http", """
+                def run() -> str:
+                    answer = net.http("POST", "%s", "iron", {"X-Token": "abc"})
+                    return str(answer.status) + " " + answer.text + " " + answer.headers["x-seen"]
+                """.formatted(url), "201 got iron abc",
+                "A program posts to a web server and reads its answer, waiting for it over ticks", () -> {
+                    // A dry run sends nothing and answers status 0.
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
+                    var domain = AutomationInterfaces.get(level).domainOf(level, automationInterface.id())
+                            .orElseThrow();
+                    var dry = (space.controlnet.ae2federation.script.RecordValue) ProgramHost.dryRun(server, domain)
+                            .call("net", "http", List.of("GET", url, "", new space.controlnet.ae2federation.script
+                                    .DictValue()));
+                    helper.assertValueEqual(dry.field("status"), 0L, "A dry run's request answers status 0");
+                    helper.assertValueEqual(seen.get(), 1, "Only the real run reached the server");
+                    web.stop(0);
+                });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
     public static void programMovesBetweenItsNetworks(GameTestHelper helper) {
         var fixtures = build(helper, Blocks.AIR.defaultBlockState());
         // The north chest's network starts with ten iron; the other cell is empty.

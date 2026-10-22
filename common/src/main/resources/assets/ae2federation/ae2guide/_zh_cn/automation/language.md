@@ -35,7 +35,8 @@ navigation:
 | `Network` | 联邦域里的一个网络， 用ID（如`"network-082a5c"`）或名字表示 |
 | `Block` | 用`ae2f.select`通过接口选中的方块 |
 | `Stack` | 一种资源和数量， `mc.storage`列出的就是它 |
-| `Side`、`Capability`、`RuleMode`、`FilterMode` | 固定的词， 例如`"down"`、`"storage"`、`"on"`、`"allow"` |
+| `Response` | `net.http`给出的HTTP回答： `status`、`text`和`headers` |
+| `Side`、`Capability`、`RuleMode`、`FilterMode`、`HttpMethod` | 固定的词， 例如`"down"`、`"storage"`、`"on"`、`"allow"`、`"GET"` |
 
 数量用各资源自己的单位： 物品按个， 流体按mB。
 

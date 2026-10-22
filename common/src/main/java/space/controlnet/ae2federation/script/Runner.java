@@ -20,7 +20,7 @@ public final class Runner {
     public enum Status {
         /** The budget ran out, or the tick's action was used; call {@link #tick} again next tick. */
         RUNNING,
-        /** Paused by {@code mc.wait}. */
+        /** Paused by {@code mc.wait}, or waiting for a {@link Pending} answer. */
         WAITING,
         DONE,
         FAILED
@@ -50,6 +50,10 @@ public final class Runner {
     private Failure failure;
     /** Ticks still to wait; the run resumes on the tick that brings it to zero. */
     private long sleeping;
+    /** An action's answer still to come, the action and the frame that called it. */
+    private Pending pending;
+    private Node.Action pendingAction;
+    private Frame pendingFrame;
 
     private static final class Frame {
         final Graph graph;
@@ -120,9 +124,21 @@ public final class Runner {
         return failure;
     }
 
-    /** Ends a {@code mc.wait} early: the next tick goes on at once. */
+    /** Ends a {@code mc.wait} early: the next tick goes on at once. A pending answer is still waited for. */
     public void wake() {
         sleeping = 0;
+    }
+
+    /** Whether the run waits for a {@link Pending} answer. */
+    public boolean awaiting() {
+        return pending != null;
+    }
+
+    /** Gives up a pending answer; call when the run is dropped before it ends. */
+    public void cancel() {
+        if (pending != null) {
+            pending.cancel();
+        }
     }
 
     /** Runs up to {@code budget} nodes in this tick. */
@@ -132,6 +148,32 @@ public final class Runner {
         }
         if (sleeping > 0 && --sleeping > 0) {
             return status = Status.WAITING;
+        }
+        if (pending != null) {
+            if (!pending.done()) {
+                return status = Status.WAITING;
+            }
+            var action = pendingAction;
+            var frame = pendingFrame;
+            var answered = pending;
+            pending = null;
+            pendingAction = null;
+            pendingFrame = null;
+            try {
+                var value = answered.value();
+                if (action.result() != null) {
+                    frame.locals.put(action.result(), value);
+                }
+                trace(frame.graph.file(), action.source(), value);
+            } catch (RunError error) {
+                error.at(action.source());
+                failure = new Failure(frame.graph.file(), error.node(), error);
+                return status = Status.FAILED;
+            } catch (RuntimeException bug) {
+                var error = new RunError("SystemError", "internal error: " + bug).at(action.source());
+                failure = new Failure(frame.graph.file(), error.node(), error);
+                return status = Status.FAILED;
+            }
         }
         boolean acted = false;
         for (int steps = 0; steps < budget; steps++) {
@@ -275,6 +317,12 @@ public final class Runner {
                     return sleeping > 0 ? Status.WAITING : null;
                 }
                 var value = host.call(n.namespace(), n.name(), bound);
+                if (value instanceof Pending answer) {
+                    pending = answer;
+                    pendingAction = n;
+                    pendingFrame = frame;
+                    return Status.WAITING;
+                }
                 if (n.result() != null) {
                     locals.put(n.result(), value);
                 }

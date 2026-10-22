@@ -42,7 +42,8 @@ Every value has a static type, checked before a program runs. Besides Python's o
 | `Network` | a network of the domain, by ID such as `"network-082a5c"` or by name |
 | `Block` | a block selected through an interface by `ae2f.select` |
 | `Stack` | a resource and an amount, as `mc.storage` lists them |
-| `Side`, `Capability`, `RuleMode`, `FilterMode` | fixed words such as `"down"`, `"storage"`, `"on"`, `"allow"` |
+| `Response` | an HTTP answer from `net.http`: `status`, `text` and `headers` |
+| `Side`, `Capability`, `RuleMode`, `FilterMode`, `HttpMethod` | fixed words such as `"down"`, `"storage"`, `"on"`, `"allow"`, `"GET"` |
 
 Amounts are in each resource's own unit: items one by one, fluids in mB.
 

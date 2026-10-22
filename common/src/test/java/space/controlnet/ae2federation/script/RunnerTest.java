@@ -542,6 +542,93 @@ final class RunnerTest {
         return start(workspace(source), host, trace, "main", List.of());
     }
 
+    /** Test-only stand-in for an answer still to come, completed by hand. */
+    private static final class HandPending implements Pending {
+        Object value;
+        RunError error;
+        boolean done;
+        boolean cancelled;
+
+        @Override
+        public boolean done() {
+            return done;
+        }
+
+        @Override
+        public Object value() {
+            if (error != null) throw error;
+            return value;
+        }
+
+        @Override
+        public void cancel() {
+            cancelled = true;
+        }
+    }
+
+    private static RecordValue response(long status, String text) {
+        var headers = new DictValue();
+        headers.put("content-type", "text/plain");
+        var fields = new java.util.LinkedHashMap<String, Object>();
+        fields.put("status", status);
+        fields.put("text", text);
+        fields.put("headers", headers);
+        return new RecordValue("Response", fields, true);
+    }
+
+    private static final String ASKS = """
+            def main() -> list[int]:
+                r = net.http("GET", "http://example.invalid/")
+                ok = ae2.craft("minecraft:iron_ingot", r.status)
+                return [r.status, len(r.headers), len(r.text), int(ok)]
+            """;
+
+    @Test
+    void aPendingAnswerIsWaitedForAndTheWaitUsesNoAction() {
+        var answer = new HandPending();
+        var log = new ArrayList<String>();
+        Evaluator.Host host = (namespace, name, args) -> {
+            log.add(namespace + "." + name);
+            return namespace.equals("net") ? answer : (Object) true;
+        };
+        var runner = start(workspace(ASKS), host, null, "main", List.of());
+        assertEquals(Runner.Status.WAITING, runner.tick(1000));
+        assertTrue(runner.awaiting());
+        assertEquals(Runner.Status.WAITING, runner.tick(1000));
+        runner.wake();
+        assertEquals(Runner.Status.WAITING, runner.tick(1000), "waking ends a wait, not an answer still to come");
+        assertEquals(List.of("net.http"), log);
+        answer.value = response(200, "ok");
+        answer.done = true;
+        assertEquals(Runner.Status.DONE, runner.tick(1000), "the answer's tick may act: the wait used no action");
+        assertEquals("[200, 1, 2, 1]", Ops.repr(runner.result()));
+        assertEquals(List.of("net.http", "ae2.craft"), log);
+        assertFalse(runner.awaiting());
+    }
+
+    @Test
+    void aPendingAnswerThatFailsStopsTheRunAtItsCall() {
+        var answer = new HandPending();
+        Evaluator.Host host = (namespace, name, args) -> answer;
+        var runner = start(workspace(ASKS), host, null, "main", List.of());
+        assertEquals(Runner.Status.WAITING, runner.tick(1000));
+        answer.error = new RunError("OSError", "the request timed out after 10 s");
+        answer.done = true;
+        assertEquals("the request timed out after 10 s", finish(runner).replace("OSError: ", ""));
+        var call = ((Stmt.Assign) ScriptParser.parse(ASKS).program().functions().get(0).body().get(0)).value();
+        assertEquals(call.id(), runner.failure().node(), "the error points at the call");
+    }
+
+    @Test
+    void aDroppedRunGivesItsAnswerUp() {
+        var answer = new HandPending();
+        Evaluator.Host host = (namespace, name, args) -> answer;
+        var runner = start(workspace(ASKS), host, null, "main", List.of());
+        runner.tick(1000);
+        runner.cancel();
+        assertTrue(answer.cancelled);
+    }
+
     @Test
     void oneActionPerTick() {
         var host = new FakeHost();
