@@ -55,6 +55,28 @@ final class EditsTest {
     }
 
     @Test
+    void setItemsComeAndGoAndDictEntriesAreOnlyReplaced() {
+        var canvas = canvas("""
+                def f(n: int) -> None:
+                    s = {n, 2}
+                    d = {"a": n}
+                """);
+        canvas = Edits.put(canvas, find(canvas, Canvas.Kind.SET).id(), "item2", number(3));
+        canvas = Edits.put(canvas, find(canvas, Canvas.Kind.SET).id(), "item0", null);
+        canvas = Edits.put(canvas, find(canvas, Canvas.Kind.DICT).id(), "value0", number(4));
+        assertEquals("""
+                def f(n: int) -> None:
+                    s = {2, 3}
+                    d = {"a": 4}
+                """, text(canvas));
+        var dict = find(canvas, Canvas.Kind.DICT).id();
+        var shown = canvas;
+        // A key without its value, or a value without its key, is no dict entry.
+        assertThrows(IllegalArgumentException.class, () -> Edits.put(shown, dict, "key0", null));
+        assertThrows(IllegalArgumentException.class, () -> Edits.put(shown, dict, "key1", number(1)));
+    }
+
+    @Test
     void argumentsKeywordsItemsAndOptionalPartsComeAndGo() {
         var canvas = canvas("""
                 def f(n: int, x: float, xs: list[int]) -> None:
