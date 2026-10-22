@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: mechanics/index.md
+  parent: index.md
   title: The Federation Screen
   icon: ae2federation:router
-  position: 60
+  position: 260
 ---
 
 # The Federation Screen
@@ -39,6 +39,4 @@ provider sends to which Endpoint. See [Crafting Across Networks](../crafting/ind
 ## Statistics
 
 The Statistics tab charts the domain's networks over the last 24 hours: ME power, stored items, what moved between
-them, crafting, CPUs, channels and Federation power. Its own page explains each chart.
-
-<SubPages icons={true} />
+them, crafting, CPUs, channels and Federation power. [Statistics](statistics.md) explains each chart.

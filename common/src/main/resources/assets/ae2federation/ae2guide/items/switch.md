@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: items/index.md
+  parent: index.md
   title: ME Federation Switch
   icon: ae2federation:switch
-  position: 115
+  position: 420
 categories:
 - network infrastructure
 item_ids:

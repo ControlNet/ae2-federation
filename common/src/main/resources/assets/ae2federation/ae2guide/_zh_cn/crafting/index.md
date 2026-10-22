@@ -3,7 +3,7 @@ navigation:
   parent: index.md
   title: 跨网络合成
   icon: ae2federation:processing_endpoint
-  position: 30
+  position: 300
 ---
 
 # 跨网络合成
@@ -20,5 +20,3 @@ navigation:
 
 * **使用另一个网络的样板供应器**： 适合对方网络本来就为自己合成， 而你也想向它下单的情况。 它保留自己的样板和机器， 你的终端会把它的样板和你自己的列在一起。
 * **使用处理端点**： 适合机器由你供料、却位于单独网络上的情况， 例如前哨、合作伙伴的工坊， 或者一排你想分开管理的熔炉。 样板留在你的供应器里， 由你选择每个样板交给哪个端点执行。
-
-<SubPages icons={true} />

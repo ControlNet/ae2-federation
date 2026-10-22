@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: items/index.md
+  parent: index.md
   title: ME Federation Router
   icon: ae2federation:router
-  position: 120
+  position: 425
 categories:
 - network infrastructure
 item_ids:

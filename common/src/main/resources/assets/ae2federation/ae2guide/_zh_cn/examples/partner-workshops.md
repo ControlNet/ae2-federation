@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 合作工坊
   icon: ae2:pattern_provider
-  position: 22
+  position: 522
 ---
 
 # 合作工坊

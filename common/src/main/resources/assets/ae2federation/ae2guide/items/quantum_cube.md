@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: items/index.md
+  parent: index.md
   title: ME Federation Quantum Cube
   icon: ae2federation:quantum_cube
-  position: 129
+  position: 434
 categories:
 - network infrastructure
 item_ids:

@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 向装配工坊下单
   icon: ae2:molecular_assembler
-  position: 20
+  position: 520
 ---
 
 # 向装配工坊下单

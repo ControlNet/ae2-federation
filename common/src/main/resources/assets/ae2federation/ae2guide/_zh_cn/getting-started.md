@@ -3,7 +3,7 @@ navigation:
   parent: index.md
   title: 入门
   icon: ae2federation:nexus_core
-  position: 10
+  position: 100
 ---
 
 # 入门

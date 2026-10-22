@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: Order from a Matter Fabrication Well
   icon: molecularmanipulator:matter_fabrication_pattern_assembly
-  position: 90
+  position: 590
 ---
 
 # Order from a Matter Fabrication Well

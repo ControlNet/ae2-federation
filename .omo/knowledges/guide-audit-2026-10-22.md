@@ -48,8 +48,8 @@ into the feature branch.
 - Approved tree: index, Getting Started, mechanics/ (domains, rules + re-export incl. across domains, two kinds of
   power, capacity, bundled cables, long-distance links, Federation screen + statistics), crafting/ (AE2 providers via
   a rule; Federation Provider + Endpoint), items/, examples/, Troubleshooting.
-- Every page must be reachable from the sidebar: no page without `navigation`, every section is a real page
-  (`<folder>/index.md` with `<SubPages>`), parents resolve from the namespace root.
+- Every page must be reachable from the sidebar: no page without `navigation`, and every page has
+  `parent: index.md` (see the sidebar limit below).
 - Beam Converters go into complete builds only (Getting Started and every example, the optional packs' too).
   Scenes that illustrate one concept (shapes, connections, bundles) stay as they are; the text says once that a
   domain needs FE.
@@ -58,3 +58,25 @@ into the feature branch.
   costs nothing and needs no converter.
 - Contract constraints: `GuidePagesContractTest` (required pages, Chinese mirror with identical frontmatter except
   the title, every snbt shown, one owner per item id, links resolve, optional packs' pages included).
+
+## GuideME sidebar shows two levels only (found 2026-10-22)
+
+`GuideNavBar.recreateRows` (GuideME 21.1.1, and still on GuideME main) adds a row for each root node and for its
+direct children, nothing deeper. Our `index.md` is already a root of AE2's guide, so a page whose parent is another of
+our pages never appears in the sidebar: before the restructure the seven example pages were missing this way, and
+after grouping into folders the mechanics, crafting, item and example pages would all have been. GuideME logs no
+warning for it.
+
+Owner's choice: flatten. Every page, the optional packs' too, has `parent: index.md`; the folders stay for files only,
+and positions keep the groups together (getting started 100, mechanics 200-270, crafting 300-320, items 400-455,
+examples 500-590, troubleshooting 600). Section pages list their pages by hand instead of `<SubPages>`, which would
+now be empty. `GuidePagesContractTest.pagesHangDirectlyUnderTheFederationEntryAndChineseCopiesKeepTheirPlace` holds
+the rule. Screenshots: `build/guide-restructure-check/{before,after}-sidebar-en.png`.
+
+## Guide screenshots without disturbing other clients
+
+`runGuideClient` under a private Xvfb (`Xvfb :96 -screen 0 1600x960x24`), wait for `Compiling ae2federation` in the
+Gradle output plus ~20 s, then drive it with XTEST (wheel button 5 to scroll, click the sidebar triangle at (14, 157)
+to expand the Federation entry) and grab the root window with Xlib + Pillow. Close with WM_DELETE_WINDOW; Gradle exits
+on its own, then stop the Xvfb by its literal PID. A pre-change build renders the same way from a detached
+`git worktree` of the old commit.

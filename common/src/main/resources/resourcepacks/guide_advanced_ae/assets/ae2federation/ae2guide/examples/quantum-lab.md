@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: A Quantum Lab
   icon: advanced_ae:quantum_core
-  position: 76
+  position: 576
 ---
 
 # A Quantum Lab

@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: Partner Workshops
   icon: ae2:pattern_provider
-  position: 22
+  position: 522
 ---
 
 # Partner Workshops

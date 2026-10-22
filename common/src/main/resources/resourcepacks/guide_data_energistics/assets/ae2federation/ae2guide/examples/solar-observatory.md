@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: A Solar Observatory
   icon: data_energistics:astronomical_observatory
-  position: 74
+  position: 574
 ---
 
 # A Solar Observatory

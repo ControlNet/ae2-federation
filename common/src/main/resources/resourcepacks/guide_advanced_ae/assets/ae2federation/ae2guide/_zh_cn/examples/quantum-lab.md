@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 量子实验室
   icon: advanced_ae:quantum_core
-  position: 76
+  position: 576
 ---
 
 # 量子实验室

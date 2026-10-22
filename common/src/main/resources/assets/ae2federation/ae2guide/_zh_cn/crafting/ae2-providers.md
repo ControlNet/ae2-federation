@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: crafting/index.md
+  parent: index.md
   title: 另一个网络的样板供应器
   icon: ae2:pattern_provider
-  position: 10
+  position: 310
 ---
 
 # 另一个网络的样板供应器

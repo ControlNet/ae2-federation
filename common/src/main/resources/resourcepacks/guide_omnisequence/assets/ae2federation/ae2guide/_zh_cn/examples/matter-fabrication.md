@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 向物质构筑井下单
   icon: molecularmanipulator:matter_fabrication_pattern_assembly
-  position: 90
+  position: 590
 ---
 
 # 向物质构筑井下单

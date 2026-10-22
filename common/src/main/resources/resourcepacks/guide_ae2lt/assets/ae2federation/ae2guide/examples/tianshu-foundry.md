@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: A Tianshu District and Foundry
   icon: ae2lt:tianshu_supercomputer_controller
-  position: 72
+  position: 572
 ---
 
 # A Tianshu District and Foundry

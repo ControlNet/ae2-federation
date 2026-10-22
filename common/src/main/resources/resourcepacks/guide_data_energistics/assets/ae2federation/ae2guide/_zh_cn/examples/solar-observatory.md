@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 太阳能天文台
   icon: data_energistics:astronomical_observatory
-  position: 74
+  position: 574
 ---
 
 # 太阳能天文台

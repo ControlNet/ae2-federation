@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: mechanics/index.md
+  parent: index.md
   title: 规则
   icon: ae2federation:switch
-  position: 10
+  position: 210
 ---
 
 # 规则

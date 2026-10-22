@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: Neo ECO生产区
   icon: neoecoae:computation_system_l4
-  position: 80
+  position: 580
 ---
 
 # Neo ECO生产区

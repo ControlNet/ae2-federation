@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: items/index.md
+  parent: index.md
   title: 联结核心
   icon: ae2federation:nexus_core
-  position: 100
+  position: 405
 categories:
 - misc ingredients blocks
 item_ids:

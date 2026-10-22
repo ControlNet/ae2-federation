@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: mechanics/index.md
+  parent: index.md
   title: Long-Distance Links
   icon: ae2federation:beam_former
-  position: 50
+  position: 250
 ---
 
 # Long-Distance Links

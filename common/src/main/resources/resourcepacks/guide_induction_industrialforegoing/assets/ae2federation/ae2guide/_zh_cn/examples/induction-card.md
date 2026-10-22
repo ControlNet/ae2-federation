@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 靠供应器FE运行的高级熔炉
   icon: appflux:induction_card
-  position: 46
+  position: 546
 ---
 
 # 靠供应器FE运行的高级熔炉

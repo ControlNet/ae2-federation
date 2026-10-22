@@ -3,7 +3,7 @@ navigation:
   parent: index.md
   title: How Federation Works
   icon: ae2federation:cable
-  position: 20
+  position: 200
 ---
 
 # How Federation Works
@@ -42,4 +42,10 @@ A domain short of either **stops**: its networks keep working on their own and s
 
 ## In this section
 
-<SubPages icons={true} />
+* [Rules](rules.md)
+* [Power](power.md)
+* [Network Capacity](capacity.md)
+* [Bundled Cables](bundled-cables.md)
+* [Long-Distance Links](long-distance.md)
+* [The Federation Screen](federation-screen.md)
+* [Statistics](statistics.md)

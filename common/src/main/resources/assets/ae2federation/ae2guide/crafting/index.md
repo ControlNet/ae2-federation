@@ -3,7 +3,7 @@ navigation:
   parent: index.md
   title: Crafting Across Networks
   icon: ae2federation:processing_endpoint
-  position: 30
+  position: 300
 ---
 
 # Crafting Across Networks
@@ -23,5 +23,3 @@ Another network's machines can carry out your crafting jobs in two ways.
 * **Use Processing Endpoints** when the machines are yours to feed but stand on a network of their own: an outpost,
   a partner's workshop, or a line of furnaces you keep apart. The patterns stay in your Provider, and you choose
   which Endpoint runs each one.
-
-<SubPages icons={true} />

@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 外包熔炉
   icon: ae2federation:processing_endpoint
-  position: 30
+  position: 530
 ---
 
 # 外包熔炉

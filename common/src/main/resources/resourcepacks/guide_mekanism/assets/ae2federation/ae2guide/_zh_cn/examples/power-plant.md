@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 发电厂
   icon: mekanism:basic_induction_cell
-  position: 43
+  position: 543
 ---
 
 # 发电厂

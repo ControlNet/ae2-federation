@@ -147,28 +147,19 @@ final class GuidePagesContractTest {
     }
 
     /**
-     * Every page hangs under the Federation entry, directly or through another page: the examples hang under the
-     * examples page. GuideME resolves a parent against the namespace root, not relative to the page.
+     * Every page hangs directly under the Federation entry. GuideME's sidebar shows a root and its children only, and
+     * the Federation entry is already a child of AE2's guide root, so a page any deeper would be missing from it.
      */
     @Test
-    void pagesHangUnderTheFederationEntryAndChineseCopiesKeepTheirPlace() throws IOException {
+    void pagesHangDirectlyUnderTheFederationEntryAndChineseCopiesKeepTheirPlace() throws IOException {
         for (var guide : guides()) {
-            var pages = new TreeSet<>(pages(guide.root()));
-            pages.addAll(pages(GUIDE));
             for (var page : pages(guide.root())) {
                 var english = frontmatter(guide.root().resolve(page));
                 var chinese = frontmatter(guide.root().resolve("_zh_cn").resolve(page));
                 assertTrue(english.contains("navigation:"), page);
                 assertEquals(page.equals("index.md"), !english.contains("parent:"), page);
-                var ancestor = page;
-                for (int depth = 0; !ancestor.equals("index.md"); depth++) {
-                    var parent = Pattern.compile("(?m)^  parent: (\\S+)$").matcher(frontmatter(guide.find(ancestor)));
-                    assertTrue(parent.find() && pages.contains(parent.group(1)) && depth < pages.size(),
-                            page + " must hang under index.md through existing pages");
-                    ancestor = parent.group(1);
-                }
-                assertTrue(!page.startsWith("examples/") || page.equals("examples/index.md")
-                        || english.contains("  parent: examples/index.md\n"), page + " belongs under the examples page");
+                assertTrue(page.equals("index.md") || english.contains("  parent: index.md\n"),
+                        page + " must hang directly under index.md, or the sidebar hides it");
                 assertEquals(english.replaceAll("(?m)^  title: .*$", ""), chinese.replaceAll("(?m)^  title: .*$", ""),
                         "Only the title may differ between " + page + " and its Chinese copy");
             }

@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: crafting/index.md
+  parent: index.md
   title: Another Network's Pattern Providers
   icon: ae2:pattern_provider
-  position: 10
+  position: 310
 ---
 
 # Another Network's Pattern Providers

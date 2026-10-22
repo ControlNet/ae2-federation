@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: mechanics/index.md
+  parent: index.md
   title: 联邦界面
   icon: ae2federation:router
-  position: 60
+  position: 260
 ---
 
 # 联邦界面
@@ -26,6 +26,4 @@ navigation:
 
 ## 统计
 
-统计标签页用图表记录联邦域里各网络最近24小时的情况： ME能量、库存、网络之间的搬运、合成、CPU、频道和联邦能量。 每张图表的说明见它自己的页面。
-
-<SubPages icons={true} />
+统计标签页用图表记录联邦域里各网络最近24小时的情况： ME能量、库存、网络之间的搬运、合成、CPU、频道和联邦能量。 每张图表的说明见[统计](statistics.md)。

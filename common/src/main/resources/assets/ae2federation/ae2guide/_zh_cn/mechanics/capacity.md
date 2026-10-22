@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: mechanics/index.md
+  parent: index.md
   title: 网络容量
   icon: ae2federation:cable
-  position: 40
+  position: 240
 ---
 
 # 网络容量

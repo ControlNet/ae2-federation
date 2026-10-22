@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: crafting/index.md
+  parent: index.md
   title: Processing Endpoints
   icon: ae2federation:processing_endpoint
-  position: 20
+  position: 320
 ---
 
 # Processing Endpoints

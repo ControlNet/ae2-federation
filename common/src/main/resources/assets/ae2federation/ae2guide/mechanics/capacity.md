@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: mechanics/index.md
+  parent: index.md
   title: Network Capacity
   icon: ae2federation:cable
-  position: 40
+  position: 240
 ---
 
 # Network Capacity

@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 化学品储罐区
   icon: mekanism:dynamic_tank
-  position: 50
+  position: 550
 ---
 
 # 化学品储罐区

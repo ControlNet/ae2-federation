@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: items/index.md
+  parent: index.md
   title: ME Federation Beam Converter
   icon: ae2federation:beam_converter
-  position: 125
+  position: 430
 categories:
 - network infrastructure
 item_ids:

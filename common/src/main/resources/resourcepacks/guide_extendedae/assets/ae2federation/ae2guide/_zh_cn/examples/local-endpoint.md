@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 本地模式的端点
   icon: extendedae:ex_pattern_provider
-  position: 70
+  position: 570
 ---
 
 # 本地模式的端点

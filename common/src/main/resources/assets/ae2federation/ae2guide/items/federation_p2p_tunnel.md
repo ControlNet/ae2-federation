@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: items/index.md
+  parent: index.md
   title: Federation P2P Tunnel
   icon: ae2federation:federation_p2p_tunnel
-  position: 135
+  position: 440
 categories:
 - network infrastructure
 item_ids:

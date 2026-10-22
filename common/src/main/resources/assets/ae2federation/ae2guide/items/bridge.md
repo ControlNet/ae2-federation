@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: items/index.md
+  parent: index.md
   title: ME Federation Bridge
   icon: ae2federation:bridge
-  position: 130
+  position: 435
 categories:
 - network infrastructure
 item_ids:

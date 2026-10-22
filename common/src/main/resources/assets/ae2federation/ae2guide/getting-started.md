@@ -3,7 +3,7 @@ navigation:
   parent: index.md
   title: Getting Started
   icon: ae2federation:nexus_core
-  position: 10
+  position: 100
 ---
 
 # Getting Started

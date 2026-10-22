@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: items/index.md
+  parent: index.md
   title: ME联邦处理端点
   icon: ae2federation:processing_endpoint
-  position: 150
+  position: 455
 categories:
 - devices
 item_ids:

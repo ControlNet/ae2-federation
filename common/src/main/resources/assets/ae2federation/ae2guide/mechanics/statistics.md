@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: mechanics/federation-screen.md
+  parent: index.md
   title: Statistics
   icon: ae2federation:switch
-  position: 70
+  position: 270
 ---
 
 # Statistics

@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: mechanics/index.md
+  parent: index.md
   title: 能量
   icon: ae2federation:beam_converter
-  position: 30
+  position: 230
 ---
 
 # 能量

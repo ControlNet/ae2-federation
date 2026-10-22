@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: A Crusher on the Provider's FE
   icon: appflux:induction_card
-  position: 46
+  position: 546
 ---
 
 # A Crusher on the Provider's FE

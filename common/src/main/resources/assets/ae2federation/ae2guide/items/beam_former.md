@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: items/index.md
+  parent: index.md
   title: ME Federation Beam Former
   icon: ae2federation:beam_former
-  position: 128
+  position: 433
 categories:
 - network infrastructure
 item_ids:

@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 一个工厂供两个基地
   icon: extendedae_plus:super_assembler_matrix_frame
-  position: 75
+  position: 575
 ---
 
 # 一个工厂供两个基地

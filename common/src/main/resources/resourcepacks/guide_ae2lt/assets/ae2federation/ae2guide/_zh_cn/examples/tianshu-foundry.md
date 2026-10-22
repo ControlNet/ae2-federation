@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: examples/index.md
+  parent: index.md
   title: 天枢城区和铸造厂
   icon: ae2lt:tianshu_supercomputer_controller
-  position: 72
+  position: 572
 ---
 
 # 天枢城区和铸造厂

@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: items/index.md
+  parent: index.md
   title: ME联邦线缆
   icon: ae2federation:cable
-  position: 110
+  position: 415
 categories:
 - network infrastructure
 item_ids:
