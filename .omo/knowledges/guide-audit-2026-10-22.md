@@ -78,7 +78,9 @@ Our `GuideNavBarMixin` + `GuideNavBarRowMixin` do the same when Data Energistics
 nestmate of `GuideNavBar`, where the merged code runs), a redirect of `LytParagraph.layout` in `updateLayout` for the
 extra indent, and on the row: fold with every ancestor, move a nested parent's arrow in, 10 px per level below what
 GuideME draws. When `ModList` has `data_energistics`, our `recreateRows` returns without cancelling, so its injection
-runs, and ours change nothing (no nesting recorded). Verified in game both ways: `build/guide-three-levels-check/`.
+runs, and ours change nothing (no nesting recorded). Verified in game without it and with Data Energistics 3.3.3
+and 3.3.5 (3.3.5 from the GitHub release `ModularMCLib/DataEnergistics` tag `v3.3.5-1.21`, 15467170 bytes):
+`build/guide-three-levels-check/`.
 To run the guide client with Data Energistics: put its pinned jar in `neoforge-1.21.1/run-guide/mods` and add
 `-Pae2_version=19.2.18 -Pldlib2_version=2.2.42 --dependency-verification=lenient --no-configuration-cache` (DE 3.3.3
 needs AE2 >= 19.2.18 and LDLib2 >= 2.2.40); remove the jar afterwards.
