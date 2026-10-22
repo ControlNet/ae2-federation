@@ -78,3 +78,50 @@ lightness order + alpha mask, 16-64 px wide, trivial textures skipped; >=0.95 co
 Controls against `logic_processor` / `logic_processor_press` give 33-40 differing silhouette pixels and 13-34%
 identical colours, so the match is to those specific files, not to AE2's general style. Diff sheet:
 `build/ae2-license-check/nexus-items-vs-ae2.png` (ours | AE2 | diff: grey identical, red recoloured, yellow shape).
+
+## Full classification of the shipped art on dev (2026-10-22)
+
+Scope: every non-code resource the jar ships (56 textures, 26 models, 4 guide images, logo, font). Textures scored
+against AE2 19.2.18 and against our own textures (silhouette, identical-colour share, lightness order), then checked
+by eye. Overview sheet: `build/ae2-license-check/classification.png`; diff sheets `blocks-a/b/c.png`,
+`nexus-items-vs-ae2.png` in the same folder.
+
+**A. Recolour of one AE2 texture, same pixel layout (6) -> CC BY-NC-SA 3.0**
+`block/pattern_provider_back` (AE2 `pattern_provider_alternate`), `block/pattern_provider_side`
+(`pattern_provider_alternate_arrow`), `item/nexus_processor` (`calculation_processor`), `item/nexus_processor_press`
+(`calculation_processor_press`), `item/printed_nexus_circuit` (`printed_calculation_processor`),
+`part/p2p_tunnel_federation` (AE2's P2P type panels, e.g. `p2p_tunnel_energy`; concentric squares, little to protect).
+
+**B. Partly AE2: AE2's machine frame or outline pixels kept, new centre (14) -> CC BY-NC-SA 3.0 unless the artist
+says otherwise**
+`block/pattern_provider`, `block/processing_endpoint{,_side,_back}` (frame of AE2 `pattern_provider*`),
+`block/router/router{,_corner,_side_hor,_side_ver}`, `block/switch/switch{,_corner,_side_hor,_side_ver}` (frame of
+AE2 `pattern_provider_alternate` / `generics/top`, strips as in `spatial_pylon/base_spanned`), `item/nexus_core`
+(`formation_core`, 64% identical pixels, lugs reshaped), `part/bridge_sides` (`import_bus_sides` corners and layout).
+
+**C. Our placeholder recolours of A/B, `tools/visual/build_converter_placeholder.py` (13) -> CC BY-NC-SA 3.0**
+`block/beam_converter/*` (3), `block/creative_beam_converter/*` (3), `block/beam_former/*` (3) from the Pattern
+Provider faces; `block/quantum_cube/quantum_cube{,_corner,_side_hor,_side_ver}` from the Router's.
+
+**D. Original, no AE2 pixel source found (23) -> All Rights Reserved**
+`block/armor`, `block/collar`, `block/glass`, `block/stream_u`, `block/stream_v`, `block/large_cable/large_cable`,
+`block/router/router_base`, `block/switch/switch_base`, `block/quantum_cube/quantum_cube_base` (recolour of
+`router_base`), `entity/cable_flow`, `misc/bundle_selection_hatch`, `part/bridge`, and the 11 `part/cable/dense/*`
+(collar, connector, core, core_connected_1/2/2_straight/3/4, line, stream_u, stream_v). The dense cable frames share
+AE2's frame style but no colours or pixels.
+
+**Not textures**
+- Models (26 JSON): none copies AE2 geometry (0-2 coincident boxes out of 22-73). `item/federation_p2p_tunnel` and
+  `part/p2p_tunnel_federation` take AE2's P2P base model as `parent` at run time; nothing is copied. Dense cable
+  geometry lives in Java and follows AE2's code (LGPL-3.0, compatible with our AGPL), not its art.
+- `font/canvas_cjk.ttf`: Droid Sans Fallback subset, Apache-2.0, licence and changes in `canvas_cjk_license.txt`.
+- Rendered images: `ae2guide/{,_zh_cn/}assets/teaser.png` is an in-game render showing AE2 blocks and vanilla
+  chests; `statistics.png` is our Statistics screen with vanilla item icons; `ae2federation_logo.png` renders the
+  Router, whose faces are group B. Screenshots of the game are the usual practice; name AE2 and Mojang as the
+  owners of what they show.
+- GUI sprites and other `ae2:` textures are referenced at run time and not shipped.
+- Off dev: `feature/function-system` ships the Neo ECO ECO-C screen atlas (GPL-3.0, own licence file, 89376e7b);
+  add it to the notices when that branch merges.
+
+Open: the artist should confirm how groups A/B were made (the Nexus press commit says it replaced AE2's texture, yet
+it matches AE2's `calculation_processor_press` at 95%).
