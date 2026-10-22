@@ -3,7 +3,7 @@ navigation:
   parent: index.md
   title: Examples
   icon: ae2federation:bridge
-  position: 35
+  position: 50
 ---
 
 # Examples

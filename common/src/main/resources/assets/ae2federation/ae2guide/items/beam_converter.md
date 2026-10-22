@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Beam Converter
   icon: ae2federation:beam_converter
   position: 125
@@ -18,9 +18,9 @@ item_ids:
   <BlockImage id="ae2federation:creative_beam_converter" scale="6" />
 </Row>
 
-A [Federation domain](../mechanics.md) runs on FE. Its Switches, Routers, cables, Pattern Providers and Endpoints use a
+A [Federation domain](../mechanics/index.md) runs on FE. Its Switches, Routers, cables, Pattern Providers and Endpoints use a
 little every tick, and the domain draws it from its Beam Converters. A domain whose converters cannot pay **stops**,
-just as a domain over [capacity](../network-capacity.md) does: its networks keep working on their own, but share no
+just as a domain over [capacity](../mechanics/capacity.md) does: its networks keep working on their own, but share no
 storage, crafting, processing or power until it has FE again.
 
 <GameScene zoom="5" interactive={true} background="transparent">
@@ -65,7 +65,7 @@ A converter is a solid box of converter blocks, placed any way round. Its front 
 
 The front joins the domain like a Switch face; build a converter against a cable or any Federation block. A converter of
 another size forms and joins the domain, but supplies nothing. A linked pair of Beam Formers counts as cable of its
-square, and a linked pair of Quantum Cubes as cable of its face centre. When you add a larger [bundle](../bundled-cables.md), build a
+square, and a linked pair of Quantum Cubes as cable of its face centre. When you add a larger [bundle](../mechanics/bundled-cables.md), build a
 converter to match it. Right-click a block that does not form with an empty hand to see why on the action bar; with a block in hand you
 build on it as usual.
 

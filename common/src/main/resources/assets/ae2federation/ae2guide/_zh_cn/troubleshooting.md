@@ -3,7 +3,7 @@ navigation:
   parent: index.md
   title: 排错
   icon: ae2:network_tool
-  position: 40
+  position: 60
 ---
 
 # 排错

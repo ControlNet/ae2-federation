@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Quantum Cube
   icon: ae2federation:quantum_cube
   position: 129
@@ -38,7 +38,7 @@ between them. Like AE2's Quantum Network Bridge, they work only while both are l
 
 A Quantum Cube is a solid cube of 3×3×3, 4×4×4 or 5×5×5 blocks. Any other shape does not form. Federation cable
 joins a face only inside its centre: the middle block of a 3×3×3 face, the middle 2×2 of a 4×4×4 face or the middle
-3×3 of a 5×5×5 face. The border ring of every face joins nothing, so a [bundle](../bundled-cables.md) that touches
+3×3 of a 5×5×5 face. The border ring of every face joins nothing, so a [bundle](../mechanics/bundled-cables.md) that touches
 the border does not join.
 
 | Cube | Face centre | Largest cable it takes |
@@ -64,7 +64,7 @@ Look at a cube with Jade to see where its partner is, or why it is not linked.
 
 ## Capacity and power
 
-A linked pair counts as cable of its face centre for [network capacity](../network-capacity.md): a 3×3×3 pair
+A linked pair counts as cable of its face centre for [network capacity](../mechanics/capacity.md): a 3×3×3 pair
 carries one cable's limit, a 4×4×4 pair six cables' and a 5×5×5 pair has no limit. The networks on both sides are
 counted together, as with a cable between them.
 

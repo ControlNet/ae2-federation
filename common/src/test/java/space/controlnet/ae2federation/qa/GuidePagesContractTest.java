@@ -96,8 +96,8 @@ final class GuidePagesContractTest {
                         guide.root() + " must not replace a base page");
             }
         }
-        assertTrue(pages(GUIDE).containsAll(Set.of("index.md", "getting-started.md", "mechanics.md",
-                "remote-processing.md", "troubleshooting.md")));
+        assertTrue(pages(GUIDE).containsAll(Set.of("index.md", "getting-started.md", "mechanics/index.md",
+                "crafting/index.md", "items/index.md", "examples/index.md", "troubleshooting.md")));
     }
 
     /** Each optional pack is registered with the mods it needs, has its pack metadata, and names itself in both languages. */

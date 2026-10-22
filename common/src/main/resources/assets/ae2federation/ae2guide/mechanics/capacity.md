@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: Network Capacity
   icon: ae2federation:cable
-  position: 22
+  position: 40
 ---
 
 # Network Capacity
@@ -13,7 +13,7 @@ most 8. When any cable of a Federation domain carries more, the **Federation dom
 their own, but share no storage, crafting, processing or power until the count fits again.
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/network_capacity.snbt" />
+  <ImportStructure src="../assets/network_capacity.snbt" />
   <BoxAnnotation color="#915dcd" min="9 0 0" max="11 1 1">
     Network A: counts 1
   </BoxAnnotation>
@@ -65,7 +65,7 @@ as one Router.
 * A segment that touches **no Router or one Router**, together with the networks on its Switches and the Endpoints
   and Providers on it, is a **subdomain**: the part of the domain that counts on its own. The segment counts only its subdomain.
 * A segment that touches **two or more Routers** carries traffic between them, so it counts everything in the
-  [Federation domain](mechanics.md).
+  [Federation domain](index.md).
 * A network whose Switches sit on two segments counts in each of them.
 
 In the scene, the left subdomain counts networks A and B, and the right one the Endpoint. The middle segment runs from
@@ -78,7 +78,7 @@ as soon as no cable carries more than 8. To get there, take a network or device 
 segment with a Router: what stands behind a Router no longer counts on a segment that touches only that one Router.
 A segment between two Routers counts everything in the Federation domain, so a long trunk between Routers fills first.
 Build such a trunk as a [bundled cable](bundled-cables.md): a 2×2 bundle carries 48, and a 3×3 has no limit. A
-domain's [Beam Converter](items/beam_converter.md) must match its largest cable, so a new bundle needs a converter of
+domain's [Beam Converter](../items/beam_converter.md) must match its largest cable, so a new bundle needs a converter of
 its size.
 
 The light inside each cable shows how full it is: thin and dim when it carries little, fuller and brighter near the

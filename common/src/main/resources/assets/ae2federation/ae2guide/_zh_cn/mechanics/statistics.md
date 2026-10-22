@@ -1,16 +1,16 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: 统计
   icon: ae2federation:switch
-  position: 35
+  position: 70
 ---
 
 # 统计
 
 联邦界面左侧的第三个标签页是**统计**， 它用图表记录联邦域里各个网络一段时间内的情况： ME能量、存储的东西、网络之间搬运的东西、合成和频道。 它只显示这个联邦域里的网络。
 
-![统计页显示最近两分钟的物品库存](assets/statistics.png)
+![统计页显示最近两分钟的物品库存](../assets/statistics.png)
 
 ## 怎么看
 

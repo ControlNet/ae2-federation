@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Cable
   icon: ae2federation:cable
   position: 110
@@ -27,7 +27,7 @@ item_ids:
 </GameScene>
 
 Federation Cable links Switches, Routers, Federation Pattern Providers and Processing Endpoints into one
-[Federation domain](../mechanics.md). It connects on every side to another Federation Cable, to any face of a
+[Federation domain](../mechanics/index.md). It connects on every side to another Federation Cable, to any face of a
 <ItemLink id="ae2federation:switch" /> or <ItemLink id="ae2federation:router" />, and to the front of a <ItemLink id="ae2federation:pattern_provider" />,
 <ItemLink id="ae2federation:processing_endpoint" /> or <ItemLink id="ae2federation:federation_p2p_tunnel" />. It also joins the back of a
 <ItemLink id="ae2federation:beam_former" />, the front of a <ItemLink id="ae2federation:beam_converter" /> and the centre of a
@@ -36,8 +36,8 @@ device that is not formed.
 
 It is not an ME cable: ME cables and devices do not attach to it, it carries no channels and it uses no power. It has
 no length limit. The pulses inside it are decoration; use **Live flow** in the Federation screen to see real traffic.
-Each cable counts the networks, Endpoints and Pattern Providers it carries; see [Network Capacity](../network-capacity.md). A wrench turns a block of Federation Cables into one
-[bundled cable](../bundled-cables.md) that carries more.
+Each cable counts the networks, Endpoints and Pattern Providers it carries; see [Network Capacity](../mechanics/capacity.md). A wrench turns a block of Federation Cables into one
+[bundled cable](../mechanics/bundled-cables.md) that carries more.
 
 <RecipeFor id="ae2federation:cable" />
 

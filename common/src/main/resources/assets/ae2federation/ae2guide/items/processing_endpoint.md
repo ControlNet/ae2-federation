@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Processing Endpoint
   icon: ae2federation:processing_endpoint
   position: 150
@@ -15,7 +15,7 @@ item_ids:
 <BlockImage id="ae2federation:processing_endpoint" p:facing="south" scale="6" />
 
 Lets a <ItemLink id="ae2federation:pattern_provider" /> on another network use your machines. See
-[Remote Crafting](../remote-processing.md).
+[Remote Crafting](../crafting/index.md).
 
 * **Front:** the Federation face. It faces the block you clicked when placing it, so click
   <ItemLink id="ae2federation:cable" />, a Switch or a Router. A wrench turns it.

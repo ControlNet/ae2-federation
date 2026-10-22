@@ -1,19 +1,19 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: 跨域联动
   icon: ae2federation:bridge
-  position: 25
+  position: 20
 ---
 
 # 跨域联动
 
 **目标**： 使用一个和你之间没有规则的网络。 网络A用一个桥接器连到B， B再用另一个桥接器连到C。 每个桥接器自成一个联邦域， 所以A和C从不相遇， 哪个界面里都没有“A使用C的”规则。 B的规则开启转发后， A照样能经由B使用C的存储和合成。
 
-规则属于一对网络， 而不属于某个联邦域（参见[联邦的工作方式](mechanics.md)）： “B使用C的”只在B和C相遇的联邦域里设置一次， A能用到C， 是因为B把它的访问转发了出去。
+规则属于一对网络， 而不属于某个联邦域（参见[联邦的工作方式](index.md)）： “B使用C的”只在B和C相遇的联邦域里设置一次， A能用到C， 是因为B把它的访问转发了出去。
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/across_domains.snbt" />
+  <ImportStructure src="../assets/across_domains.snbt" />
   <BoxAnnotation color="#915dcd" min="5.375 0 0" max="8 1 1">
     网络A： 一个终端， 以及给三个网络供电的能源元件
   </BoxAnnotation>
@@ -63,7 +63,7 @@ A的终端把C的物品和A、B自己的物品列在一起， 不标出它们在
 
 ## 合成也一样
 
-如果“B使用C的”合成规则是开启并转发， “A使用B的”合成规则也已打开， A的终端就会列出C的<ItemLink id="ae2:pattern_provider" />里的样板。 A的合成CPU把原料直接推送给C的样板供应器， 产物回到A； B不需要CPU。 两条合成规则都不需要存储规则。 除非“B使用C的”存储规则也打开并转发， 否则A看不到C的存储： A的CPU只能在A上找原料， 或者通过“A使用B的”存储规则在B上找， 而副产物、被取消的任务的产物等剩余物品会留在C上， A够不到。 参见[远程合成](remote-processing.md)。
+如果“B使用C的”合成规则是开启并转发， “A使用B的”合成规则也已打开， A的终端就会列出C的<ItemLink id="ae2:pattern_provider" />里的样板。 A的合成CPU把原料直接推送给C的样板供应器， 产物回到A； B不需要CPU。 两条合成规则都不需要存储规则。 除非“B使用C的”存储规则也打开并转发， 否则A看不到C的存储： A的CPU只能在A上找原料， 或者通过“A使用B的”存储规则在B上找， 而副产物、被取消的任务的产物等剩余物品会留在C上， A够不到。 参见[远程合成](../crafting/index.md)。
 
 ## 能量不需要转发就能连成一片
 

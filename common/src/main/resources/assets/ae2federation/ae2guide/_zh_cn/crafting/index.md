@@ -17,13 +17,13 @@ navigation:
 
 假设机器在网络B上： 普通的AE2<ItemLink id="ae2:pattern_provider" />装着样板， 旁边是<ItemLink id="ae2:molecular_assembler" />或加工机器， 按AE2的常规方式布置。 网络A想向它们下单。
 
-1. **连接两个网络**， 用桥接器或交换机都可以， 参见[入门](getting-started.md)。
+1. **连接两个网络**， 用桥接器或交换机都可以， 参见[入门](../getting-started.md)。
 2. **在联邦界面里打开“A使用B的”合成规则**。 不需要存储规则： A的合成CPU用A能看到的东西付账， 这里就是A自己的存储。
 3. **打开这对网络的ME能量**。 网络B从此靠网络A的电源运行， 不需要自己的能源元件。
 4. **在网络A下单**。 A的终端会把B的样板和A自己的可合成物品列在一起， 照常请求即可。
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/native_projection.snbt" />
+  <ImportStructure src="../assets/native_projection.snbt" />
   <BoxAnnotation color="#915dcd" min="5 1 0" max="6 2 1">
     网络A的合成CPU： 规划并执行任务
   </BoxAnnotation>
@@ -64,7 +64,7 @@ navigation:
 * **剩余物品留在网络B**： 样板没有列出的副产物， 以及在网络A取消的任务的产物。 只有“A使用B的”存储规则打开时， 网络A才能看到并取出它们。
 * **任务进行中两个网络断开， 或网络A没有加载时**， 这期间到达的产物先留在网络B的存储里， A的CPU继续等待。 两个网络重新连接后， 网络B会把它们交给这个任务。 如果网络B上有人先用掉了它们， 任务会等到网络B再次存有这么多。
 
-完整的搭建示例见[向装配工坊下单](examples/remote-assembly.md)。
+完整的搭建示例见[向装配工坊下单](../examples/remote-assembly.md)。
 
 ## 联邦样板供应器和处理端点
 
@@ -85,7 +85,7 @@ navigation:
 一个小例子： 供应器所在的网络通过另一个子网络上的熔炉加工。
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/remote_processing.snbt" />
+  <ImportStructure src="../assets/remote_processing.snbt" />
   <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
     供应器所在的网络
   </BoxAnnotation>
@@ -117,7 +117,7 @@ navigation:
   <Endpoint key="furnace" label="端点 · 熔炉" owner="main" energy="true" details="熔炉子网络" />
 </FederationTopology>
 
-供应器所在的网络发起合成时， 原料会进入子网络的ME存储， 再从那里送到机器。 机器（或管道）必须把产物推入端点前面以外的某个面。 产物先进入供应器中对应这个端点的回流缓冲， 再进入供应器所在的网络。 留在子网络存储里的产物不会返回。 包含燃料、阻挡模式和第二座熔炉的完整搭建见[外包熔炉](examples/endpoint-furnaces.md)。
+供应器所在的网络发起合成时， 原料会进入子网络的ME存储， 再从那里送到机器。 机器（或管道）必须把产物推入端点前面以外的某个面。 产物先进入供应器中对应这个端点的回流缓冲， 再进入供应器所在的网络。 留在子网络存储里的产物不会返回。 包含燃料、阻挡模式和第二座熔炉的完整搭建见[外包熔炉](../examples/endpoint-furnaces.md)。
 
 ### 一个端点只属于一个供应器
 

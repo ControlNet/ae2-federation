@@ -21,14 +21,14 @@ Say network B has the machines: ordinary AE2 <ItemLink id="ae2:pattern_provider"
 <ItemLink id="ae2:molecular_assembler" />s or processing machines, set up the usual AE2 way. Network A wants to order
 from them.
 
-1. **Connect the two networks** with a Bridge or Switches; see [Getting Started](getting-started.md).
+1. **Connect the two networks** with a Bridge or Switches; see [Getting Started](../getting-started.md).
 2. **Switch on "A uses B's" Crafting** in the Federation screen. Storage is not needed: A's crafting CPU pays with
    what A can see, here A's own storage.
 3. **Switch on ME power** for the pair. Network B then runs on network A's power and needs no energy cell of its own.
 4. **Order from network A.** A's terminals list B's patterns among A's own craftables. Request one as usual.
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/native_projection.snbt" />
+  <ImportStructure src="../assets/native_projection.snbt" />
   <BoxAnnotation color="#915dcd" min="5 1 0" max="6 2 1">
     Network A's crafting CPU: plans and runs the job
   </BoxAnnotation>
@@ -76,7 +76,7 @@ as they enter network B. Network B needs no crafting CPU.
   meantime wait in network B's storage and A's CPU keeps waiting. Once the networks are linked again, network B hands
   them to the job. If someone on network B uses them up first, the job waits until network B stores that much again.
 
-For a complete build, see [Order from an Assembly Workshop](examples/remote-assembly.md).
+For a complete build, see [Order from an Assembly Workshop](../examples/remote-assembly.md).
 
 ## Federation Pattern Provider and Processing Endpoint
 
@@ -107,7 +107,7 @@ The results come back to the Provider's network. Processing needs no rule in the
 A small example: the Provider's network processes through a furnace on a subnet of its own.
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/remote_processing.snbt" />
+  <ImportStructure src="../assets/remote_processing.snbt" />
   <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
     The Provider's network
   </BoxAnnotation>
@@ -143,7 +143,7 @@ When the Provider's network crafts, the inputs go into the subnet's ME storage, 
 Machines (or pipes) must push their results into one of the Endpoint's faces other than its front. They go to the
 Provider's return buffer for that Endpoint, then into the Provider's network. Results left in the subnet's storage
 do not return. For a complete build with fuel, Blocking mode and a second furnace, see
-[Outsourced Furnaces](examples/endpoint-furnaces.md).
+[Outsourced Furnaces](../examples/endpoint-furnaces.md).
 
 ### One Provider per Endpoint
 

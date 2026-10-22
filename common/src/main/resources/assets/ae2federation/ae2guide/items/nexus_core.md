@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: Nexus Core
   icon: ae2federation:nexus_core
   position: 100

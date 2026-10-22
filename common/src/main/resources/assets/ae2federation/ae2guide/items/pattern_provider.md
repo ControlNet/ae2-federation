@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Pattern Provider
   icon: ae2federation:pattern_provider
   position: 140
@@ -15,7 +15,7 @@ item_ids:
 <BlockImage id="ae2federation:pattern_provider" p:facing="south" scale="6" />
 
 Sends processing patterns to machines on other networks, through
-<ItemLink id="ae2federation:processing_endpoint" />s. See [Remote Crafting](../remote-processing.md).
+<ItemLink id="ae2federation:processing_endpoint" />s. See [Remote Crafting](../crafting/index.md).
 
 * **Front:** the Federation face. When you place the Provider, the front faces the block you clicked, so click
   <ItemLink id="ae2federation:cable" />, a Switch or a Router. A wrench turns it; sneak and use a wrench to pick it up.

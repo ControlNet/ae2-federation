@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: Statistics
   icon: ae2federation:switch
-  position: 35
+  position: 70
 ---
 
 # Statistics
@@ -12,7 +12,7 @@ The **Statistics** tab, the third on the left of the Federation screen, charts w
 time: their ME power, what they store, what moved between them, their crafting and their channels. It shows the
 networks of this domain only.
 
-![The Statistics tab showing stored items over the last two minutes](assets/statistics.png)
+![The Statistics tab showing stored items over the last two minutes](../assets/statistics.png)
 
 ## Reading the page
 

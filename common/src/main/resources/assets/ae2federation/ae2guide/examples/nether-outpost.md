@@ -114,7 +114,7 @@ The base can also be the outpost's way to a factory. Here the factory is a netwo
 pattern provider with a Molecular Assembler that turns logs into planks, joined to the base by a Bridge. The Bridge
 forms a second domain, of the base and the factory. The outpost is not in it, and no screen offers an "Outpost uses
 Factory's" rule. Re-export on the base's rule passes the factory's recipes on to the outpost all the same, as in
-[Across Domains](../across-domains.md).
+[Across Domains](../mechanics/across-domains.md).
 
 In a Switch's Federation screen, with connected domains shown:
 

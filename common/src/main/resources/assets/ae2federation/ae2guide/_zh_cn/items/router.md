@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME联邦路由器
   icon: ae2federation:router
   position: 120
@@ -14,7 +14,7 @@ item_ids:
 
 <BlockImage id="ae2federation:router" scale="6" />
 
-路由器给线缆分段， 让[联邦域](../mechanics.md)变大时线缆不至于满载（见[网络容量](../network-capacity.md)）。 它的每个面都能继续连接<ItemLink id="ae2federation:cable" />、<ItemLink id="ae2federation:switch" />， 以及样板供应器前面或处理端点前面。 搭建联邦域不需要路由器： 联邦线缆本身就能连接和分岔。
+路由器给线缆分段， 让[联邦域](../mechanics/index.md)变大时线缆不至于满载（见[网络容量](../mechanics/capacity.md)）。 它的每个面都能继续连接<ItemLink id="ae2federation:cable" />、<ItemLink id="ae2federation:switch" />， 以及样板供应器前面或处理端点前面。 搭建联邦域不需要路由器： 联邦线缆本身就能连接和分岔。
 
 它不接入ME网络： 接触它的ME线缆或设备不会连上。 要把网络接进来， 请用交换机。 右键路由器可以打开它所在联邦域的联邦界面。
 
@@ -48,7 +48,7 @@ item_ids:
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
-把路由器换成一根联邦线缆， 三条分支就连成一段， 四个都要计入。 连在两台路由器之间的一段线缆要为整个联邦域转运， 计入其中的全部网络和设备， 所以这样的干线尽量短， 或者用[粗线缆](../bundled-cables.md)来建。
+把路由器换成一根联邦线缆， 三条分支就连成一段， 四个都要计入。 连在两台路由器之间的一段线缆要为整个联邦域转运， 计入其中的全部网络和设备， 所以这样的干线尽量短， 或者用[粗线缆](../mechanics/bundled-cables.md)来建。
 
 ## 更大的路由器
 
@@ -70,6 +70,6 @@ item_ids:
 * 路由器和交换机即使相贴也不会合成一个方块， 只会互相连接。
 * 空手右键一个未成形的方块， 动作栏会说明原因； 手持方块右键则照常放置。 装了Jade时， 看向路由器会显示“结构： 3×2×1”， 或者未成形的原因。
 
-[粗线缆](../bundled-cables.md)要靠成形的路由器接到普通线缆上： 粗线缆只连接能盖住它整个端面或侧面的路由器或交换机面， 路由器的其他面再接普通联邦线缆。
+[粗线缆](../mechanics/bundled-cables.md)要靠成形的路由器接到普通线缆上： 粗线缆只连接能盖住它整个端面或侧面的路由器或交换机面， 路由器的其他面再接普通联邦线缆。
 
 <RecipeFor id="ae2federation:router" />

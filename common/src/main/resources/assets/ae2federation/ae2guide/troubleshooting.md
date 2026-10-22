@@ -3,7 +3,7 @@ navigation:
   parent: index.md
   title: Troubleshooting
   icon: ae2:network_tool
-  position: 40
+  position: 60
 ---
 
 # Troubleshooting

@@ -1,19 +1,19 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: Bundled Cables
   icon: ae2federation:cable
-  position: 24
+  position: 45
 ---
 
 # Bundled Cables
 
-One <ItemLink id="ae2federation:cable" /> carries at most 8 networks and devices (see [Network Capacity](network-capacity.md)).
+One <ItemLink id="ae2federation:cable" /> carries at most 8 networks and devices (see [Network Capacity](capacity.md)).
 A **bundled cable** turns a block of Federation Cables into one thick cable that carries more: one shell the size of
 its cross-section, with a beam for each cable running inside it.
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/bundled_cables.snbt" />
+  <ImportStructure src="../assets/bundled_cables.snbt" />
   <BoxAnnotation color="#dddddd" min="0 0 2" max="1 2 4">
     Router, 2×2: covers the whole end face, so the bundle connects
   </BoxAnnotation>
@@ -44,7 +44,7 @@ along the bundle. Right-click air to start over.
 
 ## Capacity
 
-A bundle counts its networks and devices like any other cable (see [Network Capacity](network-capacity.md)); only its
+A bundle counts its networks and devices like any other cable (see [Network Capacity](capacity.md)); only its
 limit is larger:
 
 | Cross-section | Cables' worth | With the default 8 |

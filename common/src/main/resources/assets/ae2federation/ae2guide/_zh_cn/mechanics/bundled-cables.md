@@ -1,17 +1,17 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: 联邦粗线缆
   icon: ae2federation:cable
-  position: 24
+  position: 45
 ---
 
 # 联邦粗线缆
 
-一根<ItemLink id="ae2federation:cable" />最多承载8个网络和设备（见[网络容量](network-capacity.md)）。 **粗线缆**把一整块联邦线缆合成一根承载更多的粗线缆： 外壳只有一个， 大小和截面相同， 里面每根线缆各有一道光在流动。
+一根<ItemLink id="ae2federation:cable" />最多承载8个网络和设备（见[网络容量](capacity.md)）。 **粗线缆**把一整块联邦线缆合成一根承载更多的粗线缆： 外壳只有一个， 大小和截面相同， 里面每根线缆各有一道光在流动。
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/bundled_cables.snbt" />
+  <ImportStructure src="../assets/bundled_cables.snbt" />
   <BoxAnnotation color="#dddddd" min="0 0 2" max="1 2 4">
     2×2路由器： 盖住整个端面， 所以粗线缆接上了
   </BoxAnnotation>
@@ -39,7 +39,7 @@ navigation:
 
 ## 容量
 
-粗线缆和普通线缆一样计算它承载的网络和设备（见[网络容量](network-capacity.md)）， 只是上限更大：
+粗线缆和普通线缆一样计算它承载的网络和设备（见[网络容量](capacity.md)）， 只是上限更大：
 
 | 截面 | 相当于几根线缆 | 默认每根8时 |
 |---|---|---|

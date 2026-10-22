@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME联邦光束转换器
   icon: ae2federation:beam_converter
   position: 125
@@ -18,7 +18,7 @@ item_ids:
   <BlockImage id="ae2federation:creative_beam_converter" scale="6" />
 </Row>
 
-[联邦域](../mechanics.md)靠FE运行。 它的交换机、路由器、线缆、样板供应器和处理端点每tick都消耗一点能量， 联邦域从它的光束转换器里取用。 转换器付不起时， 联邦域**停止**， 和超出[容量](../network-capacity.md)时一样： 各个网络照常独立工作， 但在重新获得FE之前， 不共享存储、合成、处理和能量。
+[联邦域](../mechanics/index.md)靠FE运行。 它的交换机、路由器、线缆、样板供应器和处理端点每tick都消耗一点能量， 联邦域从它的光束转换器里取用。 转换器付不起时， 联邦域**停止**， 和超出[容量](../mechanics/capacity.md)时一样： 各个网络照常独立工作， 但在重新获得FE之前， 不共享存储、合成、处理和能量。
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/beam_converter.snbt" />
@@ -56,7 +56,7 @@ item_ids:
 | 2×2粗线缆 | 2×2， 长4 |
 | 3×3粗线缆 | 3×3， 长6 |
 
-正面像交换机的面一样接入联邦域； 把转换器贴着线缆或任意联邦方块建造。 尺寸不对的转换器也会成形并接入联邦域， 但不供能。 一对已连接的光束成型器算作相同截面的线缆， 一对已连接的量子立方算作与其面中心相同截面的线缆。 加入更大的[粗线缆](../bundled-cables.md)后， 要建一台与之匹配的转换器。 空手右键没有成形的方块， 动作栏会说明原因； 手持方块右键则照常放置。
+正面像交换机的面一样接入联邦域； 把转换器贴着线缆或任意联邦方块建造。 尺寸不对的转换器也会成形并接入联邦域， 但不供能。 一对已连接的光束成型器算作相同截面的线缆， 一对已连接的量子立方算作与其面中心相同截面的线缆。 加入更大的[粗线缆](../mechanics/bundled-cables.md)后， 要建一台与之匹配的转换器。 空手右键没有成形的方块， 动作栏会说明原因； 手持方块右键则照常放置。
 
 成形后， 转换器的正面是长度方向的一端： 多数方块朝向的那一端， 否则是贴着联邦线缆的那一端。 用扳手右键已成形的转换器， 可以把它前后调转。
 

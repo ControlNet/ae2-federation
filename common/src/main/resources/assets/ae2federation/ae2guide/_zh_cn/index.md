@@ -17,11 +17,11 @@ navigation:
 AE2 联邦组网把彼此独立的ME网络连接起来， 让它们共享存储、自动合成、加工机器和ME能量； 每个网络仍保留自己的频道、控制器和合成CPU。 在你打开之前什么都不会共享， 而且每项权限只在一个方向上生效。
 
 * [入门](getting-started.md)： 合成零件， 连接你的头两个网络。
-* [联邦的工作方式](mechanics.md)： 联邦域、规则、共享能量和各项限制。
-* [网络容量](network-capacity.md)： 每段联邦线缆计多少， 以及路由器怎样把联邦域分成子域。
-* [跨域联动](across-domains.md)： 经由转发使用隔着两个桥接器的网络， 不需要自己和它之间的规则。
-* [远程合成](remote-processing.md)： 向另一个网络的样板供应器下单， 或把处理样板发给它的机器。
-* [统计](statistics.md)： 联邦域的能量、存储、搬运、合成和频道图表。
+* [联邦的工作方式](mechanics/index.md)： 联邦域、规则、共享能量和各项限制。
+* [网络容量](mechanics/capacity.md)： 每段联邦线缆计多少， 以及路由器怎样把联邦域分成子域。
+* [跨域联动](mechanics/across-domains.md)： 经由转发使用隔着两个桥接器的网络， 不需要自己和它之间的规则。
+* [远程合成](crafting/index.md)： 向另一个网络的样板供应器下单， 或把处理样板发给它的机器。
+* [统计](mechanics/statistics.md)： 联邦域的能量、存储、搬运、合成和频道图表。
 * [使用示例](examples/index.md)： 共享仓库、装配工坊和外包机器的完整搭建。
 * [排错](troubleshooting.md)： 联邦界面里各条提示的含义。
 
@@ -30,7 +30,7 @@ AE2 联邦组网把彼此独立的ME网络连接起来， 让它们共享存储�
 * <ItemLink id="ae2federation:nexus_core" />： 所有联邦设备都要用到的材料， 由<ItemLink id="ae2federation:nexus_processor" />合成。
 * <ItemLink id="ae2federation:bridge" />： 直接连接两个相邻的网络。
 * <ItemLink id="ae2federation:switch" />： 把网络接入联邦域， 每个面接一个； 多个方块可以组成一台更大的交换机。
-* <ItemLink id="ae2federation:router" />： 给线缆分段， 让线缆不至于满载（[网络容量](network-capacity.md)）； 多个方块可以组成一台更大的路由器。
+* <ItemLink id="ae2federation:router" />： 给线缆分段， 让线缆不至于满载（[网络容量](mechanics/capacity.md)）； 多个方块可以组成一台更大的路由器。
 * <ItemLink id="ae2federation:cable" />： 远距离连接交换机、路由器、联邦样板供应器和处理端点。
 * <ItemLink id="ae2federation:beam_former" />： 沿直线隔空把线缆连到另一台光束成型器。
 * <ItemLink id="ae2federation:quantum_cube" />： 把线缆连到与它绑定的立方， 不限距离， 也可以跨维度。

@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: Across Domains
   icon: ae2federation:bridge
-  position: 25
+  position: 20
 ---
 
 # Across Domains
@@ -12,11 +12,11 @@ navigation:
 Bridge forms a domain of its own, so A and C never meet and no screen offers an "A uses C's" rule. Re-export on B's
 rule lets A use C's storage and crafting through B all the same.
 
-Rules belong to a pair of networks, not to a domain (see [How Federation Works](mechanics.md)): "B uses C's" is set
+Rules belong to a pair of networks, not to a domain (see [How Federation Works](index.md)): "B uses C's" is set
 once, in the domain where B and C meet, and A reaches C because B passes its access on.
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/across_domains.snbt" />
+  <ImportStructure src="../assets/across_domains.snbt" />
   <BoxAnnotation color="#915dcd" min="5.375 0 0" max="8 1 1">
     Network A: a terminal, and the energy cell that powers all three networks
   </BoxAnnotation>
@@ -76,7 +76,7 @@ C's <ItemLink id="ae2:pattern_provider" />s. A's crafting CPU pushes the ingredi
 providers, and the results come back to A; B needs no CPU. Neither Crafting rule needs a Storage rule. Unless "B uses
 C's" Storage is on with re-export, A cannot see C's storage: A's CPU must find the ingredients on A, or on B through
 "A uses B's" Storage, and leftovers, such as byproducts and the results of cancelled jobs, stay on C, out of A's reach.
-See [Remote Crafting](remote-processing.md).
+See [Remote Crafting](../crafting/index.md).
 
 ## Energy pools without re-export
 
