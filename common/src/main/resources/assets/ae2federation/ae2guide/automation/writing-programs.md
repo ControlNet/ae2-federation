@@ -14,9 +14,9 @@ player sees and edits the same ones.
 
 * **+ New** starts a program. Its name must be a Python name, such as `iron_tools`.
 * A program is a file of functions. Click a function under its program to jump to it.
-* **Push** sends the program to the computing devices. Installed functions keep running the version last pushed, so an
-  edit reaches the devices only when you push it.
-* **Delete** asks first, and is refused while a function of the program is installed.
+* **Push** sends the program, with the programs it calls, to the computing devices. Installed functions keep running
+  the version last pushed, so an edit reaches the devices only when you push the program whose functions are installed.
+* **Delete** asks first, and is refused while a function of the program is installed or another program calls it.
 
 ## The script
 

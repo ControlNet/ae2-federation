@@ -27,7 +27,8 @@ takes the ingots out below.
 
 ## Harvest wheat
 
-The interface faces farmland with wheat on it. Install it with the event `crop_grew` at that interface.
+The interface faces the wheat itself, level with it, with the farmland one block lower. Install it with the event
+`crop_grew` at that interface.
 
 <FederationProgram src="../assets/programs/harvest_wheat.ae2f" />
 

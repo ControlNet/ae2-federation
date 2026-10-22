@@ -13,7 +13,8 @@ not use is reported at its line as not supported.
 
 ## What is in
 
-* `def` with a type for every parameter and the result, default values, docstrings and comments.
+* `def` with a type for every parameter, default values, docstrings and comments. The result's type may be left out;
+  the checker takes it from the `return`s.
 * `if`, `elif`, `else`, `while`, `for x in xs`, `break`, `continue`, `return`, `pass`.
 * Assignments, including `+=` and the other arithmetic ones.
 * `int`, `float`, `str`, `bool`, `None`, lists, `range`, fields such as `stack.amount`, indexing and slices, and
@@ -52,6 +53,7 @@ A file holds any number of functions. A function calls another of its file by na
 
 * Reads, such as `ae2.amount`, take no time. An **action**, such as `ae2.craft` or `mc.set_redstone`, takes one game
   tick, so a run makes at most one action per tick. Move or craft large amounts in one call.
-* `mc.wait(ticks)` pauses the run.
+* `mc.wait(ticks)` pauses the run for `ticks` ticks; `mc.wait(0)` takes no time.
 * A run takes at most 10,000 steps a tick and goes on in the next one, so `while True:` cannot freeze the server.
-* Integers are 64-bit, a list holds at most 100,000 items, and calls nest at most 1,000 deep.
+* Integers are 64-bit, a list or string holds at most 100,000 items, and calls nest at most 1,000 deep. A program file
+  holds at most 64,000 characters.

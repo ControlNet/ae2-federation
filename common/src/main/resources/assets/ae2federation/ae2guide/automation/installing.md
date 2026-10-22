@@ -18,8 +18,11 @@ screen shows every program as a card on the left and this domain's computing dev
 * A function with parameters asks for each argument first: an item by its ID, an interface or network by its ID or
   alias, a number. The same function can be installed many times with different arguments.
 * Private functions (`_name`) cannot be installed. Everything an installed function calls comes with it.
-* An installation runs the version of its program last pushed. Its square is green when the devices run the current
-  version, yellow while an edit waits for **Push**.
+* An installation runs the version of its program last pushed. **Push** takes the program together with every program
+  it calls, as they are at that moment, and is refused until all of them check clean. A program's square is green when
+  the devices run its current text, yellow while an edit waits for **Push**.
+* Pushing a called program does not change what other programs took at their own push: push each program whose
+  installations should use the edit.
 
 ## The installation's settings
 
@@ -56,8 +59,11 @@ one run after it.
 
 ## When runs stop
 
-A run stops when its device is broken or unloaded, or the server stops. The installations stay, and their triggers
-start new runs later. Crafting jobs an installation started keep going, and `ae2.cancel` can still cancel them.
+A run stops when its device is unloaded, when the server stops, and when the installation's arguments or settings
+change. The installation stays, and its trigger starts new runs later. Breaking the device removes its installations.
+
+Crafting jobs an installation started keep going after its run stops. `ae2.cancel` reaches them while the installation
+exists, until the server restarts.
 
 ## Commands
 

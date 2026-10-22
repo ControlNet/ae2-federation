@@ -24,7 +24,7 @@ navigation:
 
 ## 收割小麦
 
-接口面朝种着小麦的耕地。 安装时对这个接口选事件`crop_grew`。
+接口正对小麦本身， 和小麦同高， 耕地在小麦下面一格。 安装时对这个接口选事件`crop_grew`。
 
 <FederationProgram src="../assets/programs/harvest_wheat.ae2f" />
 

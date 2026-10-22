@@ -54,6 +54,7 @@ An installation set to Parallel reserves 4 times its compute and fixed bandwidth
 
 ## When a device shrinks
 
-Taking a part or a cell out of a device keeps every installation. While the fixed reservations exceed what the
-device holds, the whole device pauses: runs wait where they are and triggers wait. Each installation's log says
-"paused", then "resumed" once the device holds enough again.
+Taking a part or a cell out of a device keeps every installation. While the device holds less compute or bandwidth
+than the fixed reservations, or fewer threads than installations, the whole device pauses: runs wait where they are,
+and triggers, events included, start their runs once it resumes. Each installation's log says "paused", then
+"resumed" once the device holds enough again.

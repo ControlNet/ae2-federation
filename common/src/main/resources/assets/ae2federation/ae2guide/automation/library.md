@@ -11,7 +11,8 @@ navigation:
 Programs reach the game through three namespaces. The **Library** panel in the Programs tab lists the same functions,
 each with a short example. Functions marked **action** take one game tick each.
 
-A `network` parameter is optional: left out, the call works on the whole domain, as a terminal sees it.
+A `network` parameter is optional: left out, the call works on every network of the domain, each through its own
+storage, whatever the rules share.
 
 ## ae2: storage and crafting
 
@@ -20,15 +21,19 @@ A `network` parameter is optional: left out, the call works on the whole domain,
 | `ae2.amount(resource, network)` | how much is stored |
 | `ae2.storage(network)` | everything stored, as `Stack`s |
 | `ae2.craftable(resource, network)` | whether a pattern makes it |
-| `ae2.crafting(resource, network)` | how much running jobs are still making |
+| `ae2.crafting(resource, network)` | how much running and requested jobs will still put into storage |
 | `ae2.patterns(network)` | everything that can be crafted |
 | `ae2.free_cpus(network)` | crafting CPUs not busy |
 | `ae2.energy(network)` | AE stored |
-| `ae2.craft(resource, amount, network)` | **action:** starts a job; `False` if it could not |
-| `ae2.cancel(resource, network)` | **action:** cancels the jobs this installation started |
+| `ae2.craft(resource, amount, network)` | **action:** asks for a job; `False` if no pattern makes it or no CPU is free |
+| `ae2.cancel(resource, network)` | **action:** cancels the jobs this installation started on the network |
 | `ae2.import_from(block, resource, amount, network)` | **action:** moves from the block into storage |
 | `ae2.export_to(block, resource, amount, network)` | **action:** moves from storage into the block |
 | `ae2.move(source, target, resource, amount)` | **action:** moves between two networks of the domain |
+
+AE2 plans a job over the next ticks, then starts it on a free CPU. A plan that misses ingredients, or finds every CPU
+busy by then, starts nothing, and `ae2.crafting` drops back. The job's final output counts in `ae2.crafting` from the
+request until it reaches storage.
 
 ## ae2f: the Federation
 
@@ -39,7 +44,7 @@ A `network` parameter is optional: left out, the call works on the whole domain,
 | `ae2f.online(network)` | whether the network is usable now |
 | `ae2f.rule(provider, consumer, capability)` | the rule's mode: `"off"`, `"on"` or `"reexport"` |
 | `ae2f.set_rule(provider, consumer, capability, mode)` | **action:** sets the rule |
-| `ae2f.set_filter(provider, consumer, capability, mode, resources)` | **action:** sets what passes while it is on |
+| `ae2f.set_filter(provider, consumer, capability, mode, resources)` | **action:** sets what a storage rule passes while it is on |
 
 ## mc: the world
 
@@ -57,7 +62,7 @@ A `network` parameter is optional: left out, the call works on the whole domain,
 | `mc.break_block(block)` | **action:** breaks it; the drops go into the domain's storage |
 | `mc.place_block(block, item)` | **action:** places the item from the domain's storage |
 | `mc.move_fe(source, target, amount)` | **action:** moves FE between two blocks |
-| `mc.wait(ticks)` | **action:** pauses the run |
+| `mc.wait(ticks)` | pauses the run for `ticks` ticks |
 
 Python's built-ins `int`, `float`, `str`, `bool`, `list`, `range`, `len`, `abs`, `min`, `max`, `sum`, `round`,
 `any` and `all` work as in Python, as do the methods of lists and strings. `print(...)` writes one line to the
