@@ -1,5 +1,5 @@
 """Checks on the generated Federation Cable assets and on the shipped textures: its placeholder models, that every
-texture is drawn, and the shape of the artist's animated and flow textures. The cable's geometry is AE2's dense cable, built in code by FederationCableBuilder and checked by
+texture is drawn, and the shape of the artist's animated item icons. The cable's geometry is AE2's dense cable, built in code by FederationCableBuilder and checked by
 JUnit and in-game renders, not here. The hand-made Router, Pattern Provider, Processing Endpoint and Bridge art is not checked here.
 """
 from pathlib import Path
@@ -49,27 +49,22 @@ for ref, model in generated.items():
             assert data['texture'][1:] in model['textures'], ref
             assert data.get('rotation', 0) in [0, 90, 180, 270]
 
-# Every shipped texture is drawn by a model, by the cable's code-built model, or is the cable flow renderer's own
-# texture.
+# Every shipped texture is drawn by a model or by the cable's code-built model.
 CODE_DRAWN = {NS + 'part/cable/dense/' + name for name in ('core', 'core_connected_1', 'core_connected_2',
                                                            'core_connected_3', 'core_connected_4',
                                                            'core_connected_2_straight', 'line', 'collar')} \
     | {NS + 'block/large_cable/large_cable'} \
-    | {NS + f'block/{device}/{device}_{tile}' for device in ('router', 'switch')
+    | {NS + f'block/{device}/{device}_{tile}' for device in ('router', 'switch', 'quantum_cube')
        for tile in ('base', 'corner', 'side_hor', 'side_ver')}  # DeviceStructureGeometry's connected-face tiles
-# Shipped but not drawn yet: the artist's dense cable textures not wired up yet (the connector's machine cap went
-# when Provider and Endpoint fronts became dense connections), and the old cable's textures the artist still edits.
-NOT_DRAWN_YET = ({NS + 'part/cable/dense/' + name for name in ('connector', 'stream_u', 'stream_v')}
-                 | {NS + 'block/' + name for name in ('glass', 'collar', 'stream_u', 'stream_v')})
 # Textures the client code binds by path, such as the bundle selection's hatch, are drawn too.
 JAVA = '\n'.join(path.read_text() for path in (REPO / 'common/src/main/java').rglob('*.java'))
 CODE_BOUND = {NS + ref for ref in re.findall(r'"textures/([a-z0-9_/]+)\.png"', JAVA)}
 used = {texture for model in models.values() for texture in model.get('textures', {}).values()} | CODE_DRAWN \
-    | CODE_BOUND | NOT_DRAWN_YET
+    | CODE_BOUND
 for path in (BASE / 'textures').rglob('*.png'):
     im = Image.open(path)
     ref = NS + path.relative_to(BASE / 'textures').as_posix()[:-4]
-    assert ref in used or ref == NS + 'entity/cable_flow', ('unused texture', ref)
+    assert ref in used, ('unused texture', ref)
     # Overlays the client code draws, such as the bundle selection's hatch, keep their own size.
     if ref.startswith(NS + 'misc/'):
         continue
@@ -80,14 +75,8 @@ for path in (BASE / 'textures').rglob('*.png'):
         # The artist's animated item icons: every listed frame must exist in the strip.
         frames = [f if isinstance(f, int) else f['index'] for f in json.loads(meta.read_text())['animation']['frames']]
         assert im.height % 16 == 0 and max(frames) < im.height // 16, ref
-    elif meta.exists():
-        anim = json.loads(meta.read_text())['animation']
-        assert im.height == 256 and anim == {'width': 16, 'height': 16, 'frametime': 2, 'interpolate': False}
-        # Continuous low flow never disappears; a moving bright band distinguishes frames.
-        assert im.getextrema()[3] == (255, 255)
-        assert im.crop((0, 0, 16, 16)).tobytes() != im.crop((0, 16, 16, 32)).tobytes()
     else:
-        assert im.height == (32 if path.name in ('cable_flow.png', 'large_cable.png') else 16)
+        assert im.height == (32 if path.name == 'large_cable.png' else 16)
 
 for path in (BASE / 'blockstates').glob('*.json'):
     blockstate = json.loads(path.read_text())

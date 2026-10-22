@@ -148,6 +148,11 @@ Texture use traced through models/blockstates and the code that binds textures (
 | Wrench bundle-selection overlay | `misc/bundle_selection_hatch` (D) | original |
 | Mod logo `ae2federation_logo.png` | render of the Router | contains B |
 
-Shipped but referenced nowhere (all D): `block/glass`, `block/collar`, `block/stream_u`, `block/stream_v`,
-`entity/cable_flow`, `part/cable/dense/connector`, `part/cable/dense/stream_u`, `part/cable/dense/stream_v` (+ their
-`.mcmeta`). Only the cable family and the selection overlay are free of AE2 art.
+Only the cable family and the selection overlay are free of AE2 art.
+
+Removed from the mod on 2026-10-22 (owner approved), because nothing drew them: `block/glass`, `block/collar`,
+`block/stream_u`, `block/stream_v` (the pre-artist V07 glass-tube cable, unused since the dense cable of
+2b0b5fbc), `part/cable/dense/connector` (the artist's AE2-style cap on machine fronts, dropped the same day in
+9aed66ab at the artist's suggestion), `part/cable/dense/stream_u/v` (byte copies of the block stream strips), and
+`entity/cable_flow` (the first flow renderer's texture, unused since 54cf2ba7), which moved to
+`tools/blender/resources/` for the old Blender beam studies. Group D is now 15 textures, 48 in all.
