@@ -481,7 +481,7 @@ public final class ProgramScheduler {
         stop(id, reason);
         logs.remove(id);
         costs.remove(id);
-        WebSockets.of(server).closeOwner(id);
+        WebSockets.ifPresent(server, sockets -> sockets.closeOwner(id));
     }
 
     private void stop(String id, String reason) {
@@ -584,13 +584,17 @@ public final class ProgramScheduler {
             drop(entry.getValue());
             // The installation is gone without uninstall: its connections go with it. A changed or restarted one keeps
             // them.
-            WebSockets.of(server).closeOwner(entry.getKey());
+            WebSockets.ifPresent(server, sockets -> sockets.closeOwner(entry.getKey()));
             return true;
         });
         costs.keySet().retainAll(seen);
         paused.clear();
         paused.addAll(pausedNow);
         ProgramEvents.listen(gridListeners, blockListeners);
+        if (!AutomationRule.websockets()) {
+            // Turned off on this server: no connection stays open, whoever opened it.
+            WebSockets.ifPresent(server, WebSockets::disconnectAll);
+        }
     }
 
     private void checkEvent(State state, Installation.Trigger.Event event, FederationDomainId domain, long now) {
@@ -660,6 +664,13 @@ public final class ProgramScheduler {
      */
     private void checkSocket(State state, String url, long now) {
         var id = state.installation.id();
+        try {
+            AutomationRule.require("net.connect");
+        } catch (RunError e) {
+            socketProblem(state, e.getMessage());
+            state.connecting = null;
+            return;
+        }
         var sockets = WebSockets.of(server);
         if (state.connecting != null && state.connecting.done()) {
             try {

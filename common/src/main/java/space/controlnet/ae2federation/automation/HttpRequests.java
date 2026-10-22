@@ -51,7 +51,6 @@ import space.controlnet.ae2federation.script.RunError;
  * (user, 2026-10-22).
  */
 public final class HttpRequests {
-    public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
     public static final int MAX_IN_FLIGHT = 16;
     public static final List<String> METHODS = List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD");
     private static final int MAX_CHARACTERS = 100_000;
@@ -81,7 +80,7 @@ public final class HttpRequests {
 
     /** The server's requests, made on first use; {@code server} is only a key. */
     public static synchronized HttpRequests of(Object server) {
-        return SERVERS.computeIfAbsent(server, key -> new HttpRequests(() -> DEFAULT_TIMEOUT, MAX_IN_FLIGHT));
+        return SERVERS.computeIfAbsent(server, key -> new HttpRequests(AutomationRule::timeout, MAX_IN_FLIGHT));
     }
 
     /** Drops the server's open requests and threads. */

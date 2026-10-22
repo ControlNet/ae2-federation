@@ -70,6 +70,10 @@ Files live in the world's workspace folder, `<world>/ae2federation/workspace`, w
 shares. A path is relative, with `/` between names, as in `"logs/iron.txt"`; one that leads out of the folder stops
 the run. A file holds text of up to 100,000 characters, and the folder at most 16 MB.
 
+The server can turn files off: `allowFileAccess = false` in the `[automation]` section of
+`config/ae2federation-server.toml`, where `workspaceSizeMb` sets the folder's size. An `fs` call then stops the run
+with `PermissionError`.
+
 | Function | Gives |
 | --- | --- |
 | `fs.read(path)` | the file's text, or `None` if there is none |
@@ -100,6 +104,10 @@ like `net.http`; messages arrive in the background, and `net.receive` reads them
 waiting. Unread messages beyond the newest 256 are dropped, and one over 100,000 characters closes the connection.
 What arrived before a close can still be read. A dry run opens nothing: `net.receive` gives `None`. To start a
 run when a message arrives, install it on the event `ws_message`.
+
+In the same `[automation]` section, `allowHttp = false` turns `net.http` off and `allowWebsockets = false` the
+websocket functions, closing open connections; their calls then stop the run with `PermissionError`.
+`networkTimeoutSeconds` sets how long a request, a connect or a send waits.
 
 Python's built-ins `int`, `float`, `str`, `bool`, `list`, `dict`, `set`, `range`, `len`, `abs`, `min`, `max`, `sum`,
 `round`, `any` and `all` work as in Python, as do the methods of lists, strings, dicts and sets. `print(...)` writes one line to the

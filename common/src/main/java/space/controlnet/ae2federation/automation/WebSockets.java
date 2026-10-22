@@ -41,6 +41,7 @@ public final class WebSockets {
     public static final int MAX_QUEUED = 256;
     private static final int MAX_CHARACTERS = 100_000;
     private static final int THREADS = 2;
+    private static final long PING_NANOS = 1_000_000_000L;
     private static final Map<Object, WebSockets> SERVERS = new HashMap<>();
 
     private final Supplier<Duration> timeout;
@@ -62,7 +63,15 @@ public final class WebSockets {
 
     /** The server's connections, made on first use; {@code server} is only a key. */
     public static synchronized WebSockets of(Object server) {
-        return SERVERS.computeIfAbsent(server, key -> new WebSockets(() -> HttpRequests.DEFAULT_TIMEOUT));
+        return SERVERS.computeIfAbsent(server, key -> new WebSockets(AutomationRule::timeout));
+    }
+
+    /** Runs {@code use} on the server's connections if it has any, without making them. */
+    public static synchronized void ifPresent(Object server, java.util.function.Consumer<WebSockets> use) {
+        var sockets = SERVERS.get(server);
+        if (sockets != null) {
+            use.accept(sockets);
+        }
     }
 
     /** Closes the server's connections and stops their threads. */
@@ -87,9 +96,10 @@ public final class WebSockets {
         }
         var wait = timeout.get();
         var connection = new Connection();
-        connection.opening = client.newWebSocketBuilder().connectTimeout(wait).buildAsync(uri, connection)
+        connection.building = client.newWebSocketBuilder().connectTimeout(wait).buildAsync(uri, connection)
                 .orTimeout(wait.toMillis(), TimeUnit.MILLISECONDS);
-        connection.opening.whenComplete((socket, failure) -> {
+        // Done once the connection counts as open, so net.connected agrees with net.connect's answer.
+        connection.opening = connection.building.whenComplete((socket, failure) -> {
             if (failure != null) {
                 connection.closed = true;
                 own.remove(url, connection);
@@ -117,7 +127,7 @@ public final class WebSockets {
                     .orTimeout(wait.toMillis(), TimeUnit.MILLISECONDS);
             connection.sending = sent.exceptionally(failure -> connection.socket);
         }
-        return new Waiting(sent, () -> new RunError("OSError", "could not send to " + Ops.repr(url)));
+        return new Waiting(sent, sent, () -> new RunError("OSError", "could not send to " + Ops.repr(url)));
     }
 
     /** The oldest message not read yet, or {@code null}. */
@@ -125,6 +135,7 @@ public final class WebSockets {
         var connection = connections.getOrDefault(owner, Map.of()).get(url);
         return connection == null ? null : connection.queue.pollFirst();
     }
+
 
     public boolean connected(String owner, String url) {
         return open(owner, url) != null;
@@ -154,16 +165,25 @@ public final class WebSockets {
         }
     }
 
-    public void close() {
+    /** Closes every connection, keeping the threads for new ones. */
+    public void disconnectAll() {
         connections.values().forEach(own -> own.values().forEach(Connection::close));
         connections.clear();
+    }
+
+    public void close() {
+        disconnectAll();
         client.shutdownNow();
         pool.shutdownNow();
     }
 
     private @Nullable Connection open(String owner, String url) {
         var connection = connections.getOrDefault(owner, Map.of()).get(url);
-        return connection != null && connection.socket != null && !connection.closed ? connection : null;
+        if (connection == null || connection.socket == null || connection.closed) {
+            return null;
+        }
+        connection.check();
+        return connection;
     }
 
     /** Refuses a URL that is not ws or wss with {@code ValueError}, as {@link #connect} does. */
@@ -184,8 +204,9 @@ public final class WebSockets {
         throw new RunError("ValueError", "url must start with ws:// or wss://: " + Ops.repr(url));
     }
 
-    /** A step that ends in True, or in the error {@code failed} gives. */
-    private record Waiting(CompletableFuture<?> future, Supplier<RunError> failed) implements Pending {
+    /** A step that ends in True, or in the error {@code failed} gives; cancelling stops {@code work}. */
+    private record Waiting(CompletableFuture<?> future, CompletableFuture<?> work, Supplier<RunError> failed)
+            implements Pending {
         @Override
         public boolean done() {
             return future.isDone();
@@ -203,6 +224,7 @@ public final class WebSockets {
 
         @Override
         public void cancel() {
+            work.cancel(true);
             future.cancel(true);
         }
     }
@@ -213,18 +235,41 @@ public final class WebSockets {
         final AtomicLong received = new AtomicLong();
         /** The part of a message that arrived so far; listener threads only, one at a time. */
         final StringBuilder partial = new StringBuilder();
+        /** The JDK's handshake, which cancelling stops. */
+        CompletableFuture<WebSocket> building;
         CompletableFuture<WebSocket> opening;
         CompletableFuture<WebSocket> sending;
         volatile WebSocket socket;
         volatile boolean closed;
+        volatile long lastPing = System.nanoTime();
 
         Pending opened(String url) {
-            return new Waiting(opening, () -> new RunError("OSError", "could not connect to " + Ops.repr(url)));
+            return new Waiting(opening, building,
+                    () -> new RunError("OSError", "could not connect to " + Ops.repr(url)));
+        }
+
+        /**
+         * Pings at most once a second while the connection is looked at. The JDK does not always report a server that
+         * dropped the connection without a close frame; a ping to it fails, which marks the connection closed.
+         */
+        void check() {
+            long now = System.nanoTime();
+            if (now - lastPing < PING_NANOS) {
+                return;
+            }
+            lastPing = now;
+            var open = socket;
+            open.sendPing(ByteBuffer.allocate(0)).whenComplete((done, failure) -> {
+                if (failure != null) {
+                    closed = true;
+                    open.abort();
+                }
+            });
         }
 
         void close() {
             closed = true;
-            opening.cancel(true);
+            building.cancel(true);
             var open = socket;
             if (open != null) {
                 open.sendClose(WebSocket.NORMAL_CLOSURE, "").whenComplete((done, failure) -> open.abort());
@@ -233,7 +278,8 @@ public final class WebSockets {
 
         @Override
         public void onOpen(WebSocket webSocket) {
-            webSocket.request(1);
+            // Every message goes to the queue, which drops the oldest itself: no need to hold the server back.
+            webSocket.request(Long.MAX_VALUE);
         }
 
         @Override
@@ -253,13 +299,11 @@ public final class WebSockets {
                 }
                 received.incrementAndGet();
             }
-            webSocket.request(1);
             return null;
         }
 
         @Override
         public CompletionStage<?> onBinary(WebSocket webSocket, ByteBuffer data, boolean last) {
-            webSocket.request(1);
             return null;
         }
 

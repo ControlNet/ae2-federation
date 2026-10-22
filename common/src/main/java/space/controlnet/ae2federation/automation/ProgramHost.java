@@ -79,7 +79,7 @@ public final class ProgramHost implements Evaluator.Host {
         this.simulate = simulate;
         this.catalog = ProgramStore.catalog(server, domain);
         this.domainCalls = new DomainCalls(server, domain, owner, catalog, simulate);
-        this.files = new WorkspaceFiles(workspace(server), () -> WorkspaceFiles.DEFAULT_CAP_BYTES);
+        this.files = new WorkspaceFiles(workspace(server), AutomationRule::workspaceCapBytes);
     }
 
     /** {@code <world>/ae2federation/workspace}, beside the programs folder. */
@@ -140,7 +140,10 @@ public final class ProgramHost implements Evaluator.Host {
 
     @Override
     public Object call(String namespace, String name, List<Object> args) {
-        return switch (namespace + "." + name) {
+        var key = namespace + "." + name;
+        // Before the dry-run answers, so the editor's dry run reports a switched-off group too.
+        AutomationRule.require(key);
+        return switch (key) {
             case "ae2f.select" -> select((String) args.get(0), (Long) args.get(1), (String) args.get(2));
             case "ae2f.networks" -> new ListValue(List.copyOf(catalog.values(new TypeRef("Network", List.of()), "")
                     .stream().filter(candidate -> NetworkShortIdBook.valid(candidate.label()))

@@ -52,3 +52,13 @@ server, since neither the JDK nor the game ships one), GameTest `programs.host-w
 Checks: GameTest `programs.websocket-event` (`awebsocketmessagestartsarun`); `AutomationTabScenario` now counts 12
 events. Pre-existing, not from this work: the scenario's check "the aside shows the arguments, trigger, gap, overlap
 and state" fails at d3e6b62f too (the aside's values now include the Cost row).
+
+## JDK client misses abrupt closes (found 2026-10-22, fixed with the config commit)
+
+When a server pushes a message and drops the TCP connection without a close frame, the JDK `java.net.http`
+WebSocket (21.0.12) sometimes delivers `onText` but never `onClose`/`onError`, and `isInputClosed()` stays false
+(reproduced 6/40, 35/40 with prints in `onText`; unlimited demand did not help). Workaround: `Connection.check()`
+pings at most once a second whenever the connection is looked at (`connected`, `send`, the `ws_message` check every
+tick); a ping to the dead peer fails and marks it closed, within about 3 s. Also: `connect`'s Pending now waits on the
+`whenComplete` stage, so `net.connected` is True once `net.connect` answered True; cancelling stops the JDK handshake
+(`building`). Demand is requested once (`Long.MAX_VALUE`) since the queue drops the oldest itself.

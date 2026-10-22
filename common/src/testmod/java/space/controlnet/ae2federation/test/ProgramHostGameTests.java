@@ -26,12 +26,15 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.automation.AutomationInterfaceBlockEntity;
 import space.controlnet.ae2federation.automation.AutomationInterfaces;
 import space.controlnet.ae2federation.automation.AutomationRegistration;
+import space.controlnet.ae2federation.automation.AutomationRule;
 import space.controlnet.ae2federation.automation.ProgramDryRun;
 import space.controlnet.ae2federation.automation.ProgramHost;
 import space.controlnet.ae2federation.automation.ProgramRun;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.script.DictValue;
+import space.controlnet.ae2federation.script.RunError;
 import space.controlnet.ae2federation.script.Runner;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingFixtures;
@@ -267,6 +270,56 @@ public final class ProgramHostGameTests {
                     helper.assertValueEqual(seen.get(), 1, "Only the real run reached the server");
                     web.stop(0);
                 });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void theServerTurnsOutsideCallsOff(GameTestHelper helper) {
+        var fixtures = build(helper, Blocks.STONE.defaultBlockState());
+        var level = helper.getLevel();
+        var server = level.getServer();
+        run(helper, fixtures, "host_switches", """
+                def run() -> bool:
+                    return fs.exists("gametest-switches")
+                """, false, "With the defaults a program reaches the workspace", () -> {
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
+                    var domain = AutomationInterfaces.get(level).domainOf(level, automationInterface.id())
+                            .orElseThrow();
+                    var host = new ProgramHost(server, domain, "gametest:host_switches");
+                    var dry = ProgramHost.dryRun(server, domain);
+                    // The rule is shared by every test: off and back on within this one step.
+                    AutomationRule.set(false, false, false, AutomationRule.DEFAULT_TIMEOUT_SECONDS,
+                            AutomationRule.DEFAULT_WORKSPACE_MB);
+                    try {
+                        helper.assertValueEqual(refusal(() -> host.call("fs", "list", List.of(""))),
+                                "PermissionError: file access is turned off on this server (allowFileAccess)",
+                                "Files are off");
+                        helper.assertValueEqual(refusal(() -> dry.call("fs", "write", List.of("a.txt", "x"))),
+                                "PermissionError: file access is turned off on this server (allowFileAccess)",
+                                "A dry run says so too");
+                        helper.assertValueEqual(refusal(() -> host.call("net", "http",
+                                        List.of("GET", "http://127.0.0.1:1/", "", new DictValue()))),
+                                "PermissionError: HTTP requests are turned off on this server (allowHttp)",
+                                "HTTP is off");
+                        helper.assertValueEqual(refusal(() -> host.call("net", "receive",
+                                        List.of("ws://127.0.0.1:1/"))),
+                                "PermissionError: websockets are turned off on this server (allowWebsockets)",
+                                "Websockets are off");
+                        helper.assertValueEqual(host.call("mc", "time", List.of()) instanceof Long, true,
+                                "Calls inside the game still work");
+                    } finally {
+                        AutomationRule.reset();
+                    }
+                });
+    }
+
+    private static String refusal(Runnable call) {
+        try {
+            call.run();
+        } catch (RunError e) {
+            return e.toString();
+        }
+        throw new AssertionError("expected the call to be refused");
     }
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",

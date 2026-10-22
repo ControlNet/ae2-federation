@@ -5,6 +5,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
+import space.controlnet.ae2federation.automation.AutomationRule;
 import space.controlnet.ae2federation.beam.BeamLinkRule;
 import space.controlnet.ae2federation.domain.CableCapacityLimit;
 import space.controlnet.ae2federation.power.OperatingPowerRule;
@@ -21,6 +22,11 @@ public final class FederationServerConfig {
     private static final ModConfigSpec.BooleanValue REQUIRE_OPERATING_POWER;
     private static final ModConfigSpec.DoubleValue OPERATING_COST_MULTIPLIER;
     private static final ModConfigSpec.IntValue BEAM_RANGE;
+    private static final ModConfigSpec.BooleanValue ALLOW_FILE_ACCESS;
+    private static final ModConfigSpec.BooleanValue ALLOW_HTTP;
+    private static final ModConfigSpec.BooleanValue ALLOW_WEBSOCKETS;
+    private static final ModConfigSpec.IntValue NETWORK_TIMEOUT;
+    private static final ModConfigSpec.IntValue WORKSPACE_SIZE;
 
     static {
         var builder = new ModConfigSpec.Builder();
@@ -55,6 +61,32 @@ public final class FederationServerConfig {
                         "beams cost more operating power and notice a block put in their way later.")
                 .defineInRange("maxRange", BeamLinkRule.DEFAULT_RANGE, 1, BeamLinkRule.MAX_RANGE);
         builder.pop();
+        builder.push("automation");
+        ALLOW_FILE_ACCESS = builder.comment(
+                        "Let programs read and write files in the world's workspace folder,",
+                        "<world>/ae2federation/workspace, with the fs functions. When false, an fs call stops the run with",
+                        "PermissionError.")
+                .define("allowFileAccess", true);
+        ALLOW_HTTP = builder.comment(
+                        "Let programs send HTTP requests with net.http. When false, the call stops the run with",
+                        "PermissionError.")
+                .define("allowHttp", true);
+        ALLOW_WEBSOCKETS = builder.comment(
+                        "Let programs open websocket connections with net.connect and the other websocket functions, and",
+                        "installations start on ws_message. When false, the calls stop the run with PermissionError and",
+                        "open connections close.")
+                .define("allowWebsockets", true);
+        NETWORK_TIMEOUT = builder.comment(
+                        "Seconds an HTTP request, a websocket connect or a websocket send waits at most before the run",
+                        "stops with OSError.")
+                .defineInRange("networkTimeoutSeconds", AutomationRule.DEFAULT_TIMEOUT_SECONDS, 1,
+                        AutomationRule.MAX_TIMEOUT_SECONDS);
+        WORKSPACE_SIZE = builder.comment(
+                        "How many megabytes the workspace folder may hold. A write that would pass it stops the run with",
+                        "OSError.")
+                .defineInRange("workspaceSizeMb", AutomationRule.DEFAULT_WORKSPACE_MB, 1,
+                        AutomationRule.MAX_WORKSPACE_MB);
+        builder.pop();
         SPEC = builder.build();
     }
 
@@ -71,6 +103,7 @@ public final class FederationServerConfig {
             CableCapacityLimit.set(true, CableCapacityLimit.DEFAULT_CAPACITY);
             OperatingPowerRule.set(true, OperatingPowerRule.DEFAULT_MULTIPLIER);
             BeamLinkRule.set(BeamLinkRule.DEFAULT_RANGE);
+            AutomationRule.reset();
         });
     }
 
@@ -79,5 +112,7 @@ public final class FederationServerConfig {
         CableCapacityLimit.set(ENFORCE_CABLE_CAPACITY.get(), CABLE_CAPACITY.get());
         OperatingPowerRule.set(REQUIRE_OPERATING_POWER.get(), OPERATING_COST_MULTIPLIER.get());
         BeamLinkRule.set(BEAM_RANGE.get());
+        AutomationRule.set(ALLOW_FILE_ACCESS.get(), ALLOW_HTTP.get(), ALLOW_WEBSOCKETS.get(), NETWORK_TIMEOUT.get(),
+                WORKSPACE_SIZE.get());
     }
 }

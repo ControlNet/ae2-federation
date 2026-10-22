@@ -2,7 +2,8 @@
 
 Status: agreed. Order (user): dicts and sets (done), `fs` (done, `program-fs-2026-10-22.md`), `net.http` (done,
 `program-http-2026-10-22.md`; headers are a dict, not lines), websockets (functions done,
-`program-websocket-2026-10-22.md`; the `ws_message` event next), then the config section.
+`program-websocket-2026-10-22.md`, with the `ws_message` event), then the config section (done,
+`program-config-2026-10-22.md`). All five steps are on feature/function-system.
 
 ## Scope decided by the user
 

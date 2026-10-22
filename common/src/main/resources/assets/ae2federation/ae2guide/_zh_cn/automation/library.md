@@ -64,6 +64,8 @@ AE2会在接下来几刻里规划任务， 规划好后交给空闲的CPU。 规
 
 文件放在世界的工作区文件夹`<world>/ae2federation/workspace`里， 这个世界的所有程序共用它。 路径是相对路径， 名字之间用`/`分隔， 例如`"logs/iron.txt"`； 指向文件夹以外的路径会让运行停止。 一个文件最多存100,000个字符的文本， 整个文件夹最多16 MB。
 
+服务器可以关闭文件功能： 在`config/ae2federation-server.toml`的`[automation]`部分设置`allowFileAccess = false`； 同一部分的`workspaceSizeMb`设置文件夹的大小。 关闭后， `fs`调用会以`PermissionError`停止运行。
+
 | 函数 | 结果 |
 | --- | --- |
 | `fs.read(path)` | 文件的文本； 没有这个文件时为`None` |
@@ -87,5 +89,7 @@ AE2会在接下来几刻里规划任务， 规划好后交给空闲的CPU。 规
 运行会等待回答， 等待不占用操作， 最多10秒。 任何状态码（包括404）都算回答； 没有回答、超时或回答超过100,000个字符时， 运行停止。 回答里的头部名字是小写的。 试运行不发送请求， 给出`Response(0, "", {})`。
 
 websocket的URL以`ws://`或`wss://`开头。 连接属于安装： 两次运行之间保持打开， 安装被移除时关闭。 一个安装最多同时打开4个连接。 `net.connect`和`net.send`像`net.http`一样等待； 消息在后台到达， `net.receive`按顺序读取， 没有消息时为`None`。 没读的消息只保留最新的256条， 超过100,000个字符的消息会关闭连接。 关闭前到达的消息仍然可以读。 试运行不打开连接： `net.receive`给出`None`。 想在消息到达时启动运行， 把它安装在`ws_message`事件上。
+
+在同一个`[automation]`部分， `allowHttp = false`关闭`net.http`， `allowWebsockets = false`关闭websocket函数并断开已打开的连接； 关闭后这些调用会以`PermissionError`停止运行。 `networkTimeoutSeconds`设置请求、连接和发送最多等待多久。
 
 Python内置的`int`、`float`、`str`、`bool`、`list`、`dict`、`set`、`range`、`len`、`abs`、`min`、`max`、`sum`、`round`、`any`和`all`， 以及列表、字符串、字典和集合的方法， 都和Python中一样。 `print(...)`往安装的日志里写一行。
