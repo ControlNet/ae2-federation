@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME联邦线缆
   icon: ae2federation:cable
   position: 415

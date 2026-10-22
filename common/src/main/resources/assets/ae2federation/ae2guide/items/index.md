@@ -1,9 +1,8 @@
 ---
 navigation:
-  parent: index.md
-  title: Items and Blocks
+  title: "Federation: Items and Blocks"
   icon: ae2federation:switch
-  position: 400
+  position: 930
 ---
 
 # Items and Blocks

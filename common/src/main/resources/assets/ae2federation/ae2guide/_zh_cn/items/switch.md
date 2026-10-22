@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME联邦交换机
   icon: ae2federation:switch
   position: 420

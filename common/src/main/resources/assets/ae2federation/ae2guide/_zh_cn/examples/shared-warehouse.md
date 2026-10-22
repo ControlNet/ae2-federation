@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: 共享仓库
   icon: ae2:drive
   position: 510

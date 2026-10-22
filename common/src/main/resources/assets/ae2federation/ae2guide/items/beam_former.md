@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Beam Former
   icon: ae2federation:beam_former
   position: 433

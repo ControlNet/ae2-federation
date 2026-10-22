@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME联邦样板供应器
   icon: ae2federation:pattern_provider
   position: 445

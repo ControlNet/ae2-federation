@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Switch
   icon: ae2federation:switch
   position: 420

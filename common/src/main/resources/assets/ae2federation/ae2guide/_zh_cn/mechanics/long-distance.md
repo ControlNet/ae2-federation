@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: 远距离连接
   icon: ae2federation:beam_former
   position: 250

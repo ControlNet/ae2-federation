@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: A Factory That Takes Orders
   icon: ae2:molecular_assembler
   position: 527

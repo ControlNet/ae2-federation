@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Quantum Cube
   icon: ae2federation:quantum_cube
   position: 434

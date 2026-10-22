@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: A Power Plant
   icon: mekanism:basic_induction_cell
   position: 543

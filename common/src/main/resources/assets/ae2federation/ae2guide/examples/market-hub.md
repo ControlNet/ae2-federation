@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: A Market Hub
   icon: ae2federation:switch
   position: 525

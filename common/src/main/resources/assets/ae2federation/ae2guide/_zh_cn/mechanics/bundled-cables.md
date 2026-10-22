@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: 联邦粗线缆
   icon: ae2federation:cable
   position: 245

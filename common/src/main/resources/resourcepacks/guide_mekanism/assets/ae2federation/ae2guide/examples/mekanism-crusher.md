@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: A Remote Mekanism Crusher
   icon: mekanism:crusher
   position: 540

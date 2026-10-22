@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: 下界前哨
   icon: ae2federation:federation_p2p_tunnel
   position: 515

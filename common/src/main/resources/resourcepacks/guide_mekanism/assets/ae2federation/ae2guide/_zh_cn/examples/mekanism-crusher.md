@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: 远程Mekanism粉碎机
   icon: mekanism:crusher
   position: 540

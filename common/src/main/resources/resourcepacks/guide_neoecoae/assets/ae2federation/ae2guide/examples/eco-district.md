@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: A Neo ECO District
   icon: neoecoae:computation_system_l4
   position: 580

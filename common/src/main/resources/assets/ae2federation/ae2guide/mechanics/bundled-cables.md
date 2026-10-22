@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: Bundled Cables
   icon: ae2federation:cable
   position: 245

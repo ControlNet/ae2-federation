@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME联邦光束转换器
   icon: ae2federation:beam_converter
   position: 430

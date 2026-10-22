@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Pattern Provider
   icon: ae2federation:pattern_provider
   position: 445

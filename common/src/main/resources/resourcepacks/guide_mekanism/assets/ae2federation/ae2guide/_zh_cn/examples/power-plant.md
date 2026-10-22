@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: 发电厂
   icon: mekanism:basic_induction_cell
   position: 543

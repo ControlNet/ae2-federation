@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: Create Crushing Wheels
   icon: create:crushing_wheel
   position: 560

@@ -1,9 +1,8 @@
 ---
 navigation:
-  parent: index.md
-  title: 使用示例
+  title: 联邦：使用示例
   icon: ae2federation:bridge
-  position: 500
+  position: 940
 ---
 
 # 使用示例

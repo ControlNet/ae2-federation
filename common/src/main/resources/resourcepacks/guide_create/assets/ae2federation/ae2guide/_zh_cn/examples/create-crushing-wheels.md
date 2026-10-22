@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: Create粉碎轮
   icon: create:crushing_wheel
   position: 560

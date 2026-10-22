@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: A Chemical Tank Farm
   icon: mekanism:dynamic_tank
   position: 550

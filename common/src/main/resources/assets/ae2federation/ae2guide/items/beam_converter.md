@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Beam Converter
   icon: ae2federation:beam_converter
   position: 430

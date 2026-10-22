@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: 靠供应器FE运行的石磨
   icon: appflux:induction_card
   position: 546

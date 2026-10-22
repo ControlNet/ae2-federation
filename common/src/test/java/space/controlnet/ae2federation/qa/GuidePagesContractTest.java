@@ -147,19 +147,36 @@ final class GuidePagesContractTest {
     }
 
     /**
-     * Every page hangs directly under the Federation entry. GuideME's sidebar shows a root and its children only, and
-     * the Federation entry is already a child of AE2's guide root, so a page any deeper would be missing from it.
+     * GuideME's sidebar shows a root and its direct children only, so the guide is split into roots of AE2's guide: the
+     * Federation entry and one per section. Every other page hangs directly under one of them; a page any deeper would
+     * be missing from the sidebar.
      */
+    static final Set<String> ROOTS = Set.of("index.md", "mechanics/index.md", "crafting/index.md",
+            "items/index.md", "examples/index.md");
+
     @Test
-    void pagesHangDirectlyUnderTheFederationEntryAndChineseCopiesKeepTheirPlace() throws IOException {
+    void pagesHangDirectlyUnderARootAndChineseCopiesKeepTheirPlace() throws IOException {
         for (var guide : guides()) {
             for (var page : pages(guide.root())) {
                 var english = frontmatter(guide.root().resolve(page));
                 var chinese = frontmatter(guide.root().resolve("_zh_cn").resolve(page));
                 assertTrue(english.contains("navigation:"), page);
-                assertEquals(page.equals("index.md"), !english.contains("parent:"), page);
-                assertTrue(page.equals("index.md") || english.contains("  parent: index.md\n"),
-                        page + " must hang directly under index.md, or the sidebar hides it");
+                for (var matter : List.of(english, chinese)) {
+                    // GuideME's YAML parser rejects a plain value holding ": ", and the page then has no navigation.
+                    var value = Pattern.compile("(?m)^\\s*[\\w-]+: (.*)$").matcher(matter);
+                    while (value.find()) {
+                        assertTrue(!value.group(1).contains(": ") || value.group(1).startsWith("\""),
+                                page + ": quote the frontmatter value " + value.group(1));
+                    }
+                }
+                assertEquals(ROOTS.contains(page), !english.contains("parent:"), page + " is a root exactly when listed");
+                if (!ROOTS.contains(page)) {
+                    var parent = Pattern.compile("(?m)^  parent: (\\S+)$").matcher(english);
+                    assertTrue(parent.find() && ROOTS.contains(parent.group(1)),
+                            page + " must hang directly under a root, or the sidebar hides it");
+                }
+                assertTrue(!page.startsWith("examples/") || page.equals("examples/index.md")
+                        || english.contains("  parent: examples/index.md\n"), page + " belongs under the examples root");
                 assertEquals(english.replaceAll("(?m)^  title: .*$", ""), chinese.replaceAll("(?m)^  title: .*$", ""),
                         "Only the title may differ between " + page + " and its Chinese copy");
             }

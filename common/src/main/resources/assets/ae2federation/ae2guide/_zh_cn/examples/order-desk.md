@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: 接单的工厂
   icon: ae2:molecular_assembler
   position: 527

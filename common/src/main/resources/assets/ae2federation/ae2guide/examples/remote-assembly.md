@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: Order from an Assembly Workshop
   icon: ae2:molecular_assembler
   position: 520

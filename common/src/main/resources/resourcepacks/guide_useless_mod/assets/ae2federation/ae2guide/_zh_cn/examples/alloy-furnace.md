@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: 向万象合金炉下单
   icon: useless_mod:advanced_alloy_furnace_block
   position: 571

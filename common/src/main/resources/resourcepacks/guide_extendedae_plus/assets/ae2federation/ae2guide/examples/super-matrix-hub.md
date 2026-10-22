@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: One Factory, Two Districts
   icon: extendedae_plus:super_assembler_matrix_frame
   position: 575

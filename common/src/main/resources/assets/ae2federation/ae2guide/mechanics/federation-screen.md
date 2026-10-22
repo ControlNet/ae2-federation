@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: The Federation Screen
   icon: ae2federation:router
   position: 260

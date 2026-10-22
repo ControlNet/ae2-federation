@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: A Furnace on the Provider's FE
   icon: appflux:induction_card
   position: 546

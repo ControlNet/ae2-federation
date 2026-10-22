@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: 矿石翻倍产线
   icon: mekanism:enrichment_chamber
   position: 542

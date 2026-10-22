@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: mechanics/index.md
   title: 联邦界面
   icon: ae2federation:router
   position: 260

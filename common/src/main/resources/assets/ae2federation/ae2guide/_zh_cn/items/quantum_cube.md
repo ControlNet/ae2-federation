@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME联邦量子立方
   icon: ae2federation:quantum_cube
   position: 434

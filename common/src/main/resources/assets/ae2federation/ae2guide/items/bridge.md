@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Bridge
   icon: ae2federation:bridge
   position: 435

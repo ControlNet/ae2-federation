@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: crafting/index.md
   title: 处理端点
   icon: ae2federation:processing_endpoint
   position: 320

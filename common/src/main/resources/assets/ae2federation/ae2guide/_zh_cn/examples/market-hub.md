@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: 市场枢纽
   icon: ae2federation:switch
   position: 525

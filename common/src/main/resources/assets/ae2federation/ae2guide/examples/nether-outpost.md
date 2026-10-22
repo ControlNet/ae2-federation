@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: An Outpost in the Nether
   icon: ae2federation:federation_p2p_tunnel
   position: 515

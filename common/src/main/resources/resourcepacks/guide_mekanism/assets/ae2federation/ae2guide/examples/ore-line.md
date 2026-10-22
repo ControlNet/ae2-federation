@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: An Ore Doubling Line
   icon: mekanism:enrichment_chamber
   position: 542

@@ -1,9 +1,8 @@
 ---
 navigation:
-  parent: index.md
-  title: Crafting Across Networks
+  title: "Federation: Crafting"
   icon: ae2federation:processing_endpoint
-  position: 300
+  position: 920
 ---
 
 # Crafting Across Networks

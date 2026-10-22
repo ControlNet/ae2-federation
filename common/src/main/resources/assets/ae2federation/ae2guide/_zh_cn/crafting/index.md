@@ -1,9 +1,8 @@
 ---
 navigation:
-  parent: index.md
-  title: 跨网络合成
+  title: 联邦：跨网络合成
   icon: ae2federation:processing_endpoint
-  position: 300
+  position: 920
 ---
 
 # 跨网络合成

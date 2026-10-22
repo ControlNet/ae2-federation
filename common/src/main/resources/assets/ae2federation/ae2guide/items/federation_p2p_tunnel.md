@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: Federation P2P Tunnel
   icon: ae2federation:federation_p2p_tunnel
   position: 440

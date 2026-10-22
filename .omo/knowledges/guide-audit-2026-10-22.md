@@ -48,8 +48,8 @@ into the feature branch.
 - Approved tree: index, Getting Started, mechanics/ (domains, rules + re-export incl. across domains, two kinds of
   power, capacity, bundled cables, long-distance links, Federation screen + statistics), crafting/ (AE2 providers via
   a rule; Federation Provider + Endpoint), items/, examples/, Troubleshooting.
-- Every page must be reachable from the sidebar: no page without `navigation`, and every page has
-  `parent: index.md` (see the sidebar limit below).
+- Every page must be reachable from the sidebar: no page without `navigation`, and every page hangs directly
+  under one of the guide's roots (see the sidebar limit below).
 - Beam Converters go into complete builds only (Getting Started and every example, the optional packs' too).
   Scenes that illustrate one concept (shapes, connections, bundles) stay as they are; the text says once that a
   domain needs FE.
@@ -67,11 +67,24 @@ our pages never appears in the sidebar: before the restructure the seven example
 after grouping into folders the mechanics, crafting, item and example pages would all have been. GuideME logs no
 warning for it.
 
-Owner's choice: flatten. Every page, the optional packs' too, has `parent: index.md`; the folders stay for files only,
-and positions keep the groups together (getting started 100, mechanics 200-270, crafting 300-320, items 400-455,
-examples 500-590, troubleshooting 600). Section pages list their pages by hand instead of `<SubPages>`, which would
-now be empty. `GuidePagesContractTest.pagesHangDirectlyUnderTheFederationEntryAndChineseCopiesKeepTheirPlace` holds
-the rule. Screenshots: `build/guide-restructure-check/{before,after}-sidebar-en.png`.
+First fix (eb4ec28d): flatten everything under `index.md`. The owner then preferred sections that fold, so the guide
+is now five roots of AE2's guide, each with its pages as direct children:
+
+| Root page | Sidebar title | Position | Children |
+|---|---|---|---|
+| `index.md` | AE2 Federation | 900 | getting-started, troubleshooting |
+| `mechanics/index.md` | Federation: How It Works / 联邦：工作方式 | 910 | rules ... statistics |
+| `crafting/index.md` | Federation: Crafting / 联邦：跨网络合成 | 920 | ae2-providers, processing-endpoints |
+| `items/index.md` | Federation: Items and Blocks / 联邦：物品与方块 | 930 | every item page |
+| `examples/index.md` | Federation: Examples / 联邦：使用示例 | 940 | every example, the optional packs' too |
+
+AE2's own roots use positions 0-50. Section pages list their pages by hand. `GuidePagesContractTest.ROOTS` and
+`pagesHangDirectlyUnderARootAndChineseCopiesKeepTheirPlace` hold the rule. Root titles stay short enough for one
+sidebar line ("Federation: Crafting Across Networks" wrapped).
+
+A plain YAML value holding ": " (an English title like `Federation: How It Works`) makes GuideME log "Failed to parse
+frontmatter" and drop the page from navigation, silently in the sidebar; quote such titles. The contract test checks
+it. Screenshots: `build/guide-restructure-check/{before,after}-sidebar-*.png`.
 
 ## Guide screenshots without disturbing other clients
 

@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Processing Endpoint
   icon: ae2federation:processing_endpoint
   position: 455

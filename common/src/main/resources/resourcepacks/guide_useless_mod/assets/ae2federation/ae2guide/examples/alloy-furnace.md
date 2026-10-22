@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: Order from an Alloy Furnace
   icon: useless_mod:advanced_alloy_furnace_block
   position: 571

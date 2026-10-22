@@ -1,6 +1,6 @@
 ---
 navigation:
-  parent: index.md
+  parent: examples/index.md
   title: Outsourced Furnaces
   icon: ae2federation:processing_endpoint
   position: 530
