@@ -42,6 +42,6 @@ navigation:
 
 * **其他模组的发电机**， 把FE输入光束转换器。 任何模组的FE线缆或发电机都可以。
 * **创造ME联邦光束转换器**， 永远不会耗尽。 它是创造模式方块。
-* 服务器选项`requireOperatingPower = false`， 位于世界文件夹中`serverconfig/ae2federation-server.toml`的`[power]`部分。 关闭后所有联邦域都不需要转换器。 同一部分的`operatingCostMultiplier`按比例调整上表中的所有消耗。
+* 服务器选项`requireOperatingPower = false`， 位于`config/ae2federation-server.toml`的`[power]`部分（放在某个世界`serverconfig`文件夹里的同名文件只对那个世界生效）。 关闭后所有联邦域都不需要转换器。 同一部分的`operatingCostMultiplier`按比例调整上表中的所有消耗。
 
 转换器的尺寸必须和联邦域里最大的线缆匹配； 尺寸、缓存和配方见它的页面。
