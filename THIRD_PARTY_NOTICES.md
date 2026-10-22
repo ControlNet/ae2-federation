@@ -3,11 +3,11 @@
 AE2 Federation is an independent addon for Applied Energistics 2. It is not affiliated with Mojang, Microsoft, the
 Applied Energistics 2 team or any other mod listed here. Each project below stays the property of its authors.
 
-This file covers what the released JAR contains and what it relies on:
+This file covers what the released JAR and this repository contain and what they rely on:
 
 - **Code**: AE2 Federation's own code is licensed under [AGPL-3.0-only](LICENSE). Code adapted from other projects
   keeps its original notice; see *Adapted code*.
-- **Other bundled files**: the font subset and the guide's images; see *Fonts* and *Guide images*.
+- **Other files**: the font subset, the README's teaser and the guide's images; see *Fonts* and *Images*.
 - **Testing**: the mods and modpacks the test suite runs against, none of which is shipped; see
   *Compatibility testing*.
 
@@ -149,15 +149,22 @@ CJK and full-width punctuation, with the layout, vertical-metrics and hinting ta
 `font/canvas.json` puts the subset in front of Minecraft's own `minecraft:default` font, which it refers to and does
 not copy.
 
-## Guide images
-
-The in-game guide ships two images, each in an English and a Chinese copy:
+## Images
 
 | File | What it is | What it shows |
 |---|---|---|
-| `ae2guide/assets/teaser.png`, `ae2guide/_zh_cn/assets/teaser.png` (identical) | an in-game render of a powered build, exported as a GuideME scene on a transparent background | AE2 Federation's blocks and cables, Applied Energistics 2's blocks and cables, and vanilla Minecraft blocks |
+| `docs/teaser.webp` (README, not in the JAR); `ae2guide/assets/teaser.png`, `ae2guide/_zh_cn/assets/teaser.png` (the same render as a palette PNG, in the guide) | an in-game render of a powered build, exported as a GuideME scene on a transparent background; adapted from Applied Energistics 2's image, see below | AE2 Federation's blocks and cables, Applied Energistics 2's blocks and cables, and vanilla Minecraft blocks |
 | `ae2guide/assets/statistics.png`, `ae2guide/_zh_cn/assets/statistics.png` | screenshots of the Federation screen's Statistics tab from our UI test run, cropped by `tools/visual/build_guide_statistics.py` | our screen, drawn with Applied Energistics 2's button, text field and scrollbar sprites, and vanilla Minecraft item icons and font |
 
-Both are images of the game. The Applied Energistics 2 artwork in them belongs to its authors under CC BY-NC-SA 3.0
-(see *Dependencies*), and the Minecraft content belongs to Mojang, shown under Minecraft's usage guidelines. Every other guide scene is a structure the game renders
-at run time from the installed mods; the guide ships no picture of it.
+**The teaser is adapted from Applied Energistics 2's subnetwork image.** That image is the scene of AE2's guide page
+`ae2-mechanics/subnetworks` (structure `guidebook/assets/assemblies/subnet_demonstration.snbt` in the
+[AE2 repository](https://github.com/AppliedEnergistics/Applied-Energistics-2)), which
+[AE2's website](https://appliedenergistics.org/) shows on its home page. Our teaser rebuilds the same build in the
+same layout, seen from the same angle, with AE2 Federation's devices and Federation Cable in place of some of AE2's
+blocks and cables. It is our own render of that build; no pixels of
+AE2's image are reused. The build's design and composition are the Applied Energistics 2 authors'.
+
+All of these are images of the game. The Applied Energistics 2 artwork in them belongs to its authors under
+CC BY-NC-SA 3.0 (see *Dependencies*), and the Minecraft content belongs to Mojang, shown under Minecraft's usage
+guidelines. Every other guide scene is a structure the game renders at run time from the installed mods; the guide
+ships no picture of it.
