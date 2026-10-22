@@ -45,3 +45,23 @@ Advanced AE (pedroksl) declares only LGPL-3.0 (`LICENSE.md`, `license="LGPL-3.0"
 licence or CC BY-NC-SA notice. The jar credits "Ridanisaurus Rid for texture style, Jm³ and Sea_Kerman for models";
 the README thanks Jm³ for the base models and textures. Texture commits are by the author (78) and one contributor,
 none by Ridanisaurus: AE2's artist is credited for the style, not as author, and no permission is documented.
+
+## Survey of the AE2 addons in the compatibility runs (2026-10-22)
+
+31 addon jars under `neoforge-1.21.1/build/compat/runs/*/mods` (latest version of each, AE2 as a hard dependency).
+Metadata from `META-INF/neoforge.mods.toml` and bundled licence files; textures scored against AE2 19.2.18 (HLS
+lightness order + alpha mask, 16-64 px wide, trivial textures skipped; >=0.95 counted as a likely recolour).
+
+- None of them ships a CC BY-NC-SA notice for AE2-derived art. Licences are LGPL-3.0 (most), MIT, GPL, CC0 or All
+  Rights Reserved, applied to the whole jar.
+- Likely AE2 recolours (count >= 0.95): AdvancedAE 20, ae2lt 33, AppliedFlux 23, Applied Mekanistics 6, ArsEng 7,
+  Data Energistics 30 (+3 exact), ExpandedAE 20, ExtendedAE 28, MEGA Cells 32, NeoECO 19 (+1 exact), NeoECO
+  Prototype 15 (+5 exact), OmniSequence 4, AE2 Pattern Disk 3 (+4 exact); a few single hits elsewhere.
+- Credits only: ExtendedAE and AppliedFlux credit "Ridanisaurus for the new textures"; AdvancedAE credits him for
+  "texture style"; MEGA Cells thanks the AE2 dev team.
+- NeoECO puts AE2 GUI textures under `textures/gui/ae2/` with `LICENSE-AE2.txt`, which is the LGPL-3.0 text (AE2's
+  code licence, not its CC BY-NC-SA art licence).
+- Data Energistics: "AGPL-3.0-or-later (code); All Rights Reserved (resources/assets)" with `LICENSE.RESOURCE`, which
+  says third-party resources keep their original licence, yet names no AE2 file.
+- aeallpattern `META-INF/NOTICE.md` lists every asset adapted from AE2 Lightning Tech with source revision and
+  changes: the most careful notice seen, though it covers another addon's art, not AE2's.
