@@ -1,7 +1,7 @@
 ---
 navigation:
   parent: index.md
-  title: Another Network's Pattern Providers
+  title: Other Networks' Providers
   icon: ae2:pattern_provider
   position: 310
 ---
