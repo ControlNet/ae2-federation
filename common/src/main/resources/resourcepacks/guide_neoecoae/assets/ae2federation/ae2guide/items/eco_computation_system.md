@@ -34,7 +34,7 @@ jobs. It needs Neo ECO 21.2.1 or later.
   <ItemLink id="ae2federation:eco_computation_interface" />s go anywhere in the side face, the 2x3 end where Neo ECO
   puts its ME interface. Once the structure has formed, each takes one <ItemLink id="ae2federation:cable" /> on its
   outer face, which joins the system to the domain. A 2x2 bundled cable links only to four interfaces that fill a 2x2
-  square. Without an interface, with a fifth, or with one in another face, the structure does not form. No ME network joins the
+  square. The structure does not form with no interface, a fifth one, or one in another face. No ME network joins the
   structure, and it is not a crafting CPU.
 * **Power and capacity:** it uses no FE ([Power](../mechanics/power.md)). The whole system counts 1 toward the
   cable's [capacity](../mechanics/capacity.md); its communication interfaces pass the domain on like cable and count

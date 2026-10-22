@@ -27,4 +27,4 @@ the ID, copy it, or give the interface an alias. An alias must be unique in its 
 
 <RecipeFor id="ae2federation:automation_interface" />
 
-The ME Interface used in the recipe must be the block.
+The recipe takes the ME Interface block, not the ME Interface part.

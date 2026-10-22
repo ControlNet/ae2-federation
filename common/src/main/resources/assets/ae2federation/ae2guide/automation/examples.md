@@ -13,8 +13,8 @@ for.
 
 ## Keep an item stocked
 
-Crafts what is missing up to a target, counting what running jobs still make, so it never orders twice. Install it
-with the trigger **Every** 100 ticks, or the event `stock_changed` for the item.
+Crafts what is missing up to a target. What running jobs will still make counts as stocked, so a job already under way
+is not ordered again. Install it with the trigger **Every** 100 ticks, or the event `stock_changed` for the item.
 
 <FederationProgram src="../assets/programs/keep_stocked.ae2f" />
 

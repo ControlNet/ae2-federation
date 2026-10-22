@@ -19,12 +19,12 @@ not use is reported at its line as not supported.
 * `int`, `float`, `str`, `bool`, `None`, lists, `range`, fields such as `stack.amount`, indexing and slices, and
   methods on lists and strings.
 * Keyword arguments, as in `ae2f.select(port, side="down")`.
-* A class with typed fields only works as a record: `Order("minecraft:iron_ingot", 64)`.
+* A class holds typed fields and no methods, and works as a record: `Order("minecraft:iron_ingot", 64)`.
 
 ## What is out
 
 Imports, exceptions (`try`, `raise`), classes with methods, lambdas, comprehensions, generators, dictionaries, sets,
-tuples, nested functions and `global`. A function is not a value: it is only defined and called.
+tuples, nested functions and `global`. Functions are defined and called; they cannot be stored or passed as values.
 
 ## Types
 

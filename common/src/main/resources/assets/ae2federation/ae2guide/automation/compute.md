@@ -16,9 +16,9 @@ The game works out the cost from the program itself; you cannot set it.
 
 ## Compute
 
-An installation costs one CU for each card in the graph of the installed function and of every function it calls,
-each counted once. A condition trigger's function counts too. Loops are not multiplied. Compute only decides whether
-an installation fits; every run still takes at most 10,000 steps a tick.
+An installation costs one CU for each card in the graph of the installed function and of every function it calls, each
+counted once. A condition trigger's function counts too. A card inside a loop counts once, however often the loop runs.
+Compute only decides whether an installation fits; every run still takes at most 10,000 steps a tick.
 
 ## Bandwidth
 
@@ -54,6 +54,6 @@ An installation set to Parallel reserves 4 times its compute and fixed bandwidth
 
 ## When a device shrinks
 
-Taking a part or a cell out of a device does not uninstall anything. While the fixed reservations exceed what the
+Taking a part or a cell out of a device keeps every installation. While the fixed reservations exceed what the
 device holds, the whole device pauses: runs wait where they are and triggers wait. Each installation's log says
 "paused", then "resumed" once the device holds enough again.

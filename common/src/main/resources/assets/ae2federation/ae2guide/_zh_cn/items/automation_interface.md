@@ -23,4 +23,4 @@ item_ids:
 
 <RecipeFor id="ae2federation:automation_interface" />
 
-配方里的ME接口必须是方块形态。
+配方用的是方块形态的ME接口， 不是面板形态的ME接口。
