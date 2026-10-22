@@ -16,12 +16,13 @@ navigation:
 * `if`、`elif`、`else`、`while`、`for x in xs`、`break`、`continue`、`return`、`pass`。
 * 赋值， 包括`+=`等算术赋值。
 * `int`、`float`、`str`、`bool`、`None`、列表、`range`、`stack.amount`这样的字段、下标和切片， 以及列表和字符串的方法。
+* 字典和集合， 类型写成`dict[Item, int]`和`set[str]`。 字典的键和集合的元素是数字或字符串。 空的字典或集合要写明类型： `counts: dict[Item, int] = {}`、`seen: set[str] = set()`。 集合按加入的先后保存元素； `keys()`和`values()`返回列表。
 * 关键字参数， 例如`ae2f.select(port, side="down")`。
 * 类只含带类型的字段、不含方法， 当作记录使用： `Order("minecraft:iron_ingot", 64)`。
 
 ## 不能使用
 
-导入、异常（`try`、`raise`）、带方法的类、lambda、推导式、生成器、字典、集合、元组、嵌套函数和`global`。 函数只能定义和调用， 不能作为值存储或传递。
+导入、异常（`try`、`raise`）、带方法的类、lambda、推导式、生成器、元组、嵌套函数和`global`。 没有元组， 所以也没有`d.items()`： 用`for key in d`遍历键。 集合没有`|`、`&`这类运算符， 请用`union`、`intersection`等方法。 函数只能定义和调用， 不能作为值存储或传递。
 
 ## 类型
 
@@ -49,4 +50,4 @@ navigation:
 * 读取（例如`ae2.amount`）不花时间。 **操作**（例如`ae2.craft`或`mc.set_redstone`）花一个游戏刻， 所以一次运行每刻最多做一个操作。 大量搬运或合成应在一次调用里完成。
 * `mc.wait(ticks)`让运行暂停`ticks`刻； `mc.wait(0)`不花时间。
 * 一次运行每刻最多执行10,000步， 剩下的下一刻继续， 所以`while True:`不会卡住服务器。
-* 整数是64位的， 一个列表或字符串最多100,000项， 调用最多嵌套1,000层。 一个程序文件最多64,000个字符。
+* 整数是64位的， 一个列表、字符串、字典或集合最多100,000项， 调用最多嵌套1,000层。 一个程序文件最多64,000个字符。

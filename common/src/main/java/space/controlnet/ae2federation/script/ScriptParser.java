@@ -837,12 +837,66 @@ public final class ScriptParser {
                 return new Expr.ListLit(id(token), items);
             }
             case "{":
-                throw fail(token, "dicts and sets are not supported");
+                return braces(token);
             case "...":
                 throw fail(token, "'...' is not supported");
             default:
                 throw fail(token, "expected a value, found '" + token.text() + "'");
         }
+    }
+
+    /** {@code {}} and {@code {k: v, ...}} are dicts, {@code {a, ...}} is a set. */
+    private Expr braces(Token token) {
+        advance();
+        var keys = new ArrayList<Expr>();
+        var values = new ArrayList<Expr>();
+        if (checkOp("}")) {
+            advance();
+            return new Expr.DictLit(id(token), keys, values);
+        }
+        keys.add(element());
+        boolean dict = checkOp(":");
+        if (dict) {
+            values.add(dictValue());
+        }
+        while (true) {
+            if (isKeyword(peek(), "for")) {
+                throw fail(peek(), "comprehensions are not supported");
+            }
+            if (checkOp("}")) {
+                break;
+            }
+            expect(",");
+            if (checkOp("}")) {
+                break;
+            }
+            keys.add(element());
+            if (dict) {
+                if (!checkOp(":")) {
+                    throw fail(peek(), "':' expected after dictionary key");
+                }
+                values.add(dictValue());
+            }
+        }
+        advance();
+        return dict ? new Expr.DictLit(id(token), keys, values) : new Expr.SetLit(id(token), keys);
+    }
+
+    /** The value after a dict key's {@code :}. */
+    private Expr dictValue() {
+        advance();
+        if (checkOp(",") || checkOp("}")) {
+            throw fail(peek(), "expression expected after dictionary key and ':'");
+        }
+        return expr();
+    }
+
+    /** A key or item inside braces. */
+    private Expr element() {
+        if (checkOp("**") || checkOp("*")) {
+            throw fail(peek(), "unpacking with '" + peek().text() + "' is not supported");
+        }
+        return expr();
     }
 
     // ---- line ends, comments and recovery ----

@@ -29,6 +29,14 @@ final class GraphCardsTest {
                         names.append(item)
                     total = len(names)
                 return len(names)
+
+            def tally(items: list[Item]) -> dict[str, int]:
+                seen = {"minecraft:copper_ingot"}
+                counts = {"minecraft:copper_ingot": 0}
+                for item in items:
+                    seen.add(item)
+                    counts[item] = counts.get(item, 0) + 1
+                return counts
             """;
 
     private static final Program PROGRAM = ScriptParser.parse(IRON_TOOLS).program();
@@ -87,6 +95,24 @@ final class GraphCardsTest {
                 "return | value:int=wire",
                 "len | :list[str]=(names) -> int"),
                 cards("collect").stream().map(GraphCardsTest::line).toList());
+    }
+
+    @Test
+    void dictAndSetLiteralsAndMethodsAreLabelled() {
+        assertEquals(List.of(
+                "tally >",
+                "seen = | value:set[str]=wire >",
+                "set | 0:str=\"minecraft:copper_ingot\" -> set[str]",
+                "counts = | value:dict[str, int]=wire >",
+                "dict | k0:str=\"minecraft:copper_ingot\" v0:int=0 -> dict[str, int]",
+                "for item | in:list[Item]=(items) >body >next",
+                ".add | object:set[str]=(seen) elem:Item=(item) >",
+                "= | target:int=wire value:int=wire >",
+                "[ ] | object:dict[str, int]=(counts) index:Item=(item) -> int",
+                "+ | a:int=wire b:int=1 -> int",
+                ".get | object:dict[str, int]=(counts) key:Item=(item) default:int=0 -> int",
+                "return | value:dict[str, int]=(counts)"),
+                cards("tally").stream().map(GraphCardsTest::line).toList());
     }
 
     @Test

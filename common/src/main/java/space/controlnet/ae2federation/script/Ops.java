@@ -40,6 +40,8 @@ public final class Ops {
             case Double d -> "float";
             case String s -> "str";
             case ListValue l -> "list";
+            case DictValue d -> "dict";
+            case SetValue s -> "set";
             case RangeValue r -> "range";
             case RecordValue r -> r.type.substring(r.type.lastIndexOf('.') + 1);
             default -> v.getClass().getSimpleName();
@@ -84,6 +86,8 @@ public final class Ops {
             case Double d -> d != 0;
             case String s -> !s.isEmpty();
             case ListValue l -> !l.items.isEmpty();
+            case DictValue d -> d.size() != 0;
+            case SetValue s -> s.size() != 0;
             case RangeValue r -> r.length() != 0;
             default -> true;
         };
@@ -109,6 +113,21 @@ public final class Ops {
                 }
             }
             return true;
+        }
+        if (a instanceof DictValue x && b instanceof DictValue y) {
+            if (x.size() != y.size()) {
+                return false;
+            }
+            for (var entry : x.entries.entrySet()) {
+                var other = y.entries.get(entry.getKey());
+                if (other == null || !eq(entry.getValue().value, other.value)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (a instanceof SetValue x && b instanceof SetValue y) {
+            return x.size() == y.size() && y.items.keySet().containsAll(x.items.keySet());
         }
         if (a instanceof RecordValue x && b instanceof RecordValue y) {
             if (!x.type.equals(y.type)) {
@@ -370,6 +389,12 @@ public final class Ops {
 
     static boolean contains(Object container, Object item) {
         switch (container) {
+            case DictValue d -> {
+                return d.entry(item) != null;
+            }
+            case SetValue s -> {
+                return s.contains(item);
+            }
             case ListValue l -> {
                 for (var element : l.items) {
                     if (eq(element, item)) {
@@ -408,6 +433,8 @@ public final class Ops {
             case ListValue l -> l.items.size();
             case String s -> s.codePointCount(0, s.length());
             case RangeValue r -> r.length();
+            case DictValue d -> d.size();
+            case SetValue s -> s.size();
             case null, default -> throw typeError("'" + typeName(iterable) + "' object is not iterable");
         };
     }
@@ -425,6 +452,32 @@ public final class Ops {
         };
     }
 
+    /** Stops a dict or set from growing past {@link #MAX_SEQUENCE} entries. */
+    static void growMapping(long size) {
+        if (size > MAX_SEQUENCE) {
+            throw new RunError("MemoryError", "dicts and sets hold at most " + MAX_SEQUENCE + " items");
+        }
+    }
+
+    /**
+     * What a dict key or set item is held by: equal numbers are one key, as {@code 1}, {@code 1.0} and {@code True} are
+     * in Python. Lists, dicts, sets and records cannot be hashed.
+     */
+    static Object hashKey(Object v) {
+        return switch (v) {
+            case null -> null;
+            case Boolean b -> b ? 1L : 0L;
+            case Long l -> l;
+            case Double d -> d == Math.rint(d) && d >= -0x1p63 && d < 0x1p63 ? (Object) (long) (double) d : d;
+            case String s -> s;
+            case ListValue l -> throw typeError("unhashable type: 'list'");
+            case DictValue d -> throw typeError("unhashable type: 'dict'");
+            case SetValue s -> throw typeError("unhashable type: 'set'");
+            case RecordValue r -> throw typeError("unhashable type: '" + typeName(r) + "'");
+            default -> v;
+        };
+    }
+
     /** Stops a list or string from growing past {@link #MAX_SEQUENCE}. */
     static void grow(long size) {
         if (size > MAX_SEQUENCE) {
@@ -433,6 +486,12 @@ public final class Ops {
     }
 
     private static List<Object> items(Object iterable) {
+        if (iterable instanceof DictValue d) {
+            return d.keys();
+        }
+        if (iterable instanceof SetValue s) {
+            return s.items();
+        }
         long n = length(iterable);
         if (iterable instanceof RangeValue) {
             grow(n);
@@ -445,6 +504,13 @@ public final class Ops {
     }
 
     public static Object index(Object target, Object index) {
+        if (target instanceof DictValue d) {
+            var entry = d.entry(index);
+            if (entry == null) {
+                throw new RunError("KeyError", repr(index));
+            }
+            return entry.value;
+        }
         if (!(target instanceof ListValue || target instanceof String || target instanceof RangeValue)) {
             throw typeError("'" + typeName(target) + "' object is not subscriptable");
         }
@@ -471,6 +537,10 @@ public final class Ops {
     }
 
     public static void setIndex(Object target, Object index, Object value) {
+        if (target instanceof DictValue d) {
+            d.put(index, value);
+            return;
+        }
         if (!(target instanceof ListValue list)) {
             throw typeError("'" + typeName(target) + "' object does not support item assignment");
         }
@@ -522,6 +592,9 @@ public final class Ops {
     }
 
     public static Object slice(Object target, Object lower, Object upper, Object step) {
+        if (target instanceof DictValue) {
+            throw typeError("a dict cannot be sliced");
+        }
         if (!(target instanceof ListValue || target instanceof String || target instanceof RangeValue)) {
             throw typeError("'" + typeName(target) + "' object is not subscriptable");
         }
@@ -589,6 +662,19 @@ public final class Ops {
                 var parts = new ArrayList<String>();
                 l.items.forEach(item -> parts.add(repr(item, own)));
                 yield "[" + String.join(", ", parts) + "]";
+            }
+            case DictValue d -> {
+                var parts = new ArrayList<String>();
+                d.entries.values().forEach(entry -> parts.add(repr(entry.key, own) + ": " + repr(entry.value, own)));
+                yield "{" + String.join(", ", parts) + "}";
+            }
+            case SetValue s -> {
+                if (s.size() == 0) {
+                    yield "set()";
+                }
+                var parts = new ArrayList<String>();
+                s.items.values().forEach(item -> parts.add(repr(item, own)));
+                yield "{" + String.join(", ", parts) + "}";
             }
             case RangeValue r -> "range(" + r.start() + ", " + r.stop() + (r.step() == 1 ? "" : ", " + r.step()) + ")";
             case RecordValue r -> {
@@ -735,10 +821,28 @@ public final class Ops {
             case "str" -> args.isEmpty() ? "" : str(args.get(0));
             case "bool" -> !args.isEmpty() && truthy(args.get(0));
             case "list" -> new ListValue(args.isEmpty() ? List.of() : items(args.get(0)));
+            case "set" -> {
+                var set = new SetValue();
+                if (!args.isEmpty()) {
+                    items(args.get(0)).forEach(set::add);
+                }
+                yield set;
+            }
+            case "dict" -> {
+                var dict = new DictValue();
+                if (!args.isEmpty()) {
+                    if (!(args.get(0) instanceof DictValue source)) {
+                        throw typeError("dict() argument must be a dict, not '" + typeName(args.get(0)) + "'");
+                    }
+                    source.entries.values().forEach(entry -> dict.put(entry.key, entry.value));
+                }
+                yield dict;
+            }
             case "range" -> range(args);
             case "len" -> {
                 var v = args.get(0);
-                if (!(v instanceof ListValue || v instanceof String || v instanceof RangeValue)) {
+                if (!(v instanceof ListValue || v instanceof String || v instanceof RangeValue || v instanceof DictValue
+                        || v instanceof SetValue)) {
                     throw typeError("object of type '" + typeName(v) + "' has no len()");
                 }
                 yield length(v);
@@ -968,6 +1072,12 @@ public final class Ops {
 
     /** {@code receiver.name(args)} for list and str methods; arguments bound as the method's signature says. */
     public static Object method(Object receiver, String name, List<Object> args, Map<String, Object> keywords) {
+        if (receiver instanceof DictValue dict) {
+            return dictMethod(dict, name, args);
+        }
+        if (receiver instanceof SetValue set) {
+            return setMethod(set, name, args);
+        }
         List<Signature> table = receiver instanceof ListValue ? Checker.LIST_METHODS
                 : receiver instanceof String ? Checker.STR_METHODS
                 : receiver instanceof RangeValue ? Checker.RANGE_METHODS : List.of();
@@ -990,6 +1100,116 @@ public final class Ops {
             return (value - range.start()) / range.step();
         }
         return strMethod((String) receiver, name, a);
+    }
+
+    /** A dict method; arguments are positional only, as the checker requires. */
+    private static Object dictMethod(DictValue dict, String name, List<Object> a) {
+        switch (name) {
+            case "get" -> {
+                var entry = dict.entry(a.get(0));
+                return entry != null ? entry.value : a.size() > 1 ? a.get(1) : null;
+            }
+            case "pop" -> {
+                var entry = dict.remove(a.get(0));
+                if (entry != null) {
+                    return entry.value;
+                }
+                if (a.size() > 1) {
+                    return a.get(1);
+                }
+                throw new RunError("KeyError", repr(a.get(0)));
+            }
+            case "setdefault" -> {
+                var entry = dict.entry(a.get(0));
+                if (entry != null) {
+                    return entry.value;
+                }
+                dict.put(a.get(0), a.get(1));
+                return a.get(1);
+            }
+            case "keys" -> {
+                return new ListValue(dict.keys());
+            }
+            case "values" -> {
+                return new ListValue(dict.values());
+            }
+            case "update" -> {
+                if (!(a.get(0) instanceof DictValue other)) {
+                    throw typeError("'" + typeName(a.get(0)) + "' object is not a dict");
+                }
+                for (var entry : new ArrayList<>(other.entries.values())) {
+                    dict.put(entry.key, entry.value);
+                }
+            }
+            case "clear" -> dict.clear();
+            case "copy" -> {
+                return builtIn("dict", List.of(dict));
+            }
+            default -> throw new RunError("AttributeError", "'dict' object has no attribute '" + name + "'");
+        }
+        return null;
+    }
+
+    /** A set method; arguments are positional only, as the checker requires. */
+    private static Object setMethod(SetValue set, String name, List<Object> a) {
+        switch (name) {
+            case "add" -> set.add(a.get(0));
+            case "remove" -> {
+                if (!set.remove(a.get(0))) {
+                    throw new RunError("KeyError", repr(a.get(0)));
+                }
+            }
+            case "discard" -> set.remove(a.get(0));
+            case "pop" -> {
+                if (set.size() == 0) {
+                    throw new RunError("KeyError", "'pop from an empty set'");
+                }
+                var first = set.items.values().iterator().next();
+                set.remove(first);
+                return first;
+            }
+            case "union" -> {
+                var out = (SetValue) builtIn("set", List.of(set));
+                items(a.get(0)).forEach(out::add);
+                return out;
+            }
+            case "intersection" -> {
+                var other = (SetValue) builtIn("set", List.of(a.get(0)));
+                var out = new SetValue();
+                set.items.values().stream().filter(other::contains).forEach(out::add);
+                return out;
+            }
+            case "difference" -> {
+                var other = (SetValue) builtIn("set", List.of(a.get(0)));
+                var out = new SetValue();
+                set.items.values().stream().filter(item -> !other.contains(item)).forEach(out::add);
+                return out;
+            }
+            case "symmetric_difference" -> {
+                var other = (SetValue) builtIn("set", List.of(a.get(0)));
+                var out = new SetValue();
+                set.items.values().stream().filter(item -> !other.contains(item)).forEach(out::add);
+                other.items.values().stream().filter(item -> !set.contains(item)).forEach(out::add);
+                return out;
+            }
+            case "update" -> items(a.get(0)).forEach(set::add);
+            case "issubset" -> {
+                var other = (SetValue) builtIn("set", List.of(a.get(0)));
+                return set.items.values().stream().allMatch(other::contains);
+            }
+            case "issuperset" -> {
+                return items(a.get(0)).stream().allMatch(set::contains);
+            }
+            case "isdisjoint" -> {
+                return items(a.get(0)).stream().noneMatch(set::contains);
+            }
+            case "clear" -> set.clear();
+            case "copy" -> {
+                return builtIn("set", List.of(set));
+            }
+            default -> throw new RunError("AttributeError", "'set' object has no attribute '" + name + "'");
+        }
+        return null;
     }
 
     /** Arguments in parameter order, defaults filled in. */

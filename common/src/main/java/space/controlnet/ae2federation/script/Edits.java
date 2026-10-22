@@ -450,7 +450,8 @@ public final class Edits {
         /** {@link Edits#put}. */
         void place(String node, String port, Expr value) {
             var n = node(node);
-            var prefix = n.kind() == Canvas.Kind.CALL ? "arg" : n.kind() == Canvas.Kind.LIST ? "item" : null;
+            var prefix = n.kind() == Canvas.Kind.CALL ? "arg" : n.kind() == Canvas.Kind.LIST
+                    || n.kind() == Canvas.Kind.SET ? "item" : null;
             boolean numbered = prefix != null && port.matches(prefix + "\\d+");
             boolean keyword = n.kind() == Canvas.Kind.CALL && port.startsWith("kw:");
             var inputs = new LinkedHashMap<>(n.inputs());

@@ -27,6 +27,21 @@ public sealed interface Expr {
         }
     }
 
+    /** {@code {k: v, ...}}; {@code keys} and {@code values} pair up in order. */
+    record DictLit(String id, List<Expr> keys, List<Expr> values) implements Expr {
+        public DictLit {
+            keys = List.copyOf(keys);
+            values = List.copyOf(values);
+        }
+    }
+
+    /** {@code {a, b, ...}}: never empty, as {@code {}} is a dict. */
+    record SetLit(String id, List<Expr> items) implements Expr {
+        public SetLit {
+            items = List.copyOf(items);
+        }
+    }
+
     record Name(String id, String name) implements Expr {
     }
 

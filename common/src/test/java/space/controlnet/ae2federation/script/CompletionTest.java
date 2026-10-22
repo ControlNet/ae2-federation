@@ -225,6 +225,34 @@ final class CompletionTest {
     }
 
     @Test
+    void membersOfADictOrSetFollowTheirTypes() {
+        var dict = at("""
+                def f(stock: dict[Item, int]) -> None:
+                    stock.|
+                """);
+        assertEquals(List.of("clear", "copy", "get", "keys", "pop", "setdefault", "update", "values"), labels(dict));
+        assertEquals("(key: Item, default: int = ...) -> int",
+                dict.candidates().stream().filter(x -> x.label().equals("pop")).findFirst().orElseThrow().detail());
+        assertEquals(List.of("add", "clear", "copy", "difference", "discard", "intersection", "isdisjoint", "issubset",
+                "issuperset", "pop", "remove", "symmetric_difference", "union", "update"), labels(at("""
+                def f() -> None:
+                    seen = {"a", "b"}
+                    seen.|
+                """)));
+        var details = at("""
+                def f() -> None:
+                    counts = {"a": 1}
+                    n = counts["a"]
+                    k = {1, 2}.pop()
+                    ae2.craft(|)
+                """).candidates().stream().filter(x -> x.kind() == Candidate.Kind.VARIABLE)
+                .collect(java.util.stream.Collectors.toMap(Candidate::label, Candidate::detail));
+        assertEquals("dict[str, int]", details.get("counts"));
+        assertEquals("int", details.get("n"));
+        assertEquals("int", details.get("k"));
+    }
+
+    @Test
     void membersAfterAChainOfCallsItemsAndFields() {
         assertEquals(List.of("amount", "resource"), labels(at("""
                 def f() -> None:

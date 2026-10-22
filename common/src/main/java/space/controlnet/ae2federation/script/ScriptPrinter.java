@@ -188,6 +188,10 @@ public final class ScriptPrinter {
             case Expr.BoolLit l -> l.value() ? "True" : "False";
             case Expr.NoneLit l -> "None";
             case Expr.ListLit l -> l.items().stream().map(ScriptPrinter::expr).collect(Collectors.joining(", ", "[", "]"));
+            case Expr.DictLit d -> java.util.stream.IntStream.range(0, d.keys().size())
+                    .mapToObj(i -> expr(d.keys().get(i)) + ": " + expr(d.values().get(i)))
+                    .collect(Collectors.joining(", ", "{", "}"));
+            case Expr.SetLit s -> s.items().stream().map(ScriptPrinter::expr).collect(Collectors.joining(", ", "{", "}"));
             case Expr.Name n -> n.name();
             case Expr.Call c -> (c.receiver() == null ? "" : receiver(c.receiver()) + ".") + c.name()
                     + Stream.concat(c.args().stream().map(ScriptPrinter::expr),

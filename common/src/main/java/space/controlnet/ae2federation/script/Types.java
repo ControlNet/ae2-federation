@@ -14,6 +14,10 @@ final class Types {
     static final TypeRef NONE = simple("None");
     /** The type of {@code []} with no element type known yet. */
     static final TypeRef EMPTY_LIST = simple("list");
+    /** The type of {@code {}} or {@code dict()} with no key and value types known yet. */
+    static final TypeRef EMPTY_DICT = simple("dict");
+    /** The type of {@code set()} with no item type known yet. */
+    static final TypeRef EMPTY_SET = simple("set");
     /** What {@code range(...)} gives: iterable, indexable and sliceable, but not a list. */
     static final TypeRef RANGE = simple("range");
 
@@ -26,6 +30,14 @@ final class Types {
 
     static TypeRef list(TypeRef element) {
         return new TypeRef("list", List.of(element));
+    }
+
+    static TypeRef dict(TypeRef key, TypeRef value) {
+        return new TypeRef("dict", List.of(key, value));
+    }
+
+    static TypeRef set(TypeRef item) {
+        return new TypeRef("set", List.of(item));
     }
 
     /** {@code Optional[t]}: {@code t} or {@code None}. */
@@ -55,13 +67,46 @@ final class Types {
         return RANGE.equals(t);
     }
 
-    /** A list, a string or a range: what {@code for} walks and {@code len} measures. */
-    static boolean isIterable(TypeRef t) {
-        return isList(t) || isStr(t) || isRange(t);
+    static boolean isDict(TypeRef t) {
+        return t != null && t.name().equals("dict");
     }
 
-    /** What iterating yields; {@code null} for {@code []} whose element type is not known. */
+    static boolean isSet(TypeRef t) {
+        return t != null && t.name().equals("set");
+    }
+
+    /** A dict's key type; {@code null} for {@code {}} whose types are not known. */
+    static TypeRef key(TypeRef dict) {
+        return dict.args().isEmpty() ? null : dict.args().get(0);
+    }
+
+    /** A dict's value type; {@code null} for {@code {}} whose types are not known. */
+    static TypeRef value(TypeRef dict) {
+        return dict.args().isEmpty() ? null : dict.args().get(1);
+    }
+
+    /**
+     * Whether values of the type can be dict keys and set items. Stricter than Python, which also hashes tuples,
+     * ranges and frozen records: numbers, strings, typed strings and their {@code Optional}.
+     */
+    static boolean hashable(TypeRef t) {
+        t = unwrap(t);
+        return t == null || isNumber(t) || isStr(t);
+    }
+
+    /** A list, a string, a range, a dict or a set: what {@code for} walks and {@code len} measures. */
+    static boolean isIterable(TypeRef t) {
+        return isList(t) || isStr(t) || isRange(t) || isDict(t) || isSet(t);
+    }
+
+    /** What iterating yields (a dict's keys); {@code null} for an empty literal whose types are not known. */
     static TypeRef iterated(TypeRef iterable) {
+        if (isDict(iterable)) {
+            return key(iterable);
+        }
+        if (isSet(iterable)) {
+            return element(iterable);
+        }
         return isList(iterable) ? element(iterable) : isRange(iterable) ? INT : STR;
     }
 
@@ -110,8 +155,12 @@ final class Types {
         if (target.equals(STR) && isTypedString(value)) {
             return true;
         }
-        if (isList(target) && isList(value)) {
+        if (isList(target) && isList(value) || isSet(target) && isSet(value)) {
             return value.args().isEmpty() || assignable(element(target), element(value));
+        }
+        if (isDict(target) && isDict(value)) {
+            return value.args().isEmpty()
+                    || assignable(key(target), key(value)) && assignable(Types.value(target), Types.value(value));
         }
         // A parameter taking any iterable, as list.extend and str.join do.
         if (target.name().equals("Iterable") && target.args().size() == 1 && isIterable(value)) {

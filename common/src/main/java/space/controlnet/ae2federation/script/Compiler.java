@@ -237,6 +237,8 @@ public final class Compiler {
         return switch (e) {
             case Expr.Call c -> suspension(c) || children(c).stream().anyMatch(this::suspends);
             case Expr.ListLit l -> l.items().stream().anyMatch(this::suspends);
+            case Expr.DictLit d -> entries(d).stream().anyMatch(this::suspends);
+            case Expr.SetLit l -> l.items().stream().anyMatch(this::suspends);
             case Expr.Attribute a -> suspends(a.target());
             case Expr.Index i -> suspends(i.target()) || suspends(i.index());
             case Expr.Slice s -> suspends(s.target()) || suspends(s.lower()) || suspends(s.upper()) || suspends(s.step());
@@ -254,6 +256,16 @@ public final class Compiler {
         }
         out.addAll(c.args());
         c.keywords().forEach(k -> out.add(k.value()));
+        return out;
+    }
+
+    /** A dict literal's parts in Python's order: each key, then its value. */
+    private static List<Expr> entries(Expr.DictLit d) {
+        var out = new ArrayList<Expr>();
+        for (int i = 0; i < d.keys().size(); i++) {
+            out.add(d.keys().get(i));
+            out.add(d.values().get(i));
+        }
         return out;
     }
 
@@ -294,6 +306,17 @@ public final class Compiler {
             }
             case Expr.Unary u -> new Expr.Unary(u.id(), u.op(), lift(u.operand()));
             case Expr.ListLit l -> new Expr.ListLit(l.id(), liftAll(l.items()));
+            case Expr.DictLit d -> {
+                var parts = liftAll(entries(d));
+                var keys = new ArrayList<Expr>();
+                var values = new ArrayList<Expr>();
+                for (int i = 0; i < parts.size(); i += 2) {
+                    keys.add(parts.get(i));
+                    values.add(parts.get(i + 1));
+                }
+                yield new Expr.DictLit(d.id(), keys, values);
+            }
+            case Expr.SetLit l -> new Expr.SetLit(l.id(), liftAll(l.items()));
             case Expr.Attribute a -> new Expr.Attribute(a.id(), lift(a.target()), a.name());
             case Expr.Index i -> {
                 var parts = liftAll(List.of(i.target(), i.index()));

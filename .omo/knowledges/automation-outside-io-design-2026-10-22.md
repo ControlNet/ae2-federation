@@ -1,6 +1,6 @@
 # Programs outside the game: files, HTTP, websockets (design, 2026-10-22)
 
-Status: proposal, waiting for the user's go-ahead. Nothing is implemented.
+Status: agreed; dicts and sets done first, `fs` next.
 
 ## Scope decided by the user
 
@@ -91,10 +91,7 @@ Each phase includes:
 - Guide rows in `library.md` (EN and ZH) and the config switches on the guide page.
 - An in-game before and after under `build/<topic>-check/`.
 
-## Open question for the user
+## Dictionaries first (settled)
 
-The language has no dictionaries (`language.md` lists them as unsupported). Two options:
-
-- **A, recommended:** text-only HTTP first, with headers as `"Name: value"` lines. JSON can be built and read with
-  string methods for now; dictionaries and a `json` helper come later as their own phase.
-- **B:** add dictionaries to the language first, so headers and JSON are natural from the start.
+The user chose to add dictionaries and sets to the language before this work; they are done (see
+`script-dict-set-2026-10-22.md`). Headers and a later `json` helper can use dicts.

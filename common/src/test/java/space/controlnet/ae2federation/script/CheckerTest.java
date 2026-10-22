@@ -82,6 +82,88 @@ final class CheckerTest {
     }
 
     @Test
+    void dictsAndSetsAreTypedAsPythonsAre() {
+        assertEquals(List.of(), problems("""
+                def f(xs: list[int]) -> None:
+                    counts: dict[str, int] = {}
+                    counts["iron"] = 3
+                    counts["iron"] += 1
+                    n: int = counts["iron"]
+                    m = counts.get("gold", 0) + 1
+                    o: Optional[int] = counts.get("gold")
+                    names = {"a": 1, "b": 2}
+                    for k in names:
+                        print(k, names[k])
+                    ks: list[str] = names.keys()
+                    vs: list[int] = list(names.values())
+                    seen: set[int] = set()
+                    seen.add(1)
+                    both: set[int] = seen.union(xs)
+                    tags = {"x", "y"}
+                    if "x" in tags and 1 in seen and "a" in names and not names:
+                        pass
+                    total = len(names) + len(tags) + sum(seen) + max(seen)
+                    copy: dict[str, int] = dict(names)
+                    s2: set[int] = set(xs)
+                    p: int = names.pop("a")
+                    q: Optional[int] = names.pop("zz", None)
+                    r: int = names.setdefault("c", 3)
+                    names.update({"d": 4})
+                    items: dict[Item, int] = {"minecraft:iron_ingot": 1}
+                    nested: dict[str, list[int]] = {"a": [1]}
+                    nested["a"].append(2)
+                    found: bool = tags.issubset(["x", "y", "z"])
+                """));
+    }
+
+    static Stream<Arguments> dictAndSetRules() {
+        return Stream.of(
+                Arguments.of("y = {}", 1, "annotate the empty dict, as in y: dict[str, int] = {}"),
+                Arguments.of("y = set()", 1, "annotate the empty set, as in y: set[int] = set()"),
+                Arguments.of("y: dict[int] = {}", 1, "dict needs its key and value types, as in dict[str, int]"),
+                Arguments.of("y: set = set()", 1, "set needs its element type, as in set[int]"),
+                Arguments.of("y: dict[list[int], int] = {}", 1, "unhashable type: 'list'"),
+                Arguments.of("y: set[Order] = set()", 1, "unhashable type: 'Order'"),
+                Arguments.of("y = {xs: 1}", 1, "unhashable type: 'list'"),
+                Arguments.of("y = {o}", 1, "unhashable type: 'Order'"),
+                Arguments.of("y = {1: 2, \"a\": 3}", 1, "dict keys must share one type, here int and str"),
+                Arguments.of("y = {1: 2, 3: \"a\"}", 1, "dict values must share one type, here int and str"),
+                Arguments.of("y = {1, \"a\"}", 1, "set items must share one type, here int and str"),
+                Arguments.of("y: set[int] = {}", 1, "y is set[int]; it cannot hold dict"),
+                Arguments.of("d = {1: 2}\n    y = d[\"a\"]", 2, "keys of dict[int, int] are int; this is str"),
+                Arguments.of("d = {1: 2}\n    d[\"a\"] = 3", 2, "keys of dict[int, int] are int; this is str"),
+                Arguments.of("d = {1: 2}\n    d[1] = \"a\"", 2, "values of dict[int, int] are int; this is str"),
+                Arguments.of("d = {1: 2}\n    y = d[1:2]", 2, "a dict cannot be sliced"),
+                Arguments.of("t = {1}\n    y = t[0]", 2, "'set' object is not subscriptable"),
+                Arguments.of("t = {1}\n    t[0] = 1", 2, "'set' object does not support item assignment"),
+                Arguments.of("d = {1: 2}\n    y = d.items()", 2,
+                        "dict.items() is not supported, as tuples are not; walk the keys with for key in d"),
+                Arguments.of("d = {1: 2}\n    y = d.get(1, default=0)", 2, "dict.get() takes no keyword arguments"),
+                Arguments.of("d = {1: 2}\n    y = d.get(1, \"a\")", 2,
+                        "argument 'default' of dict.get() must be Optional[int], not str"),
+                Arguments.of("t = {1}\n    t.add(\"a\")", 2, "argument 'elem' of set.add() must be int, not str"),
+                Arguments.of("t = {1}\n    t.append(1)", 2, "'set' object has no attribute 'append'"),
+                Arguments.of("y = set(n)", 1, "'int' object is not iterable"),
+                Arguments.of("y = dict(xs)", 1, "dict() argument must be a dict, not 'list'"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("dictAndSetRules")
+    void eachDictAndSetRuleNamesItsLine(String body, int line, String message) {
+        assertEquals(List.of((BODY_LINE + line - 1) + ": " + message), problems(PRELUDE + "    " + body + "\n"));
+    }
+
+    @Test
+    void aDictOrSetFieldDefaultIsMutable() {
+        assertEquals(List.of("2: mutable default <class 'dict'> for field d is not allowed: use default_factory",
+                "3: mutable default <class 'set'> for field s is not allowed: use default_factory"), problems("""
+                class A:
+                    d: dict[str, int] = {}
+                    s: set[int] = {1}
+                """));
+    }
+
+    @Test
     void theSamplesHaveNoProblems() {
         for (var sample : List.of(ScriptTest.SAMPLE, ScriptTest.LOOPS, ScriptTest.DEFAULTS, ScriptTest.MEMBERSHIP,
                 ScriptTest.RECORDS)) {

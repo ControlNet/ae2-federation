@@ -230,8 +230,23 @@ public final class StandardLibrary {
     /** {@code list[Stack]} and the like, as a type hint is written. */
     static TypeRef type(String text) {
         int open = text.indexOf('[');
-        return open < 0 ? new TypeRef(text, List.of())
-                : new TypeRef(text.substring(0, open), List.of(type(text.substring(open + 1, text.length() - 1))));
+        if (open < 0) {
+            return new TypeRef(text, List.of());
+        }
+        // Arguments split at the commas outside any inner brackets: dict[str, list[int]].
+        var args = new java.util.ArrayList<TypeRef>();
+        int depth = 0;
+        int start = open + 1;
+        for (int i = start; i < text.length() - 1; i++) {
+            char c = text.charAt(i);
+            depth += c == '[' ? 1 : c == ']' ? -1 : 0;
+            if (c == ',' && depth == 0) {
+                args.add(type(text.substring(start, i).strip()));
+                start = i + 1;
+            }
+        }
+        args.add(type(text.substring(start, text.length() - 1).strip()));
+        return new TypeRef(text.substring(0, open), args);
     }
 
     private static Signature.Arg arg(String name, String type) {

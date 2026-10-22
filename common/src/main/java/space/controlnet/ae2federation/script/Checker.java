@@ -58,8 +58,8 @@ public final class Checker {
     /** Longer constant texts are left to run time rather than built while checking. */
     private static final int MAX_CONSTANT_TEXT = 10_000;
 
-    static final List<String> BUILT_INS = List.of("int", "float", "str", "bool", "list", "range", "len", "abs", "min",
-            "max", "sum", "round", "any", "all", "print");
+    static final List<String> BUILT_INS = List.of("int", "float", "str", "bool", "list", "dict", "set", "range", "len",
+            "abs", "min", "max", "sum", "round", "any", "all", "print");
 
     /** List methods over the element type {@code T}; parameter names are CPython's. */
     static final List<Signature> LIST_METHODS = List.of(
@@ -74,6 +74,38 @@ public final class Checker {
             method("sort", "None", new Signature.Arg("reverse", Types.BOOL, "False")),
             method("clear", "None"),
             method("copy", "list[T]"));
+
+    /**
+     * Dict methods over the key type {@code K} and value type {@code V}; CPython's names, positional only. {@code pop}'s
+     * default has no value of its own: without it a missing key is an error. Stricter than Python: {@code setdefault}
+     * needs its default, and {@code items()} is out with tuples.
+     */
+    static final List<Signature> DICT_METHODS = List.of(
+            method("get", "Optional[V]", arg("key", "K"), new Signature.Arg("default", StandardLibrary.type("V"), "None")),
+            method("pop", "V", arg("key", "K"), new Signature.Arg("default", StandardLibrary.type("V"), "...")),
+            method("setdefault", "V", arg("key", "K"), arg("default", "V")),
+            method("keys", "list[K]"),
+            method("values", "list[V]"),
+            method("update", "None", arg("other", "dict[K, V]")),
+            method("clear", "None"),
+            method("copy", "dict[K, V]"));
+
+    /** Set methods over the item type {@code T}; CPython's names, positional only, each taking one other iterable. */
+    static final List<Signature> SET_METHODS = List.of(
+            method("add", "None", arg("elem", "T")),
+            method("remove", "None", arg("elem", "T")),
+            method("discard", "None", arg("elem", "T")),
+            method("pop", "T"),
+            method("union", "set[T]", arg("other", "Iterable[T]")),
+            method("intersection", "set[T]", arg("other", "Iterable[T]")),
+            method("difference", "set[T]", arg("other", "Iterable[T]")),
+            method("symmetric_difference", "set[T]", arg("other", "Iterable[T]")),
+            method("update", "None", arg("other", "Iterable[T]")),
+            method("issubset", "bool", arg("other", "Iterable[T]")),
+            method("issuperset", "bool", arg("other", "Iterable[T]")),
+            method("isdisjoint", "bool", arg("other", "Iterable[T]")),
+            method("clear", "None"),
+            method("copy", "set[T]"));
 
     static final List<Signature> STR_METHODS = List.of(
             method("startswith", "bool", arg("prefix", "str")),
@@ -196,9 +228,15 @@ public final class Checker {
             }
             var type = annotation(field.type(), field.id());
             if (field.defaultValue() != null) {
-                if (field.defaultValue() instanceof Expr.ListLit) {
-                    problem(field.defaultValue().id(), "mutable default <class 'list'> for field " + field.name()
-                            + " is not allowed: use default_factory");
+                var mutable = switch (field.defaultValue()) {
+                    case Expr.ListLit l -> "list";
+                    case Expr.DictLit d -> "dict";
+                    case Expr.SetLit s -> "set";
+                    default -> null;
+                };
+                if (mutable != null) {
+                    problem(field.defaultValue().id(), "mutable default <class '" + mutable + "'> for field "
+                            + field.name() + " is not allowed: use default_factory");
                     continue;
                 }
                 checkDefault(field.name(), type, field.defaultValue());
@@ -393,6 +431,26 @@ public final class Checker {
             var inner = annotation(written.args().get(0), node);
             return inner == null ? null : name.equals("list") ? Types.list(inner) : Types.optional(inner);
         }
+        if (name.equals("set") || name.equals("dict")) {
+            int arity = name.equals("set") ? 1 : 2;
+            if (written.args().size() != arity) {
+                problem(node, name.equals("set") ? "set needs its element type, as in set[int]"
+                        : "dict needs its key and value types, as in dict[str, int]");
+                return null;
+            }
+            var args = new ArrayList<TypeRef>();
+            for (var arg : written.args()) {
+                var inner = annotation(arg, node);
+                if (inner == null) {
+                    return null;
+                }
+                args.add(inner);
+            }
+            if (!hashable(args.get(0), node)) {
+                return null;
+            }
+            return new TypeRef(name, args);
+        }
         if (!written.args().isEmpty()) {
             problem(node, "'" + name + "' takes no type arguments");
             return null;
@@ -487,6 +545,13 @@ public final class Checker {
                     declare(n.name(), null, s.id());
                     return;
                 }
+                if (local == null && (Types.EMPTY_DICT.equals(value) || Types.EMPTY_SET.equals(value))) {
+                    problem(s.id(), Types.EMPTY_DICT.equals(value)
+                            ? "annotate the empty dict, as in " + n.name() + ": dict[str, int] = {}"
+                            : "annotate the empty set, as in " + n.name() + ": set[int] = set()");
+                    declare(n.name(), null, s.id());
+                    return;
+                }
                 declare(n.name(), value, s.id());
             }
             case Expr.Attribute a -> {
@@ -502,10 +567,24 @@ public final class Checker {
                 }
             }
             case Expr.Index i -> {
-                var element = itemForWrite(i.target(), i.id());
+                var owner = expr(i.target(), null);
+                if (Types.isDict(Types.unwrap(owner))) {
+                    var dict = Types.unwrap(owner);
+                    if (key(dict, i.index(), s.id()) && Types.value(dict) != null) {
+                        // The place written to has the value type, as the graph's target port shows it.
+                        types.put(i.id(), Types.value(dict));
+                    }
+                    var value = expr(s.value(), Types.value(dict));
+                    if (Types.value(dict) != null && !Types.assignable(Types.value(dict), value)) {
+                        problem(s.id(), "values of " + dict + " are " + Types.value(dict) + "; this is " + value);
+                    }
+                    return;
+                }
+                var element = itemForWrite(owner, i.id());
                 expr(i.index(), Types.INT);
                 if (element != null) {
                     checkIndex(i.index());
+                    types.put(i.id(), element);
                 }
                 var value = expr(s.value(), element);
                 if (element != null && !Types.assignable(element, value)) {
@@ -514,7 +593,7 @@ public final class Checker {
                 }
             }
             case Expr.Slice sl -> {
-                var element = itemForWrite(sl.target(), sl.id());
+                var element = itemForWrite(expr(sl.target(), null), sl.id());
                 sliceParts(sl);
                 var value = expr(s.value(), element == null ? null : Types.list(element));
                 if (element != null && !Types.assignable(Types.list(element), value)) {
@@ -600,6 +679,8 @@ public final class Checker {
                 yield Types.isTypedString(target) ? target : Types.STR;
             }
             case Expr.ListLit l -> listLiteral(l, expected);
+            case Expr.DictLit d -> dictLiteral(d, expected);
+            case Expr.SetLit s -> setLiteral(s, expected);
             case Expr.Name n -> name(n);
             case Expr.Call c -> call(c);
             case Expr.Attribute a -> attribute(a);
@@ -759,6 +840,76 @@ public final class Checker {
         return Types.list(element != null ? element : common);
     }
 
+    /** A problem for a key or set item type that cannot be hashed, in CPython's words; whether it can be. */
+    private boolean hashable(TypeRef type, String node) {
+        if (Types.hashable(type)) {
+            return true;
+        }
+        problem(node, "unhashable type: '" + Types.runtimeName(type) + "'");
+        return false;
+    }
+
+    /** The common type of literal parts, or {@code null} and a problem naming {@code what}. */
+    private TypeRef shared(List<Expr> parts, TypeRef expected, String what, String node) {
+        TypeRef common = null;
+        for (var part : parts) {
+            var type = expr(part, expected);
+            if (type == null) {
+                return null;
+            }
+            if (expected != null) {
+                if (!Types.assignable(expected, type)) {
+                    problem(part.id(), what + " must be " + expected + ", not " + type);
+                    return null;
+                }
+                continue;
+            }
+            if (common == null) {
+                common = type;
+                continue;
+            }
+            var joined = Types.common(common, type);
+            if (joined == null) {
+                problem(node, what + " must share one type, here " + common + " and " + type);
+                return null;
+            }
+            common = joined;
+        }
+        return expected != null ? expected : common;
+    }
+
+    private TypeRef dictLiteral(Expr.DictLit d, TypeRef expected) {
+        var target = Types.unwrap(expected);
+        boolean typed = Types.isDict(target) && !target.args().isEmpty();
+        if (d.keys().isEmpty()) {
+            return typed ? target : Types.EMPTY_DICT;
+        }
+        var key = shared(d.keys(), typed ? Types.key(target) : null, "dict keys", d.id());
+        if (key == null || !hashable(key, d.keys().get(0).id())) {
+            d.values().forEach(v -> expr(v, null));
+            return null;
+        }
+        var value = shared(d.values(), typed ? Types.value(target) : null, "dict values", d.id());
+        return value == null ? null : Types.dict(key, value);
+    }
+
+    private TypeRef setLiteral(Expr.SetLit s, TypeRef expected) {
+        var target = Types.unwrap(expected);
+        boolean typed = Types.isSet(target) && !target.args().isEmpty();
+        var item = shared(s.items(), typed ? Types.element(target) : null, "set items", s.id());
+        return item == null || !hashable(item, s.items().get(0).id()) ? null : Types.set(item);
+    }
+
+    /** Types a dict key against the dict's key type; whether it fits. */
+    private boolean key(TypeRef dict, Expr key, String node) {
+        var type = expr(key, Types.key(dict));
+        if (type != null && Types.key(dict) != null && !Types.assignable(Types.key(dict), type)) {
+            problem(node, "keys of " + dict + " are " + Types.key(dict) + "; this is " + type);
+            return false;
+        }
+        return type != null;
+    }
+
     private TypeRef name(Expr.Name n) {
         var local = locals.get(n.name());
         if (local != null) {
@@ -850,6 +1001,8 @@ public final class Checker {
             }
             methods = LIST_METHODS.stream().map(m -> substitute(m, Types.element(t))).toList();
             owner = "list";
+        } else if (Types.isDict(t) || Types.isSet(t)) {
+            return mappingMethod(c, t);
         } else if (Types.isStr(t)) {
             methods = STR_METHODS;
             owner = "str";
@@ -867,6 +1020,51 @@ public final class Checker {
             return null;
         }
         return bind(method.get(), owner + "." + c.name() + "()", c);
+    }
+
+    /**
+     * A dict or set method. Their arguments are positional only, as in CPython. {@code get} and {@code pop} with a
+     * default give the value type when the default is one, else {@code Optional}.
+     */
+    private TypeRef mappingMethod(Expr.Call c, TypeRef t) {
+        boolean dict = Types.isDict(t);
+        var owner = dict ? "dict" : "set";
+        if (dict && c.name().equals("items")) {
+            arguments(c);
+            problem(c.id(), "dict.items() is not supported, as tuples are not; walk the keys with for key in d");
+            return null;
+        }
+        var method = (dict ? DICT_METHODS : SET_METHODS).stream().filter(m -> m.name().equals(c.name())).findFirst();
+        if (method.isEmpty()) {
+            arguments(c);
+            problem(c.id(), "'" + owner + "' object has no attribute '" + c.name() + "'");
+            return null;
+        }
+        if (!c.keywords().isEmpty()) {
+            arguments(c);
+            problem(c.id(), owner + "." + c.name() + "() takes no keyword arguments");
+            return null;
+        }
+        if (t.args().isEmpty()) {
+            arguments(c);
+            return null;
+        }
+        var variables = dict ? Map.of("K", Types.key(t), "V", Types.value(t)) : Map.of("T", Types.element(t));
+        var signature = substitute(method.get(), variables);
+        boolean withDefault = dict && (c.name().equals("get") || c.name().equals("pop")) && c.args().size() == 2;
+        if (withDefault) {
+            // The default may be None, which gives Optional, or a value, which gives the value type.
+            var args = new ArrayList<>(signature.args());
+            args.set(1, args.get(1).withType(Types.optional(Types.value(t))));
+            signature = new Signature(signature.name(), args, signature.result(), signature.summary());
+        }
+        var result = bind(signature, owner + "." + c.name() + "()", c);
+        if (withDefault) {
+            var given = types.get(c.args().get(1).id());
+            return given == null || Types.NONE.equals(given) || Types.isOptional(given)
+                    ? Types.optional(Types.value(t)) : Types.value(t);
+        }
+        return result;
     }
 
     private TypeRef fileCall(String fileName, Program file, Expr.Call c) {
@@ -1080,6 +1278,36 @@ public final class Checker {
                 }
                 var item = Types.iterated(t);
                 yield item == null ? Types.EMPTY_LIST : Types.list(item);
+            }
+            case "set" -> {
+                if (!count(c, 0, 1)) {
+                    yield null;
+                }
+                if (args.isEmpty()) {
+                    yield Types.EMPTY_SET;
+                }
+                var t = Types.unwrap(args.get(0));
+                if (!Types.isIterable(t)) {
+                    problem(c.id(), "'" + Types.runtimeName(t) + "' object is not iterable");
+                    yield null;
+                }
+                var item = Types.iterated(t);
+                yield item == null ? Types.EMPTY_SET : hashable(item, c.id()) ? Types.set(item) : null;
+            }
+            case "dict" -> {
+                if (!count(c, 0, 1)) {
+                    yield null;
+                }
+                if (args.isEmpty()) {
+                    yield Types.EMPTY_DICT;
+                }
+                // Stricter than Python, which also builds a dict from pairs: a copy of another dict.
+                var t = Types.unwrap(args.get(0));
+                if (!Types.isDict(t)) {
+                    problem(c.id(), "dict() argument must be a dict, not '" + Types.runtimeName(t) + "'");
+                    yield null;
+                }
+                yield t;
             }
             case "bool" -> count(c, 0, 1) ? Types.BOOL : null;
             case "range" -> {
@@ -1329,8 +1557,7 @@ public final class Checker {
     }
 
     /** The element type of a list an item or slice assignment writes into; {@code null} if it cannot. */
-    private TypeRef itemForWrite(Expr target, String node) {
-        var type = expr(target, null);
+    private TypeRef itemForWrite(TypeRef type, String node) {
         if (type == null) {
             return null;
         }
@@ -1344,12 +1571,15 @@ public final class Checker {
 
     private TypeRef index(Expr.Index i) {
         var target = expr(i.target(), null);
+        var t = Types.unwrap(target);
+        if (Types.isDict(t)) {
+            return key(t, i.index(), i.id()) ? Types.value(t) : null;
+        }
         expr(i.index(), Types.INT);
         if (target == null) {
             return null;
         }
-        var t = Types.unwrap(target);
-        if (!Types.isIterable(t)) {
+        if (!Types.isIterable(t) || Types.isSet(t)) {
             problem(i.id(), "'" + Types.runtimeName(t) + "' object is not subscriptable");
             return null;
         }
@@ -1394,7 +1624,11 @@ public final class Checker {
             return null;
         }
         var t = Types.unwrap(target);
-        if (!Types.isIterable(t)) {
+        if (Types.isDict(t)) {
+            problem(s.id(), "a dict cannot be sliced");
+            return null;
+        }
+        if (!Types.isIterable(t) || Types.isSet(t)) {
             problem(s.id(), "'" + Types.runtimeName(t) + "' object is not subscriptable");
             return null;
         }
@@ -1457,7 +1691,7 @@ public final class Checker {
                 return null;
             }
             case IN, NOT_IN -> {
-                if (Types.isList(right) || Types.isRange(right)) {
+                if (Types.isList(right) || Types.isRange(right) || Types.isDict(right) || Types.isSet(right)) {
                     return Types.BOOL;
                 }
                 if (Types.isStr(right)) {
@@ -1582,18 +1816,43 @@ public final class Checker {
         return new Signature.Arg(name, StandardLibrary.type(type));
     }
 
-    /** A list method with the element type in place of {@code T}. */
-    static Signature substitute(Signature method, TypeRef element) {
-        return new Signature(method.name(),
-                method.args().stream().map(a -> a.withType(substitute(a.type(), element))).toList(),
-                substitute(method.result(), element), method.summary());
+    /**
+     * The methods of a list, dict, set, str or range, with the receiver's types in place of the type variables when
+     * they are known; empty for other types.
+     */
+    static List<Signature> methodsOf(TypeRef t) {
+        if (Types.isStr(t)) {
+            return STR_METHODS;
+        }
+        if (Types.isRange(t)) {
+            return RANGE_METHODS;
+        }
+        var methods = Types.isList(t) ? LIST_METHODS : Types.isDict(t) ? DICT_METHODS : Types.isSet(t) ? SET_METHODS
+                : List.<Signature>of();
+        if (methods.isEmpty() || t.args().isEmpty()) {
+            return methods;
+        }
+        var variables = Types.isDict(t) ? Map.of("K", Types.key(t), "V", Types.value(t)) : Map.of("T", t.args().get(0));
+        return methods.stream().map(m -> substitute(m, variables)).toList();
     }
 
-    private static TypeRef substitute(TypeRef type, TypeRef element) {
-        if (type.name().equals("T")) {
-            return element;
+    /** A list method with the element type in place of {@code T}. */
+    static Signature substitute(Signature method, TypeRef element) {
+        return substitute(method, Map.of("T", element));
+    }
+
+    /** A method with the given types in place of its type variables ({@code T}, {@code K}, {@code V}). */
+    static Signature substitute(Signature method, Map<String, TypeRef> variables) {
+        return new Signature(method.name(),
+                method.args().stream().map(a -> a.withType(substitute(a.type(), variables))).toList(),
+                substitute(method.result(), variables), method.summary());
+    }
+
+    private static TypeRef substitute(TypeRef type, Map<String, TypeRef> variables) {
+        if (type.args().isEmpty() && variables.containsKey(type.name())) {
+            return variables.get(type.name());
         }
-        return new TypeRef(type.name(), type.args().stream().map(a -> substitute(a, element)).toList());
+        return new TypeRef(type.name(), type.args().stream().map(a -> substitute(a, variables)).toList());
     }
 
     private void problem(String node, String message) {

@@ -19,13 +19,17 @@ not use is reported at its line as not supported.
 * Assignments, including `+=` and the other arithmetic ones.
 * `int`, `float`, `str`, `bool`, `None`, lists, `range`, fields such as `stack.amount`, indexing and slices, and
   methods on lists and strings.
+* Dictionaries and sets, typed as `dict[Item, int]` and `set[str]`. Keys and set items are numbers or strings. An
+  empty one needs its type written: `counts: dict[Item, int] = {}`, `seen: set[str] = set()`. A set keeps its items
+  in the order they were added; `keys()` and `values()` give lists.
 * Keyword arguments, as in `ae2f.select(port, side="down")`.
 * A class holds typed fields and no methods, and works as a record: `Order("minecraft:iron_ingot", 64)`.
 
 ## What is out
 
-Imports, exceptions (`try`, `raise`), classes with methods, lambdas, comprehensions, generators, dictionaries, sets,
-tuples, nested functions and `global`. Functions are defined and called; they cannot be stored or passed as values.
+Imports, exceptions (`try`, `raise`), classes with methods, lambdas, comprehensions, generators, tuples, nested
+functions and `global`. Without tuples there is no `d.items()`: walk the keys with `for key in d`. Sets have no
+operators such as `|` and `&`; use `union`, `intersection` and the other methods. Functions are defined and called; they cannot be stored or passed as values.
 
 ## Types
 
@@ -55,5 +59,5 @@ A file holds any number of functions. A function calls another of its file by na
   tick, so a run makes at most one action per tick. Move or craft large amounts in one call.
 * `mc.wait(ticks)` pauses the run for `ticks` ticks; `mc.wait(0)` takes no time.
 * A run takes at most 10,000 steps a tick and goes on in the next one, so `while True:` cannot freeze the server.
-* Integers are 64-bit, a list or string holds at most 100,000 items, and calls nest at most 1,000 deep. A program file
+* Integers are 64-bit, a list, string, dict or set holds at most 100,000 items, and calls nest at most 1,000 deep. A program file
   holds at most 64,000 characters.

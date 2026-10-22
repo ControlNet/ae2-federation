@@ -65,9 +65,25 @@ public final class Runner {
     private static final class Cursor {
         final Object iterable;
         long next;
+        /** A dict or set walked through a copy of its keys, with its version and size when the walk started. */
+        Object watched;
+        int version;
+        int size;
 
         Cursor(Object iterable) {
             this.iterable = iterable;
+        }
+
+        /** Stops the walk as Python does when the dict or set changed under it. */
+        void check() {
+            switch (watched) {
+                case DictValue d when d.version != version -> throw new RunError("RuntimeError", d.size() != size
+                        ? "dictionary changed size during iteration" : "dictionary keys changed during iteration");
+                case SetValue s when s.size() != size -> throw new RunError("RuntimeError",
+                        "Set changed size during iteration");
+                case null, default -> {
+                }
+            }
         }
     }
 
@@ -205,11 +221,25 @@ public final class Runner {
                     s.codePoints().forEach(c -> characters.add(new String(Character.toChars(c))));
                     iterable = new ListValue(characters);
                 }
-                locals.put(n.cursor(), new Cursor(iterable));
+                Cursor cursor;
+                if (iterable instanceof DictValue d) {
+                    cursor = new Cursor(new ListValue(d.keys()));
+                    cursor.watched = d;
+                    cursor.version = d.version;
+                    cursor.size = d.size();
+                } else if (iterable instanceof SetValue s) {
+                    cursor = new Cursor(new ListValue(s.items()));
+                    cursor.watched = s;
+                    cursor.size = s.size();
+                } else {
+                    cursor = new Cursor(iterable);
+                }
+                locals.put(n.cursor(), cursor);
                 frame.at++;
             }
             case Node.Next n -> {
                 var cursor = (Cursor) locals.get(n.cursor());
+                cursor.check();
                 if (cursor.next < Ops.length(cursor.iterable)) {
                     var item = Ops.item(cursor.iterable, cursor.next++);
                     locals.put(n.variable(), item);

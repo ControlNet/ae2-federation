@@ -178,17 +178,10 @@ public final class Completion {
         }
         var t = Types.unwrap(type);
         var out = new ArrayList<Candidate>();
-        List<Signature> methods = List.of();
-        if (Types.isList(t)) {
-            var element = Types.element(t);
-            methods = Checker.LIST_METHODS.stream().map(m -> element == null ? m : Checker.substitute(m, element))
-                    .toList();
-        } else if (Types.isStr(t)) {
-            methods = Checker.STR_METHODS;
-        } else if (Types.isRange(t)) {
-            methods = Checker.RANGE_METHODS;
+        var methods = Checker.methodsOf(t);
+        if (Types.isRange(t)) {
             Checker.RANGE_FIELDS.forEach(f -> out.add(new Candidate(f, Candidate.Kind.FIELD, "int")));
-        } else {
+        } else if (methods.isEmpty()) {
             fields(t.name()).forEach((name, fieldType) ->
                     out.add(new Candidate(name, Candidate.Kind.FIELD, fieldType.toString())));
         }
@@ -469,6 +462,15 @@ public final class Completion {
                 var element = l.items().isEmpty() ? null : infer(l.items().get(0));
                 yield element == null ? simple("list") : new TypeRef("list", List.of(element));
             }
+            case Expr.DictLit l -> {
+                var key = l.keys().isEmpty() ? null : infer(l.keys().get(0));
+                var value = l.values().isEmpty() ? null : infer(l.values().get(0));
+                yield key == null || value == null ? Types.EMPTY_DICT : Types.dict(key, value);
+            }
+            case Expr.SetLit l -> {
+                var element = infer(l.items().get(0));
+                yield element == null ? Types.EMPTY_SET : Types.set(element);
+            }
             case Expr.Name n -> variables.get(n.name());
             case Expr.Call c -> {
                 if (c.receiver() == null) {
@@ -492,7 +494,11 @@ public final class Completion {
             case Expr.Index i -> {
                 var target = infer(i.target());
                 target = target == null ? null : Types.unwrap(target);
-                yield target != null && Types.isIterable(target) ? Types.iterated(target) : null;
+                if (Types.isDict(target)) {
+                    yield Types.value(target);
+                }
+                yield target != null && Types.isIterable(target) && !Types.isSet(target) ? Types.iterated(target)
+                        : null;
             }
             case Expr.Slice s -> infer(s.target());
             case Expr.Unary u -> u.op() == UnaryOp.NOT ? simple("bool") : infer(u.operand());
@@ -525,6 +531,9 @@ public final class Completion {
             case "range" -> Types.RANGE;
             case "list" -> iterable == null || Types.iterated(iterable) == null ? Types.EMPTY_LIST
                     : Types.list(Types.iterated(iterable));
+            case "set" -> iterable == null || Types.iterated(iterable) == null ? Types.EMPTY_SET
+                    : Types.set(Types.iterated(iterable));
+            case "dict" -> first != null && Types.isDict(Types.unwrap(first)) ? Types.unwrap(first) : Types.EMPTY_DICT;
             case "min", "max", "sum" -> c.args().size() == 1 && iterable != null ? Types.iterated(iterable) : first;
             case "abs" -> first;
             case "round" -> c.args().size() == 1 ? Types.INT : first;
@@ -533,17 +542,13 @@ public final class Completion {
         };
     }
 
-    /** What a list, str or range method gives. */
+    /** What a list, dict, set, str or range method gives. */
     private static TypeRef method(TypeRef receiver, String name) {
         if (receiver == null) {
             return null;
         }
-        var t = Types.unwrap(receiver);
-        List<Signature> methods = Types.isList(t) ? Checker.LIST_METHODS : Types.isStr(t) ? Checker.STR_METHODS
-                : Types.isRange(t) ? Checker.RANGE_METHODS : List.of();
-        var element = Types.isList(t) ? Types.element(t) : null;
-        return methods.stream().filter(m -> m.name().equals(name)).findFirst()
-                .map(m -> element == null ? m : Checker.substitute(m, element)).map(Signature::result).orElse(null);
+        return Checker.methodsOf(Types.unwrap(receiver)).stream().filter(m -> m.name().equals(name)).findFirst()
+                .map(Signature::result).orElse(null);
     }
 
     /** A record type by name: one of this file's classes, or {@code file.Name} for another file's. */

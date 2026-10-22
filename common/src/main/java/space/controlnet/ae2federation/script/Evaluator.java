@@ -82,6 +82,20 @@ public final class Evaluator {
                 l.items().forEach(item -> items.add(eval(file, item, locals)));
                 yield new ListValue(items);
             }
+            case Expr.DictLit d -> {
+                var dict = new DictValue();
+                for (int i = 0; i < d.keys().size(); i++) {
+                    // Python evaluates each key, then its value.
+                    var key = eval(file, d.keys().get(i), locals);
+                    dict.put(key, eval(file, d.values().get(i), locals));
+                }
+                yield dict;
+            }
+            case Expr.SetLit s -> {
+                var set = new SetValue();
+                s.items().forEach(item -> set.add(eval(file, item, locals)));
+                yield set;
+            }
             case Expr.Name n -> {
                 if (!locals.containsKey(n.name())) {
                     throw new RunError("UnboundLocalError", "cannot access local variable '" + n.name()

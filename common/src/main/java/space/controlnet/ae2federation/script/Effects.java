@@ -203,6 +203,13 @@ record Effects(Set<String> functions, Set<String> calls) {
                 calls(b.right(), out);
             }
             case Expr.ListLit l -> l.items().forEach(item -> calls(item, out));
+            case Expr.DictLit d -> {
+                for (int i = 0; i < d.keys().size(); i++) {
+                    calls(d.keys().get(i), out);
+                    calls(d.values().get(i), out);
+                }
+            }
+            case Expr.SetLit l -> l.items().forEach(item -> calls(item, out));
             default -> {
             }
         }

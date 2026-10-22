@@ -29,7 +29,7 @@ public record Canvas(List<Node> nodes, List<Link> links, Map<String, TypeRef> ty
 
     public enum Kind {
         ENTRY, ASSIGN, AUG_ASSIGN, CALL_STATEMENT, IF, WHILE, FOR, RETURN, BREAK, CONTINUE, PASS,
-        CALL, BINARY, UNARY, ATTRIBUTE, INDEX, SLICE, LIST
+        CALL, BINARY, UNARY, ATTRIBUTE, INDEX, SLICE, LIST, DICT, SET
     }
 
     /** What a port takes. */
@@ -338,6 +338,19 @@ public record Canvas(List<Node> nodes, List<Link> links, Map<String, TypeRef> ty
                         inputs.put("item" + i, input(l.items().get(i)));
                     }
                 }
+                case Expr.DictLit d -> {
+                    kind = Kind.DICT;
+                    for (int i = 0; i < d.keys().size(); i++) {
+                        inputs.put("key" + i, input(d.keys().get(i)));
+                        inputs.put("value" + i, input(d.values().get(i)));
+                    }
+                }
+                case Expr.SetLit l -> {
+                    kind = Kind.SET;
+                    for (int i = 0; i < l.items().size(); i++) {
+                        inputs.put("item" + i, input(l.items().get(i)));
+                    }
+                }
                 default -> throw new IllegalArgumentException("not a node: " + e);
             }
             nodes.set(at, new Node(e.id(), kind, name, namespace, null, inputs, List.of(), null, Notes.NONE, List.of(),
@@ -443,6 +456,17 @@ public record Canvas(List<Node> nodes, List<Link> links, Map<String, TypeRef> ty
                     var items = new ArrayList<Expr>();
                     in.values().forEach(input -> items.add(expr(input)));
                     yield new Expr.ListLit(n.id(), items);
+                }
+                case DICT -> {
+                    var keys = new ArrayList<Expr>();
+                    var values = new ArrayList<Expr>();
+                    in.forEach((port, input) -> (port.startsWith("key") ? keys : values).add(expr(input)));
+                    yield new Expr.DictLit(n.id(), keys, values);
+                }
+                case SET -> {
+                    var items = new ArrayList<Expr>();
+                    in.values().forEach(input -> items.add(expr(input)));
+                    yield new Expr.SetLit(n.id(), items);
                 }
                 default -> throw new IllegalStateException("not a value: " + n);
             };

@@ -137,6 +137,13 @@ final class Flow {
                 reads(b.right(), assigned);
             }
             case Expr.ListLit l -> l.items().forEach(item -> reads(item, assigned));
+            case Expr.DictLit d -> {
+                for (int i = 0; i < d.keys().size(); i++) {
+                    reads(d.keys().get(i), assigned);
+                    reads(d.values().get(i), assigned);
+                }
+            }
+            case Expr.SetLit l -> l.items().forEach(item -> reads(item, assigned));
             default -> {
             }
         }

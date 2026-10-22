@@ -114,6 +114,13 @@ public final class DryRunNotes {
         if (expr == null) return;
         switch (expr) {
             case Expr.ListLit e -> e.items().forEach(item -> computed(parsed, item, own, values, parts));
+            case Expr.DictLit e -> {
+                for (int i = 0; i < e.keys().size(); i++) {
+                    computed(parsed, e.keys().get(i), own, values, parts);
+                    computed(parsed, e.values().get(i), own, values, parts);
+                }
+            }
+            case Expr.SetLit e -> e.items().forEach(item -> computed(parsed, item, own, values, parts));
             case Expr.Call e -> {
                 computed(parsed, e.receiver(), own, values, parts);
                 e.args().forEach(arg -> computed(parsed, arg, own, values, parts));

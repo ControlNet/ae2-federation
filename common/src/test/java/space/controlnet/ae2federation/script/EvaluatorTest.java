@@ -553,6 +553,111 @@ final class EvaluatorTest {
         assertEquals(tooMany, exec("xs", "xs = [0]", "xs.extend(range(100000))"));
     }
 
+    /** Expected values were produced by CPython 3.12.2 evaluating each expression. */
+    static Stream<Arguments> cpythonDictsAndSets() {
+        return Stream.of(
+                Arguments.of("{'a': 1, 'b': [2]}", "{'a': 1, 'b': [2]}"),
+                Arguments.of("{}", "{}"),
+                Arguments.of("{1, 2, 3}", "{1, 2, 3}"),
+                Arguments.of("set()", "set()"),
+                Arguments.of("{1: 'a', 1.0: 'b', True: 'c'}", "{1: 'c'}"),
+                Arguments.of("{1, 1.0, True}", "{1}"),
+                Arguments.of("{'a': 1}['a']", "1"),
+                Arguments.of("{'a': 1}['b']", "KeyError: 'b'"),
+                Arguments.of("{1: 'x'}[1.0]", "'x'"),
+                Arguments.of("{1: 2}[[1]]", "TypeError: unhashable type: 'list'"),
+                Arguments.of("{[1]: 2}", "TypeError: unhashable type: 'list'"),
+                Arguments.of("{[1], 2}", "TypeError: unhashable type: 'list'"),
+                Arguments.of("len({'a': 1, 'b': 2})", "2"),
+                Arguments.of("len({1, 2, 2})", "2"),
+                Arguments.of("'a' in {'a': 1}", "True"),
+                Arguments.of("1 in {'a': 1}", "False"),
+                Arguments.of("2 in {1, 2}", "True"),
+                Arguments.of("[1] in {1}", "TypeError: unhashable type: 'list'"),
+                Arguments.of("{'a': 1, 'b': 2} == {'b': 2, 'a': 1}", "True"),
+                Arguments.of("{1, 2} == {2, 1}", "True"),
+                Arguments.of("{1: 2} == {1.0: 2}", "True"),
+                Arguments.of("{1, 2} == [1, 2]", "False"),
+                Arguments.of("{'a': 1} != {'a': 2}", "True"),
+                Arguments.of("bool({})", "False"),
+                Arguments.of("bool(set())", "False"),
+                Arguments.of("bool({0})", "True"),
+                Arguments.of("{'a': 1}.get('a')", "1"),
+                Arguments.of("{'a': 1}.get('b')", "None"),
+                Arguments.of("{'a': 1}.get('b', 5)", "5"),
+                Arguments.of("list({'b': 1, 'a': 2})", "['b', 'a']"),
+                Arguments.of("{1, 2}.union([3])", "{1, 2, 3}"),
+                Arguments.of("{1, 2, 3}.intersection([2, 3, 4])", "{2, 3}"),
+                Arguments.of("{1, 2, 3}.difference([2])", "{1, 3}"),
+                Arguments.of("{1, 2}.symmetric_difference([2, 3])", "{1, 3}"),
+                Arguments.of("{1}.issubset([1, 2])", "True"),
+                Arguments.of("{1, 2}.issuperset([1])", "True"),
+                Arguments.of("{1}.isdisjoint([2])", "True"),
+                Arguments.of("set([1, 2, 2])", "{1, 2}"),
+                Arguments.of("dict({'a': 1})", "{'a': 1}"),
+                Arguments.of("{None: 1}[None]", "1"),
+                Arguments.of("{None}", "{None}"),
+                Arguments.of("{'x': None}", "{'x': None}"),
+                Arguments.of("sum({1: 'a', 2: 'b'})", "3"),
+                Arguments.of("max({'b': 1, 'a': 2})", "'b'"),
+                Arguments.of("set().pop()", "KeyError: 'pop from an empty set'"),
+                Arguments.of("{}.pop('a')", "KeyError: 'a'"),
+                Arguments.of("{'a': 1}.pop('a')", "1"),
+                Arguments.of("{'a': 1}.pop('b', 0)", "0"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource
+    void cpythonDictsAndSets(String expression, String expected) {
+        assertEquals(expected, run(expression));
+    }
+
+    /** Where dicts and sets are stricter than CPython's, so programs read the same everywhere. */
+    static Stream<Arguments> dictsAndSetsDifferFromCPython() {
+        return Stream.of(
+                // CPython gives views, dict_keys(['a']); these are plain lists.
+                Arguments.of("{'a': 1}.keys()", "['a']"),
+                Arguments.of("{'a': 1, 'b': 2}.values()", "[1, 2]"),
+                // CPython's set order is arbitrary, {'b', 'a'} on some runs; here it is the order of adding.
+                Arguments.of("set('bab')", "{'b', 'a'}"),
+                Arguments.of("{3, 1, 2}", "{3, 1, 2}"),
+                // CPython 3.12 looks the slice up as a key: KeyError: slice(1, 2, None).
+                Arguments.of("{1: 2}[1:2]", "TypeError: a dict cannot be sliced"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource
+    void dictsAndSetsDifferFromCPython(String expression, String expected) {
+        assertEquals(expected, run(expression));
+    }
+
+    @Test
+    void dictsAndSetsAreSharedAndChangedInPlace() {
+        assertEquals("{'a': 1, 'b': 2}", exec("e", "d = {'a': 1}", "e = d", "d['b'] = 2"));
+        assertEquals("{'a': 6}", exec("d", "d = {'a': 1}", "d['a'] += 5"));
+        assertEquals("{1.0: 'y'}", exec("d", "d = {1.0: 'x'}", "d[1] = 'y'"));
+        assertEquals("{'a': 1, 'b': 3}", exec("d", "d = {'a': 1, 'b': 2}", "d.update({'b': 3})"));
+        assertEquals("[5, {'a': 5}]", exec("[x, d]", "d: dict[str, int] = {}", "x = d.setdefault('a', 5)",
+                "x = d.setdefault('a', 7)"));
+        assertEquals("{}", exec("d", "d = {'a': 1}", "d.clear()"));
+        assertEquals("{'a': 1}", exec("c", "d = {'a': 1}", "c = d.copy()", "d['b'] = 2"));
+        assertEquals("{1, 2}", exec("t", "s = {1}", "t = s", "s.add(2)", "s.add(1)"));
+        assertEquals("{2}", exec("s", "s = {1, 2}", "s.remove(1)", "s.discard(3)"));
+        assertEquals("KeyError: 3", exec("s", "s = {1}", "s.remove(3)"));
+        assertEquals("{1, 2, 3}", exec("s", "s = {1}", "s.update([2, 3, 1])"));
+        assertEquals("[1, {2}]", exec("[x, s]", "s = {1, 2}", "x = s.pop()"));
+    }
+
+    @Test
+    void dictsAndSetsStopGrowingAtTheCap() {
+        var tooMany = "MemoryError: dicts and sets hold at most 100000 items";
+        assertEquals("100000", exec("len(s)", "s = set(range(100000))"));
+        assertEquals(tooMany, exec("s", "s = set(range(100000))", "s.add(-1)"));
+        assertEquals(tooMany, exec("s", "s = set(range(100000))", "s.update([-1])"));
+        assertEquals("100000", exec("len(s)", "s = set(range(100000))", "s.add(0)"));
+        assertEquals(tooMany, exec("d", "s = set(range(100000))", "d = {-1: 0}", "s.update(d)"));
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource
     void sixtyFourBit(String expression, String expected) {

@@ -74,7 +74,8 @@ public final class Layout {
             return node.kind() != Canvas.Kind.CALL && node.kind() != Canvas.Kind.BINARY
                     && node.kind() != Canvas.Kind.UNARY && node.kind() != Canvas.Kind.ATTRIBUTE
                     && node.kind() != Canvas.Kind.INDEX && node.kind() != Canvas.Kind.SLICE
-                    && node.kind() != Canvas.Kind.LIST;
+                    && node.kind() != Canvas.Kind.LIST && node.kind() != Canvas.Kind.DICT
+                    && node.kind() != Canvas.Kind.SET;
         }
     }
 
@@ -140,7 +141,7 @@ public final class Layout {
                     outputs.add("next");
                 }
             }
-            case CALL, BINARY, UNARY, ATTRIBUTE, INDEX, SLICE, LIST -> {
+            case CALL, BINARY, UNARY, ATTRIBUTE, INDEX, SLICE, LIST, DICT, SET -> {
             }
             default -> outputs.add("next");
         }

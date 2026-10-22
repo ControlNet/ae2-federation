@@ -129,6 +129,56 @@ final class RunnerTest {
                 """, "main", List.of(),
                         List.of(),
                         "[3, 50]"),
+                Arguments.of("dict and set literals evaluate around a call in Python order", """
+                def bump(xs: list[int]) -> int:
+                    xs[0] = xs[0] + 1
+                    return xs[0]
+
+                def main() -> list[int]:
+                    xs = [0]
+                    d = {xs[0]: bump(xs), xs[0]: bump(xs)}
+                    s = {xs[0], bump(xs), xs[0]}
+                    return [len(d), d[0], d[1], len(s)]
+                """, "main", List.of(),
+                        List.of(),
+                        "[2, 1, 2, 2]"),
+                Arguments.of("a dict that grows while a for loop walks it", """
+                def main() -> int:
+                    d = {1: 1, 2: 2}
+                    for k in d:
+                        d[k + 10] = 0
+                    return len(d)
+                """, "main", List.of(),
+                        List.of(),
+                        "RuntimeError: dictionary changed size during iteration"),
+                Arguments.of("a dict whose values change while a for loop walks it", """
+                def main() -> dict[int, int]:
+                    d = {1: 1, 2: 2}
+                    for k in d:
+                        d[k] = d[k] * 2
+                    return d
+                """, "main", List.of(),
+                        List.of(),
+                        "{1: 2, 2: 4}"),
+                Arguments.of("a dict whose keys change while a for loop walks it", """
+                def main() -> int:
+                    d = {1: 1, 2: 2}
+                    for k in d:
+                        d.pop(k)
+                        d[k + 10] = 0
+                    return len(d)
+                """, "main", List.of(),
+                        List.of(),
+                        "RuntimeError: dictionary keys changed during iteration"),
+                Arguments.of("a set that grows while a for loop walks it", """
+                def main() -> int:
+                    s = {1, 2}
+                    for x in s:
+                        s.add(x + 10)
+                    return len(s)
+                """, "main", List.of(),
+                        List.of(),
+                        "RuntimeError: Set changed size during iteration"),
                 Arguments.of("library reads and actions in Python order", """
                 def main() -> bool:
                     b = ae2f.select("north_gate", 2)

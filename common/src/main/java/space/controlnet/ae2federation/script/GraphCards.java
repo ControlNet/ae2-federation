@@ -243,6 +243,8 @@ public final class GraphCards {
             case INDEX -> "[ ]";
             case SLICE -> "[ : ]";
             case LIST -> "list";
+            case DICT -> "dict";
+            case SET -> "set";
         };
     }
 
@@ -276,24 +278,20 @@ public final class GraphCards {
             case FOR -> "in";
             case BINARY -> port.equals("left") ? "a" : "b";
             case UNARY -> "a";
-            case LIST -> port.substring(4);
+            case LIST, SET -> port.substring(4);
+            case DICT -> port.startsWith("key") ? "k" + port.substring(3) : "v" + port.substring(5);
             default -> port;
         };
     }
 
-    /** The parameter names of a call: a library function's, a player function's or a list or str method's. */
+    /** The parameter names of a call: a library function's, a player function's or a built-in type's method's. */
     private static List<String> parameters(Canvas.Node call, Canvas canvas, Program self, Workspace workspace) {
         var qualifier = call.qualifier();
         List<Signature> library = qualifier == null ? null : workspace.catalog().namespaces().get(qualifier);
         if (library != null) return names(library, call.name());
         if (call.inputs().get("receiver") instanceof Canvas.Input receiver) {
             var type = type(receiver, canvas.types());
-            var methods = type == null ? List.<Signature>of() : switch (type.name()) {
-                case "list" -> Checker.LIST_METHODS;
-                case "str" -> Checker.STR_METHODS;
-                case "range" -> Checker.RANGE_METHODS;
-                default -> List.<Signature>of();
-            };
+            var methods = type == null ? List.<Signature>of() : Checker.methodsOf(Types.unwrap(type));
             return names(methods, call.name());
         }
         var file = qualifier == null ? self : workspace.files().get(qualifier);

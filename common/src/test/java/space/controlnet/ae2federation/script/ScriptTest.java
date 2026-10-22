@@ -326,6 +326,10 @@ final class ScriptTest {
                 """));
         assertEquals("def f(x: int = 1) -> None:\n    pass\n", print("def f(x:int=1)->None:\n    pass\n"));
         assertEquals("class A:\n    x: int\n", print("class A():\n    x : int\n    pass\n"));
+        assertEquals(body("y = {\"a\": 1, \"b\": [2]}"), print(body("y = { 'a' :1,'b': [2], }")));
+        assertEquals(body("y = {}"), print(body("y = { }")));
+        assertEquals(body("y = {1, 2}"), print(body("y = {1,2,}")));
+        assertEquals(body("y: dict[str, set[int]] = {}"), print(body("y : dict[ str , set[int] ] = {}")));
         assertEquals(body("y = (-x).real + (1).real + xs[1:2] + a.b[0]"),
                 print(body("y = ( - x ) . real + (1).real + xs[ 1 : 2 : ] + (a.b)[0]")));
     }
@@ -417,7 +421,9 @@ final class ScriptTest {
                 Arguments.of(body("y = ~x"), 2, "'~' is not supported"),
                 Arguments.of(body("y = +x"), 2, "unary '+' is not supported"),
                 Arguments.of(body("y = [x for x in xs]"), 2, "comprehensions are not supported"),
-                Arguments.of(body("y = {1: 2}"), 2, "dicts and sets are not supported"),
+                Arguments.of(body("y = {x: 1 for x in xs}"), 2, "comprehensions are not supported"),
+                Arguments.of(body("y = {x for x in xs}"), 2, "comprehensions are not supported"),
+                Arguments.of(body("y = {**d}"), 2, "unpacking with '**' is not supported"),
                 Arguments.of(body("y = lambda: 0"), 2, "'lambda' is not supported"),
                 Arguments.of(body("xs[0](1)"), 2, "only a function name can be called"),
                 Arguments.of(body("y = xs[1, 2]"), 2, "tuples are not supported"),
@@ -444,7 +450,9 @@ final class ScriptTest {
                 Arguments.of("def f(x: int, x: int) -> None:\n    pass\n", 1,
                         "duplicate argument 'x' in function definition"),
                 Arguments.of(body("break"), 2, "'break' outside loop"),
-                Arguments.of(body("if x:\n        continue"), 3, "'continue' not properly in loop"));
+                Arguments.of(body("if x:\n        continue"), 3, "'continue' not properly in loop"),
+                Arguments.of(body("y = {1: 2, 3}"), 2, "':' expected after dictionary key"),
+                Arguments.of(body("y = {1: 2, 3: }"), 2, "expression expected after dictionary key and ':'"));
     }
 
     @ParameterizedTest
