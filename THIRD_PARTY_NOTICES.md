@@ -7,6 +7,9 @@ This file covers what the released JAR and this repository contain and what they
 
 - **Code**: AE2 Federation's own code is licensed under [AGPL-3.0-only](LICENSE). Code adapted from other projects
   keeps its original notice; see *Adapted code*.
+- **Artwork**: textures adapted from Applied Energistics 2 are licensed under
+  [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/), as AE2's own textures are; the project's
+  original artwork is All Rights Reserved.
 - **Other files**: the font subset, the README's teaser and the guide's images; see *Fonts* and *Images*.
 - **Testing**: the mods and modpacks the test suite runs against, none of which is shipped; see
   *Compatibility testing*.
