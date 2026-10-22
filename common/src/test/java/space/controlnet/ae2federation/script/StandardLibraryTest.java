@@ -40,6 +40,16 @@ final class StandardLibraryTest {
         assertEquals("", StandardLibrary.summaryKey(Checker.LIST_METHODS.get(0)), "a method has no key");
     }
 
+    /** A default the checker accepts is one the runner can fill in: {@code fs.list()} once failed here. */
+    @Test
+    void everyDefaultCanBeFilledIn() {
+        StandardLibrary.NAMESPACES.forEach((namespace, signatures) -> signatures.forEach(s -> s.args().stream()
+                .filter(a -> a.defaultValue() != null).forEach(a -> {
+                    var value = Ops.literal(a.defaultValue());
+                    assertEquals(a.defaultValue(), Ops.repr(value).replace('\'', '"'), namespace + "." + s.name());
+                })));
+    }
+
     @Test
     void namesAreUniqueWithinANamespace() {
         StandardLibrary.NAMESPACES.forEach((namespace, signatures) -> {

@@ -206,11 +206,12 @@ public final class ProgramHostGameTests {
                     added = fs.append("gametest/notes.txt", "gold 32")
                     text = fs.read("gametest/notes.txt")
                     names = fs.list("gametest")
+                    top = "gametest/" in fs.list()
                     deleted = fs.delete("gametest/notes.txt")
                     emptied = fs.delete("gametest")
-                    return " ".join([str(wrote), str(added), str(text), str(names), str(deleted), str(emptied),
+                    return " ".join([str(wrote), str(added), str(text), str(names), str(top), str(deleted), str(emptied),
                                      str(fs.exists("gametest")), str(fs.read("gametest/notes.txt"))])
-                """, "True True iron 64;gold 32 ['notes.txt'] True True False None",
+                """, "True True iron 64;gold 32 ['notes.txt'] True True True False None",
                 "A program writes, adds to, reads, lists and deletes a file in the world's workspace", () -> {
                     helper.assertFalse(Files.exists(folder), "The program removed its folder");
                     // A dry run checks a change but leaves the disk alone.

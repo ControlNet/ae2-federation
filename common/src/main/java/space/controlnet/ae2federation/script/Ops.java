@@ -1229,13 +1229,19 @@ public final class Ops {
         return out;
     }
 
-    /** A default written in a signature: {@code None}, {@code True}, {@code False}, or a number. */
+    /**
+     * A default written in a signature: {@code None}, {@code True}, {@code False}, a number, a string without escapes,
+     * or a new empty list or dict for each call.
+     */
     static Object literal(String text) {
         return switch (text) {
             case "None" -> null;
             case "True" -> true;
             case "False" -> false;
-            default -> text.contains(".") ? (Object) Double.parseDouble(text) : (Object) Long.parseLong(text);
+            case "[]" -> new ListValue(new ArrayList<>());
+            case "{}" -> new DictValue();
+            default -> text.startsWith("\"") ? text.substring(1, text.length() - 1)
+                    : text.contains(".") ? (Object) Double.parseDouble(text) : (Object) Long.parseLong(text);
         };
     }
 
