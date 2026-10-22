@@ -125,3 +125,29 @@ AE2's frame style but no colours or pixels.
 
 Open: the artist should confirm how groups A/B were made (the Nexus press commit says it replaced AE2's texture, yet
 it matches AE2's `calculation_processor_press` at 95%).
+
+## Classification by game object (dev, 2026-10-22)
+
+Texture use traced through models/blockstates and the code that binds textures (`CableBakedModel`,
+`DeviceStructureBakedModel`/`DeviceStructureGeometry` for formed Router/Switch/Quantum Cube faces, `BundleOverlay`,
+`FederationP2PTunnelPart`, `MultipartBridgePart`).
+
+| Object | Textures (group) | Object contains |
+|---|---|---|
+| ME Federation Pattern Provider | front `pattern_provider` (B), side `_side` (A), back `_back` (A) | AE2-derived |
+| ME Federation Processing Endpoint | front, `_side`, `_back` (all B) | AE2-derived |
+| ME Federation Router | standalone `router` (B); formed: `router_base` (D) + `_corner`/`_side_hor`/`_side_ver` (B) | AE2-derived |
+| ME Federation Switch | same layout as the Router (`switch_base` D, rest B) | AE2-derived |
+| ME Federation Quantum Cube | standalone `quantum_cube` (C); formed: `_base` (D) + `_corner`/`_side_*` (C) | AE2-derived (placeholder) |
+| ME Federation Beam Converter / Creative / Beam Former | front, side, back each (C) | AE2-derived (placeholder) |
+| ME Federation Bridge (part + item) | front `part/bridge` (D), sides `part/bridge_sides` (B) | AE2-derived (sides) |
+| Federation P2P Tunnel | panel `part/p2p_tunnel_federation` (A); body is AE2's own P2P base model, referenced | AE2-derived (panel) |
+| Nexus Processor / Inscriber Nexus Press / Printed Nexus Circuit | one icon each (A) | AE2-derived |
+| Nexus Core | `item/nexus_core` (B) | AE2-derived |
+| ME Federation Cable, 2x2/3x3 bundles | `part/cable/dense/core*` (6), `line`, `collar`, `block/large_cable/large_cable`, particle `block/armor` (all D) | original |
+| Wrench bundle-selection overlay | `misc/bundle_selection_hatch` (D) | original |
+| Mod logo `ae2federation_logo.png` | render of the Router | contains B |
+
+Shipped but referenced nowhere (all D): `block/glass`, `block/collar`, `block/stream_u`, `block/stream_v`,
+`entity/cable_flow`, `part/cable/dense/connector`, `part/cable/dense/stream_u`, `part/cable/dense/stream_v` (+ their
+`.mcmeta`). Only the cable family and the selection overlay are free of AE2 art.
