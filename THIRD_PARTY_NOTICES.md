@@ -116,13 +116,14 @@ The Gradle test source sets also compile against these mods, which only those te
 | Pretty Pipes, with Pretty Pipes: Fluids | 1.21.1, 3.1.0 | MIT; MIT |
 | GregTech CEu Modern | 7.0.2 | LGPL-3.0 |
 
-Two modpacks are run whole, from the server packs their authors publish on CurseForge. Every mod inside keeps its
+Three modpacks are run whole, from the server packs their authors publish on CurseForge. Every mod inside keeps its
 own licence:
 
 | Modpack | Version |
 |---|---|
 | All the Mods 10 | 8.2 (`ServerFiles-8.2`) |
 | Create Ultimate Selection 2 | 12.4.0 (server pack) |
+| New Age Science and Technology | 2.2.1 (`nast server 2.2.1`) |
 
 ## Adapted code
 

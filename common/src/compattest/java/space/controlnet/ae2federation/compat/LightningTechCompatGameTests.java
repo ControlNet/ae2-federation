@@ -142,7 +142,7 @@ public final class LightningTechCompatGameTests {
     public static void tianshuOrdersFromMatrix(GameTestHelper helper) {
         var center = new BlockPos(23, 2, 14);
         var scene = new RouterCraftingScene(helper, center);
-        // The Tianshu file's controller is at (6, 0, 3) and its Port at (3, 0, 3), over the last cable.
+        // The Tianshu file's controller is at (6, 0, 3); its Port goes in at (3, 0, 3), over the last cable.
         var controller = scene.start(Direction.SOUTH).relative(Direction.SOUTH, 3).above().offset(3, 0, 0);
         // The Matrix file's Port is at (6, 5, 3) on its east face; turned to face south, it ends the cable's column.
         var port = scene.start(Direction.NORTH).above(MATRIX_PORT_HEIGHT).north();
@@ -172,12 +172,13 @@ public final class LightningTechCompatGameTests {
                     appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT)) != null,
                     "A cable must lead up to the Matrix's Port");
         }
-        placeAssembly(helper, "matter_warping_matrix.snbt", origin, Rotation.CLOCKWISE_90);
+        placeAssembly(helper, "matter_warping_matrix.snbt", origin, Rotation.CLOCKWISE_90, null, null);
     }
 
     /**
-     * Cables from {@code start} along {@code outward} to under the middle of a Tianshu Supercomputer's bottom face, where
-     * its Port sits, and the Supercomputer itself, block for block as AE2 Lightning Tech's guide scene has it.
+     * Cables from {@code start} along {@code outward} to under the middle of a Tianshu Supercomputer's bottom face, and
+     * the Supercomputer itself, block for block as AE2 Lightning Tech's guide scene has it. Its Port goes in the bottom
+     * middle, one of the two Port positions the guide allows; since 2.1.2 the scene has it in the top middle.
      */
     private static void placeTianshu(GameTestHelper helper, BlockPos start, Direction outward) {
         for (int along = 0; along <= 3; along++) {
@@ -187,15 +188,16 @@ public final class LightningTechCompatGameTests {
                     "A cable must go under the Supercomputer");
         }
         placeAssembly(helper, "tianshu_supercomputer.snbt", start.relative(outward, 3).above().offset(-3, 0, -3),
-                Rotation.NONE);
+                Rotation.NONE, "ae2lt:tianshu_supercomputer_port", new BlockPos(3, 0, 3));
     }
 
     /**
      * One of AE2 Lightning Tech's guide scenes, read from the mod's own file, with its {@code (0, 0, 0)} at {@code
      * origin} and turned by {@code rotation} about it. Its blocks go in unformed and its controller last, as a player
-     * builds it.
+     * builds it. A non-null {@code port} block moves to {@code portAt} in the scene, trading places with the block there.
      */
-    private static void placeAssembly(GameTestHelper helper, String file, BlockPos origin, Rotation rotation) {
+    private static void placeAssembly(GameTestHelper helper, String file, BlockPos origin, Rotation rotation,
+                                      String port, BlockPos portAt) {
         String text;
         try {
             text = java.nio.file.Files.readString(net.neoforged.fml.ModList.get().getModFileById("ae2lt").getFile()
@@ -205,11 +207,19 @@ public final class LightningTechCompatGameTests {
         }
         var matcher = java.util.regex.Pattern.compile("pos: \\[(\\d+), (\\d+), (\\d+)\\], state: \"([^\"]+)\"")
                 .matcher(text);
+        BlockPos portFrom = null;
+        while (port != null && matcher.find()) {
+            if (matcher.group(4).startsWith(port + "{")) portFrom = scenePos(matcher);
+        }
+        helper.assertTrue(port == null || portFrom != null, "The scene " + file + " has no " + port);
+        matcher.reset();
         BlockPos controller = null;
         net.minecraft.world.level.block.state.BlockState controllerState = null;
         while (matcher.find()) {
-            var position = origin.offset(new BlockPos(Integer.parseInt(matcher.group(1)),
-                    Integer.parseInt(matcher.group(2)), Integer.parseInt(matcher.group(3))).rotate(rotation));
+            var inScene = scenePos(matcher);
+            if (port != null && inScene.equals(portFrom)) inScene = portAt;
+            else if (port != null && inScene.equals(portAt)) inScene = portFrom;
+            var position = origin.offset(inScene.rotate(rotation));
             var state = unformed(helper, matcher.group(4)).rotate(rotation);
             if (matcher.group(4).contains("controller")) {
                 controller = position;
@@ -220,6 +230,11 @@ public final class LightningTechCompatGameTests {
         }
         helper.assertTrue(controller != null, "The scene " + file + " has no controller");
         helper.setBlock(controller, controllerState);
+    }
+
+    private static BlockPos scenePos(java.util.regex.Matcher matcher) {
+        return new BlockPos(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)),
+                Integer.parseInt(matcher.group(3)));
     }
 
     /** Whether the Matrix Port {@code entity} belongs to a formed Matrix; until then, what its controller reports. */
