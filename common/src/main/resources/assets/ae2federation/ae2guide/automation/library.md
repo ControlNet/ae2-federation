@@ -62,7 +62,7 @@ request until it reaches storage.
 | `mc.break_block(block)` | **action:** breaks it; the drops go into the domain's storage |
 | `mc.place_block(block, item)` | **action:** places the item from the domain's storage |
 | `mc.move_fe(source, target, amount)` | **action:** moves FE between two blocks |
-| `mc.wait(ticks)` | pauses the run for `ticks` ticks |
+| `mc.wait(ticks)` | **action:** pauses the run for `ticks` ticks; it does not use up the tick's action |
 
 Python's built-ins `int`, `float`, `str`, `bool`, `list`, `range`, `len`, `abs`, `min`, `max`, `sum`, `round`,
 `any` and `all` work as in Python, as do the methods of lists and strings. `print(...)` writes one line to the

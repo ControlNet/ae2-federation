@@ -58,6 +58,6 @@ AE2会在接下来几刻里规划任务， 规划好后交给空闲的CPU。 规
 | `mc.break_block(block)` | **操作**： 破坏方块； 掉落物进入联邦域的存储 |
 | `mc.place_block(block, item)` | **操作**： 用联邦域存储里的物品放置方块 |
 | `mc.move_fe(source, target, amount)` | **操作**： 在两个方块之间搬运FE |
-| `mc.wait(ticks)` | 暂停运行`ticks`刻 |
+| `mc.wait(ticks)` | **操作**： 暂停运行`ticks`刻； 不占用本刻的那一个操作 |
 
 Python内置的`int`、`float`、`str`、`bool`、`list`、`range`、`len`、`abs`、`min`、`max`、`sum`、`round`、`any`和`all`， 以及列表和字符串的方法， 都和Python中一样。 `print(...)`往安装的日志里写一行。

@@ -29,7 +29,8 @@ non-assertion exception fails every test in its batch.
 
 Return type optional (inferred); breaking a device removes its installations, settings changes stop runs,
 `ae2.cancel` cannot reach jobs from before a restart; `set_filter` is storage only; `network=None` means every
-network through its own storage, not "as a terminal sees it"; `mc.wait` is not an action; the harvest interface faces
+network through its own storage, not "as a terminal sees it"; `mc.wait` is declared as an action (the Library panel marks it and conditions may not call it) but
+`Runner` does not count it as the tick's one action, so the guide row says both; the harvest interface faces
 the wheat; strings share the 100,000 cap; programs hold at most 64,000 characters; Delete is refused while another
 program calls it; Push takes the called programs as they are then and is refused unless all check clean, and pushing
 a called program does not update its callers; pause conditions include threads; `ae2.craft` asks for a job and AE2

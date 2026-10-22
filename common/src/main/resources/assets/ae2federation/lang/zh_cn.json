@@ -398,7 +398,7 @@
   "ae2federation.function.ae2.craftable": "是否有样板能合成该资源。",
   "ae2federation.function.ae2.crafting": "正在进行和已请求的合成任务还会向存储送入多少该资源。",
   "ae2federation.function.ae2.patterns": "所有可以合成的资源。",
-  "ae2federation.function.ae2.craft": "请求一个合成任务；没有样板能合成该资源或没有空闲 CPU 时返回 False。",
+  "ae2federation.function.ae2.craft": "请求一个合成任务；没有样板能合成该资源或没有空闲CPU 时返回 False。",
   "ae2federation.function.ae2.cancel": "取消本安装为该资源发起的合成任务。",
   "ae2federation.function.ae2.import_from": "把该资源从方块移入网络。",
   "ae2federation.function.ae2.export_to": "把该资源从网络移入方块。",
