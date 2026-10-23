@@ -50,3 +50,34 @@ reflection probe in the `neoecoprototype` profile (not committed):
   to iron blocks. MEGA's `accumulation_processor_press` gets singularity + 2 iron blocks the same way. Upstream side
   effect; a pack can refuse it with the server config `disabled_processor_recipes = ["ae2federation:nexus_processor_press"]`.
   An upstream fix would skip `inscribe` recipes whose top input is their own result (the copies) when building the map.
+
+## 1.3.9 and the singularity mint guide page (2026-10-23)
+
+1.3.9 needs Neo ECO `[21.2.9,)`, so dev's `neoecoae`, `neoecoprototype` and `addons-all` profiles moved to
+Neo ECO 21.2.9 together with it (`useless-mod-addons` stays on 21.2.0). Upstream changes that touched our tests:
+
+- **The L1 Processor Assembler takes processor recipes only.** `SimplifyStonecuttingAssemblerBlockEntity.pushPattern`
+  wraps a pattern whose output matches a `ProcessorAssemblerRecipe` (built in, or derived from the inscriber) in a
+  `ProcessorAssemblyPattern` and refuses everything else, logging "这台机器只跑处理器装配配方，普通分子装配样板请交给分子装配室";
+  upstream's own GameTest `assemblerRefusesOrdinaryCraftingPatterns` pins it. `l1ProcessorAssemblerCrafting` now pushes
+  a processing pattern (silicon + redstone + gold ingot -> logic processor); the assembler returns the processor to
+  the provider itself, as a Molecular Assembler does.
+- **The L1 drive is not Neo ECO's `ECODriveBlockEntity`.** `SimplifyDriveBlockEntity` has `insertCell(ItemStack)` and
+  `removeCell()`, which its players use; calling `setCellStack(EMPTY)` by reflection left the mounted cell in place
+  (the network kept listing its contents). `NeoEcoCompatGameTests.swapCell` uses `removeCell`/`insertCell` when they
+  exist.
+- **L1 Singularity Cell** (`simplify_singularity_cell`): the L1 drive mounts it with no config entry; its stock is
+  computed from the world tick it was first read at, 120 per 600 ticks by default. Taking it out removes the
+  singularities from every network that reads the mint; putting the same stack back returns them.
+
+Guide example `examples/singularity-mint.md` (pack `guide_neoecoprototype`, needs neoecoprototype and neoecoae): a mint
+network with the smallest L1 storage system holding the singularity cell, powered only by an Energized
+Superconductive Interface; two districts use the mint's storage through Storage rules (no Crafting rule) and run on
+its power over ME power. Compat test `singularityMint` (scale_36_empty, `RouterCraftingScene.usingStorageOf`) builds it,
+waits for the first batch, takes 64 on district A, checks district B sees the rest, then takes the cell out and puts
+it back; mutation-checked (leaving the cell in fails at "Waiting for the singularities to leave district A").
+The scene is Prototype's own `ae2guide/scenes/l1_storage_min.nbt` turned half a turn (drives face north for the
+yaw-195 camera), read with a stdlib NBT reader; `guidescenecables` matched AE2's channels on the first try.
+Guide screenshots ran in a portablemc production client (own work dir under `build/prototype-guide-check/`, own Xvfb)
+because `run-guide` was in use by another session's client; `-Dguideme.showOnStartup=ae2:guide!<page>` works in
+production GuideME 21.1.19.
