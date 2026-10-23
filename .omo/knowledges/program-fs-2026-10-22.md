@@ -1,7 +1,8 @@
 # The fs namespace (2026-10-22)
 
 Programs read and write text files in `<world>/ae2federation/workspace` (`ProgramHost.workspace(server)`), shared
-by every program of the world. Code: `automation/WorkspaceFiles` (no Minecraft types, JUnit `WorkspaceFilesTest`),
+by every program of the world (confirmed by the user 2026-10-23: one shared folder, not per installation or player,
+until a permission system decides ownership). Code: `automation/WorkspaceFiles` (no Minecraft types, JUnit `WorkspaceFilesTest`),
 wired in `ProgramHost.call`; library entries in `StandardLibrary` under `fs`.
 
 | Function | Kind | Notes |
