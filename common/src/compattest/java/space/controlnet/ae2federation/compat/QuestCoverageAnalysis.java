@@ -38,12 +38,19 @@ final class QuestCoverageAnalysis {
 
     static Set<String> produced(Map<String, List<QuestCoverageCompatGameTests.Recipe>> producers,
                                 Set<String> classes, Set<String> supplied, int limit) {
-        var produced = new HashSet<String>();
+        return new HashSet<>(productionProofs(producers, classes, supplied, limit).keySet());
+    }
+
+    /** First finite producer per output, preserving the same breadth-first resource policy as coverage. */
+    static Map<String, QuestCoverageCompatGameTests.Recipe> productionProofs(
+            Map<String, List<QuestCoverageCompatGameTests.Recipe>> producers,
+            Set<String> classes, Set<String> supplied, int limit) {
+        var produced = new LinkedHashMap<String, QuestCoverageCompatGameTests.Recipe>();
         var available = new HashSet<>(supplied);
         for (int depth = 0; depth < limit; depth++) {
-            var next = new HashSet<String>();
+            var next = new LinkedHashMap<String, QuestCoverageCompatGameTests.Recipe>();
             for (var entry : producers.entrySet()) {
-                if (produced.contains(entry.getKey())) continue;
+                if (produced.containsKey(entry.getKey())) continue;
                 for (var recipe : entry.getValue()) {
                     if (!recipe.ingredientsReadable() || !classes.contains(recipe.recipeClass())) continue;
                     boolean complete = true;
@@ -59,14 +66,14 @@ final class QuestCoverageAnalysis {
                         }
                     }
                     if (complete) {
-                        next.add(entry.getKey());
+                        next.put(entry.getKey(), recipe);
                         break;
                     }
                 }
             }
             if (next.isEmpty()) break;
-            produced.addAll(next);
-            available.addAll(next);
+            produced.putAll(next);
+            available.addAll(next.keySet());
         }
         return produced;
     }

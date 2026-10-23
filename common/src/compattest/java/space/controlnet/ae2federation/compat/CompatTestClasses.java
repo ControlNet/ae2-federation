@@ -9,13 +9,14 @@ final class CompatTestClasses {
     }
 
     static boolean includedInAll(String group) {
-        return !group.equals("quest-coverage");
+        return !group.equals("quest-coverage") && !group.equals("playthrough-crafting");
     }
 
     static Map<String, Class<?>> groups() {
         var groups = new LinkedHashMap<String, Class<?>>();
         groups.put("core", CoreCompatGameTests.class);
         groups.put("quest-coverage", QuestCoverageCompatGameTests.class);
+        groups.put("playthrough-crafting", PlaythroughCraftingGameTests.class);
         if (!System.getProperty("ae2federation.compat.transitRestartPhase", "").isBlank()) {
             groups.put("transit-restart", TransitRecoveryRestartGameTests.class);
         }

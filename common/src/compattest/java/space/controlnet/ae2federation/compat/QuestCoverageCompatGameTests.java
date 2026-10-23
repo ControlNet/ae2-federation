@@ -115,16 +115,16 @@ public final class QuestCoverageCompatGameTests {
         }
     }
 
-    private record Task(String id, String type, String classification, String item, String snbt,
+    record Task(String id, String type, String classification, String item, String snbt,
                         boolean hasComponents) { }
-    private record Quest(String id, String title, List<String> dependencies, List<Task> tasks,
+    record Quest(String id, String title, List<String> dependencies, List<Task> tasks,
                          Map<String, Integer> rewards) { }
-    private record Chapter(String id, String title, String titleSource, String group, List<Quest> quests) { }
+    record Chapter(String id, String title, String titleSource, String group, List<Quest> quests) { }
     record Recipe(String id, String type, String recipeClass, String output,
                           List<List<String>> ingredients, boolean ingredientsReadable) { }
     private record Ranking(String recipeClass, int unlocked, int totalReachable, List<String> examples) { }
 
-    private static final class Probe {
+    static final class Probe {
         private final List<Chapter> chapters = new ArrayList<>();
         private final Map<String, String> groups = new LinkedHashMap<>();
         private final Map<String, List<Recipe>> producers = new TreeMap<>();
@@ -150,6 +150,11 @@ public final class QuestCoverageCompatGameTests {
         private Map<String, Object> blockerReport;
         private final List<Ranking> ranking = new ArrayList<>();
         private final List<String> remainingClasses = new ArrayList<>();
+
+        List<Chapter> chapters() { return List.copyOf(chapters); }
+        Map<String, List<Recipe>> producers() { return java.util.Collections.unmodifiableMap(producers); }
+        Set<String> providedItems() { return Set.copyOf(providedItems); }
+        String questDataStatus() { return questDataStatus; }
 
         void readQuests(Path directory) throws Exception {
             if (!Files.isDirectory(directory) || !Files.isDirectory(directory.resolve("chapters"))) {

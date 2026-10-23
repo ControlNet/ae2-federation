@@ -63,3 +63,72 @@ recipes. Hidden outputs make no-producer bases provisional. This is planning evi
 Natural-block detection uses readable recipe outputs, so hidden producers can overestimate supplies. The JSON records
 each cyclic component and its entering recipes for auditing; a press-copy recipe does not enter a component merely
 because it consumes iron, since every slot must have an outside alternative.
+
+## Phase 1: serial crafting factories
+
+The opt-in `playthrough-crafting` group (`playthroughCrafting`, excluded from `all`) reuses Phase 0's quests,
+producer proofs and provided resources. Each quest task is ordered in dependency order, first in plain AE2, then
+in a Switch-connected materials/factory/requester federation. The requester imports materials storage and factory
+crafting/storage; materials powers the other networks through ME power rules. Both layouts use identical patterns,
+256k storage cells, nine patterns per provider, and Molecular Assemblers with five acceleration cards each.
+Replicated copies of each provider/assembler group allow independent crafts to run concurrently within a serial order.
+After planning, a native rectangular CPU is built with enough 256k crafting storage blocks for `plan.bytes()`
+and at least 32 co-processors; execution waits for that CPU to form.
+Each target gets fresh layouts, so failed jobs and recipe surplus cannot supply the next target.
+
+```bash
+# Three-target smoke:
+JAVA_TOOL_OPTIONS='-Dae2federation.playthrough.maxTargets=3' \
+  python3 tools/compat_run.py --accept-eula --tests playthroughCrafting nast
+# Full AE2 chapter, including its addon tasks:
+JAVA_TOOL_OPTIONS='-Dae2federation.playthrough.chapter=ae2 -Dae2federation.playthrough.maxTargets=0' \
+  python3 tools/compat_run.py --accept-eula --tests playthroughCrafting nast
+# Crafting chains without machine stand-ins:
+JAVA_TOOL_OPTIONS='-Dae2federation.playthrough.mode=crafting-only' \
+  python3 tools/compat_run.py --accept-eula --tests playthrough-crafting nast
+```
+
+Properties use the `ae2federation.playthrough.` prefix:
+
+| Property | Default | Meaning |
+|---|---|---|
+| `chapter` | `ae2` | Chapter ID or title substring; `ae2` names `应用能源2`, empty selects all chapters. |
+| `maxTargets` | `16` | Eligible crafting tasks after filtering; `0` removes the count limit. |
+| `skipTargets` | `0` | Skip this many eligible tasks in dependency order, before applying `maxTargets`. |
+| `items` | empty | Optional comma-separated item IDs, applied before task offsets and limits. |
+| `mode` | `crafting-frontier` | Or `crafting-only`, using the same provided-resource policy. |
+| `targetTicks` | `1200` | Planning/publication budget and base execution budget in ticks. |
+| `ticksPerCraft` | `20` | Execution budget factor: `targetTicks + ticksPerCraft * ceil(totalCrafts / assemblerCopies)`. |
+| `assemblerCopies` | `28` | Maximum identical provider/assembler copies (1–28), reduced to fit 28 providers total. Actual copies are the conservative per-recipe parallelism in the budget formula. |
+
+Execution is serial and isolated with `@RunsAlone`. Construction has 400 ticks; an unbuilt layout fails the harness.
+New target pairs stop after 1400 seconds, leaving headroom within NAST's 1800-second process timeout. A large
+pair started just before that guard can still exceed the process limit. For the current NAST AE2 chapter, use two
+bounded runs: `maxTargets=96`, then `skipTargets=96` with `maxTargets=0`. The second run starts with the largest
+plan so it receives the full process allowance. JSON lists deferred tasks. Continue with `skipTargets` equal to
+the previous `skipTargets + completedTargetCount`; preserve reports before rerunning, since the compat runner rebuilds its run directory. The default covers only the first 16 tasks.
+
+Frontier mode tries crafting routes first and explicitly supplies required non-crafting intermediates as **stand-ins**.
+A conversion cycle cannot create its seed: NAST's glass decompression still needs cooking. Only items with an
+observed non-crafting producer qualify. Each target lists its stand-ins and producer classes;
+`PlaythroughRecipes.MACHINE_BACKED_CLASSES` is empty until Phase 3 supplies real adapters. The source serves the complete provided set plus those stand-ins.
+AE2 excludes the requested output during planning; the harness also checks that the plan actually schedules a
+pattern producing it. Concrete ingredient grids must pass the loaded recipe's
+`matches` and AE2 pattern decoding; unsupported chains receive encoding reasons.
+
+`playthrough-crafting.json` and `.md` are checkpointed beside `ae2federation.compat.report`. Harness success means
+both reports were written; target failures remain results. Chapter/overall summaries count quest tasks, including
+repeat items, in four classes: `both-pass`, `baseline-only` (a likely Federation bug), `both-fail`, `federated-only`.
+Targets whose own recipe is not crafting are listed separately for Phase 3. `not-bootstrappable` is a separate
+non-execution category, outside the four layout result classes: the shared Phase 0 resolver cannot prove a finite
+crafting route with the target removed from supplied resources, but adding only a seed of the target enables a
+producer. This detects direct and indirect self-seeding recipes without item-specific exceptions.
+
+Each layout records ticks, every post-order invariant, failure reason, per-network target stock, planned used items
+and actual source extractions. It also records `expectedAmount`, `totalCrafts`, `planBytes`, `cpuBytes`,
+`assemblerParallelism` and `tickBudget`. Passing requires the plan's net target output in requester storage, an idle CPU, empty
+provider/assembler buffers, exact extraction accounting, and zero return debt for every network pair and pattern
+output key. Expected target output is the sum of every target output in `patternTimes()`, less all target inputs
+consumed by those patterns, multiplied by their execution counts. Batch surplus is collected and drained with the
+requested items. Timeout reasons include plan bytes, crafts, parallelism and budget for diagnosis. Harness and crafting-future
+exceptions fail the test; other server log exceptions are not intercepted. Read `server-console.log` for diagnosis.
