@@ -37,6 +37,42 @@ public final class CrossDimensionCraftingGameTests {
     private CrossDimensionCraftingGameTests() {
     }
 
+    /** Late output from the scene's explicit test-only processor traverses Endpoint, lane and projection after cancel. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void projectionEndpointCancelledReturnPromptly(GameTestHelper helper) {
+        var scene = new NetherProviderProjectionScene(helper);
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(scene.ready(), "Waiting for Federation Provider and Endpoint"))
+                .thenExecute(scene::enableRules)
+                .thenWaitUntil(() -> helper.assertTrue(scene.consumerCrafts(), "Waiting for projected lane"))
+                .thenExecute(() -> {
+                    scene.putInConsumer(INPUT, 2);
+                    scene.begin(2);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(scene.submitWhenPlanned(), "Waiting for native submission"))
+                .thenWaitUntil(() -> helper.assertValueEqual(scene.subnetAmount(INPUT), 2L, "Endpoint delivered both inputs"))
+                .thenExecute(() -> {
+                    scene.consumerGrid().getCraftingService().getCpus().forEach(cpu -> cpu.cancelJob());
+                    helper.assertValueEqual(scene.owed(), 2L, "Cancellation retains both outputs owed");
+                    scene.runMachine();
+                    helper.assertValueEqual(scene.returned(), 2L, "Machine returns through Endpoint");
+                })
+                .thenIdle(25)
+                .thenExecute(() -> {
+                    helper.assertFalse(scene.consumerBusy(), "Requester CPU is idle");
+                    helper.assertValueEqual(scene.inConsumerChest(OUTPUT), 2L, "Late outputs reach requester within one sweep");
+                    helper.assertValueEqual(scene.onProviderNetwork(OUTPUT), 0L, "Factory keeps no output");
+                    helper.assertValueEqual(scene.owed(), 0L, "Delivery settles debt");
+                    helper.assertValueEqual(space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger
+                            .get(helper.getLevel()).jobs(scene.consumerNetwork()).size(), 0, "Cancelled job retires");
+                    PolicyEvidence.write("projectionendpointcancelledreturnpromptly", 8,
+                            Map.of("returned", "2", "idleTicks", "25", "path", "endpoint-lane-projection"));
+                    scene.close();
+                })
+                .thenSucceed();
+    }
+
     /**
      * The provider network reaches the nether over a Quantum Bridge, where its Federation Provider drives an Endpoint.
      * The overworld consumer gets the Provider's lane projected once, orders two diamonds from its own terminal's

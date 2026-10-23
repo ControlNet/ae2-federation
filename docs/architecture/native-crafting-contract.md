@@ -81,6 +81,9 @@ switches the two rules separately, and loading a save adds no rule.
     cancellation. Existing worlds load unchanged; downgrading to a version whose enum lacks `TERMINATED` is not
     supported after such a record is saved. The real Neo ECO processing CPU test waits for both declared outputs
     before finishing; native CPU early completion must not be generalized to that implementation.
+  - Return sweeps run every 20 ticks from the service's first tick, with no startup delay: the first job after a
+    server start can finish within seconds and leave containers held once its CPU stops waiting. Loaded CPU lifecycle
+    checks decide when those arrivals can enter ordinary storage; unloaded or unformed CPUs remain unresolved.
   - Debt is removed only by actual delivery. Zero waiting, two idle observations, a completed job, cancellation,
     or attempting a return cannot prove that all machine outputs arrived. A completed/cancelled consumer receives
     its outstanding arrivals into its own storage once all observed jobs are resolved. With mixed running/unloaded
@@ -141,7 +144,9 @@ switches the two rules separately, and loading a save adds no rule.
 Saves from the earlier delegated model, where P planned and ran its own job for C, keep no delegated jobs: those jobs
 are abandoned on load.
 
-The GameTests are `crafting.projection-*`: request, remote materials, manual return, cancel, revoked, disconnected,
+The GameTests are `crafting.projection-*`: cake remainders with and without a craftable bucket pattern (returned and
+retired within 25 idle ticks), partial output followed by cancellation, cancelled Endpoint output, request, remote
+materials, manual return, cancel, revoked, disconnected,
 reload, without storage, chain, chain blocked, mutual, container return (three glass bottles back from a three-push
 sugar job), container reuse (one bottle filled and reused for six sugar), container push (water as a fluid, a water
 bucket and a snowball substitute match AE2's own container expectation; a refused push owes nothing), CPU out of sight
