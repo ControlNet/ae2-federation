@@ -97,3 +97,31 @@ Each phase includes:
 
 The user chose to add dictionaries and sets to the language before this work; they are done (see
 `script-dict-set-2026-10-22.md`). Headers and a later `json` helper can use dicts.
+
+## Review hardening (2026-10-23, feature/function-system)
+
+A Codex review of `fs`, `net.http` and websockets found ten problems; all fixed, each with a test that failed first.
+
+- **Workspace races (`WorkspaceFiles`).** The pathname checks stay, with the same messages. The access itself then
+  walks from `root.toRealPath()` through `SecureDirectoryStream` handles opened with `NOFOLLOW_LINKS`, using the names
+  the checks resolved (links inside the workspace followed at check time). A folder swapped for a link after the
+  checks fails the walk. Delete resolves only the parent, so a link is removed, not its target. Remaining races,
+  also in the class comment: folders on the way to a new file are made by path (`Files.createDirectories`, since
+  `SecureDirectoryStream` has no mkdir), so a swap at that moment can make an empty folder outside; Windows has no
+  `SecureDirectoryStream`, so access there falls back to paths. Test hook: package-private `beforeAccess`.
+- **Non-regular files.** read/write/append check the attributes (no follow) before opening, because opening a FIFO
+  blocks the server thread: `OSError: '<path>' is not a regular file`. A read stops after 4 x 100,000 + 1 bytes even
+  if the file grew after the size check. A tiny race remains between the attribute check and the open.
+- **Outbound caps.** HTTP bodies and `net.send` text are at most 100,000 characters (`ValueError`). `str`/`repr` of
+  collections build incrementally and stop with `MemoryError` past the string cap; display paths (logs, trigger text,
+  `toString`) use `Ops.shown`, which cuts with "..." and never throws. Before, `str([big] * 100000)` OOMed the server.
+- **Websockets.** Per URL, a `Channel` keeps its queue and a monotonic `received` count across reconnects, so the
+  `ws_message` trigger no longer loses a message that arrived just before a close. At most 4 closed channels per
+  installation are kept (oldest close dropped first); the unread queue keeps the newest 256 messages and at most
+  1,000,000 characters. Handshake publish and close share the connection lock, so a close during the handshake aborts
+  the new socket. Sends chain on the real transport future; the run waits on a copy with the timeout, and a timed-out
+  or cancelled send that is still going aborts the connection. `net.disconnect` on an installation without
+  connections is `False`.
+- **Tests.** `HttpRequestsTest` shuts its handler pool down in `@AfterEach`. Network GameTests stop their local
+  servers through `test/automation/TestEnd`, a `GameTestListener` that runs on pass and on fail (checked by forcing a
+  failure once).
