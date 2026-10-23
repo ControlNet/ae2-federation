@@ -17,6 +17,8 @@ final class PlaythroughMachineAdapters {
     static final List<PlaythroughMachineAdapter> ENABLED = selected();
 
     private static List<PlaythroughMachineAdapter> selected() {
+        for (var adapter : REGISTERED) if (adapter.inputFace() == net.minecraft.core.Direction.DOWN)
+            throw new IllegalStateException("Machine adapter " + adapter.id() + " declares input face DOWN, which the output collector occupies");
         String property = System.getProperty("ae2federation.playthrough.machines", "all").trim();
         if (property.equals("none")) return List.of();
         if (property.equals("all")) return REGISTERED;

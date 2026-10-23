@@ -21,7 +21,11 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 /** Serial quest crafting against plain AE2 and the guide's materials/factory/requester federation. */
 @PrefixGameTestTemplate(false)
 public final class PlaythroughCraftingGameTests {
-    private static final int MAX_TICKS = 20000000;
+    /**
+     * Shared by every sprinting GameTest, so the sprint can never outlive its test. The heaviest 20-target AE2 chunk
+     * uses 1.46 million ticks; a hang in its largest target reaches that target's budget near 4.1 million.
+     */
+    static final int MAX_TICKS = 5000000;
 
     private PlaythroughCraftingGameTests() { }
 
@@ -270,7 +274,7 @@ public final class PlaythroughCraftingGameTests {
             if (refusal) row.put("classification", fed.pass() ? "expected-refusal" : "refusal-mismatch");
             row.put("inventoryComparison", refusal ? "NOT_APPLICABLE: expected refusal" : PlaythroughTopology.inventoriesEqual(base, fed) ? "PASS" : "Layout inventories differ");
             row.put("expectedSignatures", proof == null ? Map.of() : proof.signatures());
-            row.put("machineSteps", PlaythroughMachineReports.steps(proof, helper.getLevel()));
+            PlaythroughMachineReports.steps(row, proof, helper.getLevel(), base, fed);
             row.put("recipes", proof == null ? List.of() : proof.patterns().keySet());
             rows.add(row);
             com.mojang.logging.LogUtils.getLogger().info("AE2F_PLAYTHROUGH_RESULT item={} class={} baseline={} federated={}",

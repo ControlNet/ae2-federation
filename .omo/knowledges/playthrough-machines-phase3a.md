@@ -12,8 +12,10 @@
 - The machine shelf uses a dense factory backbone, native provider/interface input subnets with Quartz Fiber power,
   or Federation Provider/Endpoint input subnets. Storage Buses insert inputs; hoppers collect actual machine output.
   The baseline always uses native AE2 processing, including when the federated comparison selects the endpoint path.
-- A vanilla stick burns 100 ticks in a furnace and 50 in a smoker or blast furnace. Include exact fuel in processing
+- A vanilla stick burns 100 ticks in a furnace and 50 in a smoker or blast furnace: `getBurnTime(recipeType)` reads
+  NeoForge's fuel data map, and Smoker/BlastFurnace `getBurnDuration` halve it. Include exact fuel in processing
   patterns and use a separate side Storage Bus. Initial coal stacks obscure extraction and buffer accounting.
+  Check `RecipeManager.getRecipeFor` (the furnace's own lookup) picks the recipe, and reject stick ingredients.
 - Inscriber presses are fixed equipment from the provided-resource view. Reject unavailable fixed catalysts during
   adapter preflight, so that recipe stays a stand-in instead of breaking all downstream planning.
 - A Charger output that is itself a charging input cannot be extracted through its automation capability. NAST's
@@ -30,16 +32,30 @@
 - Runtime commands, complete results and open limitations are recorded in `build/playthrough/phase3a-handoff.md`.
 - Phase 1's original one-million-tick GameTest ceiling can expire before the 1400-second wall-clock guard when
   sprinting real machine chains. A 40-task chunk starting at offset 80 hit that ceiling during the 64m Applied Flux
-  core after 21 completed pairs. Use the raised 20-million-tick ceiling and 20-target chunks for this range; keep
+  core after 21 completed pairs. Use 20-target chunks for this range (the heaviest uses 1.46M ticks; the ceiling is now 5M); keep
   the original timed-out artifacts separate from complete mergeable evidence.
 - `PlaythroughMachineDiscovery` lets a registered adapter inspect raw RecipeManager entries whose outputs were
-  invisible to Phase 0. It adds observed item producers through the probe's small registration hook and reruns
-  resource analysis if needed. For known outputs with unreadable generic ingredients, concrete adapter inputs
+  invisible to Phase 0. It registers only producers that pass the shared adapter checks under the resource view
+  their registration produces (`Probe.providedWith` is a non-mutating trial), then reruns resource analysis.
+  Registering a recipe that is later rejected would silently change the provided set. For known outputs with unreadable generic ingredients, concrete adapter inputs
   provide the reachability witness. Non-item raw inputs still require the adapter's explicit resource policy.
 - Keep `requestGameToSprint` and the GameTest timeout on the same constant. Raising only the annotation leaves
-  long jobs at normal 20 TPS after one million ticks. Phase 3a now shares `MAX_TICKS` between both paths.
+  long jobs at normal 20 TPS after one million ticks. Crafting, topology and remainder GameTests all use
+  `PlaythroughCraftingGameTests.MAX_TICKS`, because `Run.start()` sprints for it in every mode.
+- Machine coverage must be observed: record `plan.patternTimes()` per machine pattern (`cleanup.machineRuns`); a step
+  is real only in a passing layout with runs above zero. A proof's machine list is only a plan.
+- Per-target budgets: assembler crafts / assembler copies * ticksPerCraft, plus 3 * sum(ceil(runs / copies) *
+  max(duration, 8 * output items)) per machine recipe. The old crafts * max(250, slowest) gave ~47x slack, so hangs
+  became wall-clock timeouts instead of `job-complete` failures.
+- The machine shelf sits at z=25..29; topology split SOUTH controllers reach z=20..23 and collided with site 2 at the
+  old z=22. The shelf is built after the topology and throws on any overlap with layout blocks.
 - Cooking Storage Buses need explicit filters: the horizontal bus accepts only sticks; the top bus accepts only
   the selected recipe ingredient. Coal-to-graphite otherwise routes its coal into the fuel slot and strands sticks
   in the input slot. The shared baseline/federated failure was detected by the machine-buffer and ledger checks.
 
-Final evidence: 138 tasks per machine path, with 137 both-pass and one pre-existing quantum-entangled-singularity not-bootstrappable result. All five adapters passed on projection and endpoint paths. The separate machines=none Quartz Fiber/Crafting Unit regression passed both targets and restored stand-ins with no enabled machine classes. Reports and exact replay commands are in build/playthrough/phase3a-handoff.md.
+Final evidence after the review fixes (7 x 20-target AE2 chunks per path): 131 both-pass and one
+quantum-entangled-singularity not-bootstrappable per path; every planned machine step ran (no zero-run steps).
+Observed coverage per path: inscriber 86 tasks / 16 recipes, furnace 76 / 2, charger 2 / 2, blast furnace 2 / 2;
+the smoker is covered by the separate cooked-cod run. Endpoint-path federated layouts can take 3.8x the control's
+ticks (wireless terminal 4923 vs 1281, unchanged from before), leaving 1.29x budget headroom. Commands and results:
+build/playthrough/phase3a-review-fixes-handoff.md.

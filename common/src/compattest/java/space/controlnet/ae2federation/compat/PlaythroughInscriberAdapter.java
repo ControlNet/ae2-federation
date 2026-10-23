@@ -19,19 +19,18 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 
 final class PlaythroughInscriberAdapter implements PlaythroughMachineAdapter {
     public String id() { return "inscriber"; }
-    public String recipeClass() { return "ae2:inscriber"; }
-    public boolean accepts(QuestCoverageCompatGameTests.Recipe recipe) { return recipe.type().equals("ae2:inscriber"); }
-    public Recipe read(GameTestHelper helper, RecipeHolder<?> holder, Function<Ingredient, ItemStack> choose) {
+    public String recipeType() { return "ae2:inscriber"; }
+    public Recipe read(GameTestHelper helper, RecipeHolder<?> holder, Function<Ingredient, ItemStack> choose,
+                       Function<Ingredient, ItemStack> equipment) {
         if (!(holder.value() instanceof InscriberRecipe recipe)) throw new IllegalArgumentException("Not an AE2 inscriber recipe");
         var inputs = new ArrayList<GenericStack>();
         var catalysts = new TreeMap<Integer, ItemStack>();
         inputs.add(GenericStack.fromItemStack(choose.apply(recipe.getMiddleInput())));
         var sides = java.util.List.of(recipe.getTopOptional(), recipe.getBottomOptional());
         for (int slot = 0; slot < sides.size(); slot++) if (!sides.get(slot).isEmpty()) {
+            // Presses are not consumed; prefer a provided alternative so the recipe need not wait for one.
             var stack = recipe.getProcessType().name().equals("INSCRIBE")
-                    ? java.util.Arrays.stream(sides.get(slot).getItems()).filter(s -> !s.isEmpty()).findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("No concrete press")).copyWithCount(1)
-                    : choose.apply(sides.get(slot));
+                    ? equipment.apply(sides.get(slot)) : choose.apply(sides.get(slot));
             if (recipe.getProcessType().name().equals("INSCRIBE")) catalysts.put(slot, stack);
             else inputs.add(GenericStack.fromItemStack(stack));
         }
@@ -42,7 +41,8 @@ final class PlaythroughInscriberAdapter implements PlaythroughMachineAdapter {
         site.block(site.machine(), AEBlocks.INSCRIBER.block());
         var machine = site.helper().<InscriberBlockEntity>getBlockEntity(site.machine());
         machine.getConfigManager().putSetting(Settings.INSCRIBER_SEPARATE_SIDES, YesNo.NO);
-        machine.getUpgrades().addItems(AEItems.SPEED_CARD.stack(4));
+        if (!machine.getUpgrades().addItems(AEItems.SPEED_CARD.stack(4)).isEmpty())
+            throw new IllegalStateException("Inscriber refused its four acceleration cards");
         recipe.catalysts().forEach((slot, stack) -> machine.getInternalInventory().setItemDirect(slot, stack.copy()));
     }
     public String leftovers(GameTestHelper helper, BlockPos position, Recipe recipe) {

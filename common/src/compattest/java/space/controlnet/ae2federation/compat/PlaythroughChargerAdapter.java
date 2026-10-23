@@ -15,9 +15,9 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 
 final class PlaythroughChargerAdapter implements PlaythroughMachineAdapter {
     public String id() { return "charger"; }
-    public String recipeClass() { return "ae2:charger"; }
-    public boolean accepts(QuestCoverageCompatGameTests.Recipe recipe) { return recipe.type().equals("ae2:charger"); }
-    public Recipe read(GameTestHelper helper, RecipeHolder<?> holder, Function<Ingredient, ItemStack> choose) {
+    public String recipeType() { return "ae2:charger"; }
+    public Recipe read(GameTestHelper helper, RecipeHolder<?> holder, Function<Ingredient, ItemStack> choose,
+                       Function<Ingredient, ItemStack> equipment) {
         if (!(holder.value() instanceof ChargerRecipe recipe)) throw new IllegalArgumentException("Not an AE2 charger recipe");
         var input = choose.apply(recipe.getIngredient());
         var selected = appeng.blockentity.misc.ChargerRecipes.findRecipe(helper.getLevel(), input);

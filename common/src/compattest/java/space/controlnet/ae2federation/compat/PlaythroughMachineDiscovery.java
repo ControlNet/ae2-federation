@@ -10,13 +10,15 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeHolder;
 
 /** Lets an adapter recover item outputs hidden from Phase 0's generic Recipe.getResultItem view. */
 final class PlaythroughMachineDiscovery {
+    /** Registers only recipes accepted under the resource view their registration produces. */
     static void discover(GameTestHelper helper, QuestCoverageCompatGameTests.Probe probe, Map<String, String> rejected) {
         var known = new java.util.HashSet<String>();
         probe.producers().values().stream().flatMap(List::stream).forEach(recipe -> known.add(recipe.id()));
-        boolean changed = false;
+        var candidates = new java.util.LinkedHashMap<RecipeHolder<?>, PlaythroughMachineAdapter>();
         for (var holder : helper.getLevel().getRecipeManager().getRecipes()) {
             if (known.contains(holder.id().toString())) continue;
             var type = holder.value().getType();
@@ -24,22 +26,52 @@ final class PlaythroughMachineDiscovery {
             String label = registered == null ? String.valueOf(type) : registered.toString();
             if (registered == null && ResourceLocation.tryParse(label) == null)
                 label = "unregistered:" + (type == null ? "null" : type.getClass().getName());
-            String recipeClass = label;
-            var adapter = PlaythroughMachineAdapters.ENABLED.stream().filter(a -> a.recipeClass().equals(recipeClass)).findFirst().orElse(null);
-            if (adapter == null) continue;
-            try {
-                var recipe = adapter.read(helper, holder, ingredient -> concrete(ingredient, probe.providedItems()));
-                recipe.pattern(helper);
-                var ingredients = ingredients(recipe);
-                for (var output : recipe.outputs()) if (output.what() instanceof AEItemKey item) {
-                    probe.addMachineRecipe(new QuestCoverageCompatGameTests.Recipe(holder.id().toString(), label, label,
-                            BuiltInRegistries.ITEM.getKey(item.getItem()).toString(), ingredients, true));
-                    changed = true;
-                }
-            } catch (RuntimeException exception) { rejected.put(holder.id().toString(), exception.toString()); }
+            String recipeType = label;
+            PlaythroughMachineAdapters.ENABLED.stream().filter(a -> a.recipeType().equals(recipeType)).findFirst()
+                    .ifPresent(adapter -> candidates.put(holder, adapter));
         }
-        // Newly discovered producers must not retain a provisional no-producer resource exemption.
-        if (changed) probe.readResources(helper);
+        var provided = probe.providedItems();
+        var accepted = new ArrayList<QuestCoverageCompatGameTests.Recipe>();
+        while (true) {
+            accepted.clear();
+            var view = provided;
+            for (var iterator = candidates.entrySet().iterator(); iterator.hasNext(); ) {
+                var entry = iterator.next();
+                var holder = entry.getKey();
+                var adapter = entry.getValue();
+                String label = adapter.recipeType();
+                try {
+                    var recipe = adapter.read(helper, holder, ingredient -> concrete(ingredient, view), ingredient -> concrete(ingredient, view));
+                    validate(helper, adapter, recipe, view);
+                    var ingredients = ingredients(recipe);
+                    for (var output : recipe.outputs()) if (output.what() instanceof AEItemKey item)
+                        accepted.add(new QuestCoverageCompatGameTests.Recipe(holder.id().toString(), label, label,
+                                BuiltInRegistries.ITEM.getKey(item.getItem()).toString(), ingredients, true));
+                } catch (RuntimeException exception) {
+                    rejected.put(holder.id().toString(), exception.toString());
+                    iterator.remove();
+                }
+            }
+            if (accepted.isEmpty()) break;
+            // New producers remove provisional no-producer exemptions; recheck the survivors under that view.
+            var next = probe.providedWith(helper, accepted);
+            if (next.equals(provided)) break;
+            provided = next;
+        }
+        accepted.forEach(probe::addMachineRecipe);
+        if (!accepted.isEmpty()) probe.readResources(helper);
+    }
+
+    /** Shared acceptance: justified non-item inputs, provided fixed catalysts and an exact AE2 round trip. */
+    static ItemStack validate(GameTestHelper helper, PlaythroughMachineAdapter adapter, PlaythroughMachineAdapter.Recipe machine,
+                              Set<String> provided) {
+        for (var input : machine.inputs()) if (!(input.what() instanceof AEItemKey)
+                && !adapter.providedInputs(helper, machine).contains(input.what()))
+            throw new IllegalArgumentException("Adapter has no provided-resource proof for " + input.what());
+        for (var catalyst : machine.catalysts().values())
+            if (!provided.contains(BuiltInRegistries.ITEM.getKey(catalyst.getItem()).toString()))
+                throw new IllegalArgumentException("Fixed catalyst is not in Phase 0's provided resources: " + catalyst);
+        return machine.pattern(helper);
     }
 
     static ItemStack concrete(Ingredient ingredient, Set<String> provided) {

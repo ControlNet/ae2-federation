@@ -11,14 +11,30 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeHolder;
 
-/** One independently registered recipe family. All transfers after placement use world automation. */
+/**
+ * One independently registered recipe family. All transfers after placement use world automation.
+ *
+ * <p>Geometry: the machine stands at {@link PlaythroughMachines.Site#machine()}, two blocks above the provider. Its
+ * DOWN face is the output face: a hopper below it collects item output into {@link PlaythroughMachines.Site#returnPort()}
+ * (a non-item adapter replaces the hopper with its own return there), so DOWN cannot be an input face. The powered
+ * input subnet always reaches {@code machine.above()} and {@code machine.east()}, and also
+ * {@code machine.relative(inputFace())}, where a Storage Bus faces the machine.
+ */
 interface PlaythroughMachineAdapter {
     String id();
-    String recipeClass();
-    boolean accepts(QuestCoverageCompatGameTests.Recipe recipe);
 
-    /** Reject unsupported recipes with a descriptive IllegalArgumentException; they remain frontier leaves. */
-    Recipe read(GameTestHelper helper, RecipeHolder<?> holder, Function<Ingredient, ItemStack> choose);
+    /** Registered recipe type ID, as Phase 0 records it in {@code Recipe.type()}; discovery and selection both use it. */
+    String recipeType();
+
+    default boolean accepts(QuestCoverageCompatGameTests.Recipe recipe) { return recipe.type().equals(recipeType()); }
+
+    /**
+     * Reject unsupported recipes with a descriptive IllegalArgumentException; they remain frontier leaves.
+     * {@code choose} selects a consumed ingredient; {@code equipment} selects fixed equipment such as a press,
+     * preferring Phase 0 provided items.
+     */
+    Recipe read(GameTestHelper helper, RecipeHolder<?> holder, Function<Ingredient, ItemStack> choose,
+                Function<Ingredient, ItemStack> equipment);
 
     /** Non-item raw resources explicitly justified by this adapter's pack resource policy. */
     default java.util.Set<appeng.api.stacks.AEKey> providedInputs(GameTestHelper helper, Recipe recipe) { return java.util.Set.of(); }
@@ -32,6 +48,7 @@ interface PlaythroughMachineAdapter {
     /** Fluid/chemical adapters instead place their own real return pipe to Site.returnPort(). */
     default boolean itemCollector() { return true; }
 
+    /** Any face except DOWN, which is reserved for the output collector. */
     default net.minecraft.core.Direction inputFace() { return net.minecraft.core.Direction.UP; }
 
     /** Placement receives tracked block/part operations and a powered subnet, shared by every machine path. */

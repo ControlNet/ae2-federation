@@ -11,7 +11,7 @@ public final class PlaythroughRemainderGameTests {
 
     /** Exercises real bucket remainders through the same two-layout accounting driver. */
     @RunsAlone
-    @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = 1000000)
+    @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = PlaythroughCraftingGameTests.MAX_TICKS)
     public static void playthroughRemainders(GameTestHelper helper) throws Exception {
         PlaythroughCraftingGameTests.runRemainderRegression(helper);
     }

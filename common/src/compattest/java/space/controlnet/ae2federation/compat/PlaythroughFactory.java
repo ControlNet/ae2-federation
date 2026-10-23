@@ -147,8 +147,8 @@ final class PlaythroughFactory implements AutoCloseable {
         this(helper, true, proof, target, amount, budget);
         this.topology = layout;
         this.perturbation = perturbation;
-        if (layout.splitPatterns() && proof.patterns().size() > 1) {
-            patternGroups = 2 * ((proof.patterns().size() + 17) / 18);
+        if (layout.splitPatterns() && proof.craftingPatterns().size() > 1) {
+            patternGroups = 2 * ((proof.craftingPatterns().size() + 17) / 18);
             copies = Math.min(Integer.getInteger("ae2federation.playthrough.assemblerCopies", 28), 28 / patternGroups);
             if (copies < 1) throw new IllegalArgumentException("Split factory exceeds 28 providers");
         }
@@ -288,8 +288,8 @@ final class PlaythroughFactory implements AutoCloseable {
             providers.add(pos); assemblers.add(pos.relative(assemblySides.get(sideIndex)));
             placed.add(pos); placed.add(pos.relative(assemblySides.get(sideIndex)));
         }
-        machines.initialize(proof, chestPos(Direction.EAST), chestPos(Direction.NORTH));
         if (topology != null) initializeTopology();
+        machines.initialize(proof, chestPos(Direction.EAST), chestPos(Direction.NORTH));
         if (!federated) {
             placed.add(CENTER);
             routers.nativePorts().placeCable(CENTER);
@@ -371,7 +371,7 @@ final class PlaythroughFactory implements AutoCloseable {
                 for (int copy = 0; copy < copies; copy++) {
                     int index = 0;
                     for (var pattern : proof.craftingPatterns().values()) {
-                        boolean split = topology != null && topology.splitPatterns() && proof.patterns().size() > 1;
+                        boolean split = topology != null && topology.splitPatterns() && proof.craftingPatterns().size() > 1;
                         int group = split ? index / 18 * 2 + index % 2 : index / 9;
                         int slot = split ? index / 2 % 9 : index % 9;
                         var host = (PatternProviderLogicHost) helper.getBlockEntity(providers.get(copy * patternGroups + group));
@@ -487,6 +487,8 @@ final class PlaythroughFactory implements AutoCloseable {
         for (var pos : providers) allocation.computeIfAbsent(providerNetworks.get(pos).name(), ignored -> new ArrayList<>())
                 .addAll(((PatternProviderLogicHost) helper.getBlockEntity(pos)).getLogic().getAvailablePatterns().stream()
                         .map(pattern -> pattern.getDefinition().toString()).toList());
+        machines.installedPatterns().forEach((grid, patterns) -> allocation.computeIfAbsent(grid == grid(Direction.EAST)
+                ? Direction.EAST.name() : "detached", ignored -> new ArrayList<>()).addAll(patterns));
         cleanup.put("installedPatternsByNetwork", allocation);
         checks.put("cpu-idle", busy == 0 ? "PASS" : busy + " busy CPUs");
         var providerBuffers = new ArrayList<String>();
@@ -546,9 +548,11 @@ final class PlaythroughFactory implements AutoCloseable {
             totalCrafts = Math.addExact(totalCrafts, times);
         }
         expectedAmount = expectedStock.getOrDefault(keyName(target), 0L);
-        budget = Math.toIntExact(Math.addExact(baseBudget, Math.multiplyExact(ticksPerCraft, (totalCrafts + copies - 1) / copies)));
-        if (!proof.machines().isEmpty()) budget = Math.toIntExact(Math.max(budget,
-                Math.addExact(baseBudget, PlaythroughMachines.executionTicks(proof, totalCrafts))));
+        var machineRuns = PlaythroughMachines.runs(plan, proof);
+        cleanup.put("machineRuns", machineRuns);
+        long assemblerCrafts = totalCrafts - machineRuns.values().stream().mapToLong(Long::longValue).sum();
+        budget = Math.toIntExact(Math.addExact(Math.addExact(baseBudget, Math.multiplyExact(ticksPerCraft,
+                (assemblerCrafts + copies - 1) / copies)), machines.executionTicks(machineRuns)));
         // A solid rectangular native CPU; storage grows with the plan and the rest are co-processors.
         long storageBlocks = Math.max(1, (plan.bytes() + 262143) / 262144);
         int height = Math.toIntExact((storageBlocks + 32 + 15) / 16);

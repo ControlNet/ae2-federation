@@ -20,14 +20,18 @@ import net.minecraft.world.item.crafting.ShapedRecipe;
 
 /** Executable crafting proofs over Phase 0's quest, producer and provided-resource view. */
 final class PlaythroughRecipes {
-    // Recipe types remain distinct even where Phase 0 groups them under a shared class label.
+    // Exact recipe type IDs remain distinct even where Phase 0 groups them under a shared class label.
     static final Set<String> MACHINE_BACKED_CLASSES = PlaythroughMachineAdapters.ENABLED.stream()
-            .map(PlaythroughMachineAdapter::recipeClass).collect(java.util.stream.Collectors.toCollection(java.util.TreeSet::new));
+            .map(PlaythroughMachineAdapter::recipeType).collect(java.util.stream.Collectors.toCollection(java.util.TreeSet::new));
     static final class NotBootstrappable extends IllegalArgumentException {
         NotBootstrappable(String message) { super(message); }
     }
     static final class Nondeterministic extends RuntimeException {
         Nondeterministic(String message) { super(message); }
+    }
+    /** The global candidate limit; once reached, no alternative ingredient can be resolved either. */
+    private static final class SearchLimit extends IllegalArgumentException {
+        SearchLimit() { super("recipe selection exceeded 20000 candidates"); }
     }
     record Proof(Map<String, ItemStack> patterns, Set<appeng.api.stacks.AEKey> supplies, Map<String, List<String>> standIns,
                  Map<String, PlaythroughAccounting.Signature> signatures,
@@ -55,20 +59,17 @@ final class PlaythroughRecipes {
         this.helper = helper;
         this.probe = probe;
         this.frontier = frontier;
+        if (!PlaythroughMachineAdapters.ENABLED.isEmpty()) PlaythroughMachines.requestedCopies();
         PlaythroughMachineDiscovery.discover(helper, probe, machineRejections);
+        var provided = probe.providedItems();
         probe.producers().values().stream().flatMap(List::stream).forEach(recipe -> {
             var adapter = PlaythroughMachineAdapters.find(recipe);
             if (adapter == null || supported.contains(recipe.id())) return;
             try {
                 var holder = helper.getLevel().getRecipeManager().byKey(ResourceLocation.parse(recipe.id())).orElseThrow();
-                var machine = adapter.read(helper, holder, ingredient -> PlaythroughMachineDiscovery.concrete(ingredient, probe.providedItems()));
-                for (var input : machine.inputs()) if (!(input.what() instanceof AEItemKey)
-                        && !adapter.providedInputs(helper, machine).contains(input.what()))
-                    throw new IllegalArgumentException("Adapter has no provided-resource proof for " + input.what());
-                for (var catalyst : machine.catalysts().values()) if (!probe.providedItems().contains(
-                        BuiltInRegistries.ITEM.getKey(catalyst.getItem()).toString()))
-                    throw new IllegalArgumentException("Fixed catalyst is not in Phase 0's provided resources: " + catalyst);
-                machine.pattern(helper);
+                var machine = adapter.read(helper, holder, ingredient -> PlaythroughMachineDiscovery.concrete(ingredient, provided),
+                        ingredient -> PlaythroughMachineDiscovery.concrete(ingredient, provided));
+                PlaythroughMachineDiscovery.validate(helper, adapter, machine, provided);
                 supported.add(recipe.id());
                 if (!recipe.ingredientsReadable()) machineProofs.put(recipe.id(), new QuestCoverageCompatGameTests.Recipe(
                         recipe.id(), recipe.type(), recipe.recipeClass(), recipe.output(), PlaythroughMachineDiscovery.ingredients(machine), true));
@@ -100,7 +101,9 @@ final class PlaythroughRecipes {
         var proof = resolve(item, true, new HashSet<>());
         var supplies = new HashSet<>(proof.supplies());
         probe.providedItems().stream().map(PlaythroughRecipes::key).forEach(supplies::add);
-        return new Proof(proof.patterns(), supplies, proof.standIns(), proof.signatures(), proof.machines());
+        var result = new Proof(proof.patterns(), supplies, proof.standIns(), proof.signatures(), proof.machines());
+        PlaythroughMachines.validate(result);
+        return result;
     }
 
     boolean hasCraftingRecipe(String item) {
@@ -108,7 +111,7 @@ final class PlaythroughRecipes {
     }
 
     private Proof resolve(String item, boolean root, Set<String> visiting) {
-        if (++attempts > 20000) throw new IllegalArgumentException("recipe selection exceeded 20000 candidates");
+        if (++attempts > 20000) throw new SearchLimit();
         var recipes = probe.producers().getOrDefault(item, List.of());
         if (!root && item.equals(target)) throw new IllegalArgumentException("target cannot be supplied as its own ingredient");
         if (!root && (probe.providedItems().contains(item) || !probe.producers().containsKey(item))) {
@@ -252,24 +255,29 @@ final class PlaythroughRecipes {
     }
 
     private Proof encodeMachine(QuestCoverageCompatGameTests.Recipe recipe, Set<String> visiting) {
-        var dependencies = new ArrayList<Proof>();
+        var dependencies = new LinkedHashMap<AEItemKey, Proof>();
         var adapter = PlaythroughMachineAdapters.find(recipe);
         var holder = helper.getLevel().getRecipeManager().byKey(ResourceLocation.parse(recipe.id())).orElseThrow();
+        var provided = probe.providedItems();
         var machine = adapter.read(helper, holder, ingredient -> {
+            var failures = new ArrayList<String>();
             for (var stack : java.util.Arrays.stream(ingredient.getItems()).sorted(java.util.Comparator
                     .comparingInt(this::ingredientRank).thenComparing(s -> BuiltInRegistries.ITEM.getKey(s.getItem()).toString())).toList()) {
                 if (stack.isEmpty()) continue;
+                var key = AEItemKey.of(stack);
                 try {
-                    dependencies.add(resolve(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(), false, visiting));
+                    if (!dependencies.containsKey(key))
+                        dependencies.put(key, resolve(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(), false, visiting));
                     return stack.copyWithCount(1);
-                } catch (IllegalArgumentException ignored) { }
+                } catch (SearchLimit limit) {
+                    throw limit;
+                } catch (IllegalArgumentException exception) {
+                    if (failures.size() < 3) failures.add(exception.getMessage());
+                }
             }
-            throw new IllegalArgumentException("No reachable concrete machine ingredient: " + recipe.id());
-        });
-        for (var catalyst : machine.catalysts().values()) {
-            if (!probe.providedItems().contains(BuiltInRegistries.ITEM.getKey(catalyst.getItem()).toString()))
-                throw new IllegalArgumentException("Fixed catalyst is not in Phase 0's provided resources: " + catalyst);
-        }
+            throw new IllegalArgumentException("No reachable concrete machine ingredient for " + recipe.id() + ": " + failures);
+        }, ingredient -> PlaythroughMachineDiscovery.concrete(ingredient, provided));
+        var pattern = PlaythroughMachineDiscovery.validate(helper, adapter, machine, provided);
         var patterns = new LinkedHashMap<String, ItemStack>();
         var supplies = new HashSet<appeng.api.stacks.AEKey>();
         var standIns = new TreeMap<String, List<String>>();
@@ -277,18 +285,13 @@ final class PlaythroughRecipes {
         var machines = new TreeMap<String, PlaythroughMachineAdapter.Recipe>();
         // Include fuel and other adapter-added inputs in the same dependency and extraction accounting.
         for (var input : machine.inputs()) {
-            if (!(input.what() instanceof AEItemKey key)) {
-                if (!adapter.providedInputs(helper, machine).contains(input.what()))
-                    throw new IllegalArgumentException("Adapter has no provided-resource proof for " + input.what());
-                supplies.add(input.what()); continue;
-            }
-            dependencies.add(resolve(BuiltInRegistries.ITEM.getKey(key.getItem()).toString(), false, visiting));
+            if (!(input.what() instanceof AEItemKey key)) { supplies.add(input.what()); continue; }
+            if (!dependencies.containsKey(key)) dependencies.put(key, resolve(BuiltInRegistries.ITEM.getKey(key.getItem()).toString(), false, visiting));
         }
-        for (var proof : dependencies) {
+        for (var proof : dependencies.values()) {
             patterns.putAll(proof.patterns()); supplies.addAll(proof.supplies()); standIns.putAll(proof.standIns());
             signatures.putAll(proof.signatures()); machines.putAll(proof.machines());
         }
-        var pattern = machine.pattern(helper);
         patterns.put(recipe.id(), pattern); machines.put(recipe.id(), machine);
         signatures.put(recipe.id(), PlaythroughAccounting.signature(PatternDetailsHelper.decodePattern(pattern, helper.getLevel()), helper.getLevel()));
         return new Proof(patterns, supplies, standIns, signatures, machines);

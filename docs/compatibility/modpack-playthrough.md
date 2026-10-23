@@ -236,33 +236,52 @@ no placeholder cases count as coverage. The separate existing compat scenes are 
 `playthroughCrafting` now enables `inscriber`, `charger`, `furnace`, `smoker` and `blast-furnace` by default.
 `ae2federation.playthrough.machines` accepts a comma list of those IDs; `none` restores Phase 1's stand-ins.
 Selection uses exact recipe types, so enabling a smoker does not also enable Phase 0's other `cooking` types.
+An adapter's `recipeType()` is the registered type ID; Phase 0 selection and discovery both match it.
 Adapters can discover outputs hidden from Phase 0 and replace unreadable generic ingredients with concrete proofs.
+Discovery registers a hidden producer only when it passes the same acceptance checks under the resource view that
+registering it produces, so rejected recipes never change the provided set.
 Unsupported recipes remain stand-ins with reasons in `machineRejections`. Processing patterns retain concrete
 amounts and must round-trip through AE2. Machine-backed stand-ins are removed from the unlimited source; Phase 0 provided resources remain available.
 
 Each recipe has its own machine and input subnet. Inscriber presses are fixed equipment from Phase 0's provided
 set; their exact stacks must remain unchanged. Other inputs, including cooking fuel, come from processing patterns.
-Two sticks fuel a normal furnace/smoker/blast-furnace recipe through a side Storage Bus filtered to sticks; the top bus is filtered to the recipe ingredient.
+Sticks fuel a furnace/smoker/blast-furnace recipe through a side Storage Bus filtered to sticks; the top bus is filtered to the recipe ingredient.
+The stick count uses `getBurnTime` (NeoForge's fuel data map), halved for smokers and blast furnaces as their
+`getBurnDuration` does. The furnace's own recipe lookup must select the recipe for the chosen ingredient, and a
+stick ingredient is rejected so the two bus filters stay disjoint.
 Quartz Fiber shares the layout's one creative AE energy source with native subnets. Hoppers return products to the
 provider. No test tick transfers ingredients or products. Up to four copies of each machine run concurrently,
 limited to 24 machines per layout (`machineCopies`, range 1–24). Unsupported cooking durations are reported.
-The GameTest and sprint share a 20-million-tick ceiling; the existing wall-clock deadline still bounds each run. Prefer 20-target chunks for machine-heavy chapters.
+A proof that needs more than 24 machine recipes or 12 extra requester cells fails that target as `pattern-encoding`.
+The shelf stands at z=25–29, beyond every topology layout; any overlap with layout blocks fails while building.
+
+Each target's budget is the base `targetTicks`, plus `ticksPerCraft` per assembler craft divided by assembler
+copies, plus three times the sum over machine recipes of runs divided by that recipe's copies times its duration (or its
+hopper time, 8 ticks per output item, if longer). A hung job therefore fails as `job-complete`.
+The crafting, topology and remainder GameTests share the sprint and timeout ceiling `MAX_TICKS` (5 million ticks); the wall-clock
+deadline still bounds each run. Prefer 20-target chunks for machine-heavy chapters.
 
 `machinePath=projection` uses native Pattern Providers on the factory network and processing-pattern projection.
 `machinePath=endpoint` puts Federation Providers on that network, mapped to individual machine Endpoints.
 Both use a fresh plain AE2 processing control. Reports retain the four-way class per path, all Phase 1 checks,
-and machine/catalyst, collector, interface and provider buffer checks. Inputs and outputs for each real machine
-step are listed per target. `playthrough-machines.json` and `.md` are checkpointed beside the crafting reports.
+and machine/catalyst, collector, interface and provider buffer checks. Each layout records the plan's runs of every
+machine pattern (`cleanup.machineRuns`); machine providers also appear in `installedPatternsByNetwork`. A
+target's `machineSteps` list inputs, outputs, runs per layout and `observedIn`, the passing layouts with runs above
+zero. Only those steps count as real (`realMachineSteps`); a planned step with zero runs is not machine coverage.
+`playthrough-machines.json` and `.md` are checkpointed beside the crafting reports. The merge tool rejects
+observations that do not follow from recorded runs, differing recipe selections, and plain AE2 control runs that
+differ between paths; it reports per-path adapter coverage (`adapterCoverage`) from observed steps only.
 
 ```bash
 # Build once, then run the paths sequentially; never exceed two NAST servers in this worktree.
 ./gradlew :neoforge-1.21.1:jar :neoforge-1.21.1:compatTestJar
-for path in projection endpoint; do
+# Do not name the loop variable `path`: zsh ties it to $PATH.
+for mp in projection endpoint; do
   python3 tools/compat_run.py --accept-eula --tests playthroughCrafting nast \
-    --no-build --run-suffix "machines-$path" --chunks 7 --chunk-size 20 -j 2 \
+    --no-build --run-suffix "machines-$mp" --chunks 7 --chunk-size 20 -j 2 \
     --jvm-property ae2federation.playthrough.chapter=ae2 \
-    --jvm-property "ae2federation.playthrough.machinePath=$path" \
-    --summary "build/playthrough/$path-summary.json"
+    --jvm-property "ae2federation.playthrough.machinePath=$mp" \
+    --summary "build/playthrough/$mp-summary.json"
 done
 python3 tools/compat_playthrough_machines.py --output build/playthrough \
   neoforge-1.21.1/build/compat/runs/nast-machines-{projection,endpoint}-chunk{1,2,3,4,5,6,7}
@@ -270,7 +289,8 @@ python3 tools/compat_playthrough_machines.py --output build/playthrough \
 
 Add an adapter by implementing `PlaythroughMachineAdapter` in one new class and adding one constructor entry to
 `PlaythroughMachineAdapters.REGISTERED`. Use `read` for exact `GenericStack` inputs/outputs, `place` for real block
-setup and `leftovers` for idle/empty and catalyst checks. `Site` tracks placement and exposes the return port;
+setup and `leftovers` for idle/empty and catalyst checks. The interface Javadoc states the site geometry: output
+leaves the machine's DOWN face, and `inputFace` may be any other face. `Site` tracks placement and exposes the return port;
 non-item adapters can replace the hopper with real pipes and declare justified raw keys via `providedInputs`.
 Fluid outputs receive an AE2 fluid cell; chemical adapters declare their pack cell IDs through `storageCells`.
 Those physical requester cells participate in the same full inventory balance. Non-item adapters still need their own runtime validation; this phase exercises items only. No main-mod code is changed.

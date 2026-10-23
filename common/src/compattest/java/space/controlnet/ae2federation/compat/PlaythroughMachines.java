@@ -25,9 +25,15 @@ import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
 
-/** A shelf of independent processing subnets, powered by the layout's single creative AE cell. */
+/**
+ * A shelf of independent processing subnets, powered by the layout's single creative AE cell. Sites occupy
+ * z={@value #Z}-1..{@value #Z}+3, beyond every topology layout (whose split SOUTH controllers end at z=23).
+ */
 final class PlaythroughMachines {
     static final String PATH = System.getProperty("ae2federation.playthrough.machinePath", "projection");
+    /** Six sites per row, four rows. */
+    static final int MAX_SITES = 24;
+    private static final int Z = 26;
     private record Installation(Site site, PlaythroughMachineAdapter.Recipe recipe) { }
     private final GameTestHelper helper;
     private final boolean endpoint;
@@ -35,16 +41,21 @@ final class PlaythroughMachines {
     private final Set<String> installed = new java.util.HashSet<>();
     private final List<BlockPos> outputCells = new ArrayList<>();
     private final Set<BlockPos> placed;
+    private Set<BlockPos> layout = Set.of();
 
     PlaythroughMachines(GameTestHelper helper, Set<BlockPos> placed, boolean federated) {
         this.helper = helper; this.placed = placed; this.endpoint = federated && PATH.equals("endpoint");
         if (!Set.of("projection", "endpoint").contains(PATH)) throw new IllegalArgumentException("Unknown machine path: " + PATH);
     }
 
-    /** The top Storage Bus delivers inputs; the bottom hopper extracts only the machine's exposed outputs. */
-    record Site(GameTestHelper helper, Set<BlockPos> placed, BlockPos provider, BlockPos machine, BlockPos returnPort) {
-        void block(BlockPos pos, Block block) { placed.add(pos); helper.setBlock(pos, block); }
-        void cable(BlockPos pos) { placeCable(helper, placed, pos, false); }
+    /** The bus at machine.relative(inputFace) delivers inputs; the hopper below extracts only exposed outputs. */
+    record Site(GameTestHelper helper, Set<BlockPos> placed, Set<BlockPos> layout, BlockPos provider, BlockPos machine,
+                BlockPos returnPort) {
+        void block(BlockPos pos, Block block) { block(pos, block.defaultBlockState()); }
+        void block(BlockPos pos, net.minecraft.world.level.block.state.BlockState state) {
+            claim(pos); placed.add(pos); helper.setBlock(pos, state);
+        }
+        void cable(BlockPos pos) { claim(pos); placeCable(helper, placed, pos, false); }
         appeng.parts.storagebus.StorageBusPart storageBus(BlockPos pos, Direction face) {
             cable(pos);
             var host = (appeng.api.parts.IPartHost) helper.getBlockEntity(pos);
@@ -53,6 +64,9 @@ final class PlaythroughMachines {
             if (!(bus instanceof appeng.parts.storagebus.StorageBusPart storage))
                 throw new IllegalStateException("Storage Bus refused: " + pos);
             return storage;
+        }
+        private void claim(BlockPos pos) {
+            if (layout.contains(pos)) throw new IllegalStateException("Machine shelf collides with a layout block at " + pos);
         }
     }
 
@@ -63,16 +77,38 @@ final class PlaythroughMachines {
             throw new IllegalStateException("Cable refused: " + pos);
     }
 
-    private void denseCable(BlockPos pos) { placeCable(helper, placed, pos, true); }
+    private void denseCable(BlockPos pos) {
+        if (layout.contains(pos)) throw new IllegalStateException("Machine riser collides with a layout block at " + pos);
+        placeCable(helper, placed, pos, true);
+    }
 
-    void initialize(PlaythroughRecipes.Proof proof, BlockPos factoryChest, BlockPos requesterChest) {
-        if (proof.machines().isEmpty()) return;
-        if (proof.machines().size() > 24) throw new IllegalArgumentException("Machine shelf supports 24 distinct recipes");
+    static int requestedCopies() {
+        int requested = Integer.getInteger("ae2federation.playthrough.machineCopies", 4);
+        if (requested < 1 || requested > MAX_SITES) throw new IllegalArgumentException("machineCopies must be 1.." + MAX_SITES);
+        return requested;
+    }
+
+    private static Set<String> storageCells(PlaythroughRecipes.Proof proof) {
         var cells = new java.util.TreeSet<String>();
         proof.machines().values().forEach(recipe -> cells.addAll(PlaythroughMachineAdapters.byId(recipe.adapter()).storageCells(recipe)));
-        if (cells.size() > 12) throw new IllegalArgumentException("Requester supports at most 12 additional cell types");
-        for (var cell : cells) {
+        return cells;
+    }
+
+    /** Shelf capacity, checked at proof time so an oversized target fails as pattern-encoding. */
+    static void validate(PlaythroughRecipes.Proof proof) {
+        if (proof.machines().size() > MAX_SITES)
+            throw new IllegalArgumentException("Machine shelf supports " + MAX_SITES + " distinct recipes, needed " + proof.machines().size());
+        var cells = storageCells(proof);
+        if (cells.size() > 12) throw new IllegalArgumentException("Requester supports at most 12 additional cell types: " + cells);
+    }
+
+    /** Builds after the rest of the layout, so any overlap with it fails here instead of replacing a block. */
+    void initialize(PlaythroughRecipes.Proof proof, BlockPos factoryChest, BlockPos requesterChest) {
+        if (proof.machines().isEmpty()) return;
+        layout = Set.copyOf(placed);
+        for (var cell : storageCells(proof)) {
             var pos = requesterChest.above(outputCells.size() + 1);
+            if (layout.contains(pos)) throw new IllegalStateException("Requester cell collides with a layout block at " + pos);
             placed.add(pos); helper.setBlock(pos, AEBlocks.ME_CHEST.block());
             var chest = helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(pos);
             chest.setCell(new net.minecraft.world.item.ItemStack(AddonCraftingScene.item(cell)));
@@ -80,27 +116,27 @@ final class PlaythroughMachines {
             if (chest.getOriginalCellInventory(0) == null) throw new IllegalArgumentException("Not an AE2 storage cell: " + cell);
             outputCells.add(pos);
         }
-        // The riser is attached beyond the controller spine, clear of all assembler faces.
-        for (int x = factoryChest.getX() + 1; x <= 33; x++) denseCable(new BlockPos(x, factoryChest.getY(), factoryChest.getZ()));
+        // The riser threads the controller spine, then leaves it clear of all assembler faces.
+        for (int x = factoryChest.getX() + 1; x <= 33; x++) {
+            var pos = new BlockPos(x, factoryChest.getY(), factoryChest.getZ());
+            if (layout.contains(pos) && !helper.getBlockState(pos).is(AEBlocks.CONTROLLER.block()))
+                throw new IllegalStateException("Machine riser collides with a layout block at " + pos);
+            placeCable(helper, placed, pos, true);
+        }
         for (int y = factoryChest.getY() + 1; y <= 12; y++) denseCable(new BlockPos(33, y, factoryChest.getZ()));
+        for (int z = factoryChest.getZ() + 1; z <= Z + 3; z++) denseCable(new BlockPos(33, 12, z));
         int index = 0;
-        int requestedCopies = Integer.getInteger("ae2federation.playthrough.machineCopies", 4);
-        if (requestedCopies < 1 || requestedCopies > 24) throw new IllegalArgumentException("machineCopies must be 1..24");
-        int copies = Math.min(requestedCopies, 24 / proof.machines().size());
+        int copies = Math.min(requestedCopies(), MAX_SITES / proof.machines().size());
         for (int copy = 0; copy < copies; copy++) for (var recipe : proof.machines().values()) {
             int row = index / 6;
-            var pos = new BlockPos(2 + index % 6 * 5, 12 + row * 5, 22);
-            for (int z = factoryChest.getZ() + 1; z <= 25; z++) denseCable(new BlockPos(33, 12, z));
-            for (int y = 13; y <= pos.getY(); y++) denseCable(new BlockPos(33, y, 25));
-            for (int x = Math.min(33, pos.getX()); x <= Math.max(33, pos.getX()); x++) denseCable(new BlockPos(x, pos.getY(), 25));
-            denseCable(new BlockPos(33, pos.getY(), 25));
-            var current = new Site(helper, placed, pos, pos.above(2), endpoint ? pos.east() : pos);
+            var pos = new BlockPos(2 + index % 6 * 5, 12 + row * 5, Z);
+            for (int y = 13; y <= pos.getY(); y++) denseCable(new BlockPos(33, y, Z + 3));
+            for (int x = pos.getX(); x <= 33; x++) denseCable(new BlockPos(x, pos.getY(), Z + 3));
+            var current = new Site(helper, placed, layout, pos, pos.above(2), endpoint ? pos.east() : pos);
             current.cable(pos.south()); current.cable(pos.south(2));
             if (endpoint) {
-                placed.add(pos);
-                helper.setBlock(pos, ProcessingRegistration.PROVIDER.get().defaultBlockState().setValue(BlockStateProperties.FACING, Direction.EAST));
-                placed.add(pos.east());
-                helper.setBlock(pos.east(), ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(BlockStateProperties.FACING, Direction.WEST));
+                current.block(pos, ProcessingRegistration.PROVIDER.get().defaultBlockState().setValue(BlockStateProperties.FACING, Direction.EAST));
+                current.block(pos.east(), ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(BlockStateProperties.FACING, Direction.WEST));
             } else {
                 current.block(pos, AEBlocks.PATTERN_PROVIDER.block());
                 AEBlocks.PATTERN_PROVIDER.block().setSide(helper.getLevel(), helper.absolutePos(pos), Direction.WEST);
@@ -111,21 +147,21 @@ final class PlaythroughMachines {
                         AEParts.QUARTZ_FIBER.asItem()) == null) throw new IllegalStateException("Quartz Fiber refused");
             }
             var adapter = PlaythroughMachineAdapters.byId(recipe.adapter());
-            for (int y = 1; y <= 3; y++) current.cable(pos.east().above(y));
-            current.cable(pos.above(3));
-            current.storageBus(current.machine().relative(adapter.inputFace()), adapter.inputFace().getOpposite());
+            // The subnet rises east of the machine to the cable above it; the Endpoint's riser bypasses its collector.
+            if (endpoint) for (int y = 0; y <= 3; y++) current.cable(pos.east(2).above(y));
+            for (int y = endpoint ? 2 : 1; y <= 3; y++) current.cable(pos.east().above(y));
+            current.cable(current.machine().above());
+            var face = adapter.inputFace();
+            var port = current.machine().relative(face);
+            // North, south and west ports drop from a cable beside the one above the machine.
+            if (face != Direction.UP && face != Direction.EAST) current.cable(port.above());
+            current.storageBus(port, face.getOpposite());
             adapter.place(current, recipe);
             if (adapter.itemCollector()) {
-                placed.add(pos.above());
-                helper.setBlock(pos.above(), Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING,
+                current.block(pos.above(), Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING,
                         endpoint ? Direction.EAST : Direction.DOWN));
-                if (endpoint) {
-                    // A second hopper drops the product into the Endpoint, bypassing its input Storage Buses.
-                    placed.add(pos.east().above());
-                    helper.setBlock(pos.east().above(), Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.DOWN));
-                    // Reroute the subnet riser around the collector.
-                    for (int y = 0; y <= 3; y++) current.cable(pos.east(2).above(y));
-                }
+                // A second hopper drops the product into the Endpoint, bypassing its input Storage Buses.
+                if (endpoint) current.block(pos.east().above(), Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.DOWN));
             }
             installations.add(new Installation(current, recipe)); index++;
         }
@@ -153,9 +189,54 @@ final class PlaythroughMachines {
         };
     }
 
-    static long executionTicks(PlaythroughRecipes.Proof proof, long crafts) {
-        int slowest = proof.machines().values().stream().mapToInt(PlaythroughMachineAdapter.Recipe::ticks).max().orElse(0);
-        return Math.multiplyExact(crafts, Math.max(250L, slowest));
+    /** Planned runs of each machine recipe; a completed job has received every output of those runs. */
+    static Map<String, Long> runs(appeng.api.networking.crafting.ICraftingPlan plan, PlaythroughRecipes.Proof proof) {
+        var ids = new java.util.HashMap<AEItemKey, String>();
+        var result = new TreeMap<String, Long>();
+        proof.machines().keySet().forEach(id -> { ids.put(AEItemKey.of(proof.patterns().get(id)), id); result.put(id, 0L); });
+        plan.patternTimes().forEach((details, times) -> {
+            var id = ids.get(details.getDefinition());
+            if (id != null) result.merge(id, times, Math::addExact);
+        });
+        return result;
+    }
+
+    /**
+     * Runs are pushed round-robin to the copies of each recipe; a run takes its recipe duration, or longer when its
+     * hopper (one item per 8 ticks) is slower. Recipes are summed as if serial and tripled as a margin: a 64-run
+     * blast furnace target took 2.3 times its ideal parallel time.
+     */
+    long executionTicks(Map<String, Long> runs) {
+        long total = 0;
+        for (var entry : runs.entrySet()) {
+            var sites = installations.stream().filter(installation -> installation.recipe().id().equals(entry.getKey()))
+                    .map(Installation::recipe).toList();
+            if (sites.isEmpty()) throw new IllegalStateException("Machine recipe has no installed site: " + entry.getKey());
+            long items = sites.getFirst().outputs().stream().filter(stack -> stack.what() instanceof AEItemKey)
+                    .mapToLong(appeng.api.stacks.GenericStack::amount).sum();
+            long perRun = Math.max(sites.getFirst().ticks(), Math.multiplyExact(8L, items));
+            total = Math.addExact(total, Math.multiplyExact(Math.ceilDiv(entry.getValue(), sites.size()), perRun));
+        }
+        return Math.multiplyExact(3L, total);
+    }
+
+    /** Installed machine patterns read back from their providers, grouped by the providers' grids. */
+    Map<appeng.api.networking.IGrid, List<String>> installedPatterns() {
+        var result = new java.util.HashMap<appeng.api.networking.IGrid, List<String>>();
+        for (var installation : installations) {
+            var pos = installation.site().provider();
+            if (endpoint) {
+                var provider = helper.<FederationPatternProviderBlockEntity>getBlockEntity(pos);
+                var pattern = provider.getTerminalPatternInventory().getStackInSlot(0);
+                if (!pattern.isEmpty()) result.computeIfAbsent(provider.getMainNode().getGrid(), ignored -> new ArrayList<>())
+                        .add(AEItemKey.of(pattern).toString());
+            } else {
+                var logic = ((PatternProviderLogicHost) helper.getBlockEntity(pos)).getLogic();
+                result.computeIfAbsent(logic.getGrid(), ignored -> new ArrayList<>()).addAll(logic.getAvailablePatterns().stream()
+                        .map(details -> details.getDefinition().toString()).toList());
+            }
+        }
+        return result;
     }
 
     boolean install(PlaythroughRecipes.Proof proof, Set<NetworkId> networks) {
@@ -170,7 +251,11 @@ final class PlaythroughMachines {
                 FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid()).ifPresent(networks::add);
                 if (provider.getTerminalPatternInventory().getStackInSlot(0).isEmpty())
                     provider.getTerminalPatternInventory().insertItem(0, pattern.copy(), false);
-                if (!provider.toggleEndpoint(provider.mappedProvider().mappingHandle(0), binding).startsWith("accepted-")) return false;
+                // Toggling an existing mapping would remove it, so only an unmapped slot is toggled.
+                if (!mapped(provider, binding)) {
+                    if (!provider.toggleEndpoint(provider.mappedProvider().mappingHandle(0), binding).startsWith("accepted-")) return false;
+                    if (!mapped(provider, binding)) throw new IllegalStateException("Accepted Endpoint mapping has no lane for slot 0 at " + site.provider());
+                }
             } else {
                 var host = (PatternProviderLogicHost) helper.getBlockEntity(site.provider());
                 var input = helper.<appeng.blockentity.misc.InterfaceBlockEntity>getBlockEntity(site.provider().east());
@@ -183,6 +268,11 @@ final class PlaythroughMachines {
             installed.add(recipe.id() + site.provider());
         }
         return true;
+    }
+
+    private static boolean mapped(FederationPatternProviderBlockEntity provider, EndpointTargetBinding binding) {
+        var lane = provider.laneFor(binding.endpointIdentity());
+        return lane.isPresent() && provider.mappedProvider().lanesForSlot(0).contains(lane.get());
     }
 
     String signatures(PlaythroughRecipes.Proof proof, Map<String, PlaythroughAccounting.Signature> signatures) {
