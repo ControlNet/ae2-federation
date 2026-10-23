@@ -177,3 +177,56 @@ including its bucket returns. Its report is separate from quest chapter counts.
 ```bash
 python3 tools/compat_run.py --accept-eula --tests playthroughRemainders --run-suffix remainders nast
 ```
+
+## Phase 2: seeded topology matrix (partial)
+
+`playthroughTopology` / `playthrough-topology` reuses the Phase 1 driver, factory, recipes, source, accounting and
+atomic checkpoints. Defaults select `ae2:blank_pattern`, `functionalstorage:oak_1` and `minecraft:crafting_table`
+from three chapters, each independently confirmed with Phase 1. Five seeds run six disturbances; two additional
+fixed fixtures exercise cable demand 8 and 9. The default 1400-second active budget remains inside NAST's 1800-second
+process limit. Longer ranges are opt-in and can end with an explicitly incomplete checkpoint.
+
+```bash
+python3 tools/compat_run.py --accept-eula --tests playthroughTopology --run-suffix topology nast
+# Reproduce just one generated case, including its automatic fresh-fixture confirmation on failure:
+python3 tools/compat_run.py --accept-eula --tests playthroughTopology --run-suffix topology-single nast \
+  --jvm-property ae2federation.playthrough.items=ae2:blank_pattern \
+  --jvm-property ae2federation.playthrough.topology.seedStart=0 \
+  --jvm-property ae2federation.playthrough.topology.seedCount=1 \
+  --jvm-property ae2federation.playthrough.topology.capacityCases=false \
+  --jvm-property ae2federation.playthrough.topology.perturbations=router
+```
+
+Properties below have prefix `ae2federation.playthrough.topology.`. `seedStart` defaults to 0 and `seedCount` to 5.
+Dimensions are data in `PlaythroughTopology.DIMENSIONS`; pin `networks` (2–6), `join` (`router-switch`, `multi-hop`,
+`bundle-2x2`, `bundle-3x3`, `beam`, `p2p`), `power` (`WEST`, `EAST`, `NORTH`), `splitPatterns` or `extraCpus`.
+The last two require at least four member networks when pinned true. P2P has a separate powered carrier, excluded
+from the member-network count. Two-network layouts physically join materials and requester with native cable.
+Split patterns alternate recipe slots between east and south factories; a single-pattern proof instead distributes
+its copies. Extra native CPUs are present on additional networks; the job still uses the requester's CPU.
+
+`perturbations` defaults to `none,cable,router,STORAGE,CRAFTING,ME_POWER`. A nonempty return debt while the CPU is
+busy proves an accepted push before firing. Blocks/rules are restored after 40 ticks; checks wait for power and CPU
+visibility and at least 60 further ticks. Each case expects completion after restoration, with full cells,
+extractions, signatures, idle CPUs, empty buffers and zero debt/transit. A disturbance that never fires fails.
+Failures receive a fresh factory with the same layout and target; reports retain both attempts and distinguish a
+reproduced invariant, a different failure, and a passing confirmation (`flaky`). This is an in-process confirmation,
+not a fresh-server flakiness test.
+
+The fixed boundary fixtures use three networks, multi-hop joins and west power, independent of ordinary dimension
+pins. Demand 8 must craft normally. Demand 9 must keep the domain stopped and refuse projection despite an installed,
+locally available pattern: no job, extraction, cell stock or ledger entry. It records perturbation `none` and does not disturb an unstarted job. Use `capacity=at-limit` or `capacity=over-limit` with
+`seedCount=1` to replay a boundary fixture alone; `capacityCases=false` suppresses automatic boundary additions.
+Seeds congruent to 5/6 modulo 7 select boundary fixtures, so the same seed replays the same kind. Automatic boundary
+additions select the next matching seeds beyond the requested range. The boundary geometry requires the branch's
+enforced default capacity of 8. `--chunks N --chunk-size S` partitions topology seed ranges (Phase 1 still partitions
+target offsets); each process includes its boundary fixtures. Build once before concurrent `--no-build` invocations.
+
+`remainders=true` appends the cake regression; it is excluded by default. Reports `playthrough-topology.json` and
+`.md` sit beside the compat report, with case evidence and summaries by dimension and perturbation. A harness
+`PASS nast-… 1/1` means the report completed, not that every case passed. `completed=false` means incomplete coverage.
+
+This implementation does **not** finish Phase 2: material/requester/CPU role reassignment, a standalone Router
+layout, Federation Provider/Endpoint and Local Endpoint crafting paths, cross-dimension Quantum Cubes, Bridge
+removal, actual chunk unload/reload and the existing restart protocol are not integrated. JSON lists these gaps;
+no placeholder cases count as coverage. The separate existing compat scenes are not evidence for this matrix.

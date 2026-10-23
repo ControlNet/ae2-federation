@@ -315,6 +315,17 @@ def report(directory: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
+def playthrough_chunk_properties(properties: dict[str, str], tests: str, chunk: int, size: int) -> dict[str, str]:
+    """Partition topology seeds or Phase 1 target offsets without changing caller settings."""
+    settings = dict(properties)
+    topology = any(test.lower().replace("-", "") == "playthroughtopology" for test in tests.split(","))
+    prefix = "ae2federation.playthrough." + ("topology." if topology else "")
+    offset, count = ("seedStart", "seedCount") if topology else ("skipTargets", "maxTargets")
+    settings[prefix + offset] = str(int(properties.get(prefix + offset, "0")) + chunk * size)
+    settings[prefix + count] = str(size)
+    return settings
+
+
 def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] == "report":
         print(report(Path(sys.argv[2])), end="")
@@ -346,7 +357,7 @@ def main() -> int:
     parser.add_argument("--jvm-property", action="append", default=[], metavar="KEY=VALUE",
                         help="per-process JVM system property; repeat for multiple properties")
     parser.add_argument("--chunks", type=int, default=1, help="run each profile in N isolated playthrough chunks")
-    parser.add_argument("--chunk-size", type=int, help="eligible targets per chunk; requires --chunks")
+    parser.add_argument("--chunk-size", type=int, help="eligible targets (topology: seeds) per chunk; requires --chunks")
     args = parser.parse_args()
     if args.run_suffix and not re.fullmatch(r"[A-Za-z0-9_-]+", args.run_suffix):
         parser.error("run suffix must contain only letters, numbers, underscores or hyphens")
@@ -399,9 +410,7 @@ def main() -> int:
                 settings = dict(properties)
                 if args.chunk_size is not None:
                     run_name += f"-chunk{chunk + 1}"
-                    prefix = "ae2federation.playthrough."
-                    settings[prefix + "skipTargets"] = str(int(properties.get(prefix + "skipTargets", "0")) + chunk * args.chunk_size)
-                    settings[prefix + "maxTargets"] = str(args.chunk_size)
+                    settings = playthrough_chunk_properties(properties, args.tests or "", chunk, args.chunk_size)
                 future = (pool.submit(run_bare, run_name, profiles[name], profiles[name].get("timeout", 900)) if args.bare else
                           pool.submit(run_profile, run_name, profiles[name], args.tests or ",".join(profiles[name]["tests"]),
                                       profiles[name].get("timeout", 900), args.parallel, settings))

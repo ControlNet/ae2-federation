@@ -34,17 +34,26 @@ public final class PlaythroughCraftingGameTests {
         new Run(helper, "minecraft:cake").start();
     }
 
+    static void runTopology(GameTestHelper helper) throws Exception { new Run(helper, null, true).start(); }
+
     private record Target(String chapter, String chapterId, String quest, String questId, String taskId,
                           String item, long count, AEItemKey key) { }
 
     private static final class Run {
         private final GameTestHelper helper;
+        private final boolean topologyMode;
+        private List<PlaythroughTopology.Layout> layouts = List.of();
+        private List<String> perturbations = List.of();
+        private int layoutIndex;
+        private int perturbationIndex;
+        private PlaythroughFactory.Result firstAttempt;
+
         private final List<Target> targets = new ArrayList<>();
         private final List<Target> eligibleTasks = new ArrayList<>();
         private final List<Map<String, Object>> skipped = new ArrayList<>();
         private final List<Map<String, Object>> rows = new ArrayList<>();
         private final List<Map<String, String>> deferred = new ArrayList<>();
-        private final String chapter = System.getProperty("ae2federation.playthrough.chapter", "ae2");
+        private final String chapter;
         private final String mode = System.getProperty("ae2federation.playthrough.mode", "crafting-frontier");
         private final Set<String> items = java.util.Arrays.stream(System.getProperty("ae2federation.playthrough.items", "").split(","))
                 .map(String::trim).filter(item -> !item.isEmpty()).collect(java.util.stream.Collectors.toCollection(java.util.TreeSet::new));
@@ -70,12 +79,17 @@ public final class PlaythroughCraftingGameTests {
 
         private final String regressionItem;
         Run(GameTestHelper helper) { this(helper, null); }
-        Run(GameTestHelper helper, String regressionItem) { this.helper = helper; this.regressionItem = regressionItem; }
+        Run(GameTestHelper helper, String regressionItem) { this(helper, regressionItem, false); }
+        Run(GameTestHelper helper, String regressionItem, boolean topologyMode) {
+            this.helper = helper; this.regressionItem = regressionItem; this.topologyMode = topologyMode;
+            chapter = System.getProperty("ae2federation.playthrough.chapter", topologyMode ? "" : "ae2");
+        }
 
         void start() throws Exception {
             if (!Set.of("crafting-only", "crafting-frontier").contains(mode) || maximum < 0 || skip < 0 || budget < 1 || wallSeconds < 1 || wallSeconds > 1400) {
                 throw new IllegalArgumentException("Invalid playthrough mode/limit/tick budget");
             }
+            if (topologyMode) { layouts = PlaythroughTopology.layouts(); perturbations = PlaythroughTopology.perturbations(); }
             var probe = new QuestCoverageCompatGameTests.Probe();
             probe.readQuests(Path.of("config/ftbquests/quests"));
             if (!probe.questDataStatus().equals("available")) throw new IllegalStateException(probe.questDataStatus());
@@ -94,7 +108,8 @@ public final class PlaythroughCraftingGameTests {
                         || chapter.equals("ae2") && ch.title().contains("应用能源2");
                 if (!selected) continue;
                 for (var task : quest.tasks()) {
-                    if (!task.classification().equals("plain-item") || !items.isEmpty() && !items.contains(task.item())) continue;
+                    if (!task.classification().equals("plain-item") || !items.isEmpty() && !items.contains(task.item())
+                            || topologyMode && items.isEmpty() && !PlaythroughTopology.DEFAULT_TARGETS.contains(task.item())) continue;
                     var tag = TagParser.parseTag(task.snbt());
                     long count = tag.contains("count") ? tag.getLong("count") : 1;
                     if (count <= 0) throw new IllegalStateException("Invalid quest count: " + task.id());
@@ -108,7 +123,7 @@ public final class PlaythroughCraftingGameTests {
                         skipped.add(row);
                     } else if (eligible++ < skip) {
                         deferred.add(Map.of("task", task.id(), "item", task.item(), "reason", "skipTargets filter"));
-                    } else if (maximum == 0 || targets.size() < maximum) targets.add(target);
+                    } else if (topologyMode || maximum == 0 || targets.size() < maximum) targets.add(target);
                     else deferred.add(Map.of("task", task.id(), "item", task.item(), "reason", "maxTargets filter"));
                 }
             }
@@ -117,6 +132,13 @@ public final class PlaythroughCraftingGameTests {
                 var target = new Target("Harness regression", "harness-regression", "Container remainders", "remainders",
                         "remainders", regressionItem, 1, PlaythroughRecipes.key(regressionItem));
                 targets.add(target); eligibleTasks.add(target);
+            }
+            if (topologyMode) {
+                var selected = items.isEmpty() ? PlaythroughTopology.DEFAULT_TARGETS : items;
+                targets.removeIf(target -> !selected.contains(target.item()));
+                if (Boolean.getBoolean(PlaythroughTopology.PREFIX + "remainders")) targets.add(new Target(
+                        "Harness regression", "harness-regression", "Container remainders", "remainders", "remainders",
+                        "minecraft:cake", 1, PlaythroughRecipes.key("minecraft:cake")));
             }
             if (targets.isEmpty()) throw new IllegalStateException("Chapter filter selected no crafting targets: " + chapter);
             write();
@@ -179,14 +201,39 @@ public final class PlaythroughCraftingGameTests {
                     }
                     com.mojang.logging.LogUtils.getLogger().info("AE2F_PLAYTHROUGH_ORDER target={}/{} item={} count={} layout={}",
                             index + 1, targets.size(), target.item(), target.count(), baseline == null ? "baseline" : "federated");
-                    factory = new PlaythroughFactory(helper, baseline != null, proof, target.key(), target.count(), budget);
+                    factory = topologyMode && baseline != null
+                            ? new PlaythroughFactory(helper, layouts.get(layoutIndex), currentPerturbation(), proof, target.key(), target.count(), budget)
+                            : new PlaythroughFactory(helper, baseline != null, proof, target.key(), target.count(), budget);
                     factory.initialize();
                 }
                 var result = factory.tick();
                 if (result != null) {
+                    if (topologyMode && baseline != null && !layouts.get(layoutIndex).capacity().equals("over-limit")
+                            && baseline.pass() && result.pass() && !PlaythroughTopology.inventoriesEqual(baseline, result))
+                        result = result.failure("inventory-parity", "Full nonempty per-cell inventories differ from the passing baseline");
                     factory.close(); closedFactory = factory; factory = null;
                     if (baseline == null) baseline = result;
-                    else {
+                    else if (topologyMode) {
+                        if (!result.pass() && firstAttempt == null) {
+                            firstAttempt = result;
+                            write();
+                        } else {
+                            add(target, baseline, result, proof.standIns());
+                            var row = rows.getLast();
+                            row.put("layout", layouts.get(layoutIndex)); row.put("perturbation", currentPerturbation());
+                            row.put("expectedOutcome", layouts.get(layoutIndex).capacity().equals("over-limit") ? "clean-refusal" : "complete-after-restoration");
+                            if (firstAttempt != null) {
+                                row.put("firstAttempt", firstAttempt); row.put("confirmation", result);
+                                if (result.pass()) row.put("classification", "flaky");
+                                row.put("repeatability", result.pass() ? "flaky" : firstAttempt.invariant().equals(result.invariant()) ? "reproduced-invariant" : "different-failure");
+                                firstAttempt = null;
+                            }
+                            if (layouts.get(layoutIndex).capacity().equals("over-limit")) perturbationIndex = perturbations.size() - 1;
+                            if (++perturbationIndex == perturbations.size()) { perturbationIndex = 0; layoutIndex++; }
+                            if (layoutIndex == layouts.size()) { layoutIndex = 0; index++; baseline = null; proof = null; }
+                            write();
+                        }
+                    } else {
                         add(target, baseline, result, proof.standIns()); index++; baseline = null; proof = null; write();
                     }
                     helper.runAfterDelay(25, this::tick); return;
@@ -204,16 +251,22 @@ public final class PlaythroughCraftingGameTests {
             }
         }
 
+        private String currentPerturbation() {
+            return layouts.get(layoutIndex).capacity().equals("over-limit") ? "none" : perturbations.get(perturbationIndex);
+        }
+
         private void add(Target target, PlaythroughFactory.Result base, PlaythroughFactory.Result fed, Map<String, List<String>> standIns) {
-            if (base.pass() && fed.pass() && !base.inventories().equals(fed.inventories())) {
+            boolean refusal = topologyMode && layouts.get(layoutIndex).capacity().equals("over-limit");
+            if (!refusal && base.pass() && fed.pass() && !PlaythroughTopology.inventoriesEqual(base, fed)) {
                 fed = fed.failure("inventory-parity", "Full per-cell inventories differ from the passing baseline");
             }
             var row = metadata(target);
             row.put("baseline", base); row.put("federated", fed); row.put("standIns", standIns);
             row.put("classification", base.pass() ? fed.pass() ? "both-pass" : "baseline-only" : fed.pass() ? "federated-only" : "both-fail");
             if (base.invariant().equals("recipe-signature") || fed.invariant().equals("recipe-signature")
-                    || !base.signatures().equals(fed.signatures())) row.put("classification", "nondeterministic");
-            row.put("inventoryComparison", base.inventories().equals(fed.inventories()) ? "PASS" : "Layout inventories differ");
+                    || !refusal && !base.signatures().equals(fed.signatures())) row.put("classification", "nondeterministic");
+            if (refusal) row.put("classification", fed.pass() ? "expected-refusal" : "refusal-mismatch");
+            row.put("inventoryComparison", refusal ? "NOT_APPLICABLE: expected refusal" : PlaythroughTopology.inventoriesEqual(base, fed) ? "PASS" : "Layout inventories differ");
             row.put("expectedSignatures", proof == null ? Map.of() : proof.signatures());
             row.put("recipes", proof == null ? List.of() : proof.patterns().keySet());
             rows.add(row);
@@ -236,6 +289,13 @@ public final class PlaythroughCraftingGameTests {
         }
 
         private void write() throws Exception {
+            if (topologyMode) {
+                var state = new LinkedHashMap<String, Object>(incomplete);
+                state.put("targetIndex", index); state.put("layoutIndex", layoutIndex); state.put("perturbationIndex", perturbationIndex);
+                if (firstAttempt != null) state.put("pendingConfirmation", firstAttempt);
+                PlaythroughTopology.write(directory, layouts, rows, completed && !stopping, harnessError, state);
+                return;
+            }
             var overall = counts();
             var chapters = new TreeMap<String, Map<String, Integer>>();
             for (var row : rows) {

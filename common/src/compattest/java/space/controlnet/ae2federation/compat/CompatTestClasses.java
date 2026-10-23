@@ -16,6 +16,7 @@ final class CompatTestClasses {
         var groups = new LinkedHashMap<String, Class<?>>();
         groups.put("core", CoreCompatGameTests.class);
         groups.put("quest-coverage", QuestCoverageCompatGameTests.class);
+        groups.put("playthrough-topology", PlaythroughTopologyGameTests.class);
         groups.put("playthrough-crafting", PlaythroughCraftingGameTests.class);
         groups.put("playthrough-remainders", PlaythroughRemainderGameTests.class);
         if (!System.getProperty("ae2federation.compat.transitRestartPhase", "").isBlank()) {
