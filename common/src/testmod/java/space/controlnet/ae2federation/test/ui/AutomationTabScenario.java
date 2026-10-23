@@ -226,8 +226,29 @@ public final class AutomationTabScenario implements UIScenario {
                 .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
                 .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
                         && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                // A value's pin is already wired: a second wire shares it through a variable (G1f-vi, user decision).
+                // Zoomed out a step, so the statements inside the if are on screen.
+                .scroll("#auto_graph", -3)
+                .drag(alarmPin("minus"), alarmPin("level"))
+                .waitUntil("a second wire stores the value in a variable both ports read", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS.replace(
+                                "        ae2.craft(iron, 64 - now)\n        mc.set_redstone(lamp, 15)\n",
+                                "        value = 64 - now\n        ae2.craft(iron, value)\n"
+                                        + "        mc.set_redstone(lamp, value)\n")))
+                .frames(2).screenshot("ui-automation-graph-shared")
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
+                        && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
                 .drag(alarmPin("minus"), alarmPin("bound"))
-                .waitUntil("a value wired to another port leaves a plain value behind", context ->
+                .waitUntil("a second wire to a port that runs first is refused on the status line", context ->
+                        context.all("#automation_answer.refused").size() == 1)
+                .check("the refused share leaves the script alone", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                // With Ctrl held at the press the value moves instead, leaving a plain value behind.
+                .keyDown(GLFW.GLFW_KEY_LEFT_CONTROL)
+                .drag(alarmPin("minus"), alarmPin("bound"))
+                .keyUp(GLFW.GLFW_KEY_LEFT_CONTROL)
+                .waitUntil("a value wired to another port with Ctrl leaves a plain value behind", context ->
                         String.join("\n", editor(context).getLines()).equals(IRON_TOOLS
                                 .replace("if now < 64:", "if now < 64 - now:")
                                 .replace("ae2.craft(iron, 64 - now)", "ae2.craft(iron, 0)")))
@@ -781,6 +802,7 @@ public final class AutomationTabScenario implements UIScenario {
         var branch = (Stmt.If) alarm.body().stream().filter(statement -> statement instanceof Stmt.If).findFirst()
                 .orElseThrow();
         var minus = ((Stmt.CallStmt) branch.body().get(0)).call().args().get(1).id();
+        var lamp = ((Stmt.CallStmt) branch.body().get(1)).call().id();
         return switch (kind) {
             case "out" -> "#auto_graph_out_" + alarm.body().get(1).id() + "_next";
             case "in" -> "#auto_graph_in_" + minus + "_right";
@@ -788,6 +810,7 @@ public final class AutomationTabScenario implements UIScenario {
             case "after if" -> "#auto_graph_out_" + branch.id() + "_next";
             case "minus" -> "#auto_graph_result_" + minus;
             case "bound" -> "#auto_graph_in_" + branch.condition().id() + "_right";
+            case "level" -> "#auto_graph_in_" + lamp + "_arg1";
             case "remove minus" -> "#auto_graph_remove_" + minus;
             case "remove now" -> "#auto_graph_remove_" + alarm.body().get(1).id();
             default -> throw new IllegalArgumentException(kind);

@@ -54,8 +54,12 @@ public final class ScriptChecker {
             Consumer<Optional<Map<String, Graph>>> done) {
     }
 
-    /** A function as the graph view draws it: its canvas, its cards and its variables. */
-    public record Graph(Canvas canvas, List<GraphCards.Card> cards, List<GraphCards.Variable> variables) {
+    /**
+     * A function as the graph view draws it: its canvas, its cards and its variables, and the other programs it was
+     * checked against.
+     */
+    public record Graph(Canvas canvas, List<GraphCards.Card> cards, List<GraphCards.Variable> variables,
+            Workspace workspace) {
     }
 
     private ScriptChecker() {
@@ -139,7 +143,7 @@ public final class ScriptChecker {
         for (var function : parsed.program().functions()) {
             var canvas = Canvas.of(function, result);
             functions.put(function.name(), new Graph(canvas, GraphCards.of(canvas, parsed.program(), workspace),
-                    GraphCards.variables(canvas)));
+                    GraphCards.variables(canvas), workspace));
         }
         return Optional.of(functions);
     }

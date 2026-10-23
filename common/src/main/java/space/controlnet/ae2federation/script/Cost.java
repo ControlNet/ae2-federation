@@ -163,7 +163,7 @@ public record Cost(int nodes, List<Move> moves) {
         /** The player function a call runs, or {@code null} for a library function, a built-in or a method. */
         private Fn callee(Fn caller, Expr.Call call) {
             var target = Effects.target(call, caller.file(), caller.names(), caller.locals(), workspace);
-            if (target == null || target.equals(Effects.LIBRARY_EFFECT)) {
+            if (target == null || target.equals(Effects.LIBRARY_EFFECT) || target.equals(Effects.LIBRARY_LONG)) {
                 return null;
             }
             return functions.containsKey(target) ? functions.get(target) : lookup(target);

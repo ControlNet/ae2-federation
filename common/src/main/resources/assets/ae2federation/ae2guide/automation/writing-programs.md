@@ -33,9 +33,12 @@ and fluid IDs, and the interfaces and networks of this domain.
 * Each function has a tab, and its variables are listed in a strip.
 * A card is a call, an operation or a statement. Light wires between the triangular pins show what runs next; the
   other wires carry values, coloured by their type.
+* A card that acts has a purple head, and a long action's head is amber.
 * Click a number, text or variable on a card to edit it.
 * Drag a function from the **Library** onto the canvas, then drag its pins onto a card to put the call there. The
   × on a card removes it.
+* Drag a card's value pin onto another port to use the value there as well: it is stored in a new variable that both
+  ports read, named after the call, such as `amount`. Hold Ctrl as the drag starts to move the value instead.
 * While a function is shown, the screen keeps running it as a **dry run**: it reads the real domain but acts on
   nothing. Each card shows the value it gave, cards the run did not reach are dimmed, and a card where it failed is
   edged in red with the error.

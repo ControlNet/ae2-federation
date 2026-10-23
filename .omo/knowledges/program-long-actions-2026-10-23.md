@@ -15,7 +15,15 @@ Library functions come in three kinds, each with one tag:
   `StandardLibraryTest`); `Runner.tick` no longer exempts `mc.wait`; `Candidate.lasts` and `LibraryRows.Row.lasts`
   pick the amber square in completion and the Library tree; `ui.automation.lasts` is the page line.
 - The Chinese UI label for actions was "动作" while the guide said "操作"; both now say 操作.
-- Not marked: graph card heads (actions and long actions share the purple head) and player functions that call a long
-  action.
+- Graph card heads (user, 2026-10-23): an action's head is dark purple `0xff4b2f73`, a long action's dark amber
+  `0xff6b4f20` (the amber square darkened by the same factor); `GraphCards.Card.lasts`, `FederationGraphView.LASTS`.
+- Player functions (user, 2026-10-23): one that calls a long action, directly, through another player function or
+  through another file's function, is a long action too. `Effects` spreads it by the same fixed point as effects
+  (`LIBRARY_LONG` target, `lastingKeys` = own names plus `file.name`), so recursion and cycles end. It shows in
+  completion (amber square; `Completion.lasting`) and on graph card heads. A player function
+  that only calls ordinary actions keeps no square in completion, as before. The Library panel lists only the
+  standard library, so nothing changes there.
+- Runner accounting is unchanged: a call to a player function is not an action node; the long action inside it takes
+  the tick's action slot when it starts, as it always did.
 
-Image: `build/long-action-check/before-after.png`.
+Images: `build/long-action-check/before-after.png`, `build/long-action-cards-check/before-after.png`.

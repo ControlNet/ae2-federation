@@ -67,6 +67,27 @@ final class GraphCardsTest {
     }
 
     @Test
+    void longActionCardsAreMarkedApartFromActions() {
+        var program = ScriptParser.parse("""
+                def fetch(url: str) -> str:
+                    answer = net.http("GET", url)
+                    return answer.text
+
+                def run(lamp: Interface) -> None:
+                    page = fetch("http://localhost")
+                    mc.wait(20)
+                    mc.set_redstone(lamp, 15)
+                """).program();
+        var result = Checker.check(program, WORKSPACE);
+        assertEquals(List.of(), result.problems());
+        var run = program.functions().get(1);
+        var marks = GraphCards.of(Canvas.of(run, result), program, WORKSPACE).stream()
+                .filter(GraphCards.Card::acts)
+                .collect(Collectors.toMap(GraphCards.Card::title, GraphCards.Card::lasts));
+        assertEquals(Map.of("page = fetch", true, "mc.wait", true, "mc.set_redstone", false), marks);
+    }
+
+    @Test
     void theAlarmReadsAsTheBoardDrawsIt() {
         assertEquals(List.of(
                 "low_iron_alarm >",
@@ -228,6 +249,58 @@ final class GraphCardsTest {
                 GraphCards.relocate(IRON_TOOLS, canvas("low_iron_alarm"), lamp.id(), branch.id(), "next"));
         org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> GraphCards.relocate(
                 IRON_TOOLS, canvas("low_iron_alarm"), branch.id(), lamp.id(), "next"));
+    }
+
+    @Test
+    void aSecondWireFromAValueStoresItInAVariableBothPortsRead() {
+        var minus = card("low_iron_alarm", "-", 0);
+        var level = row("low_iron_alarm", "mc.set_redstone", "level");
+        assertEquals(IRON_TOOLS.replace("""
+                        ae2.craft(iron, 64 - now)
+                        mc.set_redstone(lamp, 15)
+                """, """
+                        value = 64 - now
+                        ae2.craft(iron, value)
+                        mc.set_redstone(lamp, value)
+                """), GraphCards.share(IRON_TOOLS, canvas("low_iron_alarm"), minus.id(), level.node(), level.port(),
+                WORKSPACE));
+    }
+
+    @Test
+    void aSecondWireThatWouldReadTheVariableBeforeItIsSetIsRefused() {
+        var minus = card("low_iron_alarm", "-", 0);
+        var bound = row("low_iron_alarm", "<", "b");
+        var refused = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
+                GraphCards.share(IRON_TOOLS, canvas("low_iron_alarm"), minus.id(), bound.node(), bound.port(),
+                        WORKSPACE));
+        assertEquals("value would be read before it is set; drag from the value that runs first", refused.getMessage());
+        var inside = row("low_iron_alarm", "-", "b");
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> GraphCards.share(
+                IRON_TOOLS, canvas("low_iron_alarm"), minus.id(), inside.node(), inside.port(), WORKSPACE),
+                "a value cannot feed itself");
+    }
+
+    @Test
+    void aSharedValueIsNamedAfterWhatItCalls() {
+        var text = """
+                def f(lamp: Interface, stack: Stack) -> None:
+                    amount = 1
+                    mc.set_redstone(lamp, ae2.amount("minecraft:iron_ingot") // 64)
+                    mc.set_redstone(lamp, len("abc") + stack.amount + amount)
+                    mc.set_redstone(lamp, 0)
+                """;
+        var program = ScriptParser.parse(text).program();
+        var result = Checker.check(program, WORKSPACE);
+        assertEquals(List.of(), result.problems());
+        var canvas = Canvas.of(program.functions().get(0), result);
+        var cards = GraphCards.of(canvas, program, WORKSPACE);
+        java.util.function.Function<String, String> named = title -> GraphCards.variableName(canvas,
+                cards.stream().filter(card -> card.title().equals(title)).findFirst().orElseThrow().id(), program,
+                WORKSPACE);
+        assertEquals("amount_2", named.apply("ae2.amount"), "a call's name, past the variables already there");
+        assertEquals("value", named.apply("len"), "a built-in's name would hide it");
+        assertEquals("amount_2", named.apply(".amount"), "a field's name");
+        assertEquals("value", named.apply("//"), "anything else");
     }
 
     @Test

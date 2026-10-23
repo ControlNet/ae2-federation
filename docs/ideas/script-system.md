@@ -1429,7 +1429,15 @@ status line. Assistant choices, open for the user:
 
 - After an if or a loop with nothing after it, `next` appears below its outputs only while an exec wire is dragged,
   so the cards keep the board's look at rest and a statement can still be placed at the end of the function.
-- Turning a value into a variable (`Edits.extract`) has no control yet.
+- Turning a value into a variable: a second wire from a value pin (G1f-vi, user decision 2026-10-23). Every value
+  card's pin is already wired, so a plain drag onto another port stores the value in a new variable just before the
+  statement that uses it (`Edits.share`, built on `Edits.extract`) and both ports read it; Ctrl held at the press
+  moves the value as before (assistant choice). The variable is named after what the value reads (`ae2.amount(...)`
+  and `.amount` give `amount`), else `value`, as is a built-in's (`len(...)`), whose name it would hide; a name taken
+  by a local, a function or class of the file, a built-in, a namespace or another file gets `_2`, `_3`, ...
+  (`GraphCards.variableName`). A share that gives the checker a new problem is refused with it; reading the variable
+  before it is set (a port in the if condition above the statement) says "value would be read before it is set; drag
+  from the value that runs first".
 
 **Removing cards (G1f-v, 2026-10-19).** An × in the top right of each card removes it (user decision 2026-10-19);
 the function's own card has none. A statement goes with what is inside it and the statements after it close up; a

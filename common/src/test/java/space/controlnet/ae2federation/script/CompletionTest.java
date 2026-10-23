@@ -74,12 +74,16 @@ final class CompletionTest {
 
     /** Completes at the {@code |} in {@code source} (which is removed first). */
     private static Completions at(String source) {
+        return at(source, WORKSPACE);
+    }
+
+    private static Completions at(String source, Workspace workspace) {
         int offset = source.indexOf('|');
         assertTrue(offset >= 0, "no cursor");
         var text = source.substring(0, offset) + source.substring(offset + 1);
         int line = 1 + (int) source.substring(0, offset).chars().filter(c -> c == '\n').count();
         int column = offset - source.lastIndexOf('\n', offset - 1);
-        return Completion.complete(text, line, column, WORKSPACE);
+        return Completion.complete(text, line, column, workspace);
     }
 
     private static List<String> labels(Completions completions) {
@@ -99,6 +103,43 @@ final class CompletionTest {
         assertEquals("Asks for a crafting job; False if nothing makes the resource or no CPU is free.",
                 c.candidates().get(0).doc());
         assertEquals(List.of(true, false, false), c.candidates().stream().map(Candidate::acts).toList());
+    }
+
+    @Test
+    void aPlayerFunctionThatCallsALongActionIsMarkedAsOne() {
+        var web = ScriptParser.parse("""
+                def get(url: str) -> str:
+                    answer = net.http("GET", url)
+                    return answer.text
+
+                def ping(gate: Interface) -> None:
+                    mc.set_redstone(gate, 15)
+                """).program();
+        var workspace = new Workspace(java.util.Map.of("web", web), CATALOG);
+        var own = at("""
+                def w_fetch() -> None:
+                    page = web.get("http://localhost")
+
+                def w_poke() -> None:
+                    web.ping("north_gate")
+
+                def w_count() -> int:
+                    return 1
+
+                def f() -> None:
+                    w_|
+                """, workspace);
+        assertEquals(List.of("w_count", "w_fetch", "w_poke"), labels(own));
+        assertEquals(List.of(false, true, false), own.candidates().stream().map(Candidate::lasts).toList(),
+                "only the function reaching a long action is one; acting player functions keep no square");
+        assertEquals(List.of(false, true, false), own.candidates().stream().map(Candidate::acts).toList(),
+                "a long action's square is drawn for acting candidates");
+        var file = at("""
+                def f() -> None:
+                    web.|
+                """, workspace);
+        assertEquals(List.of("get", "ping"), labels(file));
+        assertEquals(List.of(true, false), file.candidates().stream().map(Candidate::lasts).toList());
     }
 
     @Test

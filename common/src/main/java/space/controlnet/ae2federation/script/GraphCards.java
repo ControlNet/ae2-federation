@@ -7,7 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * What the graph view writes on the cards of a function ({@link Layout#cards}): each card's title, whether it acts,
+ * What the graph view writes on the cards of a function ({@link Layout#cards}): each card's title, whether it acts
+ * and whether that is a long action,
  * its input rows with their labels and types, its exec outputs with their labels and, for a value, its result type;
  * and the function's variables for the strip above the canvas. A port's type is the checker's type of the value on
  * it, so a port, its wire and the chip on it share a colour.
@@ -24,9 +25,12 @@ public final class GraphCards {
     public record Output(String name, String label) {
     }
 
-    /** A card as drawn; {@code result} is a value's type, {@code null} for a statement. */
-    public record Card(Layout.Card card, String title, boolean acts, List<Row> rows, List<Output> outputs,
-            TypeRef result) {
+    /**
+     * A card as drawn; {@code lasts} when what it calls is a long action, a library one or a player function that
+     * reaches one; {@code result} is a value's type, {@code null} for a statement.
+     */
+    public record Card(Layout.Card card, String title, boolean acts, boolean lasts, List<Row> rows,
+            List<Output> outputs, TypeRef result) {
         public Card {
             rows = List.copyOf(rows);
             outputs = List.copyOf(outputs);
@@ -52,6 +56,7 @@ public final class GraphCards {
     public static List<Card> of(Canvas canvas, Program self, Workspace workspace) {
         var linked = new HashSet<String>();
         canvas.links().forEach(link -> linked.add(link.from() + "/" + link.output()));
+        var lasting = Effects.of(self, workspace).lastingCalls();
         var cards = new ArrayList<Card>();
         for (var card : Layout.cards(canvas)) {
             var node = card.node();
@@ -70,7 +75,8 @@ public final class GraphCards {
                 outputs.add(new Output(output, outputLabel(output, compound)));
             }
             boolean acts = node.effect() || card.call() != null && card.call().effect();
-            cards.add(new Card(card, title(card), acts, rows, outputs,
+            boolean lasts = lasting.contains(node.id()) || card.call() != null && lasting.contains(card.call().id());
+            cards.add(new Card(card, title(card), acts, acts && lasts, rows, outputs,
                     card.statement() ? null : canvas.types().get(node.id())));
         }
         return cards;
@@ -148,6 +154,62 @@ public final class GraphCards {
         var ids = new Ids("n", ScriptParser.parse(text).positions().keySet());
         var filler = ScriptParser.expression(filler(canvas.types().get(value)), ids);
         return Library.splice(text, Edits.move(canvas, value, node, port, filler).toFunction());
+    }
+
+    /**
+     * {@code text} with a second wire from the value card {@code value} to a port ({@link Edits#share}): the value is
+     * stored in a new variable just before the statement that uses it, named by {@link #variableName}, and both ports
+     * read it. Refused when that gives a problem the text did not have, such as reading the variable before it is set.
+     */
+    public static String share(String text, Canvas canvas, String value, String node, String port,
+            Workspace workspace) {
+        var parsed = ScriptParser.parse(text);
+        var ids = new Ids("n", parsed.positions().keySet());
+        var name = variableName(canvas, value, parsed.program(), workspace);
+        var edited = Library.splice(text, Edits.share(canvas, value, name, node, port, ids).toFunction());
+        var added = new ArrayList<>(messages(ScriptParser.parse(edited).program(), workspace));
+        messages(parsed.program(), workspace).forEach(added::remove);
+        if (added.stream().anyMatch(message -> message.contains("'" + name + "' where it is not associated"))) {
+            throw new IllegalArgumentException(name + " would be read before it is set; drag from the value that runs "
+                    + "first");
+        }
+        if (!added.isEmpty()) {
+            throw new IllegalArgumentException(added.get(0));
+        }
+        return edited;
+    }
+
+    private static List<String> messages(Program program, Workspace workspace) {
+        return Checker.check(program, workspace).problems().stream().map(Checker.Problem::message).toList();
+    }
+
+    /**
+     * A new variable's name for the value card {@code value}: the function, method or field it reads
+     * ({@code ae2.amount(...)} gives {@code amount}), else {@code value}, as is a built-in's, whose name the variable
+     * would hide. A name already taken in the function, its file or the workspace gets {@code _2}, {@code _3}, ...
+     */
+    static String variableName(Canvas canvas, String value, Program program, Workspace workspace) {
+        var node = canvas.node(value);
+        boolean builtIn = node.kind() == Canvas.Kind.CALL && node.namespace() == null
+                && !node.inputs().containsKey("receiver") && Checker.BUILT_INS.contains(node.name());
+        var base = switch (node.kind()) {
+            case CALL -> builtIn ? "value" : node.name();
+            case ATTRIBUTE -> node.name();
+            default -> "value";
+        };
+        var taken = new HashSet<>(Canvas.locals(canvas.toFunction()));
+        program.definitions().forEach(definition -> taken.add(definition.name()));
+        taken.addAll(Checker.BUILT_INS);
+        taken.addAll(workspace.catalog().namespaces().keySet());
+        taken.addAll(workspace.files().keySet());
+        if (!taken.contains(base)) {
+            return base;
+        }
+        for (int i = 2; ; i++) {
+            if (!taken.contains(base + "_" + i)) {
+                return base + "_" + i;
+            }
+        }
     }
 
     /** {@code text} with the statement card {@code statement} moved to the exec output {@code output} of {@code from}. */

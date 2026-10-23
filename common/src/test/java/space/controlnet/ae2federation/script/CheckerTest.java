@@ -638,6 +638,58 @@ final class CheckerTest {
     }
 
     @Test
+    void longActionsAreInferredThroughCallsAndFiles() {
+        var web = ScriptParser.parse("""
+                def get(url: str) -> str:
+                    answer = net.http("GET", url)
+                    return answer.text
+
+                def ping(gate: Interface) -> None:
+                    mc.set_redstone(gate, 15)
+                """).program();
+        var workspace = new Workspace(java.util.Map.of("web", web), CompletionTest.CATALOG);
+        var parsed = ScriptParser.parse("""
+                def a() -> None:
+                    b()
+
+                def b() -> None:
+                    mc.wait(1)
+
+                def c() -> None:
+                    page = web.get("http://localhost")
+
+                def d() -> None:
+                    web.ping("north_gate")
+
+                def ticking(n: int) -> None:
+                    if n > 0:
+                        ticking(n - 1)
+                    mc.wait(1)
+
+                def acting(n: int) -> None:
+                    if n > 0:
+                        acting(n - 1)
+                    mc.set_redstone("north_gate", 15)
+                """);
+        var result = Checker.check(parsed.program(), workspace);
+        assertEquals(List.of(), result.problems());
+        assertEquals(java.util.Set.of("a", "b", "c", "d", "ticking", "acting"), result.effectfulFunctions());
+        assertEquals(java.util.Set.of("a", "b", "c", "ticking"), result.lastingFunctions(),
+                "a function that calls a long action, however indirectly, is one; acting alone is not enough");
+        var functions = parsed.program().functions();
+        var callB = ((Stmt.CallStmt) functions.get(0).body().get(0)).call();
+        var wait = ((Stmt.CallStmt) functions.get(1).body().get(0)).call();
+        var get = (Expr.Call) ((Stmt.Assign) functions.get(2).body().get(0)).value();
+        var ping = ((Stmt.CallStmt) functions.get(3).body().get(0)).call();
+        assertTrue(result.lastingCalls().containsAll(List.of(callB.id(), wait.id(), get.id())));
+        assertFalse(result.lastingCalls().contains(ping.id()), "an action, not a long one");
+        assertTrue(result.effectfulCalls().contains(ping.id()));
+        assertEquals(java.util.Set.of("web.get"), Checker.lastingFunctions(parsed.program(), workspace).stream()
+                .filter(key -> key.contains(".")).collect(java.util.stream.Collectors.toSet()),
+                "functions of other files are keyed by file and name");
+    }
+
+    @Test
     void expressionsHaveTypes() {
         var parsed = ScriptParser.parse(PRELUDE + """
                     parts = "a,b".split(",")

@@ -53,8 +53,10 @@ import space.controlnet.ae2federation.script.TypeRef;
  * <p>A function dragged from the Library becomes a dashed draft card where it is dropped, kept on the client only and
  * lost with the screen (user decision, 2026-10-19). Dragging its value pin onto a card's input port, or its exec pin
  * onto a card's exec output, writes the call there ({@link GraphCards#putCall}, {@link GraphCards#insertCall}). A
- * card's own pins drag the same way: a value onto another port ({@link GraphCards#move}), a statement onto another
- * exec output ({@link GraphCards#relocate}). The × in a card's head removes it ({@link GraphCards#remove}; user
+ * card's own pins drag the same way: a statement onto another exec output ({@link GraphCards#relocate}), and a value,
+ * whose pin is already wired, onto another port as a second wire, which stores it in a variable both ports read
+ * ({@link GraphCards#share}; user decision, 2026-10-23); with Ctrl held at the press it moves there instead
+ * ({@link GraphCards#move}). The × in a card's head removes it ({@link GraphCards#remove}; user
  * decision, 2026-10-19), and a draft's discards the draft.
  *
  * <p>While a function is shown its dry run is asked for again and again ({@link #showDry}): each card shows its value
@@ -87,7 +89,9 @@ final class FederationGraphView {
     private static final int FACE = 0xff2c2735;
     private static final int EDGE = 0xff4a4655;
     private static final int TITLE = 0xff3a3646;
+    /** An action's head and a long action's: the Library squares' purple and amber, darkened alike under the title. */
     private static final int ACTS = 0xff4b2f73;
+    private static final int LASTS = 0xff6b4f20;
     private static final int PORT_EDGE = 0xff121016;
     private static final int EXEC = FederationTheme.DARK_TITLE;
     private static final int LABEL = FederationTheme.DARK_MUTED;
@@ -130,9 +134,12 @@ final class FederationGraphView {
 
     /**
      * A wire dragged from an exec pin or a value pin: a draft's, or a card's ({@code card}, the statement or value
-     * it moves).
+     * it wires); {@code moves} when Ctrl was held at the press, so a card's value moves rather than being shared.
      */
-    private record PinDrag(@Nullable Draft draft, @Nullable String card, boolean exec, int color) {
+    private record PinDrag(@Nullable Draft draft, @Nullable String card, boolean exec, int color, boolean moves) {
+        PinDrag(@Nullable Draft draft, @Nullable String card, boolean exec, int color) {
+            this(draft, card, exec, color, false);
+        }
     }
 
     private final GraphView graph;
@@ -529,8 +536,9 @@ final class FederationGraphView {
 
     /**
      * A wire dropped on a card's pin: a value pin's on an input row ({@code row}), or an exec pin's on an exec output
-     * ({@code output} of {@code card}). A draft's writes its call there and leaves the canvas; a card's moves its value
-     * or its statement there. Dropped where it already is, nothing changes.
+     * ({@code output} of {@code card}). A draft's writes its call there and leaves the canvas; a card's moves its
+     * statement there, and shares its value with that port, or moves it there when Ctrl was held. Dropped where it
+     * already is, nothing changes.
      */
     private void wired(UIEvent event, @Nullable GraphCards.Row row, @Nullable String card, @Nullable String output) {
         if (!(event.dragHandler.draggingObject instanceof PinDrag drag) || drag.exec() != (row == null)) return;
@@ -545,8 +553,10 @@ final class FederationGraphView {
         try {
             String edited;
             if (draft == null) {
-                edited = row != null ? GraphCards.move(drawnFrom, canvas, drag.card(), row.node(), row.port())
-                        : GraphCards.relocate(drawnFrom, canvas, drag.card(), card, output);
+                edited = row == null ? GraphCards.relocate(drawnFrom, canvas, drag.card(), card, output)
+                        : drag.moves() ? GraphCards.move(drawnFrom, canvas, drag.card(), row.node(), row.port())
+                        : GraphCards.share(drawnFrom, canvas, drag.card(), row.node(), row.port(),
+                                shownGraph.workspace());
             } else {
                 edited = row != null
                         ? GraphCards.putCall(drawnFrom, canvas, row.node(), row.port(), draft.namespace(),
@@ -803,7 +813,8 @@ final class FederationGraphView {
         pin.addEventListener(UIEvents.MOUSE_DOWN, event -> {
             if (event.button != 0) return;
             pressed = pin;
-            pressedDrag = drag;
+            pressedDrag = event.isCtrlDown()
+                    ? new PinDrag(drag.draft(), drag.card(), drag.exec(), drag.color(), true) : drag;
             pressX = event.x;
             pressY = event.y;
         });
@@ -867,7 +878,8 @@ final class FederationGraphView {
         var card = drawn.card();
         DrawerHelper.drawSolidRect(graphics, x, y, w, h, drawn.state() == DryState.FAILED ? FederationTheme.ERROR : EDGE);
         DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, h - 2, FACE);
-        DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, HEAD, card.acts() ? ACTS : TITLE);
+        int head = card.lasts() ? LASTS : card.acts() ? ACTS : TITLE;
+        DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, HEAD, head);
         text(graphics, card.title(), x + 4, y + 2, EXEC);
         if (drawn.execIn()) triangle(graphics, x - 3, y + FIRST - 3);
         for (int i = 0; i < card.outputs().size(); i++) {
@@ -937,6 +949,7 @@ final class FederationGraphView {
             setId("auto_graph_card_" + drawn.card().id());
             addClass("graph-card");
             if (drawn.card().acts()) addClass("acts");
+            if (drawn.card().lasts()) addClass("lasts");
             layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(x).top(y).width(drawn.width())
                     .height(drawn.height()));
             // Only its values take presses; a press anywhere else reaches the canvas, which pans.

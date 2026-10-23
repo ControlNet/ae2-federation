@@ -31,6 +31,8 @@ public final class Completion {
     private final Map<String, TypeRef> variables = new LinkedHashMap<>();
     /** Result types of the functions without a hint, by file ({@code null} for this one), inferred when first asked. */
     private final Map<String, Map<String, TypeRef>> results = new java.util.HashMap<>();
+    /** The player functions that are long actions ({@link Checker#lastingFunctions}), worked out when first asked. */
+    private java.util.Set<String> lasting;
 
     private Completion(Workspace workspace, Program program) {
         this.workspace = workspace;
@@ -140,7 +142,7 @@ public final class Completion {
                     entry.getValue() == null ? "" : entry.getValue().toString()));
         }
         ownFunctions.stream().sorted(Comparator.comparing(FunctionDef::name))
-                .forEach(f -> out.add(Candidate.of(signature(null, f), Candidate.Kind.FUNCTION)));
+                .forEach(f -> out.add(lasting(Candidate.of(signature(null, f), Candidate.Kind.FUNCTION), f.name())));
         ownClasses.stream().sorted(Comparator.comparing(ClassDef::name))
                 .forEach(c -> out.add(Candidate.of(Signature.of(c), Candidate.Kind.TYPE)));
         workspace.files().keySet().stream().sorted()
@@ -160,8 +162,8 @@ public final class Completion {
             builtIns.forEach(s -> out.add(Candidate.of(s, Candidate.Kind.FUNCTION)));
         } else if (workspace.files().containsKey(qualifier)) {
             var file = workspace.files().get(qualifier);
-            file.functions().stream().filter(f -> !f.name().startsWith("_")).map(f -> signature(qualifier, f))
-                    .forEach(s -> out.add(Candidate.of(s, Candidate.Kind.FUNCTION)));
+            file.functions().stream().filter(f -> !f.name().startsWith("_")).forEach(f -> out.add(lasting(
+                    Candidate.of(signature(qualifier, f), Candidate.Kind.FUNCTION), qualifier + "." + f.name())));
             file.classes().stream().filter(c -> !c.name().startsWith("_"))
                     .forEach(c -> out.add(Candidate.of(Signature.of(c), Candidate.Kind.TYPE)));
         } else {
@@ -583,6 +585,21 @@ public final class Completion {
     }
 
     /** {@code function} of {@code file} ({@code null} for this one), with its result type written or inferred. */
+    /**
+     * A player function's candidate, marked as a long action when {@code key} (its name, or {@code file.name}) calls
+     * one, however indirectly; player functions that only act keep no mark.
+     */
+    private Candidate lasting(Candidate candidate, String key) {
+        if (lasting == null) {
+            lasting = Checker.lastingFunctions(program, workspace);
+        }
+        if (!lasting.contains(key)) {
+            return candidate;
+        }
+        return new Candidate(candidate.label(), candidate.kind(), candidate.detail(), candidate.doc(), true,
+                candidate.docKey(), true);
+    }
+
     private Signature signature(String file, FunctionDef function) {
         var result = function.result() != null ? function.result() : results.computeIfAbsent(file, name ->
                 Checker.results(name == null ? program : workspace.files().get(name), workspace)).get(function.name());

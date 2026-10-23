@@ -10,7 +10,8 @@ navigation:
 
 Programs reach the game through three namespaces, files through `fs` and the web through `net`. The **Library** panel in the Programs tab lists the same functions,
 each with a short example. Functions marked **action** take one game tick each. A **long action** starts as that
-tick's action, then the run waits until it finishes; the wait takes no actions.
+tick's action, then the run waits until it finishes; the wait takes no actions. Your own functions that call a long
+action are marked as long actions in completion and on the graph.
 
 A `network` parameter is optional: left out, the call works on every network of the domain, each through its own
 storage, whatever the rules share.

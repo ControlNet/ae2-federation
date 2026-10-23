@@ -173,6 +173,22 @@ public final class Edits {
         return draft.done();
     }
 
+    /**
+     * The graph's second wire from a value: stores the value in a new variable, as {@link #extract} does, and reads
+     * the variable on another port too; what that port held is dropped.
+     */
+    public static Canvas share(Canvas canvas, String value, String name, String node, String port, Ids ids) {
+        var draft = new Draft(canvas);
+        draft.value(value);
+        if (!draft.node(node).inputs().containsKey(port)) {
+            throw refuse(node + " has no port " + port);
+        }
+        if (draft.within(value).contains(node)) {
+            throw refuse("a value cannot feed itself");
+        }
+        return put(extract(canvas, value, name, ids), node, port, new Expr.Name(ids.next(), name));
+    }
+
     // ---- if arms ----
 
     /** Adds an {@code elif} with {@code condition} after the last one, its body empty. */

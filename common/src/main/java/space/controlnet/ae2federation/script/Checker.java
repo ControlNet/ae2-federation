@@ -21,11 +21,12 @@ public final class Checker {
 
     /**
      * Every problem found; the type of every expression that has one, by node ID; this file's functions that act on
-     * the world, directly or through what they call; the call nodes that do; and each function's result type, written
-     * or inferred (left out where it cannot be inferred).
+     * the world, directly or through what they call; the call nodes that do; each function's result type, written
+     * or inferred (left out where it cannot be inferred); and, among the acting functions and calls, the long actions.
      */
     public record Result(List<Problem> problems, Map<String, TypeRef> types, Set<String> effectfulFunctions,
-            Set<String> effectfulCalls, Map<String, TypeRef> results) {
+            Set<String> effectfulCalls, Map<String, TypeRef> results, Set<String> lastingFunctions,
+            Set<String> lastingCalls) {
     }
 
     /** A return type worked out from the returns: {@code null} when there is none, with the problem saying why. */
@@ -165,7 +166,15 @@ public final class Checker {
         checker.run();
         var effects = Effects.of(program, workspace);
         return new Result(List.copyOf(checker.problems), Map.copyOf(checker.types), effects.functions(),
-                effects.calls(), Map.copyOf(checker.results));
+                effects.calls(), Map.copyOf(checker.results), effects.lastingFunctions(), effects.lastingCalls());
+    }
+
+    /**
+     * The long actions among the player functions {@code program} can call: its own by name, the other files' as
+     * {@code file.name}. A function is one when it calls a long action, however indirectly.
+     */
+    public static Set<String> lastingFunctions(Program program, Workspace workspace) {
+        return Effects.of(program, workspace).lastingKeys();
     }
 
     /**

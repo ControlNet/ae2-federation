@@ -9,58 +9,87 @@ import java.util.Set;
 /**
  * Which functions act on the world. A library function says so in its signature; a player function does if it calls
  * one that does, in any file, however indirectly (recursion included). Methods, built-ins and constructors never do.
- * The graph view draws effectful calls on the exec chain, and the interpreter gives each a tick.
+ * The graph view draws effectful calls on the exec chain, and the interpreter gives each a tick. Long actions
+ * ({@link StandardLibrary#lasts}) spread the same way: a player function that calls one, however indirectly, is one
+ * too, and is marked as one wherever the library marks its own.
  */
-record Effects(Set<String> functions, Set<String> calls) {
+record Effects(Set<String> functions, Set<String> calls, Set<String> lastingFunctions, Set<String> lastingCalls,
+        Set<String> lastingKeys) {
     /** A function's calls, each resolved to the key of the function it calls, or {@code null} if none. */
-    private record Calls(boolean direct, Map<String, String> targets) {
+    private record Calls(boolean direct, boolean directLong, Map<String, String> targets) {
     }
 
-    /** Effects of {@code program}'s functions; keys are names in it and {@code file.name} in the other files. */
+    /**
+     * Effects of {@code program}'s functions; keys are names in it and {@code file.name} in the other files.
+     * {@code lastingKeys} holds every long action among them, the other files' included.
+     */
     static Effects of(Program program, Workspace workspace) {
         var functions = new HashMap<String, Calls>();
         collect(program, null, workspace, functions);
         workspace.files().forEach((name, file) -> collect(file, name, workspace, functions));
 
-        var effectful = new HashSet<String>();
-        functions.forEach((key, calls) -> {
-            if (calls.direct()) {
-                effectful.add(key);
-            }
-        });
-        boolean changed = true;
-        while (changed) {
-            changed = false;
-            for (var entry : functions.entrySet()) {
-                if (!effectful.contains(entry.getKey())
-                        && entry.getValue().targets().values().stream().anyMatch(effectful::contains)) {
-                    effectful.add(entry.getKey());
-                    changed = true;
-                }
-            }
-        }
+        var effectful = spread(functions, Calls::direct, Set.of(LIBRARY_EFFECT, LIBRARY_LONG));
+        var lasting = spread(functions, Calls::directLong, Set.of(LIBRARY_LONG));
 
         var ownFunctions = new HashSet<String>();
         var ownCalls = new HashSet<String>();
+        var ownLasting = new HashSet<String>();
+        var ownLastingCalls = new HashSet<String>();
         for (var function : program.functions()) {
             if (effectful.contains(function.name())) {
                 ownFunctions.add(function.name());
+            }
+            if (lasting.contains(function.name())) {
+                ownLasting.add(function.name());
             }
             var calls = functions.get(function.name());
             if (calls == null) {
                 continue;
             }
             calls.targets().forEach((call, target) -> {
-                if (target != null && (effectful.contains(target) || target.equals(LIBRARY_EFFECT))) {
+                if (target != null && (effectful.contains(target) || target.equals(LIBRARY_EFFECT)
+                        || target.equals(LIBRARY_LONG))) {
                     ownCalls.add(call);
+                }
+                if (target != null && (lasting.contains(target) || target.equals(LIBRARY_LONG))) {
+                    ownLastingCalls.add(call);
                 }
             });
         }
-        return new Effects(Set.copyOf(ownFunctions), Set.copyOf(ownCalls));
+        return new Effects(Set.copyOf(ownFunctions), Set.copyOf(ownCalls), Set.copyOf(ownLasting),
+                Set.copyOf(ownLastingCalls), Set.copyOf(lasting));
+    }
+
+    /**
+     * The keys of the functions that are {@code direct} themselves or call one that is, to any depth; a target in
+     * {@code library} counts as direct.
+     */
+    private static Set<String> spread(Map<String, Calls> functions, java.util.function.Predicate<Calls> direct,
+            Set<String> library) {
+        var marked = new HashSet<String>();
+        functions.forEach((key, calls) -> {
+            if (direct.test(calls)) {
+                marked.add(key);
+            }
+        });
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (var entry : functions.entrySet()) {
+                if (!marked.contains(entry.getKey()) && entry.getValue().targets().values().stream()
+                        .anyMatch(target -> target != null && (marked.contains(target) || library.contains(target)))) {
+                    marked.add(entry.getKey());
+                    changed = true;
+                }
+            }
+        }
+        return marked;
     }
 
     /** Stands for "a library function that acts on the world" among call targets. */
     static final String LIBRARY_EFFECT = "<library effect>";
+    /** Stands for "a library long action" among call targets; it acts too. */
+    static final String LIBRARY_LONG = "<library long action>";
 
     private static void collect(Program program, String fileName, Workspace workspace, Map<String, Calls> out) {
         var names = new HashSet<String>();
@@ -74,19 +103,25 @@ record Effects(Set<String> functions, Set<String> calls) {
             function.params().forEach(p -> locals.add(p.name()));
             locals(function.body(), locals);
             var targets = new HashMap<String, String>();
-            boolean[] direct = {false};
+            boolean[] direct = {false, false};
             calls(function.body(), call -> {
                 var target = target(call, fileName, names, locals, workspace);
                 targets.put(call.id(), target);
-                if (LIBRARY_EFFECT.equals(target)) {
+                if (LIBRARY_EFFECT.equals(target) || LIBRARY_LONG.equals(target)) {
                     direct[0] = true;
                 }
+                if (LIBRARY_LONG.equals(target)) {
+                    direct[1] = true;
+                }
             });
-            out.put(key, new Calls(direct[0], targets));
+            out.put(key, new Calls(direct[0], direct[1], targets));
         }
     }
 
-    /** The key of the function a call runs; {@link #LIBRARY_EFFECT} for an effectful library function. */
+    /**
+     * The key of the function a call runs; {@link #LIBRARY_LONG} for a library long action, {@link #LIBRARY_EFFECT}
+     * for any other effectful library function.
+     */
     static String target(Expr.Call call, String fileName, Set<String> names, Set<String> locals,
             Workspace workspace) {
         if (call.receiver() == null) {
@@ -100,7 +135,8 @@ record Effects(Set<String> functions, Set<String> calls) {
         }
         var namespace = workspace.catalog().namespaces().get(qualifier.name());
         if (namespace != null) {
-            return namespace.stream().anyMatch(s -> s.name().equals(call.name()) && s.effect()) ? LIBRARY_EFFECT : null;
+            var function = namespace.stream().filter(s -> s.name().equals(call.name()) && s.effect()).findFirst();
+            return function.isEmpty() ? null : StandardLibrary.lasts(function.get()) ? LIBRARY_LONG : LIBRARY_EFFECT;
         }
         return workspace.files().containsKey(qualifier.name()) ? qualifier.name() + "." + call.name() : null;
     }
