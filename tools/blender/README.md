@@ -110,7 +110,8 @@ replacement texture or production asset edit is made.
 `export_cable.py` compiles current production `FederationCableBuilder`, `CableCoreFaces`
 and the pure connection methods from `CableVisualConnections`. The interior flow ribbons come from
 `java/CableFlowGeometry.java`: the cable's first beam, which the mod no longer ships (it draws R / PLASMA), kept
-here only for the older beam studies built on it.
+here only for the older beam studies built on it. Its texture, `entity/cable_flow.png`, is kept here too, in
+`resources/`, which `Assets` reads after the mod's own resources.
 It removes world-query methods and redirects the rendering types to the functional
 `CaptureBackend.java` quad recorder. This is an offline rendering backend, not dummy
 Minecraft classes or a second handwritten cable design. Production files are unchanged.
@@ -185,7 +186,7 @@ not overwritten. These are actual renderer-compatible resource candidates, not i
 
 | Profile | Design |
 | --- | --- |
-| A / CURRENT | Current 16x32 production flow texture |
+| A / CURRENT | The 16x32 flow texture the first beam used |
 | B / FOCUSED CORE | Pale cyan continuous core with a narrow halo and a short pulse tail |
 | C / TWIN CHANNELS | Two thin channels per ribbon, with staggered pulses; crossed ribbons can show multiple strands |
 | D / SPARSE PULSES | Dim continuous guide with sparse, short bright packets |
@@ -193,7 +194,8 @@ not overwritten. These are actual renderer-compatible resource candidates, not i
 Candidates use a 64x128 two-tile PNG with the same UV layout as the current texture.
 They retain the existing static BEND/HUB UV behavior; this comparison does not implement
 new turn-through animation. Each candidate directory is also a Minecraft 1.21.1 folder
-resource pack, changing only `assets/ae2federation/textures/entity/cable_flow.png`.
+resource pack, changing only `assets/ae2federation/textures/entity/cable_flow.png`; the mod no longer draws
+that texture, so the packs matter only to these studies.
 
 ```sh
 blender --background tools/blender/build/federation.blend --python-exit-code 1 \

@@ -1,7 +1,9 @@
 {
     DataVersion: 3955,
-    size: [17, 3, 3],
+    size: [17, 4, 3],
     data: [
+        {pos: [5, 2, 2], state: "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
+        {pos: [5, 3, 2], state: "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
         {pos: [0, 0, 0], state: "neoecoae:crafting_casing{formed:true,invisible:false}"},
         {pos: [1, 0, 0], state: "neoecoae:crafting_parallel_core_l4{facing:north,formed:true}"},
         {pos: [2, 0, 0], state: "neoecoae:crafting_casing{formed:true,invisible:true}"},
@@ -63,7 +65,7 @@
         {pos: [14, 1, 1], state: "neoecoae:storage_casing{formed:true,invisible:true}", nbt: {proxy: {p: 0}, visual: {}, id: "neoecoae:storage_casing"}},
         {pos: [15, 1, 1], state: "neoecoae:storage_interface{formed:true,storage_mode:storage}", nbt: {proxy: {p: 0}, managed: {storageInterfaceMode: "STORAGE"}, visual: {}, id: "neoecoae:storage_interface"}},
         {pos: [4, 1, 2], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsEast: 1, channelsNorth: 1, connections: ["north", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
-        {pos: [5, 1, 2], state: "ae2federation:switch"},
+        {pos: [5, 1, 2], state: "ae2federation:switch{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}"},
         {pos: [6, 1, 2], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsEast: 3, channelsWest: 3, connections: ["west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
         {pos: [7, 1, 2], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsEast: 3, channelsWest: 3, connections: ["west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
         {pos: [8, 1, 2], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsEast: 3, channelsWest: 3, connections: ["west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, south: {id: "ae2:crafting_terminal", visual: {missingChannel: 0b, powered: 1b}}}},
@@ -108,6 +110,8 @@
     ],
     entities: [],
     palette: [
+        "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}",
+        "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}",
         "neoecoae:crafting_casing{formed:true,invisible:false}",
         "neoecoae:crafting_parallel_core_l4{facing:north,formed:true}",
         "neoecoae:crafting_casing{formed:true,invisible:true}",
@@ -133,7 +137,7 @@
         "neoecoae:storage_vent{facing:south,formed:true}",
         "neoecoae:storage_interface{formed:true,storage_mode:storage}",
         "ae2:cable_bus{light_level:0,waterlogged:false}",
-        "ae2federation:switch",
+        "ae2federation:switch{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}",
         "ae2:energy_cell{fullness:4}",
         "neoecoae:input_hatch{formed:true}"
     ]

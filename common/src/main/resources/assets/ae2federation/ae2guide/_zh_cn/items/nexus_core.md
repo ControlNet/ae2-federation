@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: 联结核心
   icon: ae2federation:nexus_core
-  position: 100
+  position: 405
 categories:
 - misc ingredients blocks
 item_ids:
@@ -49,4 +49,4 @@ item_ids:
 
 <RecipeFor id="ae2federation:nexus_core" />
 
-用于： <ItemLink id="ae2federation:bridge" />、<ItemLink id="ae2federation:cable" />、<ItemLink id="ae2federation:router" />、<ItemLink id="ae2federation:switch" />、<ItemLink id="ae2federation:pattern_provider" />和<ItemLink id="ae2federation:processing_endpoint" />。
+用于： <ItemLink id="ae2federation:switch" />、<ItemLink id="ae2federation:router" />、<ItemLink id="ae2federation:bridge" />、<ItemLink id="ae2federation:cable" />、<ItemLink id="ae2federation:beam_converter" />、<ItemLink id="ae2federation:beam_former" />、<ItemLink id="ae2federation:quantum_cube" />、<ItemLink id="ae2federation:pattern_provider" />和<ItemLink id="ae2federation:processing_endpoint" />。

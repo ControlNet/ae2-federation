@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.router;
 
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -33,7 +34,7 @@ import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
  * neighbours in that body ({@link DeviceStructureUpdater}); the client draws the connected model from them. A block
  * that is not formed, part of an incomplete, hollow, branched, protruding or oversized candidate, links nothing.
  */
-public final class RouterBlock extends BaseEntityBlock implements FormableDevice {
+public final class RouterBlock extends BaseEntityBlock implements FormableDevice, CableLinkedBlock {
     public static final MapCodec<RouterBlock> CODEC = simpleCodec(RouterBlock::new);
     /** Indexed by {@link net.minecraft.core.Direction#get3DDataValue()}. */
     public static final BooleanProperty[] CONNECTED = {BlockStateProperties.DOWN, BlockStateProperties.UP,
@@ -51,6 +52,12 @@ public final class RouterBlock extends BaseEntityBlock implements FormableDevice
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(CONNECTED).add(FORMED);
+    }
+
+    /** Every face of a formed body links. */
+    @Override
+    public boolean linksCable(BlockState state, Direction face) {
+        return formed(state);
     }
 
     /** Whether {@code state} is a device block ({@link FormableDevice}) of a validated body, whose faces link. */

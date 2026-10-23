@@ -9,17 +9,15 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FastColor;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterRenderBuffersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
@@ -32,7 +30,7 @@ import space.controlnet.ae2federation.router.RouterRegistration;
 
 /**
  * Cable beams: R / PLASMA, a depth-tested core inside soft lobed sheaths, down every cable (R / LITE in a 1x1 cell) and
- * down a 2x2 bundle's middle.
+ * down a 2x2 or 3x3 bundle's middle.
  */
 public final class CableFlowRenderer implements BlockEntityRenderer<FederationCableBlockEntity> {
     private static final ResourceLocation WHITE = ResourceLocation.withDefaultNamespace("textures/misc/white.png");
@@ -110,9 +108,9 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         // An unpowered domain's beams alarm at the width of no load.
         var style = cable.unpowered() ? CableBeamStyle.fromLoad(0, true)
                 : CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
-        int mask = cable.flowMask(), detail = CableBeamMesh.detail(distance);
+        int detail = CableBeamMesh.detail(distance);
         long tick = level.getGameTime();
-        // A 2x2 bundle draws one beam down its middle, over the box its corner cell names.
+        // A 2x2 or 3x3 bundle draws one beam down its middle, over the box its corner cell names.
         var bundle = cable.bundleBeam();
         if (bundle != null) {
             if (bundle.length() > 0) {
@@ -122,7 +120,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
             }
             return;
         }
-        emitCell(stack, buffers, mask, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail);
+        emitCell(stack, buffers, cable.flowMask(), pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail);
         endSceneBatch(level, buffers);
     }
 
@@ -136,7 +134,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
     }
 
     /**
-     * The 2x2 beam, in blocks from the corner cell at {@code x, y, z}, into the world's batched buffers; the pose places
+     * A 2x2 or 3x3 bundle's beam, in blocks from the corner cell at {@code x, y, z}, into the world's batched buffers; the pose places
      * and stretches it.
      */
     static void emitBundle(PoseStack stack, MultiBufferSource buffers, BundleBeam bundle, int x, int y, int z,
@@ -151,39 +149,29 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
 
     /**
      * A plasma beam, glow then core. Its sheaths and halo fade toward their outlines as they turn from the eye: the
-     * cached mesh carries normals, and the fade is taken here per vertex, since it depends on the view.
+     * cached mesh carries normals, and the fade is taken here per vertex, since it depends on the view
+     * ({@link PlasmaFade}).
      */
     private static void emitPlasma(PoseStack stack, MultiBufferSource buffers, PlasmaLayer layers) {
         var pose = stack.last();
         var matrix = pose.pose();
         var normal = pose.transformNormal(0, 1, 0, new Vector3f());
-        // From the block to the eye's space: there the eye sits at the origin, or looks down -Z in an orthographic
-        // view, as a guidebook scene may use.
-        var view = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(matrix);
-        var turn = view.normal(new Matrix3f());
+        var modelView = RenderSystem.getModelViewMatrix();
         boolean orthographic = RenderSystem.getProjectionMatrix().m23() == 0;
-        var position = new Vector3f();
-        var eye = new Vector3f();
-        var facing = new Vector3f();
+        if (PlasmaFade.movesOnly(matrix) && PlasmaFade.turnsOnly(modelView)) {
+            for (int pass = 0; pass < 2; pass++) {
+                var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
+                PlasmaReplay.moved(layers.get(pass == 0), pass == 0, matrix.m30(), matrix.m31(), matrix.m32(),
+                        orthographic, modelView.m02(), modelView.m12(), modelView.m22(), normal, out);
+            }
+            return;
+        }
+        // From the block to the eye's space, as a guidebook scene's scaled and turned pose needs.
+        var view = new Matrix4f(modelView).mul(matrix);
+        var turn = view.normal(new Matrix3f());
         for (int pass = 0; pass < 2; pass++) {
             var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
-            float[] layer = layers.get(pass == 0);
-            for (int i = 0; i < layer.length; i += CableBeamFrame.BUNDLE_STRIDE) {
-                float alpha = layer[i + 6];
-                if (pass == 0) {
-                    view.transformPosition(layer[i], layer[i + 1], layer[i + 2], eye);
-                    turn.transform(layer[i + 7], layer[i + 8], layer[i + 9], facing).normalize();
-                    if (orthographic) eye.set(0, 0, 1);
-                    else eye.negate().normalize();
-                    alpha = Math.min(1, alpha * BundleBeamMesh.fade(facing.x(), facing.y(), facing.z(), eye.x(),
-                            eye.y(), eye.z()));
-                }
-                matrix.transformPosition(layer[i], layer[i + 1], layer[i + 2], position);
-                int color = FastColor.ARGB32.color((int) (alpha * 255), (int) (layer[i + 3] * 255),
-                        (int) (layer[i + 4] * 255), (int) (layer[i + 5] * 255));
-                out.addVertex(position.x(), position.y(), position.z(), color, .5f, .5f, OverlayTexture.NO_OVERLAY,
-                        LightTexture.FULL_BRIGHT, normal.x(), normal.y(), normal.z());
-            }
+            PlasmaReplay.inEye(layers.get(pass == 0), pass == 0, matrix, view, turn, orthographic, normal, out);
         }
     }
 
@@ -199,7 +187,17 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         }
     }
 
-    /** A 2x2 bundle's middle beam reaches past its corner cell, over the box it is stretched to. */
+    /**
+     * Only the low corner of each layer of a 2x2 or 3x3 bundle draws its beam. The others draw nothing, so the
+     * dispatcher need not look up their light or call {@link #render} for them: in a big bundle they are most cells.
+     */
+    @Override
+    public boolean shouldRender(FederationCableBlockEntity cable, Vec3 camera) {
+        var bundle = cable.bundleBeam();
+        return (bundle == null || bundle.length() > 0) && BlockEntityRenderer.super.shouldRender(cable, camera);
+    }
+
+    /** A 2x2 or 3x3 bundle's middle beam reaches past its corner cell, over the box it is stretched to. */
     @Override
     public AABB getRenderBoundingBox(FederationCableBlockEntity cable) {
         var box = new AABB(cable.getBlockPos());

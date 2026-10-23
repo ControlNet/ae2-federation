@@ -3,7 +3,7 @@ navigation:
   parent: index.md
   title: Troubleshooting
   icon: ae2:network_tool
-  position: 40
+  position: 600
 ---
 
 # Troubleshooting
@@ -11,6 +11,22 @@ navigation:
 Every warning appears in the Federation screen, next to the rule, network or device it concerns. A rule's state is
 green when active, yellow while it is not active yet, and red when something blocks it; the line under it gives the
 reason.
+
+## The whole domain stopped
+
+A stopped domain's cables glow red and thin, and its topology screen turns dark red. Its networks keep working on
+their own and share nothing until the cause is gone; then the domain starts again by itself.
+
+* **"This Federation domain has too little FE in its ME Federation Beam Converters, so this Federation domain has
+  stopped."** The domain needs more FE than its converters hold. Pipe FE into a
+  <ItemLink id="ae2federation:beam_converter" /> from another mod's generator, or build one if the domain has none.
+  Vanilla and AE2 produce no FE; a Bridge-only domain needs none. See [Power](mechanics/power.md).
+* **The converter has FE, but the domain still stops.** A converter supplies only when its front has the
+  cross-section of the largest cable in its domain, a bundle or a linked Beam Former or Quantum Cube pair included.
+  With Jade, a converter's buffer line is red when its size does not match. Build a converter of the right size.
+* **"A Federation Cable in this domain carries more than its capacity, so this Federation domain has stopped."**
+  Every rule reads "over capacity, stopped", and the full cable pulses red. Move a network or device off that
+  segment, end it with a Router, or build it as a bundle; see [Network Capacity](mechanics/capacity.md).
 
 ## Connecting
 
@@ -41,8 +57,10 @@ reason.
 * **"No Federation node on one of the two networks can join the shared energy pool."** Shared ME power needs a
   Switch face or a Bridge on each network.
 * **"Too many storage links in this world to work out."** Remove some storage rules or links.
-* **"Merge pending": two established networks were joined.** Names and cross-network rules pause, because neither
-  side is picked automatically. Disconnect them to recover.
+* **"Merge pending": two networks with different names or rules were joined.** Names and cross-network rules pause,
+  because neither side is picked automatically. Select one of them in the topology and press **Keep this one**: the
+  other's name and rules are deleted. Or disconnect them. A network with no name or rules, or with exactly the same
+  ones, is simply taken into the other one when joined.
 * **"Split pending": a network was cut in two.** Both halves pause cross-network rules. Reconnect them, or remove one
   half, to recover.
 

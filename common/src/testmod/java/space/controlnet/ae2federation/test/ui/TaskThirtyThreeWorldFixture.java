@@ -357,13 +357,23 @@ final class TaskThirtyThreeWorldFixture {
     /**
      * Cables from the Provider host's energy cell down its column to the Endpoint's west face. They join two
      * established member networks in one Grid: a real merge, the case the design shows. (A freshly placed node has
-     * no established history and is simply adopted, so it cannot merge.) The Endpoint's own energy cell sat at the
-     * end of that column, but the energy-sharing check earlier in the scenario has removed it.
+     * no established history and is simply adopted, so it cannot merge.) Both networks get a name first, so the merge
+     * stays pending: an id without settings would just be folded into the other. The Endpoint's own energy cell sat
+     * at the end of that column, but the energy-sharing check earlier in the scenario has removed it.
      */
     static void joinMemberNetworks(ServerContext context) {
         var hostCell = state(context).hostPosition().west();
         require(hostCell.south(3).equals(state(context).endpointPosition().west()), "The column must end beside the Endpoint");
         require(context.level().getBlockState(hostCell.south(3)).isAir(), "The Endpoint's energy cell must be gone");
+        var names = space.controlnet.ae2federation.persistence.NetworkNames.get(context.level());
+        var named = new java.util.ArrayList<String>();
+        for (var key : List.of("net.providerHost", "net.endpoint")) {
+            var network = new space.controlnet.ae2federation.identity.NetworkId(java.util.UUID.fromString(context.get(key)));
+            if (names.name(network).isEmpty() && names.rename(network, key.equals("net.endpoint") ? "Outpost" : "Base")) {
+                named.add(context.get(key));
+            }
+        }
+        context.put("merge.named", named);
         var cables = List.of(hostCell.south(1), hostCell.south(2), hostCell.south(3));
         context.put("merge.cables", cables);
         for (var cable : cables) {
@@ -394,6 +404,13 @@ final class TaskThirtyThreeWorldFixture {
         List<BlockPos> cables = context.get("merge.cables");
         if (cables == null) return;
         for (var cable : cables) context.level().setBlockAndUpdate(cable, Blocks.AIR.defaultBlockState());
+        List<String> named = context.get("merge.named");
+        if (named == null) return;
+        var names = space.controlnet.ae2federation.persistence.NetworkNames.get(context.level());
+        for (var network : named) {
+            names.rename(new space.controlnet.ae2federation.identity.NetworkId(java.util.UUID.fromString(network)), "");
+        }
+        context.put("merge.named", List.of());
     }
 
     /** Whether the host's lane to the first Endpoint recorded an accepted send in the last five seconds. */

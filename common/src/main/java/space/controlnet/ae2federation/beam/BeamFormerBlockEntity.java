@@ -140,7 +140,7 @@ public final class BeamFormerBlockEntity extends RouterBlockEntity {
         beamLoad = Double.isNaN(beamLoad) ? target
                 : CableBeamStyle.smooth(beamLoad, target, Math.max(0, nanos - beamNanos) / 1e9);
         beamNanos = nanos;
-        return beamLoad;
+        return CableBeamStyle.drawn(beamLoad, target);
     }
 
     @Override
@@ -206,18 +206,6 @@ public final class BeamFormerBlockEntity extends RouterBlockEntity {
     }
 
     @Override
-    protected boolean links(Direction face) {
-        return RouterBlock.formed(getBlockState()) && faces(face);
-    }
-
-    /** The back, and faces toward the rest of the body. */
-    private boolean faces(Direction face) {
-        var state = getBlockState();
-        return face == state.getValue(BeamFormerBlock.FACING).getOpposite()
-                || (RouterBlock.connections(state) & 1 << face.get3DDataValue()) != 0;
-    }
-
-    @Override
     protected FederationDomainNodeKind kind() {
         return FederationDomainNodeKind.BEAM_FORMER;
     }
@@ -233,7 +221,7 @@ public final class BeamFormerBlockEntity extends RouterBlockEntity {
     @Nullable
     @Override
     public FederationPort federationDomainPort(@Nullable Direction face) {
-        return face != null && faces(face) ? super.federationDomainPort(face) : null;
+        return face != null && BeamFormerBlock.faces(getBlockState(), face) ? super.federationDomainPort(face) : null;
     }
 
     public Direction facing() {

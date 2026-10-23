@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: An Outpost in the Nether
   icon: ae2federation:federation_p2p_tunnel
-  position: 15
+  position: 515
 ---
 
 # An Outpost in the Nether
@@ -19,7 +19,7 @@ CPU; a <ItemLink id="ae2federation:switch" /> for each; a Quantum Network Bridge
 <ItemLink id="ae2:quantum_entangled_singularity" />s; two <ItemLink id="ae2:me_p2p_tunnel" />s; a
 <ItemLink id="ae2:memory_card" />; a <ItemLink id="ae2:quartz_fiber" />; ME cable and
 <ItemLink id="ae2federation:cable" />. For the factory: a network whose <ItemLink id="ae2:pattern_provider" /> and
-<ItemLink id="ae2:molecular_assembler" /> turn logs into planks, and an <ItemLink id="ae2federation:bridge" />.
+<ItemLink id="ae2:molecular_assembler" /> turn logs into planks, and an <ItemLink id="ae2federation:bridge" />; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 In the Overworld:
 
@@ -45,6 +45,9 @@ In the Overworld:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="4.75 1.375 0.375" max="5 1.625 0.625">
     Quartz Fiber: passes the base's power to the carrier without joining the two networks
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="4 3 0" max="5 5 1">
+    Beam Converter: its FE runs the whole domain, the outpost's Switch included
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -82,8 +85,8 @@ The carrier is not in it. The outpost uses the base's storage and shares its ene
 
 1. **Build the bridge**, one half in each dimension, with one singularity of the pair in each link chamber; see AE2's
    [Quantum Network Bridge](ae2:items-blocks-machines/quantum_bridge.md). Its cable is a network of its own, the
-   carrier. Do not let it touch the base or the outpost: the bridge would then join a half that already exists to
-   that network, and Federation pauses that network's rules ("Merge pending").
+   carrier. Do not let it touch the base or the outpost: the carrier would join that network, and the bridge would
+   carry it into the other dimension.
 2. **Power the carrier from the base** with a Quartz Fiber between the carrier's cable and the base. The Nether half
    needs no energy cell: once the bridge links, the base's power reaches it.
 3. **Place the tunnels.** Put an ME P2P tunnel on the carrier's cable at each end, and right-click each with
@@ -114,7 +117,7 @@ The base can also be the outpost's way to a factory. Here the factory is a netwo
 pattern provider with a Molecular Assembler that turns logs into planks, joined to the base by a Bridge. The Bridge
 forms a second domain, of the base and the factory. The outpost is not in it, and no screen offers an "Outpost uses
 Factory's" rule. Re-export on the base's rule passes the factory's recipes on to the outpost all the same, as in
-[Across Domains](../across-domains.md).
+[Rules](../mechanics/rules.md).
 
 In a Switch's Federation screen, with connected domains shown:
 

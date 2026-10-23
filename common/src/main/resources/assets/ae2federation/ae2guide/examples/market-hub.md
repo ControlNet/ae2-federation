@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A Market Hub
   icon: ae2federation:switch
-  position: 25
+  position: 525
 ---
 
 # A Market Hub
@@ -15,21 +15,24 @@ without a new rule of its own.
 **You need:** a district network with a crafting CPU, a crafting terminal, storage and power; a market network with
 storage; a supplier network, here a sawmill whose <ItemLink id="ae2:pattern_provider" />s and
 <ItemLink id="ae2:molecular_assembler" />s turn logs into planks; a <ItemLink id="ae2federation:switch" /> they all
-touch.
+touch; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/market_hub.snbt" />
-  <BoxAnnotation color="#915dcd" min="4 0 0" max="7 2 1">
+  <BoxAnnotation color="#915dcd" min="4 0 2" max="7 2 3">
     District: crafting terminal, crafting CPU, storage, and the energy cell that powers all three networks
   </BoxAnnotation>
-  <BoxAnnotation color="#5CA7CD" min="2 2 0" max="5 3 1">
+  <BoxAnnotation color="#5CA7CD" min="2 2 2" max="5 3 3">
     Market: storage only, with no CPU and no patterns
   </BoxAnnotation>
-  <BoxAnnotation color="#5ccd78" min="0 0 0" max="3 2 1">
+  <BoxAnnotation color="#5ccd78" min="0 0 2" max="3 2 3">
     Sawmill: pattern providers next to Molecular Assemblers
   </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
+  <BoxAnnotation color="#dddddd" min="3 0 2" max="4 1 3">
     One Switch: each face joins the network it touches
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 2">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

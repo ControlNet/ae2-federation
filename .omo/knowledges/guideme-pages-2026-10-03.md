@@ -211,6 +211,7 @@ and page ids did not change.
 | `guide_ae2lt` | ae2lt | `examples/tianshu-foundry.md` | `tianshuOrdersFromMatrix` |
 | `guide_data_energistics` | data_energistics | `examples/solar-observatory.md` | `solarObservatory` |
 | `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `ecoDistrictOrdering` |
+| `guide_neoecoprototype` | neoecoprototype, neoecoae | `examples/singularity-mint.md` | `singularityMint` |
 | `guide_omnisequence` | molecularmanipulator | `examples/matter-fabrication.md` | `matterFabricationWell` |
 | `guide_useless_mod` | useless_mod | `examples/alloy-furnace.md` | `alloyFurnaceWorkshop` |
 

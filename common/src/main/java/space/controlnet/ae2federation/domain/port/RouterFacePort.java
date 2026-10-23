@@ -162,6 +162,11 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         return binding;
     }
 
+    /** The Router or Switch block this face belongs to. */
+    public BlockPos routerPosition() {
+        return routerPosition;
+    }
+
     /** The face's boundary node; always null on a Router, which attaches no ME network. */
     @Nullable
     public IGridNode node() {

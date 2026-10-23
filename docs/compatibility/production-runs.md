@@ -114,8 +114,8 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `ae2-pattern-disk` | AE2 Pattern Disk 0.8.0, AE2WTLib 19.5.1 | crafting and processing through the Pattern Disk Provider; an Endpoint in Local mode under it | 22/22 |
 | `ae2-wcwt` | AE2 WCWT 1.3.10, AE2WTLib 19.5.1 | core only | 19/19 |
 | `aeallpattern` | AE All Pattern 0.2.6 | core only | 19/19 |
-| `neoecoae` | Neo ECO AE Extension 21.2.1 | crafting with a crafting system, with an AE2 CPU and with a computation system as the consumer's only CPU; the guide's district, with the storage and computation systems on the consumer and the crafting system on a provider with no storage, whose recipes leave and return when a casing is broken and put back; sharing a storage system's ECO cell, which also leaves and returns when a casing is broken and put back | 24/24 (2026-10-10) |
-| `neoecoprototype` | Neo ECO Prototype 1.3.3, Neo ECO AE Extension 21.2.1 | the Neo ECO group on 21.2.1; the same scenes with the addon's L1 storage, F1 crafting and C1 computation systems and L1 cells, the C1 system as the consumer's only CPU; crafting and processing through the L1 Pattern Provider, the craft going into the L1 Processor Assembler; an Endpoint in Local mode under the L1 Pattern Provider, as a block and as a part; an Energized Superconductive Interface as the only power source, powering two other networks over ME power until one network's power rule is switched off | 36/36 (2026-10-10) |
+| `neoecoae` | Neo ECO AE Extension 21.2.9 | crafting with a crafting system, with an AE2 CPU and with a computation system as the consumer's only CPU; the guide's district, with the storage and computation systems on the consumer and the crafting system on a provider with no storage, whose recipes leave and return when a casing is broken and put back; sharing a storage system's ECO cell, which also leaves and returns when a casing is broken and put back | 30/30 (2026-10-23) |
+| `neoecoprototype` | Neo ECO Prototype 1.3.9, Neo ECO AE Extension 21.2.9 | the Neo ECO group on 21.2.9; the same scenes with the addon's L1 storage, F1 crafting and C1 computation systems and L1 cells, the C1 system as the consumer's only CPU; crafting and processing through the L1 Pattern Provider, a processor order going into the L1 Processor Assembler (which since 1.3.9 takes processor recipes only); an Endpoint in Local mode under the L1 Pattern Provider, as a block and as a part; an Energized Superconductive Interface as the only power source, powering two other networks over ME power until one network's power rule is switched off; the guide's singularity mint, an L1 Singularity Cell in an L1 storage system on a network powered only by that interface, read by two districts through Storage rules, its singularities leaving both when the cell is taken out and returning when it is put back | 41/41 (2026-10-23) |
 | `omnisequence` | OmniSequence: Transfinite 2.0.7, ExtendedAE, Applied Enhancements 1.1.0 | the ExtendedAE group; a Transfinite Compute Nexus as the only CPU, including a cancelled job and the Bridge removed after the push; crafting inside a Molecular Sequence Rewrite Array; a Matter Fabrication Well's Pattern Assembly serving a remote order, whose recipe leaves and returns when a casing is broken and put back | 37/37 |
 | `advanced-ae` | AdvancedAE 1.6.12, GeckoLib 4.9.3 | crafting and processing through the Advanced Pattern Provider; an Endpoint in Local mode under it, as a block and as a part; a lone Quantum Computer Core as the only CPU, including a cancelled job and the Bridge removed after the push; a formed 7x7x7 Quantum Computer on a Router running two orders at once from two other networks, one needing both in turn; the Nexus Press and the Quantum Press both made from the Engineering and Logic Presses, told apart by the middle input | 29/29 |
 | `megacells` | MEGA Cells 4.11.0 | processing through the MEGA Pattern Provider; an Endpoint in Local mode under it; crafting with a MEGA 1M Crafting Storage CPU; sharing MEGA item, bulk and fluid cells | 25/25 |
@@ -127,21 +127,23 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `appflux-createaddition` | Applied Flux 2.1.5, Create 6.0.10, Create Crafts & Additions 1.7.2 | the Applied Flux group; the guide's Induction Card example with an Electric Motor beside the Provider's Endpoint turning a Millstone, its job waiting until the card goes in | 22/22 |
 | `appflux-enderio` | Applied Flux 2.1.5, Ender IO 8.2.12-beta | the Applied Flux group; the guide's Induction Card example with a SAG Mill on the Provider's Endpoint, fitted with a Basic Capacitor and pushing from its bottom, its job waiting until the card goes in | 22/22 |
 | `appflux-industrialforegoing` | Applied Flux 2.1.5, Industrial Foregoing 3.6.39, Titanium 4.0.50 | the Applied Flux group; the guide's Induction Card example with a Resourceful Furnace on the Provider's Endpoint, its output pushing from the bottom, its job waiting until the card goes in | 22/22 |
-| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras, MEGA Cells and Neo ECO Prototype | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 90/90 (2026-10-10) |
+| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras, MEGA Cells and Neo ECO Prototype | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 98/98 (2026-10-23) |
 | `useless-mod` | UselessMod 2.4.5.10 | crafting through an Advanced Alloy Furnace, which holds the pattern and crafts it itself with no Molecular Assembler, while UselessMod's mixins wrap the consumer CPU's pushes; the guide's build, the furnace alone on a network with no storage, whose recipe leaves and returns when its pattern is taken out and put back (2026-10-08) | 21/21 |
 | `useless-mod-addons` | the `addons-all` mods as of 2026-10-08 (Neo ECO AE Extension 21.2.0, no MEGA Cells or Neo ECO Prototype) plus AdvancedAE 1.6.12 and UselessMod 2.4.5.10, so its Advanced AE and ExtendedAE mixins apply; the only profile left on Neo ECO 21.2.0, whose `getRequestedAmount` bug the Federation fallback covers | their groups | 81/81 (2026-10-08) |
 | `recipe-viewers` | JEI 19.57.0.449, Jade 15.10.6, AE2 JEI Integration 1.2.1 | core only, with AE2 Federation's Jade plugin loaded on the server beside AE2's own (2026-10-13) | 19/19 |
 
 ## Modpack profiles
 
-Each modpack profile runs on the pack's own server files and NeoForge version. Only LDLib2 2.2.41 is added, because
-neither pack ships it. A pack's recipe scripts and configs stay as they are. Packs are downloaded from the CurseForge
-CDN and checked against their pinned SHA-512.
+Each modpack profile runs on the pack's own server files and NeoForge version. ATM10 and Create Ultimate Selection 2
+do not ship LDLib2, so their profiles add LDLib2 2.2.41; New Age Science and Technology ships LDLib2 2.2.43 and gets
+nothing added. A pack's recipe scripts and configs stay as they are. Packs are downloaded from the CurseForge CDN and
+checked against their pinned SHA-512.
 
 | Profile | Pack | NeoForge, AE2 | Groups | Result |
 |---|---|---|---|---|
 | `atm10` | All the Mods 10 8.2, 464 mods | 21.1.251, 19.2.17 | core, extendedae, advanced-ae, megacells, appmek, create, mekanism, sophisticated-storage, functional-storage, appflux, appflux-mekanism, appflux-createaddition, appflux-enderio, appflux-industrialforegoing, expandedae | 79/79 (2026-10-06) |
 | `cus2` | Create Ultimate Selection 2 12.4.0, 360 mods | 21.1.243, 19.2.18 | core, extendedae, appmek, create, mekanism, sophisticated-storage | 53/53 (2026-10-05) |
+| `nast` | New Age Science and Technology 2.2.1, 226 mods, with AE2 Lightning Tech 2.1.2-beta4, Neo ECO 21.2.9 and Data Energistics 3.3.5 | 21.1.251, 19.2.18 | core, extendedae, extendedae-plus, advanced-ae, megacells, ae2-lightning-tech, data-energistics, neoecoae, appmek, mekanism, sophisticated-storage, functional-storage, appflux, appflux-mekanism, appflux-enderio, appflux-industrialforegoing | 115/115 (2026-10-22) |
 
 ATM10 needs about two minutes to load and 8 GB of heap. A test run takes about six minutes.
 
@@ -221,6 +223,11 @@ Other findings, all upstream behaviour:
   loads only those two mods and AE2's own Pattern Provider gets no mark. Since the two mods do not work together,
   `addons-all` leaves AE All Pattern out. It runs alone in `aeallpattern` and beside ExtendedAE-Plus in
   `extendedae-plus-aeallpattern`.
+- **AE2 Lightning Tech 2.1.2** moved the Tianshu Supercomputer's Port in its guide scene from the bottom middle to the
+  top middle; its guide allows either. The test builds the Supercomputer from that scene with the cable under the
+  bottom middle, so it now puts the Port there itself. The first `nast` run failed on this as "refused a pattern":
+  the crafting scene installed the provider's patterns before it checked the consumer's CPU, so every retry installed
+  them again until the Matrix's Pattern Storage was full. The scene now checks every CPU first.
 - **AE2Recursion** is **BLOCKED_LICENSE**: All Rights Reserved and obfuscated, like Recursive AE2 Pattern Provider.
 - **GregTech** is deferred. GTCEu 7.0.2, the last 1.21.1 release, fails on a dedicated server (see the
   [matrix](matrix.md)), and no mature 1.21.1 GregTech pack exists yet.
@@ -233,7 +240,7 @@ Downloads are cached in `$AE2F_COMPAT_CACHE`, which defaults to `~/.cache/ae2fed
 ```bash
 python3 tools/compat_run.py --list
 python3 tools/compat_run.py --accept-eula --group addons -j 16   # every addon profile, about two minutes
-python3 tools/compat_run.py --accept-eula --group modpacks -j 2     # both packs, about four minutes after download
+python3 tools/compat_run.py --accept-eula --group modpacks -j 3     # every pack, about six minutes after download
 python3 tools/compat_run.py --accept-eula extendedae --tests extendedae
 python3 tools/compat_run.py --accept-eula -p 1 extendedae          # one test at a time
 python3 tools/compat_run.py --accept-eula --bare addons-all     # the same mods without AE2 Federation

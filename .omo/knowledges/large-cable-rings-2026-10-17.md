@@ -39,7 +39,8 @@ deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The
 - Ring tables are generated: `python3 -I tools/blockbench/export_large_cable_rings.py` (`--check` to verify) writes
   `client/LargeCableRingModels.java`. Re-run when the artist edits the projects.
 - The corner model's two rings sit at y 5..9 and 22..26 of 32: not mirror-symmetric (7 vs 24 centres). Rendered as
-  modelled; ask the artist if unintended.
+  modelled; ask the artist if unintended. Answered by PR #5 (2026-10-20): the upper ring moved to 21..25, so each
+  ring sits at y 5..9 of its own cell. 3x3 rings: `huge-cable-rings-2026-10-20.md`.
 - `tools/visual/validate_assets.py` is green again (2026-10-17): it counts textures the Java code binds by
   `"textures/....png"` path and the Router/Switch connected-face tiles as drawn, skips the 16 px rule for `misc/`
   overlays, and reads multipart blockstates (Router, Switch).

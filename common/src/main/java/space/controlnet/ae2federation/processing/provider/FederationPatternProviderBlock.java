@@ -5,6 +5,7 @@ import appeng.api.orientation.OrientationStrategies;
 import appeng.block.AEBaseEntityBlock;
 import appeng.menu.locator.MenuLocators;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -14,15 +15,22 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import space.controlnet.ae2federation.router.CableLinkedBlock;
 import space.controlnet.ae2federation.router.DeviceOcclusion;
 
 /**
  * ME Federation Pattern Provider block. Its facing is the Federation face; AE2's facing strategy handles placement,
  * wrench rotation and persistence of the orientation.
  */
-public final class FederationPatternProviderBlock extends AEBaseEntityBlock<FederationPatternProviderBlockEntity> {
+public final class FederationPatternProviderBlock extends AEBaseEntityBlock<FederationPatternProviderBlockEntity> implements CableLinkedBlock {
     public FederationPatternProviderBlock(Properties properties) {
         super(properties);
+    }
+
+    /** Only the front, the Federation face, links. */
+    @Override
+    public boolean linksCable(BlockState state, Direction face) {
+        return getOrientationStrategy().getFacing(state) == face;
     }
 
     @Override

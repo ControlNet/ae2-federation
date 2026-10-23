@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A Shared Warehouse
   icon: ae2:drive
-  position: 10
+  position: 510
 ---
 
 # A Shared Warehouse
@@ -12,21 +12,24 @@ navigation:
 workshop networks. Each network keeps its own channels, and only the warehouse needs power.
 
 **You need:** a warehouse network with storage and power, one or more workshop networks with a terminal, and a
-<ItemLink id="ae2federation:switch" />.
+<ItemLink id="ae2federation:switch" />; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/shared_warehouse.snbt" />
-  <BoxAnnotation color="#5CA7CD" min="1 1 0" max="4 4 1">
+  <BoxAnnotation color="#5CA7CD" min="1 1 2" max="4 4 3">
     The warehouse: drives, and the energy cell that powers every network here
   </BoxAnnotation>
-  <BoxAnnotation color="#915dcd" min="3 0 0" max="4 1 1">
+  <BoxAnnotation color="#915dcd" min="3 0 2" max="4 1 3">
     Workshop 1: a terminal, running on the warehouse's power
   </BoxAnnotation>
-  <BoxAnnotation color="#5ccd78" min="1 0 0" max="2 1 1">
+  <BoxAnnotation color="#5ccd78" min="1 0 2" max="2 1 3">
     Workshop 2: a terminal, running on the warehouse's power
   </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
+  <BoxAnnotation color="#dddddd" min="2 0 2" max="3 1 3">
     Switch: one face per network
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 2">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

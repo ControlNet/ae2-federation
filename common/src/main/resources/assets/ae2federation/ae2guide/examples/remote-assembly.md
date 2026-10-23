@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: Order from an Assembly Workshop
   icon: ae2:molecular_assembler
-  position: 20
+  position: 520
 ---
 
 # Order from an Assembly Workshop
@@ -15,7 +15,7 @@ moving the patterns or merging the networks.
 **You need:** the workshop network (network B), set up the usual AE2 way but with no power of its own; your main network
 (network A) with a crafting CPU, a crafting terminal, storage and power; a <ItemLink id="ae2federation:switch" /> for
 each network and <ItemLink id="ae2federation:cable" /> between them, or a <ItemLink id="ae2federation:bridge" /> if they
-touch.
+touch; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/remote_assembly.snbt" />
@@ -27,6 +27,9 @@ touch.
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 3 1">
     Network B: pattern providers with their patterns, next to Molecular Assemblers
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="5 1 0" max="6 3 1">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

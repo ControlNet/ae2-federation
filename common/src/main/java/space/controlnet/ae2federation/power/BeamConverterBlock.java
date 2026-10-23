@@ -28,6 +28,7 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.router.CableLinkedBlock;
 import space.controlnet.ae2federation.router.DeviceStructure;
 import space.controlnet.ae2federation.router.DeviceStructureUpdater;
 import space.controlnet.ae2federation.router.FederationCableBlock;
@@ -43,7 +44,7 @@ import space.controlnet.ae2federation.router.RouterBlockEntity;
  * front links to Federation cable; every other face takes FE. The creative converter follows the same rules and never
  * runs out.
  */
-public final class BeamConverterBlock extends BaseEntityBlock implements FormableDevice {
+public final class BeamConverterBlock extends BaseEntityBlock implements FormableDevice, CableLinkedBlock {
     public static final MapCodec<BeamConverterBlock> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             Codec.BOOL.fieldOf("creative").forGetter(BeamConverterBlock::creative), propertiesCodec())
             .apply(instance, BeamConverterBlock::new));
@@ -66,6 +67,17 @@ public final class BeamConverterBlock extends BaseEntityBlock implements Formabl
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(FACING).add(RouterBlock.CONNECTED).add(RouterBlock.FORMED);
+    }
+
+    /** Once formed, the front links, and so do faces toward the rest of the body. */
+    @Override
+    public boolean linksCable(BlockState state, Direction face) {
+        return RouterBlock.formed(state) && faces(state, face);
+    }
+
+    /** The front, and faces toward the rest of the body. */
+    public static boolean faces(BlockState state, Direction face) {
+        return face == state.getValue(FACING) || (RouterBlock.connections(state) & 1 << face.get3DDataValue()) != 0;
     }
 
     /**

@@ -42,11 +42,11 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
     private static final ModelProperty<BundleLook> BUNDLE = new ModelProperty<>();
     private static final ModelData[] DATA = new ModelData[CableVisualConnections.COUNT];
     private static final ChunkRenderTypeSet LAYERS = ChunkRenderTypeSet.of(RenderType.translucent());
-    /** A 2x2 bundle's cells also draw the artist's opaque rings. */
+    /** A 2x2 or 3x3 bundle's cells also draw the artist's opaque rings. */
     private static final ChunkRenderTypeSet LARGE_LAYERS = ChunkRenderTypeSet.of(RenderType.solid(),
             RenderType.translucent());
     private static final ResourceLocation CABLE = ResourceLocation.fromNamespaceAndPath("ae2federation", "cable");
-    /** The artist's 2x2 ring texture. */
+    /** The artist's ring texture, shared by the 2x2 and 3x3 rings. */
     private static final ResourceLocation LARGE_RING = ResourceLocation.fromNamespaceAndPath("ae2federation",
             "block/large_cable/large_cable");
 
@@ -80,7 +80,7 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
         return ResourceLocation.fromNamespaceAndPath("ae2federation", "part/cable/" + name);
     }
 
-    /** A bundled cell's quads: its translucent shell and pieces, and the opaque rings of a 2x2 bundle. */
+    /** A bundled cell's quads: its translucent shell and pieces, and the opaque rings of a 2x2 or 3x3 bundle. */
     private record Bundle(List<BakedQuad> translucent, List<BakedQuad> solid) {
     }
 
@@ -140,7 +140,7 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
         }
         if (renderType != null && renderType != RenderType.translucent()) return List.of();
         var look = data.get(BUNDLE);
-        if (renderType == null && look != null && look.large()) {
+        if (renderType == null && look != null && look.thick()) {
             // Asked for every layer at once: the rings too.
             var bundle = bundle(look);
             var all = new java.util.ArrayList<>(bundle.solid());
@@ -153,7 +153,7 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
     @Override
     public ChunkRenderTypeSet getRenderTypes(BlockState state, RandomSource random, ModelData data) {
         var look = data.get(BUNDLE);
-        return look != null && look.large() ? LARGE_LAYERS : LAYERS;
+        return look != null && look.thick() ? LARGE_LAYERS : LAYERS;
     }
 
     @Override

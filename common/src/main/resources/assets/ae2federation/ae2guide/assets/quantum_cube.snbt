@@ -4,7 +4,7 @@
     data: [
         {pos: [0, 1, 1], state: "ae2:drive{facing:north,spin:0}", nbt: {id: "ae2:drive", priority: 0, visual: {cell0: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell1: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell2: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell3: {id: "ae2:item_storage_cell_4k", state: "not_empty"}}}},
         {pos: [1, 1, 1], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsEast: 1, channelsWest: 1, connections: ["west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
-        {pos: [2, 1, 1], state: "ae2federation:switch"},
+        {pos: [2, 1, 1], state: "ae2federation:switch{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}"},
         {pos: [3, 1, 1], state: "ae2federation:cable"},
         {pos: [4, 0, 0], state: "ae2federation:quantum_cube{down:false,up:true,north:false,south:true,west:false,east:true,formed:true}"},
         {pos: [4, 0, 1], state: "ae2federation:quantum_cube{down:false,up:true,north:true,south:true,west:false,east:true,formed:true}"},
@@ -61,7 +61,7 @@
         {pos: [12, 2, 1], state: "ae2federation:quantum_cube{down:true,up:false,north:true,south:true,west:true,east:false,formed:true}"},
         {pos: [12, 2, 2], state: "ae2federation:quantum_cube{down:true,up:false,north:true,south:false,west:true,east:false,formed:true}"},
         {pos: [13, 1, 1], state: "ae2federation:cable"},
-        {pos: [14, 1, 1], state: "ae2federation:switch"},
+        {pos: [14, 1, 1], state: "ae2federation:switch{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}"},
         {pos: [15, 1, 1], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsEast: 1, channelsWest: 1, connections: ["west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
         {pos: [16, 1, 1], state: "ae2:energy_cell{fullness:4}", nbt: {id: "ae2:energy_cell", internalCurrentPower: 200000.0d}},
         {pos: [16, 2, 1], state: "ae2:drive{facing:north,spin:0}", nbt: {id: "ae2:drive", priority: 0, visual: {cell0: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell1: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell2: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell3: {id: "ae2:item_storage_cell_4k", state: "not_empty"}}}}
@@ -70,7 +70,7 @@
     palette: [
         "ae2:drive{facing:north,spin:0}",
         "ae2:cable_bus{light_level:0,waterlogged:false}",
-        "ae2federation:switch",
+        "ae2federation:switch{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}",
         "ae2federation:cable",
         "ae2federation:quantum_cube{down:false,up:true,north:false,south:true,west:false,east:true,formed:true}",
         "ae2federation:quantum_cube{down:false,up:true,north:true,south:true,west:false,east:true,formed:true}",

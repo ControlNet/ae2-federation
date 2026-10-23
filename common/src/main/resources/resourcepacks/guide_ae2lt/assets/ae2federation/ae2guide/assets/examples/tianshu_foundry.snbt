@@ -2,8 +2,10 @@
     DataVersion: 3955,
     size: [17, 11, 7],
     data: [
+        {pos: [8, 1, 0], state: "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
+        {pos: [8, 2, 0], state: "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
         {pos: [9, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsSouth: 3, channelsUp: 3, channelsWest: 3, connections: ["up", "south", "west"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, north: {id: "ae2:crafting_terminal", visual: {missingChannel: 0b, powered: 1b}}}},
-        {pos: [8, 0, 0], state: "ae2federation:switch"},
+        {pos: [8, 0, 0], state: "ae2federation:switch{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}"},
         {pos: [7, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsEast: 1, channelsSouth: 1, connections: ["south", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
         {pos: [6, 0, 0], state: "ae2lt:matter_warping_matrix_casing{formed:true}"},
         {pos: [5, 0, 0], state: "ae2lt:matter_warping_matrix_casing{formed:true}"},
@@ -702,8 +704,10 @@
     ],
     entities: [],
     palette: [
+        "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}",
+        "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}",
         "ae2:cable_bus{light_level:0,waterlogged:false}",
-        "ae2federation:switch",
+        "ae2federation:switch{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}",
         "ae2lt:matter_warping_matrix_casing{formed:true}",
         "ae2lt:tianshu_supercomputer_casing{formed:true}",
         "ae2:energy_cell{fullness:4}",

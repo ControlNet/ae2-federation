@@ -10,7 +10,7 @@ import net.minecraft.core.Direction;
 import org.junit.jupiter.api.Test;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
-/** A 2x2 bundle's one beam: drawn by each layer's corner cell, two layers long where a branch leaves. */
+/** A 2x2 or 3x3 bundle's one beam: drawn by each layer's corner cell, as many layers long as it is wide at a branch. */
 final class BundleBeamTest {
     /** 2x2 along X, x 0..5, y 0..1, z 0..1, with a 2x2 branch south over x 2..3. */
     private static final BundleSegment RUN = new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 1, 1),
@@ -22,7 +22,7 @@ final class BundleBeamTest {
     private static Optional<BundleBeam> beam(BundleSet set, BlockPos pos) {
         var segment = set.at(pos).orElseThrow().segment();
         return BundleBeam.of(pos, segment, look(set, pos).orElseThrow(),
-                () -> look(set, pos.relative(segment.axis(), 1)));
+                layers -> look(set, pos.relative(segment.axis(), layers)));
     }
 
     private static Optional<BundleLook> look(BundleSet set, BlockPos pos) {
@@ -40,6 +40,33 @@ final class BundleBeamTest {
         set.form(RUN);
         set.form(BRANCH);
         return set;
+    }
+
+    @Test
+    void aCellOffItsLayersCornerKnowsFromItsOwnSegmentThatItDrawsNoBeam() {
+        // A cell's renderer skips reading its neighbours when its own segment says it draws nothing: that must be
+        // exactly what the full look says, at runs, branches, turns and ends, for 2x2, 3x3 and non-square bundles.
+        var sets = List.of(withBranch(), new BundleSet(), new BundleSet(), new BundleSet());
+        sets.get(1).form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(8, 2, 2), Direction.Axis.X));
+        sets.get(1).form(new BundleSegment(new BlockPos(3, 3, 0), new BlockPos(5, 6, 2), Direction.Axis.Y));
+        sets.get(2).form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(1, 1, 4), Direction.Axis.Z));
+        sets.get(2).form(new BundleSegment(new BlockPos(2, 0, 3), new BlockPos(5, 1, 4), Direction.Axis.X));
+        sets.get(3).form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(4, 0, 1), Direction.Axis.X));
+        int skipped = 0;
+        for (var set : sets) {
+            for (var segment : set.segments()) {
+                for (var cell : segment.cells()) {
+                    var own = BundleBeam.offCorner(cell, segment);
+                    if (own == null) continue;
+                    skipped++;
+                    assertEquals(beam(set, cell), Optional.of(own), cell.toString());
+                }
+            }
+        }
+        assertTrue(skipped > 50, "cells checked: " + skipped);
+        assertEquals(null, BundleBeam.offCorner(new BlockPos(1, 0, 1),
+                new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(4, 0, 1), Direction.Axis.X)),
+                "a 1x2 bundle draws a beam in every cell");
     }
 
     @Test
@@ -73,6 +100,30 @@ final class BundleBeamTest {
         set.form(BRANCH);
         assertEquals(new BundleBeam(Direction.Axis.X, mask(Direction.WEST, Direction.SOUTH), 2),
                 beam(set, new BlockPos(2, 0, 0)).orElseThrow());
+    }
+
+    @Test
+    void a3x3BundleDrawsOneBeamThreeWideAndThreeLayersLongAtABranch() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(8, 2, 2), Direction.Axis.X));
+        set.form(new BundleSegment(new BlockPos(3, 0, 3), new BlockPos(5, 2, 5), Direction.Axis.Z));
+        var run = beam(set, new BlockPos(1, 0, 0)).orElseThrow();
+        assertEquals(new BundleBeam(Direction.Axis.X, mask(Direction.EAST, Direction.WEST), 1, 3), run);
+        assertEquals(3, run.extent(Direction.Axis.Z));
+        assertEquals(0, beam(set, new BlockPos(1, 1, 1)).orElseThrow().length(), "only the corner cell draws");
+        assertEquals(new BundleBeam(Direction.Axis.X, mask(Direction.EAST, Direction.WEST, Direction.SOUTH), 3, 3),
+                beam(set, new BlockPos(3, 0, 0)).orElseThrow());
+        assertEquals(0, beam(set, new BlockPos(4, 0, 0)).orElseThrow().length());
+        assertEquals(0, beam(set, new BlockPos(5, 0, 0)).orElseThrow().length());
+    }
+
+    @Test
+    void a3x3TurnHasNoArmPastTheEnd() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 2, 2), Direction.Axis.X));
+        set.form(new BundleSegment(new BlockPos(3, 0, 3), new BlockPos(5, 2, 5), Direction.Axis.Z));
+        assertEquals(new BundleBeam(Direction.Axis.X, mask(Direction.WEST, Direction.SOUTH), 3, 3),
+                beam(set, new BlockPos(3, 0, 0)).orElseThrow());
     }
 
     @Test

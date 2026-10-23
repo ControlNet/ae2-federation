@@ -7,12 +7,15 @@ import net.minecraft.core.Direction;
 import space.controlnet.ae2federation.bundle.BundleBeam;
 
 /**
- * The one beam down a 2x2 bundle (Blender study R, {@code tools/blender/plasma_beam.py}): a white-hot core inside three
+ * The one beam down a 2x2 or 3x3 bundle (Blender study R, {@code tools/blender/plasma_beam.py}): a white-hot core inside three
  * lobed sheaths that twist round it and roll along the run, and a halo. It follows an ordinary beam's centerlines,
  * stretched over the bundle's box in blocks, so runs, branches and turns meet as theirs do; its pulses and lobes take
- * their phase from world coordinates, so they run on from layer to layer and through two-layer joints.
+ * their phase from world coordinates, so they run on from layer to layer and through joints.
  *
- * <p>The core writes depth and must pass through the artist's rings, whose bore has a radius of 10/32 block. The
+ * <p>The core writes depth and must pass through the artist's rings, whose bore has a radius of 10/32 block in a 2x2 bundle
+ * and 1/4 block in a 3x3 one. A 3x3 beam's glow is the 2x2 one scaled by {@link #HUGE_GLOW_SCALE}, as its box is, so
+ * it keeps the proportions of the 2x2; its core grows only by {@link #HUGE_CORE_SCALE}, to stay inside the narrower
+ * bore. The
  * sheaths and halo are additive, and fade toward their outlines as they turn from the eye ({@link #fade}), so the
  * nested tubes read as one soft volume rather than bands; the renderer applies that per vertex, by view, from the
  * normals this mesh carries.
@@ -46,11 +49,36 @@ public final class BundleBeamMesh {
     private static final int[] CELL_SHEATHS = {0, 2};
     private static final int[] CELL_SHEATH_SIDES = {8, 8, 0};
     private static final float[] CELL_EXTENT = {1, 1, 1};
-    /** Paths by detail, then box length (1 or 2 layers), then mask. */
+    /** A 3x3 beam's sheaths and halo: its box is 1.5 times the 2x2 one. */
+    static final float HUGE_GLOW_SCALE = 1.5f;
+    /** A 3x3 beam's core: at most .165 x 4/3 = .22 block at an alarm's breath, inside the 1/4-block ring bore. */
+    static final float HUGE_CORE_SCALE = 4 / 3f;
+    /** Paths by detail, then box length (1 to 3 layers), then mask. */
     private static final List<List<List<List<CableBeamMesh.Path>>>> PATHS = buildPaths();
+    /** By detail, box length and mask, as {@link #PATHS}: the axes the paths run along, as bits x 1, y 2, z 4. */
+    private static final int[][][] PATH_AXES = pathAxes();
     private static final ThreadLocal<float[]> RADII =
             ThreadLocal.withInitial(() -> new float[CableBeamMesh.MAX_SAMPLES * (MAX_SIDES + 1)]);
     private static final ThreadLocal<float[]> POINTS = ThreadLocal.withInitial(() -> new float[CableBeamMesh.MAX_SAMPLES * 3]);
+
+    /**
+     * cos and sin of {@code TAU * k / sides} for every side count up to {@link #MAX_SIDES}, {@code k} up to two past a
+     * full turn (a core cap reaches {@code k + 2}): taken per vertex, they were most of a mesh's cost.
+     */
+    private static final float[][] COS = new float[MAX_SIDES + 1][];
+    private static final float[][] SIN = new float[MAX_SIDES + 1][];
+
+    static {
+        for (int sides = 1; sides <= MAX_SIDES; sides++) {
+            COS[sides] = new float[sides + 3];
+            SIN[sides] = new float[sides + 3];
+            for (int k = 0; k < sides + 3; k++) {
+                double angle = Math.TAU * k / sides;
+                COS[sides][k] = (float) Math.cos(angle);
+                SIN[sides][k] = (float) Math.sin(angle);
+            }
+        }
+    }
 
     private BundleBeamMesh() {}
 
@@ -64,17 +92,37 @@ public final class BundleBeamMesh {
     }
 
     /**
+     * Which of the drawing cell's coordinates {@link #emit} reads for {@code beam}'s glow or core at {@code detail}, as
+     * bits x 1, y 2, z 4: only the sheaths read any, each the parity of the coordinate along its arms (their lobes and
+     * pulses). The core and the halo are even tubes, and a distant beam has no sheaths. Cells whose coordinates differ
+     * in parity only off these axes draw the same vertices.
+     */
+    public static int parityAxes(BundleBeam beam, int detail, boolean glow) {
+        if (!glow || SHEATH_SIDES[detail] == 0) return 0;
+        // A bundle joined to nothing shows a stub along its own axis.
+        if (beam.mask() == 0) return 1 << beam.axis().ordinal();
+        return PATH_AXES[detail][beam.length() - 1][beam.mask()];
+    }
+
+    /** {@link #parityAxes} for an ordinary cell's beam with connections {@code mask}. */
+    public static int cellParityAxes(int mask, int detail, boolean glow) {
+        if (!glow || CELL_SHEATH_SIDES[detail] == 0) return 0;
+        return PATH_AXES[detail][0][mask];
+    }
+
+    /**
      * The glow (sheaths and halo) or the core of {@code beam}, drawn by the cell at {@code x, y, z}, in blocks from
      * that cell's low corner.
      */
     public static void emit(BundleBeam beam, int x, int y, int z, long tick, float partialTick, CableBeamStyle style,
             int detail, boolean glow, Sink sink) {
-        if (detail < 0 || detail > 2 || beam.length() < 1 || beam.length() > 2) {
+        if (detail < 0 || detail > 2 || beam.length() < 1 || beam.length() > 3) {
             throw new IllegalArgumentException("Invalid bundle beam");
         }
         float[] extent = {beam.extent(Direction.Axis.X), beam.extent(Direction.Axis.Y), beam.extent(Direction.Axis.Z)};
-        emit(paths(beam, detail), extent, 1, BUNDLE_SHEATHS, SHEATH_SIDES[detail], x, y, z, tick, partialTick, style,
-                glow, sink);
+        boolean huge = beam.side() == 3;
+        emit(paths(beam, detail), extent, huge ? HUGE_CORE_SCALE : 1, huge ? HUGE_GLOW_SCALE : 1, BUNDLE_SHEATHS,
+                SHEATH_SIDES[detail], x, y, z, tick, partialTick, style, glow, sink);
     }
 
     /**
@@ -84,17 +132,19 @@ public final class BundleBeamMesh {
     public static void emitCell(int mask, int x, int y, int z, long tick, float partialTick, CableBeamStyle style,
             int detail, boolean glow, Sink sink) {
         if (detail < 0 || detail > 2 || mask < 0 || mask > 63) throw new IllegalArgumentException("Invalid cell beam");
-        emit(PATHS.get(detail).get(0).get(mask), CELL_EXTENT, CELL_SCALE, CELL_SHEATHS, CELL_SHEATH_SIDES[detail], x,
-                y, z, tick, partialTick, style, glow, sink);
+        emit(PATHS.get(detail).get(0).get(mask), CELL_EXTENT, CELL_SCALE, CELL_SCALE, CELL_SHEATHS,
+                CELL_SHEATH_SIDES[detail], x, y, z, tick, partialTick, style, glow, sink);
     }
 
-    private static void emit(List<CableBeamMesh.Path> paths, float[] extent, float scale, int[] sheaths, int sides,
-            int x, int y, int z, long tick, float partialTick, CableBeamStyle style, boolean glow, Sink sink) {
+    private static void emit(List<CableBeamMesh.Path> paths, float[] extent, float coreScale, float scale,
+            int[] sheaths, int sides, int x, int y, int z, long tick, float partialTick, CableBeamStyle style,
+            boolean glow, Sink sink) {
         float u = (float) Math.min(style.load(), 1);
         float strength = style.strength(tick, partialTick);
         float breath = style.breath(tick, partialTick);
         boolean red = style.overloaded();
-        float core = (.10f + .05f * u) * breath * scale;
+        float pulse = (.10f + .05f * u) * breath;
+        float core = pulse * coreScale;
         int[] world = {x, y, z};
         double time = (Math.floorMod(tick, 64) + partialTick) / 64.0;
         for (var path : paths) {
@@ -121,19 +171,12 @@ public final class BundleBeamMesh {
             for (int index = 0; sides > 0 && index < sheaths.length; index++) {
                 int sheath = sheaths[index];
                 float base = switch (sheath) {
-                    case 0 -> core * 1.6f;
+                    case 0 -> pulse * scale * 1.6f;
                     case 1 -> (.22f + .04f * u) * scale;
                     default -> (.31f + .02f * u) * scale;
                 };
                 float[] radii = RADII.get();
-                for (int i = 0; i < samples.length; i++) {
-                    var sample = samples[i];
-                    for (int k = 0; k <= sides; k++) {
-                        double angle = Math.TAU * k / sides;
-                        float shape = shape(sheath, angle, path, sample, points, i, world, time, style, u);
-                        radii[i * (MAX_SIDES + 1) + k] = base * shape;
-                    }
-                }
+                radii(radii, sheath, base, sides, path, points, world, time, style, u);
                 float r, g, b;
                 switch (sheath) {
                     // An alarm must read red: no pale sheath that would add up to white.
@@ -149,24 +192,39 @@ public final class BundleBeamMesh {
     }
 
     /**
-     * How far a sheath reaches at {@code angle} round sample {@code i}, as a share of its base radius: lobes that
-     * repeat every 2 blocks, as the beam clock does, swelled where a pulse passes. Across an elbow the value read
-     * along the first arm's axis fades into the second's, as an ordinary beam's pulses do.
+     * How far a sheath reaches round each sample, as its base radius times a shape: lobes that repeat every 2 blocks,
+     * as the beam clock does, swelled where a pulse passes. Across an elbow the shape read along the first arm's axis
+     * fades into the second's, as an ordinary beam's pulses do. The pulse and the lobes' phase along the run depend on
+     * the sample only, so they are taken once per sample, not once per side.
      */
-    private static float shape(int sheath, double angle, CableBeamMesh.Path path, CableBeamMesh.Sample sample,
-            float[] points, int i, int[] world, double time, CableBeamStyle style, float u) {
-        float first = along(sheath, angle, path.firstAxis(), points, i, world, time, style, u);
-        if (path.firstAxis() == path.secondAxis()) return first;
-        float second = along(sheath, angle, path.secondAxis(), points, i, world, time, style, u);
-        return first + (second - first) * sample.point().mix();
-    }
-
-    private static float along(int sheath, double angle, int axis, float[] points, int i, int[] world, double time,
-            CableBeamStyle style, float u) {
-        double position = (Math.floorMod(world[axis], 2) + points[i * 3 + axis]) / 2.0;
-        float wave = style.wave(position - time);
-        return 1 + DEPTH[sheath] * (float) Math.sin(LOBES[sheath] * angle + Math.TAU * (position - ROLL[sheath] * time))
-                + .18f * wave * u;
+    private static void radii(float[] radii, int sheath, float base, int sides, CableBeamMesh.Path path,
+            float[] points, int[] world, double time, CableBeamStyle style, float u) {
+        var samples = path.samples();
+        int first = path.firstAxis(), second = path.secondAxis();
+        boolean elbow = first != second;
+        for (int i = 0; i < samples.length; i++) {
+            double position = (Math.floorMod(world[first], 2) + points[i * 3 + first]) / 2.0;
+            float wave = style.wave(position - time);
+            double phase = Math.TAU * (position - ROLL[sheath] * time);
+            float wave2 = 0;
+            double phase2 = 0;
+            if (elbow) {
+                double position2 = (Math.floorMod(world[second], 2) + points[i * 3 + second]) / 2.0;
+                wave2 = style.wave(position2 - time);
+                phase2 = Math.TAU * (position2 - ROLL[sheath] * time);
+            }
+            float mix = samples[i].point().mix();
+            for (int k = 0; k <= sides; k++) {
+                double angle = Math.TAU * k / sides;
+                float shape = 1 + DEPTH[sheath] * (float) Math.sin(LOBES[sheath] * angle + phase) + .18f * wave * u;
+                if (elbow) {
+                    float along = 1 + DEPTH[sheath] * (float) Math.sin(LOBES[sheath] * angle + phase2)
+                            + .18f * wave2 * u;
+                    shape = shape + (along - shape) * mix;
+                }
+                radii[i * (MAX_SIDES + 1) + k] = base * shape;
+            }
+        }
     }
 
     private static void even(Sink sink, CableBeamMesh.Sample[] samples, float[] points, boolean straight, float radius,
@@ -210,8 +268,7 @@ public final class BundleBeamMesh {
 
     private static void around(Sink sink, CableBeamMesh.Sample sample, float[] points, int i, float radius, int k,
             int sides, float r, float g, float b, float alpha) {
-        double angle = Math.TAU * k / sides;
-        float c = (float) Math.cos(angle), s = (float) Math.sin(angle);
+        float c = COS[sides][k], s = SIN[sides][k];
         float nx = c * sample.nx() + s * sample.bx(), ny = c * sample.ny() + s * sample.by(),
                 nz = c * sample.nz() + s * sample.bz();
         sink.vertex(points[i * 3] + radius * nx, points[i * 3 + 1] + radius * ny, points[i * 3 + 2] + radius * nz,
@@ -235,11 +292,25 @@ public final class BundleBeamMesh {
         return axis == 0 ? point.x() : axis == 1 ? point.y() : point.z();
     }
 
+    private static int[][][] pathAxes() {
+        var axes = new int[PATHS.size()][3][64];
+        for (int detail = 0; detail < axes.length; detail++) {
+            for (int length = 0; length < 3; length++) {
+                for (int mask = 0; mask < 64; mask++) {
+                    for (var path : PATHS.get(detail).get(length).get(mask)) {
+                        axes[detail][length][mask] |= 1 << path.firstAxis() | 1 << path.secondAxis();
+                    }
+                }
+            }
+        }
+        return axes;
+    }
+
     private static List<List<List<List<CableBeamMesh.Path>>>> buildPaths() {
         var details = new ArrayList<List<List<List<CableBeamMesh.Path>>>>();
         for (int perBlock : SAMPLES_PER_BLOCK) {
             var lengths = new ArrayList<List<List<CableBeamMesh.Path>>>();
-            for (int length = 1; length <= 2; length++) {
+            for (int length = 1; length <= 3; length++) {
                 var masks = new ArrayList<List<CableBeamMesh.Path>>();
                 for (int mask = 0; mask < 64; mask++) masks.add(CableBeamMesh.build(mask, perBlock * length));
                 lengths.add(List.copyOf(masks));

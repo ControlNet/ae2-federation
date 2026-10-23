@@ -287,12 +287,12 @@ public final class FederationCableBlockEntity extends BlockEntity {
         return CableBeamStyle.loadOf(capacityUnits, capacity, capacityEnforced);
     }
 
-    /** Client only: eases the drawn load towards {@code target}, frame-rate independent. */
+    /** Client only: eases the drawn load towards {@code target}, frame-rate independent, in drawn steps. */
     public double beamLoad(double target, long nanos) {
         beamLoad = Double.isNaN(beamLoad) ? target
                 : CableBeamStyle.smooth(beamLoad, target, Math.max(0, nanos - beamNanos) / 1e9);
         beamNanos = nanos;
-        return beamLoad;
+        return CableBeamStyle.drawn(beamLoad, target);
     }
 
     /**
@@ -304,7 +304,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
         return flowMask;
     }
 
-    /** Where this cell draws its 2x2 bundle's middle beam, or null when it draws its own; read like {@link #flowMask}. */
+    /** Where this cell draws its 2x2 or 3x3 bundle's middle beam, or null when it draws its own; read like {@link #flowMask}. */
     public @Nullable BundleBeam bundleBeam() {
         refreshFlow();
         return bundleBeam;
@@ -313,12 +313,20 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private void refreshFlow() {
         var gameTime = level == null ? Long.MIN_VALUE : level.getGameTime();
         if (level == null || flowMaskTick == gameTime) return;
+        flowMaskTick = gameTime;
+        // Most cells of a 2x2 or 3x3 bundle draw no beam, which their own segment tells: no need to read the
+        // neighbours every tick for that. A bundled cell's mask is never drawn.
+        var own = bundleSegment == null ? null : BundleBeam.offCorner(worldPosition, bundleSegment);
+        if (own != null) {
+            flowMask = 0;
+            bundleBeam = own;
+            return;
+        }
         var look = BundleLook.of(level, worldPosition);
         flowMask = look.isPresent() ? look.get().flowMask()
                 : CableVisualConnections.maskOf(CableVisualConnections.connections(level, worldPosition));
         var segment = bundleSegment;
         bundleBeam = look.isEmpty() || segment == null ? null : BundleBeam.of(worldPosition, segment, look.get(),
-                () -> BundleLook.of(level, worldPosition.relative(segment.axis(), 1))).orElse(null);
-        flowMaskTick = gameTime;
+                layers -> BundleLook.of(level, worldPosition.relative(segment.axis(), layers))).orElse(null);
     }
 }

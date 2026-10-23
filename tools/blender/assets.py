@@ -18,7 +18,8 @@ class Assets:
     def __init__(self, repo, cache, packs=()):
         self.repo, self.cache = Path(repo), Path(cache)
         self.root = self.repo / 'common/src/main/resources/assets'
-        self.packs = [Path(p) for p in packs]
+        # The old flow ribbons' texture, which the mod no longer ships, lives with these tools.
+        self.packs = [self.repo / 'tools/blender/resources', *(Path(p) for p in packs)]
         self.used = {}
         self.models = {}
         self.omitted_internal_faces = []

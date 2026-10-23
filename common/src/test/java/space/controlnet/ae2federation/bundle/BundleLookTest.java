@@ -97,7 +97,7 @@ final class BundleLookTest {
         // Boundaries at x = 2 and x = 4 fall on the spacing; x = 0 and x = 6 lie outside the run.
         for (int x = 0; x <= 5; x++) {
             var look = look(set, new BlockPos(x, 1, 0), NO_DEVICES);
-            assertTrue(look.large());
+            assertTrue(look.thick());
             assertEquals(x == 2 || x == 4, look.ringBefore(), "ring before x=" + x);
             assertEquals(x == 1 || x == 3, look.ringAfter(), "ring after x=" + x);
         }
@@ -108,7 +108,7 @@ final class BundleLookTest {
         var set = new BundleSet();
         set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 0, 1), Direction.Axis.X));
         var look = look(set, new BlockPos(1, 0, 0), NO_DEVICES);
-        assertFalse(look.large());
+        assertFalse(look.thick());
         assertFalse(look.ringAfter());
     }
 
@@ -128,6 +128,46 @@ final class BundleLookTest {
         assertFalse(look(set, new BlockPos(4, 0, 0), NO_DEVICES).ringBefore(), "no ring beside a branch");
         var branch = look(set, new BlockPos(2, 0, 2), NO_DEVICES);
         assertEquals(0, branch.jointsBefore() | branch.jointsAfter(), "the branch's own end is no joint");
+    }
+
+    @Test
+    void aStraight3x3RunHasARingInsideEveryThirdLayer() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(-2, 0, 0), new BlockPos(7, 2, 2), Direction.Axis.X));
+        for (int x = -2; x <= 7; x++) {
+            var look = look(set, new BlockPos(x, 1, 2), NO_DEVICES);
+            assertEquals(3, look.side());
+            assertEquals(Math.floorMod(x, 3) == 0, look.ringInside(), "ring in x=" + x);
+            assertFalse(look.ringBefore() || look.ringAfter(), "3x3 rings stand inside a layer");
+        }
+    }
+
+    @Test
+    void no3x3RingStandsInARunsEndLayer() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(9, 2, 2), Direction.Axis.X));
+        for (int x = 0; x <= 9; x++) {
+            assertEquals(x == 3 || x == 6, look(set, new BlockPos(x, 1, 1), NO_DEVICES).ringInside(), "ring in x=" + x);
+        }
+    }
+
+    @Test
+    void a3x3BranchMarksItsThreeLayersFirstMiddleAndLast() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(8, 2, 2), Direction.Axis.X));
+        set.form(new BundleSegment(new BlockPos(3, 0, 3), new BlockPos(5, 2, 5), Direction.Axis.Z));
+        for (int y = 0; y <= 2; y++) {
+            for (int z = 0; z <= 2; z++) {
+                var first = look(set, new BlockPos(3, y, z), NO_DEVICES);
+                assertTrue(!first.jointBefore(Direction.SOUTH) && first.jointAfter(Direction.SOUTH));
+                var middle = look(set, new BlockPos(4, y, z), NO_DEVICES);
+                assertTrue(middle.jointBefore(Direction.SOUTH) && middle.jointAfter(Direction.SOUTH));
+                var last = look(set, new BlockPos(5, y, z), NO_DEVICES);
+                assertTrue(last.jointBefore(Direction.SOUTH) && !last.jointAfter(Direction.SOUTH));
+                assertFalse(first.ringInside() || middle.ringInside() || last.ringInside(), "no ring in a joint");
+            }
+        }
+        assertTrue(look(set, new BlockPos(6, 0, 0), NO_DEVICES).ringInside(), "the next layer keeps its ring");
     }
 
     @Test

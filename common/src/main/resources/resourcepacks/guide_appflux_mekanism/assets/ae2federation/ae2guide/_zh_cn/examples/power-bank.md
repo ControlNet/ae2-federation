@@ -3,14 +3,14 @@ navigation:
   parent: examples/index.md
   title: 共享的电力库
   icon: appflux:flux_accessor
-  position: 45
+  position: 545
 ---
 
 # 共享的电力库
 
 **目标**： 把FE存在一个电力库网络里， 让另一个网络上的Mekanism粉碎机用它运行。 工坊网络自己没有存储， 也没有能源元件。 这一页出现， 是因为安装了Applied Flux和Mekanism。
 
-**需要**： 一个电力库网络， ME驱动器里装着<ItemLink id="appflux:fe_1k_cell" />， 再加一个能源元件； 一个工坊网络， 带一个终端和一个<ItemLink id="appflux:flux_accessor" />； 一台<ItemLink id="mekanism:crusher" />； 两个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 FE怎样存进元件见[Applied Flux的指南](appflux:appflux/flux_cells.md)。
+**需要**： 一个电力库网络， ME驱动器里装着<ItemLink id="appflux:fe_1k_cell" />， 再加一个能源元件； 一个工坊网络， 带一个终端和一个<ItemLink id="appflux:flux_accessor" />； 一台<ItemLink id="mekanism:crusher" />； 两个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 FE怎样存进元件见[Applied Flux的指南](appflux:appflux/flux_cells.md)； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/power_bank.snbt" />
@@ -25,6 +25,9 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
     一个交换机： 每个面加入它接触的网络
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
+    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

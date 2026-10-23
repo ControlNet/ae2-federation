@@ -2,7 +2,6 @@ package space.controlnet.ae2federation.client.menu;
 
 import com.google.gson.JsonObject;
 import java.util.List;
-import java.util.Locale;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -26,7 +25,7 @@ public final class EndpointText {
     public static Component unnamedNetwork(JsonObject endpoint) {
         return endpoint.has("nativeNetwork")
                 ? Component.translatable("ae2federation.ui.topology.network_name",
-                        endpoint.get("nativeNetwork").getAsString().substring(0, 4).toUpperCase(Locale.ROOT))
+                        space.controlnet.ae2federation.identity.NetworkId.tag(endpoint.get("nativeNetwork").getAsString()))
                 : Component.translatable("ae2federation.ui.workspace.network_unconfirmed");
     }
 
