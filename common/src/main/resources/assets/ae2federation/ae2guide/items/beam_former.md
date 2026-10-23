@@ -18,7 +18,7 @@ Two Beam Formers facing each other link their Federation cables through the air,
 fronts. Build one at each end of a straight line, with nothing solid between them, and the two ends join one
 [Federation domain](../mechanics/index.md).
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="2.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/beam_former.snbt" />
   <BoxAnnotation color="#dddddd" min="4 0 0" max="5 1 1">
     A Beam Former facing east. Its back takes a cable, like a Router face

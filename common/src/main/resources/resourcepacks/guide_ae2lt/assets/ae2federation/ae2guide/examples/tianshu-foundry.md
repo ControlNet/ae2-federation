@@ -19,7 +19,7 @@ crafting pattern from two planks to four sticks; a <ItemLink id="ae2federation:s
 is in AE2 Lightning Tech's guide: [the Supercomputer](ae2lt:tianshu/construction.md) and
 [the Matrix](ae2lt:matrix/construction.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="2" interactive={true} background="transparent">
+<GameScene zoom="1.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/tianshu_foundry.snbt" />
   <BoxAnnotation color="#915dcd" min="9 0 0" max="17 8 7">
     District: the Tianshu Supercomputer, a crafting terminal, a drive, and the energy cell that powers both networks

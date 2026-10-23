@@ -161,7 +161,8 @@ public final class DeviceStructureUpdater {
     private static void set(ServerLevel level, BlockPos position, boolean formed, int connections,
             UnaryOperator<BlockState> forming) {
         var state = level.getBlockState(position);
-        var updated = RouterBlock.withBody(forming.apply(state), formed, connections);
+        var updated = RouterBlock.withBody(formed ? forming.apply(state)
+                : ((FormableDevice) state.getBlock()).unforming(state), formed, connections);
         if (updated != state) {
             level.setBlock(position, updated, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
         }

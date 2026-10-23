@@ -57,13 +57,6 @@ public final class CraftingProjectionService implements AutoCloseable {
     private static final Map<MinecraftServer, CraftingProjectionService> SERVICES = new WeakHashMap<>();
     /** Ticks between looks at each provider's patterns and at what consumers still wait for. */
     static final int REFRESH_TICKS = 20;
-    /**
-     * Ticks after the service starts before the ledger is first looked at, so the first look does not run while the
-     * world is still loading. A debt does not depend on it: one whose consumer's CPU is out of sight is kept however
-     * long that lasts (see {@link #sweepLedger}).
-     */
-    static final int STARTUP_TICKS = 100;
-
     /** The overworld: it names the server for registry, rule and ledger lookups; nothing here is limited to it. */
     private final ServerLevel level;
     private final CraftingFederationDomainObserver federationDomains;
@@ -215,7 +208,7 @@ public final class CraftingProjectionService implements AutoCloseable {
                 sync(entry.getKey(), entry.getValue().consumer(), entry.getValue().provider(), discoveries);
             }
         }
-        if (ticks % REFRESH_TICKS == 0 && ticks >= STARTUP_TICKS) sweepLedger();
+        if (ticks % REFRESH_TICKS == 0) sweepLedger();
     }
 
     private boolean changed() {

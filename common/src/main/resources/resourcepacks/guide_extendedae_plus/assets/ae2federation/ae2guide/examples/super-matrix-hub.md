@@ -17,7 +17,7 @@ networks, each with a crafting CPU, a crafting terminal and storage; a <ItemLink
 touch. How to build the matrix is in
 [ExtendedAE-Plus' guide](extendedae_plus:introduction/devices/super_assembler_matrix.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/super_matrix_hub.snbt" />
   <BoxAnnotation color="#5CA7CD" min="1 0 1" max="6 3 7">
     Factory: the Super Assembler Matrix with its patterns, and the energy cell that powers all three networks

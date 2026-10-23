@@ -10,7 +10,7 @@ navigation:
 
 每一段<ItemLink id="ae2federation:cable" />最多承载8个网络和设备。 联邦域里任何一段线缆超过这个数， **这个联邦域就会停止**： 各个网络照常独立工作， 在计数回到上限以内之前不共享任何东西。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/network_capacity.snbt" />
   <BoxAnnotation color="#915dcd" min="9 0 0" max="11 1 1">
     网络A： 计1

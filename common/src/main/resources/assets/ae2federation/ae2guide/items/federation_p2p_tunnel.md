@@ -33,7 +33,7 @@ Pair them as you pair AE2's tunnels: sneak and right-click the input with a <Ite
 right-click each output with it. One input can have many outputs. The link works both ways, and the outputs reach each
 other too, as long as the input works.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/federation_p2p_tunnel.snbt" />
   <BoxAnnotation color="#915dcd" min="10 0 0" max="12 2 1">
     Network A: its energy cell powers network B too

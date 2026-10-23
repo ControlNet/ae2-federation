@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
@@ -25,7 +26,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.router.CableLinkedBlock;
@@ -45,17 +49,28 @@ import space.controlnet.ae2federation.router.RouterBlockEntity;
 public final class BeamFormerBlock extends BaseEntityBlock implements FormableDevice, CableLinkedBlock {
     public static final MapCodec<BeamFormerBlock> CODEC = simpleCodec(BeamFormerBlock::new);
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
+    public static final EnumProperty<Size> SIZE = EnumProperty.create("size", Size.class);
+
+    public enum Size implements StringRepresentable {
+        SMALL, LARGE, HUGE;
+
+        @Override
+        public String getSerializedName() {
+            return name().toLowerCase(java.util.Locale.ROOT);
+        }
+    }
 
     public BeamFormerBlock(Properties properties) {
         super(properties);
-        var state = stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(RouterBlock.FORMED, false);
+        var state = stateDefinition.any().setValue(FACING, Direction.NORTH)
+                .setValue(RouterBlock.FORMED, false).setValue(SIZE, Size.SMALL);
         for (var property : RouterBlock.CONNECTED) state = state.setValue(property, false);
         registerDefaultState(state);
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING).add(RouterBlock.CONNECTED).add(RouterBlock.FORMED);
+        builder.add(FACING, SIZE).add(RouterBlock.CONNECTED).add(RouterBlock.FORMED);
     }
 
     /** Once formed, the back links, and so do faces toward the rest of the body. */
@@ -96,7 +111,30 @@ public final class BeamFormerBlock extends BaseEntityBlock implements FormableDe
     @Override
     public UnaryOperator<BlockState> forming(BlockGetter level, DeviceStructure.Valid body) {
         var facing = facing(level, body);
-        return state -> state.is(this) ? state.setValue(FACING, facing) : state;
+        var size = switch (BeamFormerShape.of(body.min(), body.max()).orElseThrow()) {
+            case ONE_BY_ONE -> Size.SMALL;
+            case TWO_BY_TWO -> Size.LARGE;
+            case THREE_BY_THREE -> Size.HUGE;
+            default -> throw new IllegalArgumentException("Not a square former body");
+        };
+        return state -> state.is(this) ? state.setValue(FACING, facing).setValue(SIZE, size) : state;
+    }
+
+    @Override
+    public BlockState unforming(BlockState state) {
+        return state.setValue(SIZE, Size.SMALL);
+    }
+
+    /** The frame has gaps; retain neighbour faces behind them. Huge still uses the full cube. */
+    @Override
+    protected VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos position) {
+        return state.getValue(SIZE) == Size.HUGE ? Shapes.block() : Shapes.empty();
+    }
+
+    /** The frame has gaps; keep its inset faces and joins bright. Huge still uses the full cube. */
+    @Override
+    protected float getShadeBrightness(BlockState state, BlockGetter level, BlockPos position) {
+        return state.getValue(SIZE) == Size.HUGE ? super.getShadeBrightness(state, level, position) : 1.0F;
     }
 
     private Direction facing(BlockGetter level, DeviceStructure.Valid body) {

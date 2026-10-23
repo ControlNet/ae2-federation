@@ -26,6 +26,45 @@ import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 /** Native planning and topology; hand-operated processing and explicitly injected storage capacity faults. */
 @PrefixGameTestTemplate(false)
 public final class ReturnCoverageGameTests {
+    /** The existing hand-operated processor returns one of three stones before cancellation, then the other two. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void projectionPartialCancelledReturnPromptly(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper);
+        var stone = PatternProjectionFixture.stone();
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(fixture.ready(), "Waiting for native networks"))
+                .thenExecute(() -> {
+                    fixture.setRule(fixture.crafting(), RuleMode.ENABLED);
+                    fixture.putInConsumer(PatternProjectionFixture.cobblestone(), 3);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.consumerService().isCraftable(stone), "Waiting for projection"))
+                .thenExecute(() -> fixture.begin(stone, 3))
+                .thenWaitUntil(() -> helper.assertTrue(fixture.planReady(), "Waiting for plan"))
+                .thenExecute(() -> helper.assertTrue(fixture.submit(), "Native CPU accepts the job"))
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.inMachine(Items.COBBLESTONE), 3L, "Three inputs dispatched"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.runMachine(1), 1L, "Processor returns its first stone");
+                    helper.assertValueEqual(fixture.owed(stone), 2L, "Partial delivery leaves two owed");
+                    fixture.cancelConsumerJob();
+                    helper.assertValueEqual(fixture.owed(stone), 2L, "Cancellation preserves undelivered output");
+                    helper.assertValueEqual(fixture.runMachine(2), 2L, "Processor releases its remaining two stones");
+                })
+                .thenIdle(25)
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone), 3L,
+                            "All output returns within one sweep after cancellation: " + fixture.returns(stone));
+                    helper.assertValueEqual(fixture.onProviderNetwork(stone), 0L, "Factory keeps no output");
+                    helper.assertValueEqual(fixture.owed(stone), 0L, "Delivery settles debt");
+                    helper.assertValueEqual(fixture.watchedJobs(), 0, "Cancelled job retires");
+                    helper.assertTrue(fixture.consumerCpuEmpty(), "Cancelled CPU is empty");
+                    PolicyEvidence.write("projectionpartialcancelledreturnpromptly", 12,
+                            Map.of("partial", "1", "late", "2", "idleTicks", "25"));
+                    fixture.close();
+                })
+                .thenSucceed();
+    }
+
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
             required = true, timeoutTicks = 1400)
     public static void projectionMixedJobResponsibilities(GameTestHelper helper) {

@@ -18,7 +18,7 @@ crafting terminal, storage and an energy cell; two workshop networks, each with 
 assembler; a <ItemLink id="ae2federation:switch" /> all three touch. How to build the Quantum Computer is in
 [Advanced AE's guide](advanced_ae:aae_intro/quantum_computer.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="3" interactive={true} background="transparent">
+<GameScene zoom="1.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/quantum_lab.snbt" />
   <BoxAnnotation color="#915dcd" min="1 0 1" max="8 7 9">
     Lab: the Quantum Computer, a crafting terminal and the energy cell that powers all three networks

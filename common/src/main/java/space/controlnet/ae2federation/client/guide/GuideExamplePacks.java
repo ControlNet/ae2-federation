@@ -31,6 +31,7 @@ public final class GuideExamplePacks {
             new Pack("guide_ae2lt", List.of("ae2lt")),
             new Pack("guide_data_energistics", List.of("data_energistics")),
             new Pack("guide_neoecoae", List.of("neoecoae")),
+            new Pack("guide_neoecoprototype", List.of("neoecoprototype", "neoecoae")),
             new Pack("guide_omnisequence", List.of("molecularmanipulator")),
             new Pack("guide_useless_mod", List.of("useless_mod")));
 

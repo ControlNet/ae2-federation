@@ -2,14 +2,20 @@
 
 Status: implemented on `dev` (2026-10-17). Design discussion:
 [line-of-sight beam links](../archive/ideas/line-of-sight-beam-links.md); plan and decisions D1-D12:
-`.omo/plans/beam-former.md`. The textures are temporary (the converter's placeholder, recoloured cyan) until the
-artist delivers.
+`.omo/plans/beam-former.md`. The 1x1 and 2x2 use the artist's models, exported by
+`tools/blockbench/export_beam_former_models.py`. The 3x3 keeps the cyan placeholder until the artist delivers.
+
+The multipart model selects a 2x2 quadrant only when a large member has exactly one connection on each
+in-plane axis and neither connection along its facing axis. Every other large connection mask uses the
+1x1 model for that facing, including damaged, partly unloaded bodies. Small and large models use empty
+occlusion and shade brightness 1.0F to keep the open frame and inset joins from shading as full cubes;
+huge retains full-cube occlusion and inherited shading.
 
 ## Behavior
 
 - **Block.** `ae2federation:beam_former` 「ME联邦光束成型器」, a solid-cuboid device like the converter
   (`FormableDevice`). A body is a square of 1x1, 2x2 or 3x3, one block thick (`BeamFormerShape`); other shapes do
-  not form. Placement faces where the player looks. Forming turns every member along the body's thin axis (a 1x1 has
+  not form. The `size` blockstate is `small`, `large` or `huge` respectively; unformed blocks reset to `small`. Placement faces where the player looks. Forming turns every member along the body's thin axis (a 1x1 has
   all three): the facing most members vote for, else away from the side touching Federation cable, else positive. A
   wrench flips a 2x2 or 3x3 front to back and turns a 1x1 to the clicked face. Recipe `CPC / CWC / CLC` (Federation
   Cable, fluix pearl, wireless receiver, Nexus Core), after ME Beam Former's block.

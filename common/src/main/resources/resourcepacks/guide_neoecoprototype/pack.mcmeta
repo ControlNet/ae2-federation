@@ -1,0 +1,9 @@
+{
+  "pack": {
+    "description": {
+      "translate": "ae2federation.pack.guide_neoecoprototype.description",
+      "fallback": "AE2 Federation guide examples with Neo ECO Prototype"
+    },
+    "pack_format": 34
+  }
+}
