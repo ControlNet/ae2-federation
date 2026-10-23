@@ -286,6 +286,24 @@ public final class BeamFormerGameTests {
         var farCable = FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(new BlockPos(15, 2, 10)));
         helper.succeedWhen(() -> {
             helper.assertTrue(linked(helper, new BlockPos(1, 2, 10), farCable), "the beam links through glass and water");
+            for (var body : List.of(west, east)) {
+                var anchor = (space.controlnet.ae2federation.beam.BeamFormerBlockEntity)
+                        level.getBlockEntity(helper.absolutePos(body.getFirst()));
+                helper.assertTrue(anchor.look() != null && anchor.look().side() == 2,
+                        "both anchors sync the large portal look");
+                var other = body == west ? east : west;
+                helper.assertValueEqual(anchor.look().partner(), helper.absolutePos(other.getFirst()),
+                        "each look names the opposite anchor");
+                var copy = new space.controlnet.ae2federation.beam.BeamFormerBlockEntity(anchor.getBlockPos(),
+                        anchor.getBlockState());
+                copy.handleUpdateTag(anchor.getUpdateTag(level.registryAccess()), level.registryAccess());
+                helper.assertValueEqual(copy.look(), anchor.look(), "the full look survives the client update tag");
+                for (var member : body.subList(1, body.size())) {
+                    var entity = (space.controlnet.ae2federation.beam.BeamFormerBlockEntity)
+                            level.getBlockEntity(helper.absolutePos(member));
+                    helper.assertTrue(entity.look() == null, "non-anchor members never draw portals");
+                }
+            }
             RouterEvidence.write("beamformerpassesglassandwater", 1, Map.of("glassPaneWaterQuartzGlass", "pass"));
             fixtures.close();
         });
