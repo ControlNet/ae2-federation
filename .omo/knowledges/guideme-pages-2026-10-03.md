@@ -528,3 +528,8 @@ within a few px (singularity-mint: estimated 286x136, measured 280x128).
 Screenshots for scene sizes: production client at `--resolution 2320x2700` with `guiScale:4` gives a
 580 px wide guide, so the sidebar stays docked and the whole page fits in one shot. At 1920 wide the
 navigation opens as an overlay over the page.
+
+Quantum Computer look (2026-10-23): in quantum-lab the formed Advanced AE Quantum Computer draws as a dark
+see-through cube with green edges. That is Advanced AE's formed model, not a broken scene: our states
+(`formed:true, multiblocked:true, powered:true`) are the same as Advanced AE 1.6.12's own
+`structure/quantum_computer_multiblock.snbt`, and its own guide page draws the same cube.
