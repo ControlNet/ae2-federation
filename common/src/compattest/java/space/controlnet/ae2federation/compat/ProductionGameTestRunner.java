@@ -68,7 +68,7 @@ final class ProductionGameTestRunner {
         this.parallel = parallel;
     }
 
-    /** Starts the run when {@code ae2federation.compat.tests} names tests or groups; {@code all} selects every test. */
+    /** Starts the run when {@code ae2federation.compat.tests} names tests or groups; {@code all} excludes opt-in groups. */
     static void registerIfRequested() {
         var selection = System.getProperty("ae2federation.compat.tests", "").trim();
         if (selection.isEmpty()) return;
@@ -196,7 +196,9 @@ final class ProductionGameTestRunner {
         }
         var wanted = new ArrayList<String>();
         for (var id : requested) {
-            if (id.equals("all")) wanted.addAll(byName.keySet());
+            if (id.equals("all")) byGroup.forEach((group, names) -> {
+                if (CompatTestClasses.includedInAll(group)) wanted.addAll(names);
+            });
             else if (byGroup.containsKey(id)) wanted.addAll(byGroup.get(id));
             else wanted.add(id);
         }
