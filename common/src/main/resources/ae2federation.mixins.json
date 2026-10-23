@@ -12,6 +12,7 @@
     "compat.StorageServiceMountLedgerMixin",
     "compat.CraftingServiceProvidersAccess",
     "compat.CraftingGlobalProviderLifecycleMixin",
+    "compat.CraftingCpuReceiptMixin",
     "compat.NetworkStorageAccess",
     "compat.NetworkCraftingProvidersAccess",
     "compat.CraftingProviderStateAccess",

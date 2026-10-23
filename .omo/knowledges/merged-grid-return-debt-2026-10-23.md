@@ -1,0 +1,55 @@
+# Projected return debt across a mid-job Grid merge (2026-10-23)
+
+## Symptom
+- A modpack playthrough removed only the Bridge part during a projected job. The fluix cable under it joined the
+  requester and factory into one AE2 Grid; restoring the part split them again.
+- Afterwards the requester had its one output and an idle CPU, buffers and transit were empty, but
+  `CraftingReturnLedger` still owed the requester one output with held=0. Removing the whole Bridge host passed.
+
+## Root cause
+- Both networks carry debts and rules, so the merged Grid is `AMBIGUOUS_MERGE` (`resolveMerge` never folds ids with
+  crafting returns). Neither NetworkId is confirmed, `federationDomains.grid()` is empty for both.
+- The reviewer's suspected `consumer == executingGrid` skips (router insert, `sweepReturns`) are never reached.
+- Reconcile withdraws the projections and `syncRouters` unmounts the router (wanted lacks the executing id).
+- The machine output enters the merged Grid. AE2's `CraftingServiceStorage` is mounted first at `Integer.MAX_VALUE`
+  (added in the `CraftingService` constructor; `NetworkStorage.insert` walks same-priority mounts in list order), so it
+  hands the output to the waiting CPU. No Federation code observes that delivery, so the debt never falls.
+- After the split no CPU waits. The factory's router claims the next unit of that key stored on the factory as held,
+  and the sweep hands it to the requester because the watched job is DONE. Reproduced: a player's stone stored on the
+  provider network after the job ended up in the consumer's chest.
+- In the merge tick itself the merged CraftingService does not list the CPU yet (end-of-tick update); an arrival then
+  is held by the still-mounted router and handed back after the split. That path was already correct.
+
+## Fix
+- `mixin/compat/CraftingCpuReceiptMixin`: `@Inject` at the head of `CraftingCpuLogic.insert`; in MODULATE it reports
+  `min(amount, getWaitingFor(what))`, exactly what the method will take (it returns early only without a job or a
+  wait and caps the amount at the wait).
+- `CraftingProjectionService.cpuReceived`: the consumer is the receiving CPU node's lineage; for each network owing
+  that consumer the key, oldest first, it calls `ledger.take` only while the CPU's Grid carries that network's nodes
+  (`IdentityClaimIndex.carries`). In a normal layout the consumer's Grid never carries the executing network's
+  lineage, so the router remains the only path there. No statistics meter: this is a native delivery.
+- Why not public API (user rule: public API before mixin): `CraftingCpuLogic.addListener` passes only the key.
+  `ListCraftingInventory.clear()` notifies after clearing when a job finishes, and `CraftingLink.markDone()` is a no-op
+  without a tie, so for a standalone job a finishing clear looks like a receipt and would drop debt for outputs that
+  never came (cake buckets). `ElapsedTimeTracker` exposes only float progress. Storage-side interception is closed by
+  the mount order above. The orchestrator/user may veto the mixin.
+
+## Not covered
+- An owed output arriving in the merged Grid when no CPU waits (job already ended) is stored natively and keeps its
+  debt; the next unit stored on the factory after the split is then claimed. Handling it needs the router kept on an
+  ambiguous Grid and `ownStorage` of a merged Grid.
+- Independent addon CPUs (Neo ECO, Advanced AE, Lightning Tech) do not run `CraftingCpuLogic` and are not observed.
+- In a merged Grid AE2 does not say where stock came from; any unit of the key reaching the CPU settles the debt.
+
+## Tests
+- `projectionmergedbridgereturn`: fluix cable under the Bridge, only the part removed, then restored.
+- `projectionmergedcablereturn`: a fluix cable placed between the consumer CPU and the provider cable, then broken.
+- Both use the hand-run cobblestone-to-stone machine of `PatternProjectionFixture`, wait until the merged Grid lists
+  the busy CPU and the router is gone, run the machine, split after the CPU finished, then store one more stone on the
+  provider network and assert it stays there, the debt is zero and the job retired.
+- Before the fix both failed with owed 1, held 0, job DONE after the split, and the player's stone in the consumer's
+  chest. `IdentityClaimIndexTest.aMergedGridCarriesEachNetworkUntilItsNodesLeave` covers `carries`.
+
+```sh
+python3 tools/dev_gametests.py projectionmergedbridgereturn projectionmergedcablereturn
+```

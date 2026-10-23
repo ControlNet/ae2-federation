@@ -121,6 +121,8 @@
     {"id":"crafting.projection-endpoint-cancelled-return-promptly","backend":"gametest","testId":"projectionendpointcancelledreturnpromptly","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"crafting.projection-cake-remainders","backend":"gametest","testId":"projectioncakeremainders","structure":"ae2federation_test:harness_native_smoke","assertions":10},
     {"id":"crafting.projection-cake-craftable-remainders","backend":"gametest","testId":"projectioncakecraftableremainders","structure":"ae2federation_test:harness_native_smoke","assertions":10},
+    {"id":"crafting.projection-merged-bridge-return","backend":"gametest","testId":"projectionmergedbridgereturn","structure":"ae2federation_test:harness_native_smoke","assertions":19},
+    {"id":"crafting.projection-merged-cable-return","backend":"gametest","testId":"projectionmergedcablereturn","structure":"ae2federation_test:harness_native_smoke","assertions":19},
     {"id":"crafting.projection-container-return","backend":"gametest","testId":"projectioncontainerreturn","structure":"ae2federation_test:harness_native_smoke","assertions":13},
     {"id":"crafting.projection-container-reuse","backend":"gametest","testId":"projectioncontainerreuse","structure":"ae2federation_test:harness_native_smoke","assertions":12},
     {"id":"crafting.projection-container-push","backend":"gametest","testId":"projectioncontainerpush","structure":"ae2federation_test:harness_native_smoke","assertions":25},

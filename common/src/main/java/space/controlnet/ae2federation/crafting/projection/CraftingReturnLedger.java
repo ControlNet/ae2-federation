@@ -118,6 +118,10 @@ public final class CraftingReturnLedger extends SavedData {
         return owed.containsKey(executing);
     }
 
+    boolean owesAnything() {
+        return !owed.isEmpty();
+    }
+
     /** Whether anything here is kept under {@code network}: debts either way, watched jobs or transit stock. */
     public boolean references(NetworkId network) {
         return owed.containsKey(network) || jobs.containsKey(network) || transit.containsKey(network)
@@ -132,6 +136,17 @@ public final class CraftingReturnLedger extends SavedData {
         if (consumers == null) return Map.of();
         var amounts = new LinkedHashMap<NetworkId, Long>();
         consumers.forEach((consumer, debt) -> amounts.put(consumer, debt.owed));
+        return amounts;
+    }
+
+    /** The executing networks that owe {@code consumer} {@code key} and how much each, in the order they first owed. */
+    Map<NetworkId, Long> debtors(NetworkId consumer, AEKey key) {
+        var amounts = new LinkedHashMap<NetworkId, Long>();
+        owed.forEach((executing, keys) -> {
+            var consumers = keys.get(key);
+            var debt = consumers == null ? null : consumers.get(consumer);
+            if (debt != null) amounts.put(executing, debt.owed);
+        });
         return amounts;
     }
 

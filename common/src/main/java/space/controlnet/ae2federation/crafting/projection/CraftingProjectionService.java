@@ -4,6 +4,7 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.ICraftingLink;
 import appeng.api.networking.crafting.ICraftingProvider;
+import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.crafting.CraftingBlockEntity;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
@@ -27,6 +28,8 @@ import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.IdentityEpoch;
 import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.identity.NetworkIdentityRegistry;
+import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.BindingDiagnostic;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
@@ -136,6 +139,36 @@ public final class CraftingProjectionService implements AutoCloseable {
                         .mapToInt(remaining -> remaining.getAvailablePatterns().size()).sum();
                 service.statuses.put(entry.getKey().rule(), new Status(Optional.empty(), patterns));
             }
+        }
+    }
+
+    /**
+     * Called as a native CPU takes {@code amount} of {@code what} that it waits for. While the CPU's Grid also carries
+     * nodes of a network that owes the CPU's network {@code what}, the two networks are one AE2 Grid: their identities
+     * are a pending merge, so Federation sees neither and routes nothing, and AE2's own crafting storage hands the
+     * machine's output straight to the CPU. That is the delivery of what is owed, and the only place it can be seen.
+     */
+    public static synchronized void cpuReceived(CraftingCPUCluster cpu, AEKey what, long amount) {
+        if (!(cpu.getLevel() instanceof ServerLevel cpuLevel)) return;
+        var service = SERVICES.get(cpuLevel.getServer());
+        if (service != null) service.received(cpu, what, amount);
+    }
+
+    private void received(CraftingCPUCluster cpu, AEKey what, long amount) {
+        var ledger = CraftingReturnLedger.get(level);
+        var grid = cpu.getGrid();
+        var node = cpu.getNode();
+        if (!ledger.owesAnything() || grid == null || node == null) return;
+        var consumer = grid.getService(NetworkIdentityService.class).lineage(node).networkId();
+        var claims = NetworkIdentityRegistry.get(level).claimIndex();
+        long left = amount;
+        // Oldest debt first, as the router hands returns out. In one Grid AE2 does not say where the stock came from.
+        for (var debtor : ledger.debtors(consumer, what).entrySet()) {
+            if (left <= 0) break;
+            if (!claims.carries(grid, debtor.getKey())) continue;
+            long delivered = Math.min(left, debtor.getValue());
+            ledger.take(debtor.getKey(), consumer, what, delivered, 0);
+            left -= delivered;
         }
     }
 
