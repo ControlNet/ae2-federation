@@ -38,7 +38,7 @@ storage: the machines' network sees only the inputs of each job.
 
 A small example: the Provider's network processes through a furnace on a subnet of its own.
 
-<GameScene zoom="3.5" interactive={true} background="transparent">
+<GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/remote_processing.snbt" />
   <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
     The Provider's network

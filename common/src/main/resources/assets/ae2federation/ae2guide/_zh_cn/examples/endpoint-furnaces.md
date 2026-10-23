@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 带合成CPU、合成终端并存有圆石的主网络； 一个<ItemLink id="ae2federation:pattern_provider" />； 每座熔炉一个<ItemLink id="ae2federation:processing_endpoint" />、一座熔炉、一个漏斗和一个<ItemLink id="ae2:storage_bus" />； <ItemLink id="ae2federation:cable" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="2.5" interactive={true} background="transparent">
+<GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/endpoint_furnaces.snbt" />
   <BoxAnnotation color="#915dcd" min="10 0 0" max="12 2 1">
     主网络： 合成终端、合成CPU和存储

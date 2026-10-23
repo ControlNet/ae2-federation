@@ -21,7 +21,7 @@ item_ids:
 
 一个交换机方块上最多可以汇集六个不同的网络， 它们仍是各自独立的网络。 两个面接同一个网络也可以， 只算一次。 每个交换机方块每tick消耗2 FE（[能量](../mechanics/power.md)）。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/switch_hub.snbt" />
   <BoxAnnotation color="#915dcd" min="3 0 0" max="5 2 1">
     网络A： 它的能源元件给三个网络供电
@@ -56,7 +56,7 @@ item_ids:
 
 彼此贴着放的交换机， 合起来填满一个实心长方体、每条边不超过8格时， 就组成一台交换机： 规则和[更大的路由器](router.md)相同。 交换机和路由器不会合成一个方块。 成形交换机外侧的每个面仍然各自独立工作， 所以更大的交换机能接更多网络， 这些网络也仍各自独立。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/switch_multiblock.snbt" />
   <BoxAnnotation color="#dddddd" min="1 0 0" max="3 2 1">
     一台2×2×1的交换机： 外侧每个面加入它接触的网络

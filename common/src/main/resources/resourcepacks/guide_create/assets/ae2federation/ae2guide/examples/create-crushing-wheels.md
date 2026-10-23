@@ -16,7 +16,7 @@ crushes the cobblestone. This page appears because Create is installed.
 <ItemLink id="ae2federation:cable" />; two <ItemLink id="create:crushing_wheel" />; a <ItemLink id="create:chute" />;
 a <ItemLink id="ae2:storage_bus" />; rotational power for the wheels; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="2.5" interactive={true} background="transparent">
+<GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/create_crushing_wheels.snbt" />
   <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
     Your main network: crafting terminal, crafting CPU and storage

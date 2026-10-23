@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 带合成CPU、合成终端、存储和电源的基地网络； 带存储的市场网络； 一个供应方网络， 这里是锯木厂， 它的<ItemLink id="ae2:pattern_provider" />和<ItemLink id="ae2:molecular_assembler" />把原木做成木板； 它们共同接触的一个<ItemLink id="ae2federation:switch" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="3.25" interactive={true} background="transparent">
+<GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/market_hub.snbt" />
   <BoxAnnotation color="#915dcd" min="4 0 2" max="7 2 3">
     基地： 合成终端、合成CPU、存储， 以及给三个网络供电的能源元件

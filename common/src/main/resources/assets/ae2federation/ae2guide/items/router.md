@@ -63,7 +63,7 @@ Routers placed against each other form one Router when together they fill a soli
 blocks long, and 1×1×1 is a Router too. A Router built from several blocks counts as one Router: a segment touching
 two of its blocks still touches only one Router. Every outer face links like a single Router's.
 
-<GameScene zoom="4.5" interactive={true} background="transparent">
+<GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/router_multiblock.snbt" />
   <BoxAnnotation color="#dddddd" min="3 0 0" max="6 2 1">
     Formed: a solid 3×2×1 box, one Router

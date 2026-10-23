@@ -19,7 +19,7 @@ subnet has no energy cell. This page appears because Applied Flux and Industrial
 <ItemLink id="ae2:storage_bus" />. How FE gets into the cells is in
 [Applied Flux's guide](appflux:appflux/flux_cells.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="3.75" interactive={true} background="transparent">
+<GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/induction_furnace.snbt" />
   <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
     Your main network: the energy cell, a crafting terminal, a crafting CPU, and ME Drives with item cells and ME FE

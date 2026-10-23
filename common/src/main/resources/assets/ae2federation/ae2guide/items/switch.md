@@ -23,7 +23,7 @@ The Switch brings ME networks into a [Federation domain](../mechanics/index.md).
 Up to six different networks can meet at one Switch block, and they stay separate networks. Two faces on the same
 network are fine and count once. Each Switch block uses 2 FE per tick ([Power](../mechanics/power.md)).
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/switch_hub.snbt" />
   <BoxAnnotation color="#915dcd" min="3 0 0" max="5 2 1">
     Network A: its energy cell powers all three networks
@@ -63,7 +63,7 @@ blocks long: the same rules as for a [bigger Router](router.md). A Switch and a 
 face of a formed Switch still works on its own, so a bigger Switch has room for more networks, and they still stay
 separate.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/switch_multiblock.snbt" />
   <BoxAnnotation color="#dddddd" min="1 0 0" max="3 2 1">
     One Switch, 2×2×1: each outer face joins the network it touches

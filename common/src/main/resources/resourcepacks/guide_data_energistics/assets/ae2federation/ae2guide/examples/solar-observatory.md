@@ -19,7 +19,7 @@ a crafting terminal; a <ItemLink id="ae2federation:switch" /> all three touch. D
 [the panels](data_energistics:items-blocks-machines/6.1_me_solar_panel.md) and
 [the Observatory](data_energistics:items-blocks-machines/6.12_astronomical_observatories.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="3.75" interactive={true} background="transparent">
+<GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/solar_observatory.snbt" />
   <BoxAnnotation color="#5ccd78" min="4 0 1" max="7 2 3">
     Outpost: six ME Solar Panels in one array, on an ME cable and the energy cell that powers all three networks

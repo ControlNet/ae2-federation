@@ -12,7 +12,7 @@ One <ItemLink id="ae2federation:cable" /> carries at most 8 networks and devices
 A **bundled cable** turns a block of Federation Cables into one thick cable that carries more: one shell the size of
 its cross-section, with a beam for each cable running inside it.
 
-<GameScene zoom="2.5" interactive={true} background="transparent">
+<GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/bundled_cables.snbt" />
   <BoxAnnotation color="#dddddd" min="0 0 2" max="1 2 4">
     Router, 2×2: covers the whole end face, so the bundle connects

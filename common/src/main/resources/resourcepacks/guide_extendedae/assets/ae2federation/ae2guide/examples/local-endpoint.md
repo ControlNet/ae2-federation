@@ -17,7 +17,7 @@ ExtendedAE is installed.
 <ItemLink id="extendedae:ex_pattern_provider" />; a Processing Endpoint; a furnace, a hopper and an
 <ItemLink id="ae2:storage_bus" />; a <ItemLink id="ae2:quartz_fiber" />.
 
-<GameScene zoom="3.75" interactive={true} background="transparent">
+<GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/local_endpoint.snbt" />
   <BoxAnnotation color="#915dcd" min="6 0 0" max="8 2 1">
     Your main network: crafting terminal, crafting CPU, drive and energy cell

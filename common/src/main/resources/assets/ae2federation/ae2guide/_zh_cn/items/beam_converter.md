@@ -20,7 +20,7 @@ item_ids:
 
 [联邦域](../mechanics/index.md)靠FE运行。 它的交换机、路由器、线缆、样板供应器和处理端点每tick都消耗一点能量， 联邦域从它的光束转换器里取用。 转换器付不起时， 联邦域**停止**， 和超出[容量](../mechanics/capacity.md)时一样： 各个网络照常独立工作， 但在重新获得FE之前， 不共享存储、合成、处理和能量。
 
-<GameScene zoom="3.75" interactive={true} background="transparent">
+<GameScene zoom="4.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/beam_converter.snbt" />
   <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
     一台1×1×2的光束转换器： 正面朝下对着线缆。 FE从其他任意面输入

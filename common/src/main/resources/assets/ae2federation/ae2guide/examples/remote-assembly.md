@@ -17,7 +17,7 @@ moving the patterns or merging the networks.
 each network and <ItemLink id="ae2federation:cable" /> between them, or a <ItemLink id="ae2federation:bridge" /> if they
 touch; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="3.25" interactive={true} background="transparent">
+<GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/remote_assembly.snbt" />
   <BoxAnnotation color="#915dcd" min="7 0 0" max="9 2 1">
     Network A: crafting terminal, crafting CPU, storage, and the energy cell that powers both networks

@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 工厂网络上一台已成型的超级装配矩阵， 装好样板， 再加一个能源元件； 两个基地网络， 每个都有合成CPU、合成终端和存储； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 矩阵怎么搭见[ExtendedAE-Plus的指南](extendedae_plus:introduction/devices/super_assembler_matrix.md)； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="2" interactive={true} background="transparent">
+<GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/super_matrix_hub.snbt" />
   <BoxAnnotation color="#5CA7CD" min="1 0 1" max="6 3 7">
     工厂： 装着样板的超级装配矩阵， 以及给三个网络供电的能源元件

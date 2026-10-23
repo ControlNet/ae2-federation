@@ -75,7 +75,7 @@ Switches and Federation Cable use a little FE every tick. Stand two
 another mod's generator; AE2 itself makes no FE. Until the converter has FE, the networks stay unconnected. See
 [Power](mechanics/power.md).
 
-<GameScene zoom="3.75" interactive={true} background="transparent">
+<GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/switch_cable.snbt" />
   <BoxAnnotation color="#915dcd" min="6 0 0" max="8 2 1">
     Network A: its energy cell powers both networks

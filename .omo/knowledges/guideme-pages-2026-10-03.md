@@ -517,11 +517,13 @@ height is never clamped. So a tall scene fills the screen and a wide one loses i
 At 1920x1080 with GUI scale 3 or auto, GuideME's adaptive scale is 4: the guide is 480x270 virtual px, the
 sidebar hides below 570 px and the column is 440 px minus the interactive toolbar.
 
-Budget: default view at most 150 px high and 400 px wide. The zoom is lowered to fit, in 0.25 steps, and
-never raised; every big scene is `interactive={true}` so the + button gets the detail back. The 2026-10-23
-pass lowered 33 of 46 scenes (EN and `_zh_cn` twins identical). The tallest went to zoom 1 (quantum-lab),
-1.5 (matter-fabrication) and 0.75 (tianshu-foundry). The estimate matched a real screenshot within a few px
-(singularity-mint: estimated 286x136, measured 280x128).
+Budget: default view at most 240 px high and 400 px wide. The zoom is lowered to fit, in 0.25 steps, and
+never raised; every big scene is `interactive={true}` so the + button gets the detail back. A first pass at
+150 px (91b4b5b8) shrank 33 of 46 scenes and the owner found it too small (2026-10-23), so the cap became 240:
+13 scenes change, EN and `_zh_cn` twins identical, e.g. quantum-lab 3 -> 2, matter-fabrication 4 -> 2.75,
+tianshu-foundry 2 -> 1.5, super-matrix-hub 4 -> 3.25; six of the 13 are width fixes (Beam Former, Quantum
+Cube, P2P tunnel, capacity, endpoint furnaces, nether outpost). The estimate matched a real screenshot
+within a few px (singularity-mint: estimated 286x136, measured 280x128).
 
 Screenshots for scene sizes: production client at `--resolution 2320x2700` with `guiScale:4` gives a
 580 px wide guide, so the sidebar stays docked and the whole page fits in one shot. At 1920 wide the

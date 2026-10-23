@@ -60,7 +60,7 @@ navigation:
 
 交换机和联邦线缆每刻消耗少量FE。 把两个<ItemLink id="ae2federation:beam_converter" />方块排成一列， 一端放在线缆上， 再用其他模组的发电机给它们输入FE； AE2本身不产出FE。 转换器有FE之前， 两个网络不会连通。 参见[能量](mechanics/power.md)。
 
-<GameScene zoom="3.75" interactive={true} background="transparent">
+<GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/switch_cable.snbt" />
   <BoxAnnotation color="#915dcd" min="6 0 0" max="8 2 1">
     网络A： 它的能源元件给两个网络供电

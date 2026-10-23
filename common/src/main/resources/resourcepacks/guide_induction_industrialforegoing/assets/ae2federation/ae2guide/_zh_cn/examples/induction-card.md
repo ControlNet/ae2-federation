@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 带合成CPU、合成终端、存有圆石， 并且ME驱动器里装着<ItemLink id="appflux:fe_1k_cell" />的主网络； 一个装有<ItemLink id="appflux:induction_card" />的<ItemLink id="ae2federation:pattern_provider" />； 一个<ItemLink id="ae2federation:processing_endpoint" />； <ItemLink id="ae2federation:cable" />； 一台<ItemLink id="industrialforegoing:resourceful_furnace" />； 一个<ItemLink id="ae2:storage_bus" />。 FE怎样存进元件见[Applied Flux的指南](appflux:appflux/flux_cells.md)； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="3.75" interactive={true} background="transparent">
+<GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/induction_furnace.snbt" />
   <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
     主网络： 能源元件、合成终端、合成CPU， 以及装着物品元件和ME能源存储元件的ME驱动器
