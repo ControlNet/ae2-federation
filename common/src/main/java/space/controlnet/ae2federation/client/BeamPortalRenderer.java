@@ -2,14 +2,19 @@ package space.controlnet.ae2federation.client;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.client.event.RegisterRenderBuffersEvent;
+import org.joml.Matrix4f;
 
 /** Fullbright vanilla beacon shading, with the depth disc submitted before additive light. */
 public final class BeamPortalRenderer {
@@ -44,7 +49,29 @@ public final class BeamPortalRenderer {
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .createCompositeState(false));
 
+    private static final Matrix4f TRANSFORM = new Matrix4f();
+    private static Frustum frustum;
+
     private BeamPortalRenderer() {}
+
+    public static void registerBuffers(RegisterRenderBuffersEvent event) {
+        event.registerRenderBuffer(DISC, new ByteBufferBuilder(1 << 18));
+        event.registerRenderBuffer(GLOW, new ByteBufferBuilder(1 << 20));
+    }
+
+    static void beginFrame(Frustum current) {
+        frustum = current;
+    }
+
+    static boolean visible(BlockPos origin, Direction facing) {
+        return frustum == null || frustum.isVisible(BeamPortalMesh.bounds(origin, facing));
+    }
+
+    static void flush(MultiBufferSource.BufferSource buffers) {
+        buffers.endBatch(DISC);
+        buffers.endBatch(GLOW);
+        frustum = null;
+    }
 
     public static void inScene(Runnable render) {
         SCENE.inScene(render);
@@ -59,24 +86,23 @@ public final class BeamPortalRenderer {
             var stack = new PoseStack();
             stack.last().pose().set(entry.pose());
             draw(stack, buffers, entry.facing(), 0, entry.tick(), entry.partialTick(), entry.style());
+            buffers.endBatch(DISC);
+            buffers.endBatch(GLOW);
         });
     }
 
     static void draw(PoseStack stack, MultiBufferSource buffers, Direction facing, int detail, long tick,
             float partialTick, CableBeamStyle style) {
-        pass(stack, buffers, facing, detail, tick, partialTick, style, false);
-        if (buffers instanceof MultiBufferSource.BufferSource source) source.endBatch(DISC);
-        pass(stack, buffers, facing, detail, tick, partialTick, style, true);
-        if (buffers instanceof MultiBufferSource.BufferSource source) source.endBatch(GLOW);
+        var matrix = BeamPortalMesh.transform(stack.last().pose(), facing, TRANSFORM);
+        pass(matrix, buffers, detail, tick, partialTick, style, false);
+        pass(matrix, buffers, detail, tick, partialTick, style, true);
     }
 
-    private static void pass(PoseStack stack, MultiBufferSource buffers, Direction facing, int detail, long tick,
+    private static void pass(Matrix4f matrix, MultiBufferSource buffers, int detail, long tick,
             float partialTick, CableBeamStyle style, boolean glow) {
         var out = buffers.getBuffer(glow ? GLOW : DISC);
-        var pose = stack.last();
-        BeamPortalMesh.Sink sink = (x, y, z, r, g, b, alpha) -> out.addVertex(pose.pose(), x, y, z)
+        BeamPortalMesh.Sink sink = (x, y, z, r, g, b, alpha) -> out.addVertex(matrix, x, y, z)
                 .setColor(r, g, b, alpha).setUv(0, 0).setUv2(240, 240).setNormal(0, 1, 0);
-        BeamPortalMesh.emit(true, 2, detail, tick, partialTick, style, glow,
-                (x, y, z, r, g, b, alpha) -> BeamPortalMesh.oriented(facing, sink, x, y, z, r, g, b, alpha));
+        BeamPortalMesh.emit(true, 2, detail, tick, partialTick, style, glow, sink);
     }
 }

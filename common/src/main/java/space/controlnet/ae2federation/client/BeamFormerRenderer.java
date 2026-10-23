@@ -46,7 +46,8 @@ public final class BeamFormerRenderer implements BlockEntityRenderer<BeamFormerB
                 double portalDistance = eye.distanceToSqr(origin.getX() + (axis == Direction.Axis.X ? .5 : 1),
                         origin.getY() + (axis == Direction.Axis.Y ? .5 : 1),
                         origin.getZ() + (axis == Direction.Axis.Z ? .5 : 1));
-                if (portalDistance <= getViewDistance() * getViewDistance()) {
+                if (portalDistance <= getViewDistance() * getViewDistance()
+                        && BeamPortalRenderer.visible(origin, facing)) {
                     BeamPortalRenderer.draw(stack, buffers, facing, CableBeamMesh.detail(portalDistance),
                             level.getGameTime(), partialTick, style);
                 }

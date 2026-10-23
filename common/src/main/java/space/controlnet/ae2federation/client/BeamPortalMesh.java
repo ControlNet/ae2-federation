@@ -1,6 +1,9 @@
 package space.controlnet.ae2federation.client;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.phys.AABB;
+import org.joml.Matrix4f;
 
 /** J2 / Portal Ring: local coordinates about the face centre, with z measured from the body's back. */
 public final class BeamPortalMesh {
@@ -30,7 +33,41 @@ public final class BeamPortalMesh {
         System.arraycopy(angles, 0, STREAK, 0, angles.length);
     }
 
+    private static final Matrix4f[] ORIENTATION = new Matrix4f[6];
+
+    static {
+        for (var facing : Direction.values()) {
+            var m = new Matrix4f().zero().m33(1);
+            oriented(facing, (x, y, z, r, g, b, a) -> m.m30(x).m31(y).m32(z), 0, 0, 0, 0, 0, 0, 0);
+            oriented(facing, (x, y, z, r, g, b, a) -> m.m00(x - m.m30()).m01(y - m.m31()).m02(z - m.m32()),
+                    1, 0, 0, 0, 0, 0, 0);
+            oriented(facing, (x, y, z, r, g, b, a) -> m.m10(x - m.m30()).m11(y - m.m31()).m12(z - m.m32()),
+                    0, 1, 0, 0, 0, 0, 0);
+            oriented(facing, (x, y, z, r, g, b, a) -> m.m20(x - m.m30()).m21(y - m.m31()).m22(z - m.m32()),
+                    0, 0, 1, 0, 0, 0, 0);
+            ORIENTATION[facing.ordinal()] = m;
+        }
+    }
+
     private BeamPortalMesh() {}
+
+    public static Matrix4f transform(Matrix4f pose, Direction facing, Matrix4f destination) {
+        return pose.mul(ORIENTATION[facing.ordinal()], destination);
+    }
+
+    public static AABB bounds(BlockPos origin, Direction facing) {
+        double radius = 9.8f / 16;
+        double near = 14.01f / 16, far = 19f / 16;
+        double low = facing.getAxisDirection() == Direction.AxisDirection.POSITIVE ? near : 1 - far;
+        double high = facing.getAxisDirection() == Direction.AxisDirection.POSITIVE ? far : 1 - near;
+        var axis = facing.getAxis();
+        return new AABB(origin.getX() + (axis == Direction.Axis.X ? low : 1 - radius),
+                origin.getY() + (axis == Direction.Axis.Y ? low : 1 - radius),
+                origin.getZ() + (axis == Direction.Axis.Z ? low : 1 - radius),
+                origin.getX() + (axis == Direction.Axis.X ? high : 1 + radius),
+                origin.getY() + (axis == Direction.Axis.Y ? high : 1 + radius),
+                origin.getZ() + (axis == Direction.Axis.Z ? high : 1 + radius));
+    }
 
     private static float[] angles(int count, int segments, double duty, double offset) {
         float[] out = new float[count * segments * 4];
