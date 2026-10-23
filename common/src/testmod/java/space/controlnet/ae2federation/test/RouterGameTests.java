@@ -334,6 +334,35 @@ public final class RouterGameTests {
     }
 
     /**
+     * AE2 asks a node host for its node on no side (a null direction) when it wants every node of a block, as
+     * {@code /ae2 grids export} does. Router and Switch have nodes on their faces only, so they answer null.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void routerNullSideNode(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var left = CENTER.west(2);
+        var switchBlock = fixtures.placeSwitch(left);
+        fixtures.placeNativeDevice(left, Direction.WEST);
+        fixtures.placeFederationCable(CENTER.west());
+        fixtures.placeRouter(CENTER);
+        helper.succeedWhen(() -> {
+            helper.assertValueEqual(switchBlock.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                    "The Switch must attach the ME network on its western face");
+            var switchHost = GridHelper.getNodeHost(helper.getLevel(), helper.absolutePos(left));
+            var routerHost = GridHelper.getNodeHost(helper.getLevel(), helper.absolutePos(CENTER));
+            helper.assertTrue(switchHost != null && routerHost != null, "Router and Switch must be AE2 node hosts");
+            helper.assertTrue(switchHost.getGridNode(Direction.WEST) != null,
+                    "The Switch must still expose its node on an attached face");
+            helper.assertTrue(switchHost.getGridNode(null) == null, "The Switch has no node on no side");
+            helper.assertTrue(routerHost.getGridNode(null) == null, "The Router has no node on no side");
+            RouterEvidence.write("routernullsidenode", 5, Map.of(
+                    "switchNullSide", "null", "routerNullSide", "null", "switchFaceNode", "present"));
+            fixtures.close();
+        });
+    }
+
+    /**
      * A domain of one ME network still shows it: the Switch's screen lists the network for the topology, though
      * there is no pair for rules yet.
      */

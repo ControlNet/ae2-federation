@@ -36,6 +36,72 @@ public final class ProjectionContainerGameTests {
     }
 
     /**
+     * A vanilla cake from three milk buckets on the provider network: the three empty buckets reach the requester and
+     * the job retires within 25 idle ticks, even when it is the first job after the server starts.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1200)
+    public static void projectionCakeRemainders(GameTestHelper helper) {
+        cakeRemainders(helper, false);
+    }
+
+    /** The cake case with the vanilla bucket recipe also projected, so buckets are pattern outputs too. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1200)
+    public static void projectionCakeCraftableRemainders(GameTestHelper helper) {
+        cakeRemainders(helper, true);
+    }
+
+    private static void cakeRemainders(GameTestHelper helper, boolean craftableBuckets) {
+        var fixture = new PatternProjectionFixture(helper);
+        var stage = new int[1];
+        var cake = appeng.api.stacks.AEItemKey.of(Items.CAKE);
+        var deadline = new long[] {-1};
+        var missed = new String[1];
+        helper.succeedWhen(() -> {
+            helper.assertTrue(stage[0] > 0 || fixture.ready(), "Waiting for both networks");
+            if (stage[0] == 0) {
+                fixture.installCakePattern(craftableBuckets);
+                fixture.enableRules();
+                fixture.putInConsumer(appeng.api.stacks.AEItemKey.of(Items.MILK_BUCKET), 3);
+                fixture.putInConsumer(sugar(), 2);
+                fixture.putInConsumer(appeng.api.stacks.AEItemKey.of(Items.EGG), 1);
+                fixture.putInConsumer(appeng.api.stacks.AEItemKey.of(Items.WHEAT), 3);
+                stage[0] = 1;
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(fixture.consumerService().isCraftable(cake), "Waiting for cake projection");
+                helper.assertValueEqual(fixture.consumerService().isCraftable(bucket()), craftableBuckets,
+                        "Bucket craftability matches the case");
+                fixture.begin(cake, 1);
+                stage[0] = 2;
+            }
+            if (stage[0] == 2) {
+                helper.assertTrue(fixture.planReady(), "Waiting for cake plan");
+                helper.assertFalse(fixture.plan().simulation(), "Cake ingredients are available");
+                helper.assertTrue(fixture.submit(), "Requester CPU takes the cake job");
+                stage[0] = 3;
+            }
+            helper.assertTrue(fixture.consumerCpuEmpty(), "Waiting for empty, idle requester CPU");
+            if (deadline[0] < 0) deadline[0] = helper.getTick() + 25;
+            helper.assertTrue(helper.getTick() >= deadline[0], "Allow one full return sweep after completion");
+            if (missed[0] == null) missed[0] = fixture.held(fixture.consumerChest(), bucket()) == 3
+                    && fixture.watchedJobs() == 0 ? "" : fixture.returns(bucket()) + "; sweeps=" + fixture.ledgerSweeps();
+            helper.assertTrue(missed[0].isEmpty(), "Return did not settle within 25 idle ticks: " + missed[0]);
+            helper.assertValueEqual(fixture.held(fixture.consumerChest(), cake), 1L, "Cake reaches requester");
+            helper.assertValueEqual(fixture.held(fixture.consumerChest(), bucket()), 3L,
+                    "Three buckets reach requester: " + fixture.returns(bucket()));
+            helper.assertValueEqual(fixture.onProviderNetwork(bucket()), 0L, "Factory retains no buckets");
+            helper.assertValueEqual(fixture.owed(bucket()), 0L, "Bucket debt is settled");
+            helper.assertValueEqual(fixture.owed(cake), 0L, "Cake debt is settled");
+            helper.assertValueEqual(fixture.watchedJobs(), 0, "Finished job retires");
+            PolicyEvidence.write(craftableBuckets ? "projectioncakecraftableremainders" : "projectioncakeremainders",
+                    10, Map.of("bucketsReturned", "3", "owedAfter", "0", "watchedJobs", "0"));
+            fixture.close();
+        });
+    }
+
+    /**
      * Nine sugar from three honey bottles: three pushes to the provider network's Molecular Assembler, each leaving a
      * glass bottle that the consumer's CPU waits for. The job finishes only if all three bottles come back.
      */

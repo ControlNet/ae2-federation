@@ -105,6 +105,7 @@ final class RouterCraftingScene implements AutoCloseable {
         List<Member> sources = List.of();
         final List<Order> orders = new ArrayList<>();
         boolean storage = true;
+        boolean crafting = true;
 
         Member(String name, Direction face, Placement placement, Predicate<BlockEntity> ready) {
             this.name = name;
@@ -188,6 +189,15 @@ final class RouterCraftingScene implements AutoCloseable {
         var member = new Member(name, face, placement, ready);
         member.patternContainer = readyAt;
         members.add(member);
+        return this;
+    }
+
+    /** The last network uses the storage of the networks named in {@code sources}, with no Crafting rule. */
+    RouterCraftingScene usingStorageOf(String... sources) {
+        var member = members.getLast();
+        member.crafting = false;
+        member.sources = new ArrayList<>();
+        for (var source : sources) ((ArrayList<Member>) member.sources).add(named(source));
         return this;
     }
 
@@ -313,12 +323,13 @@ final class RouterCraftingScene implements AutoCloseable {
                                     + describe(grid(helper.getLevel().getBlockEntity(helper.absolutePos(start(member.face)))))
                                     + " and its chest on " + describe(grid(member)));
                 }
+                // Every CPU first: this stage runs again until they all pass, and a pattern must go in only once.
+                for (var member : consumers()) {
+                    helper.assertTrue(!grid(member).getCraftingService().getCpus().isEmpty(),
+                            member.name + " must have a crafting CPU");
+                }
                 for (var member : members) {
-                    if (member.consumer()) {
-                        helper.assertTrue(!grid(member).getCraftingService().getCpus().isEmpty(),
-                                member.name + " must have a crafting CPU");
-                        continue;
-                    }
+                    if (member.consumer()) continue;
                     var entity = helper.getLevel().getBlockEntity(helper.absolutePos(member.patternContainer));
                     for (var pattern : member.patterns) {
                         helper.assertTrue(member.install.test(entity, pattern), member.name + "'s " + entity
@@ -330,6 +341,7 @@ final class RouterCraftingScene implements AutoCloseable {
                     for (var source : member.sources) {
                         rule(new PolicyKey(network(member), network(source), PolicyCapability.STORAGE),
                                 PolicyRule.storageDefaults());
+                        if (!member.crafting) continue;
                         rule(new PolicyKey(network(member), network(source), PolicyCapability.CRAFTING),
                                 PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)));
                     }
@@ -580,6 +592,11 @@ final class RouterCraftingScene implements AutoCloseable {
 
     private MEChestBlockEntity chest(Member member) {
         return helper.getBlockEntity(chestPosition(member.face));
+    }
+
+    /** The Grid of the network named {@code name}. */
+    IGrid grid(String name) {
+        return grid(named(name));
     }
 
     private List<IGrid> grids() {

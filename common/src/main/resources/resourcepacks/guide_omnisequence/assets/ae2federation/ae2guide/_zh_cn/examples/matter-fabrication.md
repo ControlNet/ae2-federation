@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 带一座已成形物质构筑井的网络B， 构筑井的控制器（<ItemLink id="molecularmanipulator:matter_fabrication_controller" />）接在B的线缆上， 它的一个服务位置上装着<ItemLink id="molecularmanipulator:matter_fabrication_pattern_assembly" />； 带合成CPU、合成终端、存储和电源的主网络（网络A）； 一个<ItemLink id="ae2federation:switch" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="2.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/matter_fabrication_well.snbt" />
   <BoxAnnotation color="#915dcd" min="2 1 0" max="5 3 1">
     网络A： 合成终端、合成CPU、存储， 以及给两个网络供电的能源元件

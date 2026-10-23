@@ -18,7 +18,7 @@ MODELS.mkdir(parents=True, exist_ok=True)
 
 item=BASE/'models'/'item';item.mkdir(exist_ok=True)
 (item/'cable.json').write_text(json.dumps({'parent':NS+':block/cable'},indent=2)+'\n')
-(MODELS/'cable.json').write_text(json.dumps({'parent':'minecraft:block/block','textures':{'particle':NS+':block/armor'}},indent=2)+'\n')
+(MODELS/'cable.json').write_text(json.dumps({'parent':'minecraft:block/block','textures':{'particle':NS+':part/cable/dense/core'}},indent=2)+'\n')
 states=BASE/'blockstates';states.mkdir(exist_ok=True)
 (states/'cable.json').write_text(json.dumps({'variants':{'':{'model':NS+':block/cable'}}},indent=2)+'\n')
 print('Generated Federation Cable assets for ae2federation (placeholder models; geometry is built in code).')

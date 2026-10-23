@@ -401,7 +401,8 @@ public final class NeoEcoCompatGameTests {
         return fitCell(helper, drive, tier.id("eco_item_storage_cell_16m"));
     }
 
-    private static boolean fitCell(GameTestHelper helper, BlockPos drive, String cell) {
+    /** Once the storage system has formed, puts {@code cell} into the drive at {@code drive} as its player does. */
+    static boolean fitCell(GameTestHelper helper, BlockPos drive, String cell) {
         var entity = helper.getLevel().getBlockEntity(helper.absolutePos(drive));
         if (!(entity instanceof IAEMultiBlock<?> part) || part.getCluster() == null) return false;
         try {
@@ -415,6 +416,37 @@ public final class NeoEcoCompatGameTests {
             return held != null && !held.isEmpty();
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException("The ECO drive at " + drive + " cannot take a cell", exception);
+        }
+    }
+
+    /**
+     * Puts {@code cell} (or nothing) into the ECO drive at {@code drive} as its player does, and gives back the cell it
+     * held. Neo ECO Prototype's L1 drive has its own {@code removeCell} and {@code insertCell}, which its players use.
+     */
+    static ItemStack swapCell(GameTestHelper helper, BlockPos drive, ItemStack cell) {
+        var entity = helper.getLevel().getBlockEntity(helper.absolutePos(drive));
+        try {
+            var type = entity.getClass();
+            var held = (ItemStack) type.getMethod("getCellStack").invoke(entity);
+            held = held == null ? ItemStack.EMPTY : held.copy();
+            if (hasMethod(type, "removeCell") && hasMethod(type, "insertCell", ItemStack.class)) {
+                if (!held.isEmpty()) type.getMethod("removeCell").invoke(entity);
+                if (!cell.isEmpty()) type.getMethod("insertCell", ItemStack.class).invoke(entity, cell);
+                return held;
+            }
+            type.getMethod("setCellStack", ItemStack.class).invoke(entity, cell);
+            return held;
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("The ECO drive at " + drive + " cannot swap its cell", exception);
+        }
+    }
+
+    private static boolean hasMethod(Class<?> type, String name, Class<?>... parameters) {
+        try {
+            type.getMethod(name, parameters);
+            return true;
+        } catch (NoSuchMethodException absent) {
+            return false;
         }
     }
 

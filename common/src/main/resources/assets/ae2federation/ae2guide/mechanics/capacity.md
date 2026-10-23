@@ -12,7 +12,7 @@ Each piece of <ItemLink id="ae2federation:cable" /> carries at most 8 networks a
 Federation domain carries more, the **domain stops**: its networks keep working on their own and share nothing until
 the count fits again.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/network_capacity.snbt" />
   <BoxAnnotation color="#915dcd" min="9 0 0" max="11 1 1">
     Network A: counts 1

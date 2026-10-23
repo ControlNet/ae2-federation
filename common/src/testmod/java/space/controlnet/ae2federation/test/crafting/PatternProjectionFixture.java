@@ -491,6 +491,20 @@ public final class PatternProjectionFixture implements AutoCloseable {
         processing.updatePatterns();
     }
 
+    public void installCakePattern(boolean craftableBuckets) {
+        var crafting = assembler.provider().getLogic();
+        crafting.getPatternInv().addItems(craftingPattern(false, false,
+                new ItemStack(Items.MILK_BUCKET), new ItemStack(Items.MILK_BUCKET), new ItemStack(Items.MILK_BUCKET),
+                new ItemStack(Items.SUGAR), new ItemStack(Items.EGG), new ItemStack(Items.SUGAR),
+                new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT)));
+        if (craftableBuckets) {
+            crafting.getPatternInv().addItems(craftingPattern(false, false,
+                    new ItemStack(Items.IRON_INGOT), ItemStack.EMPTY, new ItemStack(Items.IRON_INGOT),
+                    ItemStack.EMPTY, new ItemStack(Items.IRON_INGOT)));
+        }
+        crafting.updatePatterns();
+    }
+
     public ItemStack sugarPattern() {
         return craftingPattern(false, false, new ItemStack(Items.HONEY_BOTTLE));
     }

@@ -156,3 +156,6 @@ Removed from the mod on 2026-10-22 (owner approved), because nothing drew them: 
 9aed66ab at the artist's suggestion), `part/cable/dense/stream_u/v` (byte copies of the block stream strips), and
 `entity/cable_flow` (the first flow renderer's texture, unused since 54cf2ba7), which moved to
 `tools/blender/resources/` for the old Blender beam studies. Group D is now 15 textures, 48 in all.
+
+2026-10-23: `block/armor` (group D) was deleted too; the cable block model's particle now uses the artist's
+`part/cable/dense/core`. Group D is 14 textures, 47 in all.

@@ -17,7 +17,7 @@ installed.
 <ItemLink id="mekanism:dynamic_valve" />) and an <ItemLink id="ae2:storage_bus" />; a workshop network with a terminal;
 a <ItemLink id="ae2federation:switch" /> both touch; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/chemical_tank_farm.snbt" />
   <BoxAnnotation color="#915dcd" min="6 0 0" max="7 1 1">
     Workshop: a terminal, running on the tank farm's power

@@ -211,6 +211,7 @@ and page ids did not change.
 | `guide_ae2lt` | ae2lt | `examples/tianshu-foundry.md` | `tianshuOrdersFromMatrix` |
 | `guide_data_energistics` | data_energistics | `examples/solar-observatory.md` | `solarObservatory` |
 | `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `ecoDistrictOrdering` |
+| `guide_neoecoprototype` | neoecoprototype, neoecoae | `examples/singularity-mint.md` | `singularityMint` |
 | `guide_omnisequence` | molecularmanipulator | `examples/matter-fabrication.md` | `matterFabricationWell` |
 | `guide_useless_mod` | useless_mod | `examples/alloy-furnace.md` | `alloyFurnaceWorkshop` |
 
@@ -505,3 +506,30 @@ there), then breaks a crafting-system casing for the page's "Try it".
 - Before/after shots of a page: `runGuideClient -PguidePage=... -PguideLanguage=...` under
   `xvfb-run -n <N> -f <xauth>`, and `import -window root` once the log shows "Compiling ae2federation:". Use a
   detached worktree of the previous commit for the before shot.
+
+## Scene size budget (2026-10-23)
+
+GuideME sizes a `<GameScene>` from its initial camera: every block is `10 * zoom` GUI px (0.625 * 16), the
+box is the projected bounds of the non-air blocks and the `BoxAnnotation`s, plus 5 px padding per side.
+`LytGuidebookScene.computeBoxLayout` clamps the width to the column and crops; it never shrinks, and the
+height is never clamped. So a tall scene fills the screen and a wide one loses its ends.
+
+At 1920x1080 with GUI scale 3 or auto, GuideME's adaptive scale is 4: the guide is 480x270 virtual px, the
+sidebar hides below 570 px and the column is 440 px minus the interactive toolbar.
+
+Budget: default view at most 220 px high and 400 px wide. The zoom is lowered to fit, in 0.25 steps, and
+never raised; every big scene is `interactive={true}` so the + button gets the detail back. History
+(2026-10-23): 150 px (91b4b5b8) shrank 33 of 46 scenes and the owner found it too small; 240 (6b18c69f) still
+felt too tall; 220 is the owner's pick. At 220 the tallest are quantum-lab 3 -> 1.75, matter-fabrication
+4 -> 2.5, tianshu-foundry 2 -> 1.25, super-matrix-hub 4 -> 3; the width fixes (Beam Former, Quantum Cube, P2P
+tunnel, capacity, endpoint furnaces, nether outpost) are unchanged from 240. The estimate matched a real screenshot
+within a few px (singularity-mint: estimated 286x136, measured 280x128).
+
+Screenshots for scene sizes: production client at `--resolution 2320x2700` with `guiScale:4` gives a
+580 px wide guide, so the sidebar stays docked and the whole page fits in one shot. At 1920 wide the
+navigation opens as an overlay over the page.
+
+Quantum Computer look (2026-10-23): in quantum-lab the formed Advanced AE Quantum Computer draws as a dark
+see-through cube with green edges. That is Advanced AE's formed model, not a broken scene: our states
+(`formed:true, multiblocked:true, powered:true`) are the same as Advanced AE 1.6.12's own
+`structure/quantum_computer_multiblock.snbt`, and its own guide page draws the same cube.

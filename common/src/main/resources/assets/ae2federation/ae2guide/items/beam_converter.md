@@ -23,7 +23,7 @@ Automation Interfaces use a little every tick, and the domain draws it from its 
 converters cannot pay **stops**, just as a domain over [capacity](../mechanics/capacity.md) does: its networks keep
 working on their own, but share no storage, crafting, processing or power until it has FE again.
 
-<GameScene zoom="5" interactive={true} background="transparent">
+<GameScene zoom="4.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/beam_converter.snbt" />
   <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
     A 1×1×2 Beam Converter: its front faces down onto the cable. FE goes in through any other face

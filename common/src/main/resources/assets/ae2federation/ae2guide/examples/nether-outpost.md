@@ -23,7 +23,7 @@ CPU; a <ItemLink id="ae2federation:switch" /> for each; a Quantum Network Bridge
 
 In the Overworld:
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/nether_outpost_overworld.snbt" />
   <BoxAnnotation color="#915dcd" min="5 1 0" max="7.625 2 1">
     The base: a drive, the energy cell that powers every network here, and a cable for the Bridge

@@ -76,7 +76,7 @@ public final class BeamFormerGameTests {
         fixtures.placeFederationCable(new BlockPos(11, 2, 6));
         var noVote = box(new BlockPos(10, 2, 10), 1, 2, 2);
         noVote.forEach(cell -> place(helper, cell, Direction.SOUTH));
-        helper.succeedWhen(() -> {
+        helper.startSequence().thenWaitUntil(() -> {
             assertFacing(helper, one, Direction.NORTH, "a 1x1 keeps its facing");
             assertFacing(helper, two, Direction.EAST, "a 2x2 forms");
             assertFacing(helper, three, Direction.EAST, "a 3x3 forms");
@@ -90,11 +90,23 @@ public final class BeamFormerGameTests {
             assertFacing(helper, majority, Direction.WEST, "three of four blocks face west");
             assertFacing(helper, cabled, Direction.WEST, "no vote on its axis: away from the cable at its east");
             assertFacing(helper, noVote, Direction.EAST, "no vote, no cable: the positive end");
-            RouterEvidence.write("beamformershapes", 8, Map.of("1x1", "formed", "2x2", "formed", "3x3", "formed",
+        }).thenExecute(() -> {
+            helper.setBlock(two.getFirst(), Blocks.AIR);
+            helper.setBlock(three.getFirst(), Blocks.AIR);
+        }).thenWaitUntil(() -> {
+            for (var cells : List.of(two, three)) {
+                for (var cell : cells.subList(1, cells.size())) {
+                    var state = helper.getBlockState(cell);
+                    helper.assertTrue(!RouterBlock.formed(state), "broken body unforms");
+                    helper.assertValueEqual(state.getValue(BeamFormerBlock.SIZE), BeamFormerBlock.Size.SMALL,
+                            "broken body resets its size");
+                }
+            }
+        }).thenExecute(fixtures::close).thenExecute(() -> {
+            RouterEvidence.write("beamformershapes", 10, Map.of("1x1", "formed", "2x2", "formed", "3x3", "formed",
                     "1x2", "unformed", "2x2x2", "unformed", "majority", "west", "cable", "away from it",
-                    "noVote", "positive end"));
-            fixtures.close();
-        });
+                    "noVote", "positive end", "2x2Reset", "small", "3x3Reset", "small"));
+        }).thenSucceed();
     }
 
     /**
@@ -274,6 +286,24 @@ public final class BeamFormerGameTests {
         var farCable = FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(new BlockPos(15, 2, 10)));
         helper.succeedWhen(() -> {
             helper.assertTrue(linked(helper, new BlockPos(1, 2, 10), farCable), "the beam links through glass and water");
+            for (var body : List.of(west, east)) {
+                var anchor = (space.controlnet.ae2federation.beam.BeamFormerBlockEntity)
+                        level.getBlockEntity(helper.absolutePos(body.getFirst()));
+                helper.assertTrue(anchor.look() != null && anchor.look().side() == 2,
+                        "both anchors sync the large portal look");
+                var other = body == west ? east : west;
+                helper.assertValueEqual(anchor.look().partner(), helper.absolutePos(other.getFirst()),
+                        "each look names the opposite anchor");
+                var copy = new space.controlnet.ae2federation.beam.BeamFormerBlockEntity(anchor.getBlockPos(),
+                        anchor.getBlockState());
+                copy.handleUpdateTag(anchor.getUpdateTag(level.registryAccess()), level.registryAccess());
+                helper.assertValueEqual(copy.look(), anchor.look(), "the full look survives the client update tag");
+                for (var member : body.subList(1, body.size())) {
+                    var entity = (space.controlnet.ae2federation.beam.BeamFormerBlockEntity)
+                            level.getBlockEntity(helper.absolutePos(member));
+                    helper.assertTrue(entity.look() == null, "non-anchor members never draw portals");
+                }
+            }
             RouterEvidence.write("beamformerpassesglassandwater", 1, Map.of("glassPaneWaterQuartzGlass", "pass"));
             fixtures.close();
         });
@@ -393,6 +423,13 @@ public final class BeamFormerGameTests {
     private static void assertFacing(GameTestHelper helper, List<BlockPos> cells, Direction facing, String what) {
         for (var cell : cells) {
             var state = helper.getBlockState(cell);
+            var size = switch (cells.size()) {
+                case 1 -> BeamFormerBlock.Size.SMALL;
+                case 4 -> BeamFormerBlock.Size.LARGE;
+                case 9 -> BeamFormerBlock.Size.HUGE;
+                default -> throw new IllegalArgumentException("Not a former square");
+            };
+            helper.assertValueEqual(state.getValue(BeamFormerBlock.SIZE), size, what + ": body size");
             helper.assertTrue(RouterBlock.formed(state), what + ": " + cell + " forms");
             helper.assertValueEqual(state.getValue(BeamFormerBlock.FACING), facing, what + ": " + cell);
         }

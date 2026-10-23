@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.core.Direction;
@@ -30,15 +31,30 @@ public final class BeamFormerRenderer implements BlockEntityRenderer<BeamFormerB
         var level = former.getLevel();
         var look = former.look();
         var facing = former.facing();
-        if (level == null || look == null || facing.getAxisDirection() != Direction.AxisDirection.POSITIVE) return;
+        if (level == null || look == null) return;
         var axis = facing.getAxis();
         var origin = former.getBlockPos();
-        int gap = look.partner().get(axis) - origin.get(axis) - 1;
-        if (gap <= 0) return;
         double target = look.load();
         // An unpowered domain's beam alarms at the width of no load, as a cable's does.
         var style = look.unpowered() ? CableBeamStyle.fromLoad(0, true)
                 : CableBeamStyle.fromLoad(former.beamLoad(target, Util.getNanos()), target > 1);
+        if (look.side() == 2) {
+            if (!(level instanceof ClientLevel)) {
+                BeamPortalRenderer.recordScene(stack, facing, level.getGameTime(), partialTick, style);
+            } else {
+                var eye = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+                double portalDistance = eye.distanceToSqr(origin.getX() + (axis == Direction.Axis.X ? .5 : 1),
+                        origin.getY() + (axis == Direction.Axis.Y ? .5 : 1),
+                        origin.getZ() + (axis == Direction.Axis.Z ? .5 : 1));
+                if (portalDistance <= getViewDistance() * getViewDistance()) {
+                    BeamPortalRenderer.draw(stack, buffers, facing, CableBeamMesh.detail(portalDistance),
+                            level.getGameTime(), partialTick, style);
+                }
+            }
+        }
+        if (facing.getAxisDirection() != Direction.AxisDirection.POSITIVE) return;
+        int gap = look.partner().get(axis) - origin.get(axis) - 1;
+        if (gap <= 0) return;
         int mask = 3 << 2 * axis.ordinal();
         var camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
         long tick = level.getGameTime();
@@ -67,7 +83,7 @@ public final class BeamFormerRenderer implements BlockEntityRenderer<BeamFormerB
         CableFlowRenderer.endSceneBatch(level, buffers);
     }
 
-    /** The beam reaches from this end's front to the partner's, across the square. */
+    /** The pair bounds include both floating portals, which project into the gap between the fronts. */
     @Override
     public AABB getRenderBoundingBox(BeamFormerBlockEntity former) {
         var look = former.look();
