@@ -153,7 +153,24 @@ public final class QuestCoverageCompatGameTests {
 
         List<Chapter> chapters() { return List.copyOf(chapters); }
         Map<String, List<Recipe>> producers() { return java.util.Collections.unmodifiableMap(producers); }
+        void addMachineRecipe(Recipe recipe) {
+            var recipes = producers.computeIfAbsent(recipe.output(), ignored -> new ArrayList<>());
+            if (recipes.stream().noneMatch(existing -> existing.id().equals(recipe.id()))) recipes.add(recipe);
+            recipes.sort(java.util.Comparator.comparing(Recipe::id));
+        }
         Set<String> providedItems() { return Set.copyOf(providedItems); }
+
+        /** The provided set readResources would compute with these extra producers; the probe is unchanged. */
+        Set<String> providedWith(GameTestHelper helper, List<Recipe> extra) {
+            var trial = new TreeMap<String, List<Recipe>>();
+            producers.forEach((item, recipes) -> trial.put(item, new ArrayList<>(recipes)));
+            for (var recipe : extra) {
+                var recipes = trial.computeIfAbsent(recipe.output(), ignored -> new ArrayList<>());
+                if (recipes.stream().noneMatch(existing -> existing.id().equals(recipe.id()))) recipes.add(recipe);
+                recipes.sort(java.util.Comparator.comparing(Recipe::id));
+            }
+            return new QuestCoverageResources(helper.getLevel().getServer()).read(trial, targets);
+        }
         String questDataStatus() { return questDataStatus; }
 
         void readQuests(Path directory) throws Exception {

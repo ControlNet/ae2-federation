@@ -20,20 +20,37 @@ import net.minecraft.world.item.crafting.ShapedRecipe;
 
 /** Executable crafting proofs over Phase 0's quest, producer and provided-resource view. */
 final class PlaythroughRecipes {
-    // Phase 3 replaces these frontier leaves with actual machine adapters, one recipe class at a time.
-    static final Set<String> MACHINE_BACKED_CLASSES = Set.of();
+    // Exact recipe type IDs remain distinct even where Phase 0 groups them under a shared class label.
+    static final Set<String> MACHINE_BACKED_CLASSES = PlaythroughMachineAdapters.ENABLED.stream()
+            .map(PlaythroughMachineAdapter::recipeType).collect(java.util.stream.Collectors.toCollection(java.util.TreeSet::new));
     static final class NotBootstrappable extends IllegalArgumentException {
         NotBootstrappable(String message) { super(message); }
     }
     static final class Nondeterministic extends RuntimeException {
         Nondeterministic(String message) { super(message); }
     }
-    record Proof(Map<String, ItemStack> patterns, Set<AEItemKey> supplies, Map<String, List<String>> standIns,
-                 Map<String, PlaythroughAccounting.Signature> signatures) { }
+    /** The global candidate limit; once reached, no alternative ingredient can be resolved either. */
+    private static final class SearchLimit extends IllegalArgumentException {
+        SearchLimit() { super("recipe selection exceeded 20000 candidates"); }
+    }
+    record Proof(Map<String, ItemStack> patterns, Set<appeng.api.stacks.AEKey> supplies, Map<String, List<String>> standIns,
+                 Map<String, PlaythroughAccounting.Signature> signatures,
+                 Map<String, PlaythroughMachineAdapter.Recipe> machines) {
+        Proof(Map<String, ItemStack> patterns, Set<appeng.api.stacks.AEKey> supplies, Map<String, List<String>> standIns,
+              Map<String, PlaythroughAccounting.Signature> signatures) {
+            this(patterns, supplies, standIns, signatures, Map.of());
+        }
+        Map<String, ItemStack> craftingPatterns() {
+            var result = new LinkedHashMap<>(patterns); machines.keySet().forEach(result::remove); return result;
+        }
+    }
     private final GameTestHelper helper;
     private final QuestCoverageCompatGameTests.Probe probe;
     private final boolean frontier;
     private final Map<String, Proof> cache = new java.util.HashMap<>();
+    private final Set<String> supported = new HashSet<>();
+    private final Map<String, QuestCoverageCompatGameTests.Recipe> machineProofs = new TreeMap<>();
+    final Map<String, String> machineRejections = new TreeMap<>();
     private int attempts;
     private String target;
     private Map<String, QuestCoverageCompatGameTests.Recipe> reachable;
@@ -42,6 +59,22 @@ final class PlaythroughRecipes {
         this.helper = helper;
         this.probe = probe;
         this.frontier = frontier;
+        if (!PlaythroughMachineAdapters.ENABLED.isEmpty()) PlaythroughMachines.requestedCopies();
+        PlaythroughMachineDiscovery.discover(helper, probe, machineRejections);
+        var provided = probe.providedItems();
+        probe.producers().values().stream().flatMap(List::stream).forEach(recipe -> {
+            var adapter = PlaythroughMachineAdapters.find(recipe);
+            if (adapter == null || supported.contains(recipe.id())) return;
+            try {
+                var holder = helper.getLevel().getRecipeManager().byKey(ResourceLocation.parse(recipe.id())).orElseThrow();
+                var machine = adapter.read(helper, holder, ingredient -> PlaythroughMachineDiscovery.concrete(ingredient, provided),
+                        ingredient -> PlaythroughMachineDiscovery.concrete(ingredient, provided));
+                PlaythroughMachineDiscovery.validate(helper, adapter, machine, provided);
+                supported.add(recipe.id());
+                if (!recipe.ingredientsReadable()) machineProofs.put(recipe.id(), new QuestCoverageCompatGameTests.Recipe(
+                        recipe.id(), recipe.type(), recipe.recipeClass(), recipe.output(), PlaythroughMachineDiscovery.ingredients(machine), true));
+            } catch (RuntimeException exception) { machineRejections.put(recipe.id(), exception.toString()); }
+        });
     }
 
     Proof target(String item) {
@@ -56,11 +89,11 @@ final class PlaythroughRecipes {
         });
         // AE2 ignores existing stock of the requested output while planning an autocraft.
         supplied.remove(item);
-        reachable = QuestCoverageAnalysis.productionProofs(probe.producers(), Set.of("crafting"), supplied, 64);
+        reachable = QuestCoverageAnalysis.productionProofs(executableProducers(), executableClasses(), supplied, 64);
         if (!reachable.containsKey(item)) {
             var seeded = new HashSet<>(supplied);
             seeded.add(item);
-            var withSeed = QuestCoverageAnalysis.productionProofs(probe.producers(), Set.of("crafting"), seeded, 64);
+            var withSeed = QuestCoverageAnalysis.productionProofs(executableProducers(), executableClasses(), seeded, 64);
             if (withSeed.containsKey(item)) throw new NotBootstrappable(item
                     + ": no finite crafting proof without a target seed; adding only that seed enables producer "
                     + withSeed.get(item).id());
@@ -68,15 +101,17 @@ final class PlaythroughRecipes {
         var proof = resolve(item, true, new HashSet<>());
         var supplies = new HashSet<>(proof.supplies());
         probe.providedItems().stream().map(PlaythroughRecipes::key).forEach(supplies::add);
-        return new Proof(proof.patterns(), supplies, proof.standIns(), proof.signatures());
+        var result = new Proof(proof.patterns(), supplies, proof.standIns(), proof.signatures(), proof.machines());
+        PlaythroughMachines.validate(result);
+        return result;
     }
 
     boolean hasCraftingRecipe(String item) {
-        return probe.producers().getOrDefault(item, List.of()).stream().anyMatch(r -> r.recipeClass().equals("crafting"));
+        return probe.producers().getOrDefault(item, List.of()).stream().anyMatch(r -> r.recipeClass().equals("crafting") || supported.contains(r.id()));
     }
 
     private Proof resolve(String item, boolean root, Set<String> visiting) {
-        if (++attempts > 20000) throw new IllegalArgumentException("recipe selection exceeded 20000 candidates");
+        if (++attempts > 20000) throw new SearchLimit();
         var recipes = probe.producers().getOrDefault(item, List.of());
         if (!root && item.equals(target)) throw new IllegalArgumentException("target cannot be supplied as its own ingredient");
         if (!root && (probe.providedItems().contains(item) || !probe.producers().containsKey(item))) {
@@ -92,12 +127,12 @@ final class PlaythroughRecipes {
         visiting.add(item);
         var reasons = new ArrayList<String>();
         try {
-            for (var recipe : recipes.stream().filter(r -> r.recipeClass().equals("crafting"))
+            for (var recipe : recipes.stream().filter(r -> r.recipeClass().equals("crafting") || supported.contains(r.id()))
                     .sorted(java.util.Comparator.<QuestCoverageCompatGameTests.Recipe>comparingInt(r ->
                             r.id().equals(reachable.get(item).id()) ? 0 : 1)
                             .thenComparing(QuestCoverageCompatGameTests.Recipe::id)).toList()) {
                 try {
-                    var result = encode(recipe, visiting);
+                    var result = supported.contains(recipe.id()) ? encodeMachine(recipe, visiting) : encode(recipe, visiting);
                     if (result.supplies().contains(key(item))) {
                         reasons.add(recipe.id() + ": conversion needs a supplied seed of " + item);
                         continue;
@@ -161,18 +196,19 @@ final class PlaythroughRecipes {
             if (!signature.equals(observed) || !signature.equals(decoded)) throw new Nondeterministic(recipe.id()
                     + ": signature=" + signature + ", repeated=" + observed + ", decoded=" + decoded);
         }
+        var machines = new TreeMap<String, PlaythroughMachineAdapter.Recipe>();
         var signatures = new TreeMap<String, PlaythroughAccounting.Signature>();
         var patterns = new LinkedHashMap<String, ItemStack>();
-        var supplies = new HashSet<AEItemKey>();
+        var supplies = new HashSet<appeng.api.stacks.AEKey>();
         var standIns = new TreeMap<String, List<String>>();
         for (var stack : grid) if (!stack.isEmpty()) {
             var proof = proofs.get(AEItemKey.of(stack));
             patterns.putAll(proof.patterns()); supplies.addAll(proof.supplies()); standIns.putAll(proof.standIns());
-            signatures.putAll(proof.signatures());
+            signatures.putAll(proof.signatures()); machines.putAll(proof.machines());
         }
         patterns.put(recipe.id(), pattern);
         signatures.put(recipe.id(), signature);
-        return new Proof(patterns, supplies, standIns, signatures);
+        return new Proof(patterns, supplies, standIns, signatures, machines);
     }
 
     private boolean choose(CraftingRecipe recipe, List<List<ItemStack>> choices, List<ItemStack> grid,
@@ -203,10 +239,68 @@ final class PlaythroughRecipes {
         return false;
     }
 
+    private Set<String> executableClasses() {
+        var classes = new HashSet<String>(); classes.add("crafting");
+        probe.producers().values().stream().flatMap(List::stream).filter(r -> supported.contains(r.id()))
+                .map(QuestCoverageCompatGameTests.Recipe::recipeClass).forEach(classes::add);
+        return classes;
+    }
+
+    private Map<String, List<QuestCoverageCompatGameTests.Recipe>> executableProducers() {
+        var result = new TreeMap<String, List<QuestCoverageCompatGameTests.Recipe>>();
+        probe.producers().forEach((item, recipes) -> result.put(item, recipes.stream()
+                .filter(r -> r.recipeClass().equals("crafting") || supported.contains(r.id()))
+                .map(r -> machineProofs.getOrDefault(r.id(), r)).toList()));
+        return result;
+    }
+
+    private Proof encodeMachine(QuestCoverageCompatGameTests.Recipe recipe, Set<String> visiting) {
+        var dependencies = new LinkedHashMap<AEItemKey, Proof>();
+        var adapter = PlaythroughMachineAdapters.find(recipe);
+        var holder = helper.getLevel().getRecipeManager().byKey(ResourceLocation.parse(recipe.id())).orElseThrow();
+        var provided = probe.providedItems();
+        var machine = adapter.read(helper, holder, ingredient -> {
+            var failures = new ArrayList<String>();
+            for (var stack : java.util.Arrays.stream(ingredient.getItems()).sorted(java.util.Comparator
+                    .comparingInt(this::ingredientRank).thenComparing(s -> BuiltInRegistries.ITEM.getKey(s.getItem()).toString())).toList()) {
+                if (stack.isEmpty()) continue;
+                var key = AEItemKey.of(stack);
+                try {
+                    if (!dependencies.containsKey(key))
+                        dependencies.put(key, resolve(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(), false, visiting));
+                    return stack.copyWithCount(1);
+                } catch (SearchLimit limit) {
+                    throw limit;
+                } catch (IllegalArgumentException exception) {
+                    if (failures.size() < 3) failures.add(exception.getMessage());
+                }
+            }
+            throw new IllegalArgumentException("No reachable concrete machine ingredient for " + recipe.id() + ": " + failures);
+        }, ingredient -> PlaythroughMachineDiscovery.concrete(ingredient, provided));
+        var pattern = PlaythroughMachineDiscovery.validate(helper, adapter, machine, provided);
+        var patterns = new LinkedHashMap<String, ItemStack>();
+        var supplies = new HashSet<appeng.api.stacks.AEKey>();
+        var standIns = new TreeMap<String, List<String>>();
+        var signatures = new TreeMap<String, PlaythroughAccounting.Signature>();
+        var machines = new TreeMap<String, PlaythroughMachineAdapter.Recipe>();
+        // Include fuel and other adapter-added inputs in the same dependency and extraction accounting.
+        for (var input : machine.inputs()) {
+            if (!(input.what() instanceof AEItemKey key)) { supplies.add(input.what()); continue; }
+            if (!dependencies.containsKey(key)) dependencies.put(key, resolve(BuiltInRegistries.ITEM.getKey(key.getItem()).toString(), false, visiting));
+        }
+        for (var proof : dependencies.values()) {
+            patterns.putAll(proof.patterns()); supplies.addAll(proof.supplies()); standIns.putAll(proof.standIns());
+            signatures.putAll(proof.signatures()); machines.putAll(proof.machines());
+        }
+        patterns.put(recipe.id(), pattern); machines.put(recipe.id(), machine);
+        signatures.put(recipe.id(), PlaythroughAccounting.signature(PatternDetailsHelper.decodePattern(pattern, helper.getLevel()), helper.getLevel()));
+        return new Proof(patterns, supplies, standIns, signatures, machines);
+    }
+
     private boolean machineLeaf(String item) {
         var recipes = probe.producers().getOrDefault(item, List.of());
         return frontier && recipes.stream().anyMatch(r -> !r.recipeClass().equals("crafting"))
-                && recipes.stream().noneMatch(r -> MACHINE_BACKED_CLASSES.contains(r.recipeClass()));
+                && recipes.stream().noneMatch(r -> supported.contains(r.id()));
     }
 
     private Proof standIn(String item) {

@@ -21,11 +21,17 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 /** Serial quest crafting against plain AE2 and the guide's materials/factory/requester federation. */
 @PrefixGameTestTemplate(false)
 public final class PlaythroughCraftingGameTests {
+    /**
+     * Shared by every sprinting GameTest, so the sprint can never outlive its test. The heaviest 20-target AE2 chunk
+     * uses 1.46 million ticks; a hang in its largest target reaches that target's budget near 4.1 million.
+     */
+    static final int MAX_TICKS = 5000000;
+
     private PlaythroughCraftingGameTests() { }
 
     /** Records target outcomes without turning ordinary crafting failures into harness failures. */
     @RunsAlone
-    @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = 1000000)
+    @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = MAX_TICKS)
     public static void playthroughCrafting(GameTestHelper helper) throws Exception {
         new Run(helper).start();
     }
@@ -120,7 +126,7 @@ public final class PlaythroughCraftingGameTests {
                     var target = new Target(ch.title(), ch.id(), quest.title(), quest.id(), task.id(), task.item(), count, AEItemKey.of(stack));
                     if (recipes.hasCraftingRecipe(task.item())) eligibleTasks.add(target);
                     if (!recipes.hasCraftingRecipe(task.item())) {
-                        var row = metadata(target); row.put("reason", "own recipe is not crafting (or has no readable producer); Phase 3");
+                        var row = metadata(target); row.put("reason", "no enabled executable producer; see machineRejections for unsupported machine recipes");
                         skipped.add(row);
                     } else if (eligible++ < skip) {
                         deferred.add(Map.of("task", task.id(), "item", task.item(), "reason", "skipTargets filter"));
@@ -146,7 +152,7 @@ public final class PlaythroughCraftingGameTests {
             if (sprint) {
                 var manager = helper.getLevel().getServer().tickRateManager();
                 if (manager.isSprinting()) throw new IllegalStateException("Playthrough requires ownership of tick sprint");
-                manager.requestGameToSprint(1000000); sprintOwned = true;
+                manager.requestGameToSprint(MAX_TICKS); sprintOwned = true;
             }
             helper.runAfterDelay(1, this::tick);
         }
@@ -287,6 +293,7 @@ public final class PlaythroughCraftingGameTests {
             row.put("classification", comparison.classification());
             row.put("inventoryComparison", comparison.inventoryComparison());
             row.put("expectedSignatures", proof == null ? Map.of() : proof.signatures());
+            PlaythroughMachineReports.steps(row, proof, helper.getLevel(), base, fed);
             row.put("recipes", proof == null ? List.of() : proof.patterns().keySet());
             rows.add(row);
             com.mojang.logging.LogUtils.getLogger().info("AE2F_PLAYTHROUGH_RESULT item={} class={} baseline={} federated={}",
@@ -338,6 +345,9 @@ public final class PlaythroughCraftingGameTests {
             report.put("assemblerCopies", Integer.getInteger("ae2federation.playthrough.assemblerCopies", 28));
             report.put("maxTargets", maximum); report.put("targetTickBudget", budget); report.put("serial", true);
             report.put("machineBackedRecipeClasses", PlaythroughRecipes.MACHINE_BACKED_CLASSES);
+            report.put("machinePath", PlaythroughMachines.PATH);
+            report.put("machineCopies", Integer.getInteger("ae2federation.playthrough.machineCopies", 4));
+            report.put("machineRejections", recipes.machineRejections);
             report.put("selectedTargetCount", targets.size());
             report.put("completedTargetCount", rows.size());
             report.put("completed", completed); report.put("harnessError", harnessError);
@@ -345,6 +355,7 @@ public final class PlaythroughCraftingGameTests {
             report.put("overall", overall); report.put("chapters", chapters); report.put("targets", rows);
             report.put("skippedNonCrafting", skipped); report.put("deferred", deferred);
             Files.createDirectories(directory);
+            PlaythroughMachineReports.write(directory, report);
             String json = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(report);
             var text = new StringBuilder("# Quest crafting playthrough\n\nMode: ").append(mode).append(". Serial, chapter filter: ")
                     .append(chapter).append(". Checkpoint: ").append(checkpoint).append(". Completed: ").append(completed).append(".\n\n")
