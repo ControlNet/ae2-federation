@@ -17,6 +17,11 @@ public interface FormableDevice {
         return body;
     }
 
+    /** Clears model properties when a body becomes invalid. */
+    default BlockState unforming(BlockState state) {
+        return state;
+    }
+
     /**
      * What else a body's members take on as it forms, decided once for the whole body before any member changes: a Beam
      * Converter turns them all one way.
