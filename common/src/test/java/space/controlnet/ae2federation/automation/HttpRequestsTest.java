@@ -10,6 +10,9 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +27,8 @@ import space.controlnet.ae2federation.script.RunError;
 /** {@code net.http} against a local server: answers, what is sent, and how a request fails. */
 final class HttpRequestsTest {
     private HttpServer server;
+    /** The server's handler threads, stopped after each test so slow handlers do not outlive it. */
+    private ExecutorService handlers;
     private HttpRequests requests;
     private final AtomicReference<String> received = new AtomicReference<>("");
 
@@ -65,15 +70,21 @@ final class HttpRequestsTest {
             exchange.getResponseBody().write(body);
             exchange.close();
         });
-        server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
+        handlers = Executors.newCachedThreadPool();
+        server.setExecutor(handlers);
         server.start();
         requests = new HttpRequests(() -> Duration.ofMillis(800), 4);
     }
 
     @AfterEach
-    void stop() {
-        requests.close();
-        server.stop(0);
+    void stop() throws InterruptedException {
+        try {
+            requests.close();
+            server.stop(0);
+        } finally {
+            handlers.shutdownNow();
+        }
+        assertTrue(handlers.awaitTermination(5, TimeUnit.SECONDS), "the handler threads stop");
     }
 
     private String url(String path) {
