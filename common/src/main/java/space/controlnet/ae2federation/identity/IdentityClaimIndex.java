@@ -95,6 +95,12 @@ public final class IdentityClaimIndex<G> {
         return result;
     }
 
+    /** Whether a node of {@code grid} carries {@code networkId}, as each node of a merged Grid keeps its own. */
+    public boolean carries(G grid, NetworkId networkId) {
+        var grids = networkIndex.get(networkId);
+        return grids != null && grids.containsKey(grid);
+    }
+
     public Map<G, Set<NodeLineage>> liveClaims() {
         var snapshot = new IdentityHashMap<G, Set<NodeLineage>>();
         liveClaims.forEach((grid, claims) -> snapshot.put(grid, Set.copyOf(claims.lineages)));

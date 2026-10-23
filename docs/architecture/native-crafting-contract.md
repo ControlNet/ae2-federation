@@ -91,6 +91,15 @@ switches the two rules separately, and loading a save adds no rule.
     no invented job-to-output association. Unknown lifecycles conservatively retain debt and may require manual
     recovery from the executing network's own storage after cancellation. `/ae2federation returns list` exposes owed,
     held, transit, and unknown-CPU state to operators. No Storage rule is required for automatic return.
+  - When native cable joins P and C into one AE2 Grid (a Bridge part removed, a cable placed between them), their
+    identities are a pending merge: Federation sees neither, withdraws the projections and unmounts the router, and
+    AE2's `CraftingServiceStorage`, mounted first at `Integer.MAX_VALUE`, hands P's output straight to C's waiting CPU.
+    That receipt is the delivery. A small AE2 19.2.17 hook at the head of `CraftingCpuLogic.insert` reads what a
+    native CPU takes (`min(amount, getWaitingFor)`); while the CPU's Grid also carries P's nodes, it settles that much
+    of what P owes the CPU's network, oldest debt first. The public CPU listener cannot do this: it names only a key,
+    and a finishing job clears its remaining waits with the same notification. Independent addon CPUs are not
+    observed. An output that arrives in the joined Grid when no CPU waits for it goes to shared storage and keeps its
+    debt.
   - Genuine native CPU removal ends its native job but does not erase machine return ownership. Outputs from already
     dispatched inputs still belong to the consumer, including after cancellation; they no longer depend on sharing
     the factory's inventory. If the consumer itself is permanently removed, responsibility remains diagnostic state;
@@ -151,11 +160,13 @@ reload, without storage, chain, chain blocked, mutual, container return (three g
 sugar job), container reuse (one bottle filled and reused for six sugar), container push (water as a fluid, a water
 bucket and a snowball substitute match AE2's own container expectation; a refused push owes nothing), CPU out of sight
 (a CPU in another dimension unloaded mid-job), CPU out of sight beside another job (a second job next to a cancelled
-one), CPU late after restart (the CPU loaded long after a restart) and hand-back faults (a refusing target, a target
-whose real insert takes less than it simulated, an extract-only source and a full executing network). Cross-dimension
-crafting has its own `cross-dimension.*` GameTests: a nether Provider projected to an overworld consumer, and a
-Provider driving an Endpoint in another dimension at the same coordinates through restart, a broken link, a replaced
-Endpoint, a real chunk unload of either side and a nether level close. The CPU and level-close cases unload chunks
+one), CPU late after restart (the CPU loaded long after a restart), merged mid-job (the Grids joined by removing only
+the Bridge part, or by a placed cable, then split; later provider stone stays there) and hand-back faults (a refusing
+target, a target whose real insert takes less than it simulated, an extract-only source and a full executing network).
+Cross-dimension crafting has its own `cross-dimension.*` GameTests: a nether Provider projected to an overworld
+consumer, and a Provider driving an Endpoint in another dimension at the same coordinates through restart, a broken
+link, a replaced Endpoint, a real chunk unload of either side and a nether level close. The CPU and level-close cases
+unload chunks
 with an explicitly marked test fixture; production code loads no chunks. The first command runs every
 GameTest of the manifest whose id contains `projection` (including the nether Provider and level-close cases), the
 second the Endpoint cases:

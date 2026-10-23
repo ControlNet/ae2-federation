@@ -79,6 +79,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
      * and back ended a batch: two draw calls per cable per frame. Now all cables' beams go out in two.
      */
     public static void registerBuffers(RegisterRenderBuffersEvent event) {
+        BeamPortalRenderer.registerBuffers(event);
         event.registerRenderBuffer(GLOW, new ByteBufferBuilder(BATCH_BYTES));
         event.registerRenderBuffer(CORE, new ByteBufferBuilder(BATCH_BYTES));
     }
@@ -88,8 +89,12 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
      * must be in place before the shells are drawn, in every graphics mode.
      */
     public static void flush(RenderLevelStageEvent event) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
+            BeamPortalRenderer.beginFrame(event.getFrustum());
+        }
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) return;
         var buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+        BeamPortalRenderer.flush(buffers);
         buffers.endBatch(GLOW);
         buffers.endBatch(CORE);
     }

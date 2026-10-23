@@ -47,7 +47,20 @@ huge retains full-cube occlusion and inherited shading.
   range, another size ahead) and the capacity count. The positive-facing anchor draws the beam one block at a time
   (`BeamFormerRenderer`): a 1x1 pair with the cable's own beam (R / LITE), a 2x2 or 3x3 pair with the 2x2 bundle's plasma beam
   (`BundleBeamMesh`, Blender study R; owner, 2026-10-18), its two-block box scaled to the square; load, over-capacity
-  red and unpowered red follow the cable's rules. The anchor syncs a `BeamLook` (partner, side, count, limit, unpowered) every 10 ticks.
+  red and unpowered red follow the cable's rules. Each anchor syncs a `BeamLook` (partner, side, count, limit, unpowered) every 10 ticks. Linked 2x2 fronts also draw one floating portal ring at each end
+  (Blender study J2; owner's choice, 2026-10-23), with a dark plate disc and inward drifting streaks.
+  Each end costs 5,272 vertices within 24 blocks, 2,264 through 48 blocks, and 1,144 beyond that, with
+  fewer angular segments and spill bands; the portal stops at the beam's 256-block view distance.
+  Each world end is frustum-culled independently. All visible portals share two fixed buffers, flushed disc
+  then glow after block entities and before the beam and translucent terrain, for two portal draw calls per frame.
+  Both anchors reuse their existing synced look; 1x1, 3x3 and unlinked bodies draw no portal.
+  The disc stays dark during over-capacity and unpowered alarms (RGB .028, .006, .004; alpha .68).
+  GuideME scenes queue the portals (copied pose and inputs) and draw them at the end of the scene's
+  terrain, after flushing the solid and cutout quads its translucent pass queues a second time, while the
+  scene camera is still set (`GuidebookLevelRendererMixin`). Scenes use full detail with no distance
+  cut-off; the queue clears on render exit, scene exports included.
+  Known world limitation: later translucent terrain (water or stained glass) can blend over the glow even
+  when behind it, as with the beam's non-depth-writing glow.
 
 ## Evidence
 

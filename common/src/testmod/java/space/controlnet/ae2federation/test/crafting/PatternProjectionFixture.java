@@ -83,6 +83,8 @@ public final class PatternProjectionFixture implements AutoCloseable {
     private @Nullable NetworkId providerId;
     private final BlockPos processingProviderPos = BASE.east().north(2);
     private final BlockPos machinePos = BASE.east().north(3);
+    /** Free, and beside both the consumer's CPU (south) and the provider's blue cable (east). */
+    private static final BlockPos JOINING_CABLE = BASE.west().north();
     private boolean bridgePlaced;
     private boolean consumerCpuPlaced;
     private boolean processingPlaced;
@@ -216,6 +218,41 @@ public final class PatternProjectionFixture implements AutoCloseable {
 
     public boolean connected() {
         return bridge.firstBridgeReady();
+    }
+
+    /**
+     * Dyes the consumer's cable under the Bridge fluix, as a player's cable often is. The Bridge part still covers that
+     * side, so the networks stay apart; removing only the part then joins them into one AE2 Grid.
+     */
+    public void fluixCableUnderBridge() {
+        var host = (appeng.api.parts.IPartHost) helper.getLevel().getBlockEntity(helper.absolutePos(BASE));
+        var cable = (appeng.parts.networking.CablePart) host.getPart(null);
+        helper.assertTrue(cable.changeColor(AEColor.TRANSPARENT, null), "The cable under the Bridge takes fluix");
+    }
+
+    /** Places a fluix cable between the consumer's CPU and the provider's cable, as a player joining them would. */
+    public void placeJoiningCable() {
+        appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(JOINING_CABLE), null, null,
+                AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT));
+    }
+
+    public void removeJoiningCable() {
+        helper.setBlock(JOINING_CABLE, Blocks.AIR);
+    }
+
+    /** Gives the consumer's ME chest priority, so stock stored anywhere both networks see lands there first. */
+    public void preferConsumerChest() {
+        bridge.consumerChest().setPriority(1);
+    }
+
+    /** Whether the two networks are one AE2 Grid now. */
+    public boolean merged() {
+        return consumerGrid() == providerGrid();
+    }
+
+    /** How each side's network identity stands, for failure messages. */
+    public String settlement() {
+        return bridge.settlementDiagnostics();
     }
 
     public int projections() {
