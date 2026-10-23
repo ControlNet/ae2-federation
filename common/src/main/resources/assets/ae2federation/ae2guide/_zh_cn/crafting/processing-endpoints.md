@@ -25,7 +25,7 @@ navigation:
 
 一个小例子： 供应器所在的网络通过另一个子网络上的熔炉加工。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/remote_processing.snbt" />
   <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
     供应器所在的网络

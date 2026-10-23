@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 带合成CPU、合成终端、存储、电源并存有圆石的主网络； 一个<ItemLink id="extendedae:ex_pattern_provider" />； 一个处理端点； 一座熔炉、一个漏斗和一个<ItemLink id="ae2:storage_bus" />； 一个<ItemLink id="ae2:quartz_fiber" />。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/local_endpoint.snbt" />
   <BoxAnnotation color="#915dcd" min="6 0 0" max="8 2 1">
     主网络： 合成终端、合成CPU、驱动器和能源元件

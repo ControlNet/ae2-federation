@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 一个发电厂网络， 带一台感应矩阵（<ItemLink id="mekanism:induction_casing" />、<ItemLink id="mekanism:induction_port" />、一个<ItemLink id="mekanism:basic_induction_cell" />和一个<ItemLink id="mekanism:basic_induction_provider" />）和一个<ItemLink id="ae2:energy_acceptor" />； 一个城区网络， 带合成CPU、合成终端和存储； 一个工坊网络， 带一个样板供应器和一台分子装配室； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="2" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/power_plant.snbt" />
   <BoxAnnotation color="#5CA7CD" min="2 0 1" max="5 4 5">
     发电厂： 感应矩阵， 它的端口设为输出， 接到ME线缆上的能源接收器

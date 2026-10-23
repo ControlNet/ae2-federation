@@ -17,7 +17,7 @@ item_ids:
 Two bound Quantum Cubes link their Federation cables at any distance, even across dimensions, as if cable ran
 between them. Like AE2's Quantum Network Bridge, they work only while both are loaded.
 
-<GameScene zoom="3" interactive={true} background="transparent">
+<GameScene zoom="2.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/quantum_cube.snbt" />
   <BoxAnnotation color="#dddddd" min="4 0 0" max="7 3 3">
     A 3×3×3 cube. The cable joins the centre of its face

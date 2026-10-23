@@ -14,7 +14,7 @@ navigation:
 
 主世界这一端：
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="2.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/nether_outpost_overworld.snbt" />
   <BoxAnnotation color="#915dcd" min="5 1 0" max="7.625 2 1">
     基地： 驱动器、给这里所有网络供电的能源元件， 以及装联邦桥的一段线缆
@@ -45,7 +45,7 @@ navigation:
 
 下界这一端：
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/nether_outpost_nether.snbt" />
   <BoxAnnotation color="#5ccd78" min="2 0 0" max="6 3 1">
     承载网络的另一半： 量子网络桥连通后， 它和主世界那一半是同一个网络， 也用那边的电力

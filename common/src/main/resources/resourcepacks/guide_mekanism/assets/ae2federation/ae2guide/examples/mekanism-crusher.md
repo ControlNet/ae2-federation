@@ -16,7 +16,7 @@ cobblestone. This page appears because Mekanism is installed.
 <ItemLink id="ae2federation:cable" />; a <ItemLink id="mekanism:crusher" />; a charged
 <ItemLink id="mekanism:basic_energy_cube" />; a hopper and a <ItemLink id="ae2:storage_bus" />; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/mekanism_crusher.snbt" />
   <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
     Your main network: crafting terminal, crafting CPU and storage

@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 带合成CPU、合成终端并存有圆石的主网络； 一个<ItemLink id="ae2federation:pattern_provider" />； 一个<ItemLink id="ae2federation:processing_endpoint" />； <ItemLink id="ae2federation:cable" />； 一台<ItemLink id="mekanism:crusher" />； 一个充好电的<ItemLink id="mekanism:basic_energy_cube" />； 一个漏斗和一个<ItemLink id="ae2:storage_bus" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/mekanism_crusher.snbt" />
   <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
     主网络： 合成终端、合成CPU和存储

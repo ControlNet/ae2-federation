@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 你的主网络， 带合成CPU、合成终端， 存储里有铁矿石； 一个<ItemLink id="ae2federation:pattern_provider" />； 两个<ItemLink id="ae2federation:processing_endpoint" />； <ItemLink id="ae2federation:cable" />； 一台<ItemLink id="mekanism:enrichment_chamber" />和一台<ItemLink id="mekanism:energized_smelter" />， 每台配一个充好电的<ItemLink id="mekanism:basic_energy_cube" />、一个漏斗和一个<ItemLink id="ae2:storage_bus" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="2.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/ore_line.snbt" />
   <BoxAnnotation color="#915dcd" min="8 0 0" max="10 2 1">
     你的主网络： 合成终端、合成CPU和存储

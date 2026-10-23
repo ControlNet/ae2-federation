@@ -15,7 +15,7 @@ processing pattern stays on your main network, and no rule or shared storage is 
 <ItemLink id="ae2federation:pattern_provider" />; one <ItemLink id="ae2federation:processing_endpoint" />, furnace,
 hopper and <ItemLink id="ae2:storage_bus" /> per furnace; <ItemLink id="ae2federation:cable" />; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="2.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/endpoint_furnaces.snbt" />
   <BoxAnnotation color="#915dcd" min="10 0 0" max="12 2 1">
     Your main network: crafting terminal, crafting CPU and storage

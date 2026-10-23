@@ -16,7 +16,7 @@ item_ids:
 
 两台面对面的光束成型器隔空连接各自的联邦线缆， 就像在两者正面之间铺了线缆一样。 在一条直线的两端各建一台， 中间没有实心方块， 两端就会加入同一个[联邦域](../mechanics/index.md)。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="2.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/beam_former.snbt" />
   <BoxAnnotation color="#dddddd" min="4 0 0" max="5 1 1">
     一台朝东的光束成型器。 背面像路由器的面一样接线缆

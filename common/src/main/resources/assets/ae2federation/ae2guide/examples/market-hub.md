@@ -17,7 +17,7 @@ storage; a supplier network, here a sawmill whose <ItemLink id="ae2:pattern_prov
 <ItemLink id="ae2:molecular_assembler" />s turn logs into planks; a <ItemLink id="ae2federation:switch" /> they all
 touch; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/market_hub.snbt" />
   <BoxAnnotation color="#915dcd" min="4 0 2" max="7 2 3">
     District: crafting terminal, crafting CPU, storage, and the energy cell that powers all three networks

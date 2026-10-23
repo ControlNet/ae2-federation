@@ -16,7 +16,7 @@ workshop network with a terminal and a <ItemLink id="appflux:flux_accessor" />; 
 a <ItemLink id="ae2federation:switch" /> both networks touch. How FE gets into the cells is in
 [Applied Flux's guide](appflux:appflux/flux_cells.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="5" interactive={true} background="transparent">
+<GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/power_bank.snbt" />
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 2 1">
     Power bank: ME FE Storage Cells in ME Drives, and the energy cell that powers both networks

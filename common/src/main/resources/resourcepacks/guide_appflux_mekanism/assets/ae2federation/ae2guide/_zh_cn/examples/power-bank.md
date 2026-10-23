@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 一个电力库网络， ME驱动器里装着<ItemLink id="appflux:fe_1k_cell" />， 再加一个能源元件； 一个工坊网络， 带一个终端和一个<ItemLink id="appflux:flux_accessor" />； 一台<ItemLink id="mekanism:crusher" />； 两个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 FE怎样存进元件见[Applied Flux的指南](appflux:appflux/flux_cells.md)； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="5" interactive={true} background="transparent">
+<GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/power_bank.snbt" />
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 2 1">
     电力库： ME驱动器里的ME能源存储元件， 以及给两个网络供电的能源元件

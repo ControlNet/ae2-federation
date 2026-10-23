@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 一个带存储和电源的仓库网络， 一个或多个带终端的工坊网络， 再加一个<ItemLink id="ae2federation:switch" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="2.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/shared_warehouse.snbt" />
   <BoxAnnotation color="#5CA7CD" min="1 1 2" max="4 4 3">
     仓库： 驱动器， 以及给这里所有网络供电的能源元件

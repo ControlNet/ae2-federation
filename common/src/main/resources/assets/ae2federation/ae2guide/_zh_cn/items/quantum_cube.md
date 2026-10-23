@@ -16,7 +16,7 @@ item_ids:
 
 两个绑定的量子立方无论相隔多远、即使在不同维度， 都能连接各自的联邦线缆， 就像在两者之间铺了线缆一样。 与AE2的量子网络桥一样， 只有两端都已加载时才工作。
 
-<GameScene zoom="3" interactive={true} background="transparent">
+<GameScene zoom="2.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/quantum_cube.snbt" />
   <BoxAnnotation color="#dddddd" min="4 0 0" max="7 3 3">
     一个3×3×3的立方。 线缆接在它一面的中心

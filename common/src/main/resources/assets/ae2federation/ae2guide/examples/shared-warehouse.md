@@ -14,7 +14,7 @@ workshop networks. Each network keeps its own channels, and only the warehouse n
 **You need:** a warehouse network with storage and power, one or more workshop networks with a terminal, and a
 <ItemLink id="ae2federation:switch" />; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="2.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/shared_warehouse.snbt" />
   <BoxAnnotation color="#5CA7CD" min="1 1 2" max="4 4 3">
     The warehouse: drives, and the energy cell that powers every network here

@@ -54,7 +54,7 @@ item_ids:
 
 彼此贴着放的路由器， 合起来填满一个实心长方体时， 就组成一台路由器。 每条边最多8格， 1×1×1也是一台路由器。 由多个方块搭成的路由器算作一台： 一段线缆碰到它的两个方块， 仍然只算碰到一台路由器。 它外侧的每个面都和单个路由器的面一样连接。
 
-<GameScene zoom="5" interactive={true} background="transparent">
+<GameScene zoom="4.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/router_multiblock.snbt" />
   <BoxAnnotation color="#dddddd" min="3 0 0" max="6 2 1">
     已成形： 实心的3×2×1长方体， 是一台路由器

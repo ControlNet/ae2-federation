@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 一个前哨网络， 带六块<ItemLink id="data_energistics:me_solar_panel" />和一个能源元件； 一个天文台网络， 带一台<ItemLink id="data_energistics:astronomical_observatory" />和一个装着<ItemLink id="data_energistics:digital_storage_cell_1k" />的<ItemLink id="ae2:drive" />； 你的主网络， 带一个合成终端； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 Data Energistics的指南里有[太阳能板](data_energistics:items-blocks-machines/6.1_me_solar_panel.md)和[天文观测台](data_energistics:items-blocks-machines/6.12_astronomical_observatories.md)的说明； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="5" interactive={true} background="transparent">
+<GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/solar_observatory.snbt" />
   <BoxAnnotation color="#5ccd78" min="4 0 1" max="7 2 3">
     前哨： 六块ME太阳能板拼成一个阵列， 放在一根ME线缆和给三个网络供电的能源元件上

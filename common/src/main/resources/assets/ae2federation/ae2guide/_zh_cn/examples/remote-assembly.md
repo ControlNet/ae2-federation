@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 按AE2常规方式搭好的工坊网络（网络B）， 它不需要自己的电源； 带合成CPU、合成终端、存储和电源的主网络（网络A）； 每个网络一个<ItemLink id="ae2federation:switch" />， 中间用<ItemLink id="ae2federation:cable" />相连， 两个网络挨着的话也可以用一个<ItemLink id="ae2federation:bridge" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/remote_assembly.snbt" />
   <BoxAnnotation color="#915dcd" min="7 0 0" max="9 2 1">
     网络A： 合成终端、合成CPU、存储， 以及给两个网络供电的能源元件

@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 一个城区网络， 带一台已成型的天枢超算（<ItemLink id="ae2lt:tianshu_supercomputer_controller" />）、合成终端、存储和能源元件； 一个铸造厂网络， 带一台已成型的天枢物质扭曲矩阵（<ItemLink id="ae2lt:matter_warping_matrix_controller" />）和一个从两块木板到四根木棍的合成样板； 两个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 怎么搭见AE2 Lightning Tech的指南： [天枢超算](ae2lt:tianshu/construction.md)和[物质扭曲矩阵](ae2lt:matrix/construction.md)； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
-<GameScene zoom="2" interactive={true} background="transparent">
+<GameScene zoom="0.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/tianshu_foundry.snbt" />
   <BoxAnnotation color="#915dcd" min="9 0 0" max="17 8 7">
     城区： 天枢超算、合成终端、驱动器， 以及给两个网络供电的能源元件
