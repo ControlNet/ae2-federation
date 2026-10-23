@@ -6,7 +6,6 @@ import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.security.IActionSource;
-import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.IStorageProvider;
@@ -20,11 +19,11 @@ import net.minecraft.server.level.ServerLevel;
 
 /** Test-only inexhaustible input inventory, with exact-key extraction accounting and no item sink. */
 final class PlaythroughSource implements MEStorage, AutoCloseable {
-    private final Set<AEItemKey> supplies;
+    private final Set<AEKey> supplies;
     final Map<AEKey, Long> extracted = new HashMap<>();
     private final IManagedGridNode node;
 
-    PlaythroughSource(ServerLevel level, BlockPos position, IGridNode connection, Set<AEItemKey> supplies) {
+    PlaythroughSource(ServerLevel level, BlockPos position, IGridNode connection, Set<AEKey> supplies) {
         this.supplies = Set.copyOf(supplies);
         node = GridHelper.createManagedNode(this, new IGridNodeListener<PlaythroughSource>() {
             @Override public void onSaveChanges(PlaythroughSource owner, IGridNode node) { }

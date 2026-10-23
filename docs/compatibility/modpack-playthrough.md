@@ -135,7 +135,7 @@ settings mismatches, incomplete runs and inconsistent passing evidence. Keep sin
 Frontier mode tries crafting routes first and explicitly supplies required non-crafting intermediates as **stand-ins**.
 A conversion cycle cannot create its seed: NAST's glass decompression still needs cooking. Only items with an
 observed non-crafting producer qualify. Each target lists its stand-ins and producer classes;
-`PlaythroughRecipes.MACHINE_BACKED_CLASSES` is empty until Phase 3 supplies real adapters. The source serves the complete provided set plus those stand-ins.
+`PlaythroughRecipes.MACHINE_BACKED_CLASSES` follows the Phase 3 adapter registry; set `machines=none` to replay this frontier unchanged. The source serves the complete provided set plus those stand-ins.
 AE2 excludes the requested output during planning; the harness also checks that the plan actually schedules a
 pattern producing it. Concrete ingredient grids must pass the loaded recipe's
 `matches` and AE2 pattern decoding; unsupported chains receive encoding reasons.
@@ -230,3 +230,47 @@ This implementation does **not** finish Phase 2: material/requester/CPU role rea
 layout, Federation Provider/Endpoint and Local Endpoint crafting paths, cross-dimension Quantum Cubes, Bridge
 removal, actual chunk unload/reload and the existing restart protocol are not integrated. JSON lists these gaps;
 no placeholder cases count as coverage. The separate existing compat scenes are not evidence for this matrix.
+
+## Phase 3a: machine adapters
+
+`playthroughCrafting` now enables `inscriber`, `charger`, `furnace`, `smoker` and `blast-furnace` by default.
+`ae2federation.playthrough.machines` accepts a comma list of those IDs; `none` restores Phase 1's stand-ins.
+Selection uses exact recipe types, so enabling a smoker does not also enable Phase 0's other `cooking` types.
+Adapters can discover outputs hidden from Phase 0 and replace unreadable generic ingredients with concrete proofs.
+Unsupported recipes remain stand-ins with reasons in `machineRejections`. Processing patterns retain concrete
+amounts and must round-trip through AE2. Machine-backed stand-ins are removed from the unlimited source; Phase 0 provided resources remain available.
+
+Each recipe has its own machine and input subnet. Inscriber presses are fixed equipment from Phase 0's provided
+set; their exact stacks must remain unchanged. Other inputs, including cooking fuel, come from processing patterns.
+Two sticks fuel a normal furnace/smoker/blast-furnace recipe through a side Storage Bus filtered to sticks; the top bus is filtered to the recipe ingredient.
+Quartz Fiber shares the layout's one creative AE energy source with native subnets. Hoppers return products to the
+provider. No test tick transfers ingredients or products. Up to four copies of each machine run concurrently,
+limited to 24 machines per layout (`machineCopies`, range 1–24). Unsupported cooking durations are reported.
+The GameTest and sprint share a 20-million-tick ceiling; the existing wall-clock deadline still bounds each run. Prefer 20-target chunks for machine-heavy chapters.
+
+`machinePath=projection` uses native Pattern Providers on the factory network and processing-pattern projection.
+`machinePath=endpoint` puts Federation Providers on that network, mapped to individual machine Endpoints.
+Both use a fresh plain AE2 processing control. Reports retain the four-way class per path, all Phase 1 checks,
+and machine/catalyst, collector, interface and provider buffer checks. Inputs and outputs for each real machine
+step are listed per target. `playthrough-machines.json` and `.md` are checkpointed beside the crafting reports.
+
+```bash
+# Build once, then run the paths sequentially; never exceed two NAST servers in this worktree.
+./gradlew :neoforge-1.21.1:jar :neoforge-1.21.1:compatTestJar
+for path in projection endpoint; do
+  python3 tools/compat_run.py --accept-eula --tests playthroughCrafting nast \
+    --no-build --run-suffix "machines-$path" --chunks 7 --chunk-size 20 -j 2 \
+    --jvm-property ae2federation.playthrough.chapter=ae2 \
+    --jvm-property "ae2federation.playthrough.machinePath=$path" \
+    --summary "build/playthrough/$path-summary.json"
+done
+python3 tools/compat_playthrough_machines.py --output build/playthrough \
+  neoforge-1.21.1/build/compat/runs/nast-machines-{projection,endpoint}-chunk{1,2,3,4,5,6,7}
+```
+
+Add an adapter by implementing `PlaythroughMachineAdapter` in one new class and adding one constructor entry to
+`PlaythroughMachineAdapters.REGISTERED`. Use `read` for exact `GenericStack` inputs/outputs, `place` for real block
+setup and `leftovers` for idle/empty and catalyst checks. `Site` tracks placement and exposes the return port;
+non-item adapters can replace the hopper with real pipes and declare justified raw keys via `providedInputs`.
+Fluid outputs receive an AE2 fluid cell; chemical adapters declare their pack cell IDs through `storageCells`.
+Those physical requester cells participate in the same full inventory balance. Non-item adapters still need their own runtime validation; this phase exercises items only. No main-mod code is changed.

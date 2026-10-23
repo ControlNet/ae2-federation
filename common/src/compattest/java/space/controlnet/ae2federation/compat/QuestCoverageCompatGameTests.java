@@ -153,6 +153,11 @@ public final class QuestCoverageCompatGameTests {
 
         List<Chapter> chapters() { return List.copyOf(chapters); }
         Map<String, List<Recipe>> producers() { return java.util.Collections.unmodifiableMap(producers); }
+        void addMachineRecipe(Recipe recipe) {
+            var recipes = producers.computeIfAbsent(recipe.output(), ignored -> new ArrayList<>());
+            if (recipes.stream().noneMatch(existing -> existing.id().equals(recipe.id()))) recipes.add(recipe);
+            recipes.sort(java.util.Comparator.comparing(Recipe::id));
+        }
         Set<String> providedItems() { return Set.copyOf(providedItems); }
         String questDataStatus() { return questDataStatus; }
 
