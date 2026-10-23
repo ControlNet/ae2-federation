@@ -39,8 +39,10 @@ import space.controlnet.ae2federation.automation.InstallationLog;
 import space.controlnet.ae2federation.automation.ProgramScheduler;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
+import space.controlnet.ae2federation.automation.WebSockets;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.test.automation.WallClock;
 import space.controlnet.ae2federation.test.automation.WebSocketEchoServer;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
@@ -419,26 +421,35 @@ public final class ProgramSchedulerGameTests {
                     "url must start with ws:// or wss://: 'http://example.org/'", "Only websocket URLs");
             scene.scheduler().setTrigger(installation.id(), new Installation.Trigger.Event("ws_message", List.of(url)));
             scene.scheduler().setInterval(installation.id(), 5);
-        }).until(() -> helper.assertValueEqual(scene.log(0), List.of("listening on " + url),
-                "The installation connects to wait for messages")).then(1, () -> {
+        }).then(2, () ->
+                // The network answers in real time; a batch of tests runs ticks back to back.
+                WallClock.await("the installation connects", () -> WebSockets.of(helper.getLevel().getServer())
+                        .connected(scene.installations().get(0).id(), url))
+        ).until(() -> helper.assertValueEqual(scene.log(0), List.of("listening on " + url),
+                "The installation listens for messages")).then(1, () -> {
             helper.assertValueEqual(echo.clients(), 1, "One connection");
             push(echo, "iron 64");
-        }).then(20, () -> {
-            helper.assertValueEqual(scene.log(0), List.of("listening on " + url, "started", "done: 'iron 64'"),
-                    "The message started a run, which read it");
+            WallClock.await("the message arrives", () -> received(helper, scene, url) == 1);
+        }).until(() -> helper.assertValueEqual(scene.log(0),
+                List.of("listening on " + url, "started", "done: 'iron 64'"),
+                "The message started a run, which read it")).then(1, () -> {
             push(echo, "copper 9");
-        }).then(20, () -> {
-            helper.assertValueEqual(scene.log(0).subList(3, scene.log(0).size()),
-                    List.of("started", "done: 'copper 9'"), "The next message started another");
+            WallClock.await("the next message arrives", () -> received(helper, scene, url) == 2);
+        }).until(() -> helper.assertValueEqual(scene.log(0).subList(3, scene.log(0).size()),
+                List.of("started", "done: 'copper 9'"), "The next message started another")).then(1, () -> {
             scene.scheduler().uninstall(scene.installations().get(0).id());
-        }).until(() -> helper.assertValueEqual(echo.clients(), 0, "Removing the installation closes its connection"))
-                .finish(() -> {
+            WallClock.await("removing the installation closes its connection", () -> echo.clients() == 0);
+        }).finish(() -> {
             try {
                 echo.close();
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
         });
+    }
+
+    private static long received(GameTestHelper helper, Scene scene, String url) {
+        return WebSockets.of(helper.getLevel().getServer()).received(scene.installations().get(0).id(), url);
     }
 
     private static void push(WebSocketEchoServer echo, String text) {

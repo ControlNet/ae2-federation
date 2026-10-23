@@ -135,6 +135,11 @@ public final class Runner {
         return pending != null;
     }
 
+    /** Whether the answer the run waits for has come, so the next tick goes on. */
+    public boolean answerArrived() {
+        return pending != null && pending.done();
+    }
+
     /** Gives up a pending answer; call when the run is dropped before it ends. */
     public void cancel() {
         if (pending != null) {

@@ -594,12 +594,14 @@ final class RunnerTest {
         var runner = start(workspace(ASKS), host, null, "main", List.of());
         assertEquals(Runner.Status.WAITING, runner.tick(1000));
         assertTrue(runner.awaiting());
+        assertFalse(runner.answerArrived());
         assertEquals(Runner.Status.WAITING, runner.tick(1000));
         runner.wake();
         assertEquals(Runner.Status.WAITING, runner.tick(1000), "waking ends a wait, not an answer still to come");
         assertEquals(List.of("net.http"), log);
         answer.value = response(200, "ok");
         answer.done = true;
+        assertTrue(runner.answerArrived());
         assertEquals(Runner.Status.DONE, runner.tick(1000), "the answer's tick may act: the wait used no action");
         assertEquals("[200, 1, 2, 1]", Ops.repr(runner.result()));
         assertEquals(List.of("net.http", "ae2.craft"), log);

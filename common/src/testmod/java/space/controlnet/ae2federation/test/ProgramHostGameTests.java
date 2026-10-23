@@ -37,6 +37,7 @@ import space.controlnet.ae2federation.script.DictValue;
 import space.controlnet.ae2federation.script.RunError;
 import space.controlnet.ae2federation.script.Runner;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.test.automation.WallClock;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingFixtures;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
@@ -326,28 +327,33 @@ public final class ProgramHostGameTests {
             timeoutTicks = 400, required = true, manualOnly = true)
     public static void programTalksOverAWebSocket(GameTestHelper helper) {
         var fixtures = build(helper, Blocks.STONE.defaultBlockState());
-        var server = helper.getLevel().getServer();
+        var level = helper.getLevel();
+        var server = level.getServer();
         // A websocket server on this machine stands in for the outside world.
         var echo = echoServer();
+        var url = echo.url("feed");
+        var owner = "gametest:host_websocket";
         run(helper, fixtures, "host_websocket", """
                 def run() -> str:
-                    url = "%s"
-                    opened = net.connect(url)
-                    sent = net.send(url, "iron 64")
-                    answer = net.receive(url)
-                    tries = 0
-                    while answer is None and tries < 100:
-                        mc.wait(1)
-                        answer = net.receive(url)
-                        tries += 1
-                    return " ".join([str(opened), str(sent), str(answer), str(net.connected(url))])
-                """.formatted(echo.url("feed")), "True True echo: iron 64 True",
-                "A program connects, sends a message and reads the answer, waiting over ticks", () -> {
-                    helper.assertValueEqual(echo.received(), List.of("iron 64"), "The server got the message");
+                    opened = net.connect("%s")
+                    sent = net.send("%s", "iron 64")
+                    return str(opened) + " " + str(sent)
+                """.formatted(url, url), "True True",
+                "A program connects and sends a message, waiting for each without counting ticks", () -> {
                     var sockets = space.controlnet.ae2federation.automation.WebSockets.of(server);
-                    helper.assertTrue(sockets.connected("gametest:host_websocket", echo.url("feed")),
+                    // The answer comes in real time; a batch of tests runs ticks back to back.
+                    WallClock.await("the echo arrives", () -> sockets.received(owner, url) >= 1);
+                    helper.assertValueEqual(echo.received(), List.of("iron 64"), "The server got the message");
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
+                    var domain = AutomationInterfaces.get(level).domainOf(level, automationInterface.id())
+                            .orElseThrow();
+                    var host = new ProgramHost(server, domain, owner);
+                    helper.assertValueEqual(host.call("net", "connected", List.of(url)), true,
                             "The connection outlives the run that opened it");
-                    sockets.closeOwner("gametest:host_websocket");
+                    helper.assertValueEqual(host.call("net", "receive", List.of(url)), "echo: iron 64",
+                            "The next run of the installation reads the answer");
+                    helper.assertTrue(host.call("net", "receive", List.of(url)) == null, "Nothing more queued");
+                    sockets.closeOwner(owner);
                     try {
                         echo.close();
                     } catch (IOException e) {
@@ -555,6 +561,11 @@ public final class ProgramHostGameTests {
                     holder[0] = ProgramRun.start(store.library(), host.catalog(), host, file, "run", args);
                 })
                 .thenWaitUntil(() -> {
+                    var runner = holder[0].runner();
+                    if (runner.awaiting()) {
+                        // An outside answer comes in real time; a batch of tests runs ticks back to back.
+                        WallClock.await("the answer " + file + " waits for", runner::answerArrived);
+                    }
                     var status = holder[0].tick(1000);
                     if (status == Runner.Status.FAILED) {
                         var failure = holder[0].runner().failure();

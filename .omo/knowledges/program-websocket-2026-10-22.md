@@ -62,3 +62,12 @@ pings at most once a second whenever the connection is looked at (`connected`, `
 tick); a ping to the dead peer fails and marks it closed, within about 3 s. Also: `connect`'s Pending now waits on the
 `whenComplete` stage, so `net.connected` is True once `net.connect` answered True; cancelling stops the JDK handshake
 (`building`). Demand is requested once (`Long.MAX_VALUE`) since the queue drops the oldest itself.
+
+## CI: tick waits are not time (2026-10-23)
+
+Quick correctness failed from 795f60df to af8a9b58 on `programtalksoverawebsocket`, in the one-batch GameTest step
+only: the program waited `mc.wait(1)` up to 100 times for the echo, and the whole test took under a second of wall
+time, because the batch GameTest server runs ticks back to back. On the slower CI runner the echo had not arrived.
+Rule: a GameTest that waits for anything outside the game waits in real time with `test/automation/WallClock.await`
+(10 s), never by counting ticks. The `run` helper of `ProgramHostGameTests` does this while a run waits for a Pending
+(`Runner.answerArrived()`). Check CI after every push: `gh run list --branch feature/function-system`.
