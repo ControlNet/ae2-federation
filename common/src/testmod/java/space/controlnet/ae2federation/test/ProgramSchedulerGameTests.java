@@ -42,6 +42,7 @@ import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.automation.WebSockets;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.test.automation.TestEnd;
 import space.controlnet.ae2federation.test.automation.WallClock;
 import space.controlnet.ae2federation.test.automation.WebSocketEchoServer;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
@@ -403,6 +404,13 @@ public final class ProgramSchedulerGameTests {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+        TestEnd.then(helper, () -> {
+            try {
+                echo.close();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
         var url = echo.url("feed");
         var scene = Scene.build(helper, "sched_socket", """
                 def drain() -> str:
@@ -454,11 +462,6 @@ public final class ProgramSchedulerGameTests {
             scene.scheduler().uninstall(scene.installations().get(0).id());
             WallClock.await("removing the installation closes its connection", () -> echo.clients() == 0);
         }).finish(() -> {
-            try {
-                echo.close();
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
         });
     }
 

@@ -37,6 +37,7 @@ import space.controlnet.ae2federation.script.DictValue;
 import space.controlnet.ae2federation.script.RunError;
 import space.controlnet.ae2federation.script.Runner;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.test.automation.TestEnd;
 import space.controlnet.ae2federation.test.automation.WallClock;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingFixtures;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
@@ -253,6 +254,7 @@ public final class ProgramHostGameTests {
             exchange.close();
         });
         web.start();
+        TestEnd.then(helper, () -> web.stop(0));
         var url = "http://127.0.0.1:" + web.getAddress().getPort() + "/echo";
         run(helper, fixtures, "host_http", """
                 def run() -> str:
@@ -269,7 +271,6 @@ public final class ProgramHostGameTests {
                                     .DictValue()));
                     helper.assertValueEqual(dry.field("status"), 0L, "A dry run's request answers status 0");
                     helper.assertValueEqual(seen.get(), 1, "Only the real run reached the server");
-                    web.stop(0);
                 });
     }
 
@@ -333,6 +334,14 @@ public final class ProgramHostGameTests {
         var echo = echoServer();
         var url = echo.url("feed");
         var owner = "gametest:host_websocket";
+        TestEnd.then(helper, () -> {
+            space.controlnet.ae2federation.automation.WebSockets.of(server).closeOwner(owner);
+            try {
+                echo.close();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
         run(helper, fixtures, "host_websocket", """
                 def run() -> str:
                     opened = net.connect("%s")
@@ -353,12 +362,6 @@ public final class ProgramHostGameTests {
                     helper.assertValueEqual(host.call("net", "receive", List.of(url)), "echo: iron 64",
                             "The next run of the installation reads the answer");
                     helper.assertTrue(host.call("net", "receive", List.of(url)) == null, "Nothing more queued");
-                    sockets.closeOwner(owner);
-                    try {
-                        echo.close();
-                    } catch (IOException e) {
-                        throw new UncheckedIOException(e);
-                    }
                 });
     }
 
