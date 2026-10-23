@@ -18,7 +18,7 @@ power. This page appears because Mekanism is installed.
 with a crafting CPU, a crafting terminal and storage; a workshop network with a pattern provider and a molecular
 assembler; a <ItemLink id="ae2federation:switch" /> all three touch; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
-<GameScene zoom="3.5" interactive={true} background="transparent">
+<GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/power_plant.snbt" />
   <BoxAnnotation color="#5CA7CD" min="2 0 1" max="5 4 5">
     Plant: the Induction Matrix, its port set to output into an Energy Acceptor on an ME cable
