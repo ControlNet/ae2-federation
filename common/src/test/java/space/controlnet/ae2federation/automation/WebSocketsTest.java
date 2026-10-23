@@ -102,6 +102,18 @@ final class WebSocketsTest {
     }
 
     @Test
+    void disconnectWithoutAConnectionIsFalse() throws InterruptedException {
+        var url = server.url("feed");
+        assertFalse(sockets.disconnect("installation-new", url), "an installation that never connected");
+        answer(sockets.connect(OWNER, url));
+        sockets.closeOwner(OWNER);
+        assertFalse(sockets.disconnect(OWNER, url), "after the installation was removed");
+        answer(sockets.connect(OWNER, url));
+        sockets.disconnectAll();
+        assertFalse(sockets.disconnect(OWNER, url), "after every connection was closed");
+    }
+
+    @Test
     void theServerClosingIsSeen() throws IOException, InterruptedException {
         var url = server.url("feed");
         answer(sockets.connect(OWNER, url));

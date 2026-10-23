@@ -146,7 +146,8 @@ public final class WebSockets {
 
     /** Closes the connection; False when there was none. Unread messages go with it. */
     public boolean disconnect(String owner, String url) {
-        var connection = connections.getOrDefault(owner, Map.of()).remove(url);
+        var own = connections.get(owner);
+        var connection = own == null ? null : own.remove(url);
         if (connection == null) {
             return false;
         }
