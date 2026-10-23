@@ -69,6 +69,17 @@ final class StandardLibraryTest {
                 "net.connect", "net.send", "net.disconnect"), actions);
     }
 
+    @Test
+    void theLongActionsAreTheActionsThatSpanTicks() {
+        var lasting = new HashSet<String>();
+        StandardLibrary.NAMESPACES.forEach((namespace, signatures) -> signatures.stream()
+                .filter(StandardLibrary::lasts).forEach(s -> {
+                    assertTrue(s.effect(), "a long action is an action: " + s.name());
+                    lasting.add(namespace + "." + s.name());
+                }));
+        assertEquals(java.util.Set.of("mc.wait", "net.http", "net.connect", "net.send"), lasting);
+    }
+
     /** Every example is a whole function that checks against the real library and calls the function it shows. */
     @org.junit.jupiter.params.ParameterizedTest(name = "{0}")
     @org.junit.jupiter.params.provider.MethodSource("functions")

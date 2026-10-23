@@ -10,7 +10,8 @@ import java.util.Map;
 
 /**
  * Runs compiled graphs, one game tick at a time. Each node costs one step of the tick's budget; library actions run
- * one per tick; {@code mc.wait(n)} pauses for n ticks. Player function calls keep their own frames here, never on the
+ * one per tick. A long action ({@code mc.wait(n)}, or a call whose answer is a {@link Pending}) starts as the tick's
+ * action and then pauses the run, which takes no actions. Player function calls keep their own frames here, never on the
  * Java stack, so deep recursion stops with Python's error instead of overflowing the server's stack.
  */
 public final class Runner {
@@ -179,14 +180,14 @@ public final class Runner {
         for (int steps = 0; steps < budget; steps++) {
             var frame = frames.peek();
             var node = frame.graph.nodes().get(frame.at);
-            if (node instanceof Node.Action a && acted && !isWait(a)) {
+            if (node instanceof Node.Action && acted) {
                 return status = Status.RUNNING;
             }
             try {
                 if (trace != null) {
                     trace.ran(frame.graph.file(), node.source());
                 }
-                if (node instanceof Node.Action a && !isWait(a)) {
+                if (node instanceof Node.Action) {
                     acted = true;
                 }
                 var next = step(frame, node);

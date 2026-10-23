@@ -102,7 +102,7 @@ final class FederationLibraryPanel {
         element.addClass("library-function");
         element.setId("auto_library_fn_" + row.namespace() + "_" + row.function());
         element.addChild(label("program-name", Component.literal(row.function())));
-        if (row.acts()) element.addChild(new UIElement().addClass("library-acts"));
+        if (row.acts()) element.addChild(new UIElement().addClass(row.lasts() ? "library-lasts" : "library-acts"));
         element.addEventListener(UIEvents.CLICK, event -> showPage(row.namespace(), row.function()));
         element.addEventListener(UIEvents.MOUSE_DOWN, event -> {
             if (event.button != 0) return;
@@ -130,10 +130,12 @@ final class FederationLibraryPanel {
                 .withColor(PythonLanguage.NAMESPACE).append(Component.literal(name).withColor(CompletionPopup.NAME))));
         page.addScrollViewChild(label("library-text signature", Component.literal(function.display())));
         if (function.effect()) {
+            var lasts = StandardLibrary.lasts(function);
             var acts = new UIElement();
             acts.addClass("library-acts-row");
-            acts.addChild(new UIElement().addClass("library-acts"));
-            acts.addChild(label("library-text", Component.translatable("ae2federation.ui.automation.acts")));
+            acts.addChild(new UIElement().addClass(lasts ? "library-lasts" : "library-acts"));
+            acts.addChild(label("library-text", Component.translatable(lasts
+                    ? "ae2federation.ui.automation.lasts" : "ae2federation.ui.automation.acts")));
             page.addScrollViewChild(acts);
         }
         page.addScrollViewChild(label("library-text", Component.translatableWithFallback(

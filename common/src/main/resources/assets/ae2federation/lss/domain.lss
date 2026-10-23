@@ -207,6 +207,7 @@
 .domain-panel .library-row.library-function .program-name { text-color: #ff7fb6ff; }
 .domain-panel .library-count { adaptive-width: true; height: 9; flex-shrink: 0; text-color: #ff6f6a7a; }
 .library-acts { width: 3; height: 3; flex-shrink: 0; background: #ffb26cff; }
+.library-lasts { width: 3; height: 3; flex-shrink: 0; background: #ffffb547; }
 .auto-library-doc .__scroller_view_view-container__ { padding-left: 2; padding-right: 2; gap-all: 3; }
 .domain-panel .library-text { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; text-color: #ffd6d0e0; }
 .domain-panel .library-text.signature { text-color: #ffaaa4b2; }

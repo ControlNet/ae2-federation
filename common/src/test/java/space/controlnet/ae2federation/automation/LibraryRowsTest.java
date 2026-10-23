@@ -54,6 +54,15 @@ final class LibraryRowsTest {
     }
 
     @Test
+    void longActionsAreMarkedApart() {
+        var rows = LibraryRows.rows(StandardLibrary.NAMESPACES, "net.", Set.of());
+        var marks = rows.stream().filter(row -> !row.function().isEmpty())
+                .map(row -> row.function() + (row.lasts() ? " long" : row.acts() ? " action" : "")).toList();
+        assertEquals(List.of("http long", "connect long", "send long", "receive", "connected", "disconnect action"),
+                marks);
+    }
+
+    @Test
     void aFunctionIsFoundByItsNamespaceAndName() {
         assertNotNull(LibraryRows.find(StandardLibrary.NAMESPACES, "ae2", "craft"));
         assertNull(LibraryRows.find(StandardLibrary.NAMESPACES, "ae2", "nothing"));

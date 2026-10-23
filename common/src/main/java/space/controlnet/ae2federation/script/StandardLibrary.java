@@ -266,7 +266,7 @@ public final class StandardLibrary {
                             """, arg("path", "str"))),
             "net", List.of(
                     act("http", "Response",
-                            "Sends an HTTP request and gives the answer; waiting for it takes no actions.", """
+                            "Sends an HTTP request and gives the answer.", """
                             def report_iron(url: str) -> bool:
                                 amount = ae2.amount("minecraft:iron_ingot")
                                 answer = net.http("POST", url, str(amount), {"Content-Type": "text/plain"})
@@ -349,6 +349,26 @@ public final class StandardLibrary {
         NAMESPACES.forEach((namespace, functions) -> functions.forEach(function ->
                 keys.put(function, "ae2federation.function." + namespace + "." + function.name())));
         return Map.copyOf(keys);
+    }
+
+    /**
+     * The long actions: actions that span ticks (user, 2026-10-23). Each starts as the tick's one action, then the run
+     * waits until it finishes, which takes no actions.
+     */
+    private static final java.util.Set<String> LONG_ACTIONS = java.util.Set.of("mc.wait", "net.http", "net.connect",
+            "net.send");
+    private static final java.util.Set<Signature> LASTING = lasting();
+
+    private static java.util.Set<Signature> lasting() {
+        var lasting = new java.util.HashSet<Signature>();
+        NAMESPACES.forEach((namespace, functions) -> functions.stream()
+                .filter(function -> LONG_ACTIONS.contains(namespace + "." + function.name())).forEach(lasting::add));
+        return java.util.Set.copyOf(lasting);
+    }
+
+    /** Whether the function is a library long action; false for anything else. */
+    public static boolean lasts(Signature function) {
+        return LASTING.contains(function);
     }
 
     /** {@code ae2federation.function.<namespace>.<name>} for a library function; empty for anything else. */

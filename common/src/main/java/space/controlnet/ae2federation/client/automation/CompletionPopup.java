@@ -48,6 +48,7 @@ public final class CompletionPopup extends UIElement {
     /** A function's name, and the square of a function that acts; the Library panel shows them alike. */
     public static final int NAME = 0xff7fb6ff;
     public static final int ACTS = 0xffb26cff;
+    public static final int LASTS = 0xffffb547;
 
     private final Font font;
     private final ResourceLocation textFont;
@@ -227,7 +228,8 @@ public final class CompletionPopup extends UIElement {
             float room = x + width - TEXT_INSET - (candidate.acts() ? MARKER : 0) - detailX;
             draw(context, fit(candidate.detail(), room), detailX, textY, FederationTheme.DARK_MUTED);
             if (candidate.acts()) {
-                DrawerHelper.drawSolidRect(graphics, x + width - TEXT_INSET - 3, rowY + (row - 3) / 2, 3, 3, ACTS);
+                DrawerHelper.drawSolidRect(graphics, x + width - TEXT_INSET - 3, rowY + (row - 3) / 2, 3, 3,
+                        candidate.lasts() ? LASTS : ACTS);
             }
         }
         var footer = footer();

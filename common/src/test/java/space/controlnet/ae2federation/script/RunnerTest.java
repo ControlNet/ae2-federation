@@ -652,14 +652,30 @@ final class RunnerTest {
     void waitPausesForItsTicks() {
         var runner = startMain("""
                 def main() -> int:
-                    mc.wait(0)
                     mc.wait(3)
                     return 1
                 """, new FakeHost(), null);
-        assertEquals(Runner.Status.WAITING, runner.tick(1000), "wait(0) does not pause; wait(3) does");
+        assertEquals(Runner.Status.WAITING, runner.tick(1000));
         assertEquals(Runner.Status.WAITING, runner.tick(1000));
         assertEquals(Runner.Status.WAITING, runner.tick(1000));
         assertEquals(Runner.Status.DONE, runner.tick(1000), "resumes on the third tick after the wait");
+    }
+
+    @Test
+    void aLongActionStartsAsTheTicksAction() {
+        var host = new FakeHost();
+        var runner = startMain("""
+                def main() -> int:
+                    ae2.craft("minecraft:iron_ingot", 1)
+                    mc.wait(0)
+                    mc.wait(1)
+                    return 1
+                """, host, null);
+        assertEquals(Runner.Status.RUNNING, runner.tick(1000), "the craft took this tick's action");
+        assertEquals(Runner.Status.RUNNING, runner.tick(1000), "wait(0) took the next tick's, so wait(1) waits");
+        assertEquals(Runner.Status.WAITING, runner.tick(1000), "wait(1) starts");
+        assertEquals(Runner.Status.DONE, runner.tick(1000), "the tick after a wait may act again");
+        assertEquals(1, host.log.size());
     }
 
     @Test

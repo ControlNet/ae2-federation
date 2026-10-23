@@ -9,7 +9,8 @@ navigation:
 # Library
 
 Programs reach the game through three namespaces, files through `fs` and the web through `net`. The **Library** panel in the Programs tab lists the same functions,
-each with a short example. Functions marked **action** take one game tick each.
+each with a short example. Functions marked **action** take one game tick each. A **long action** starts as that
+tick's action, then the run waits until it finishes; the wait takes no actions.
 
 A `network` parameter is optional: left out, the call works on every network of the domain, each through its own
 storage, whatever the rules share.
@@ -62,7 +63,7 @@ request until it reaches storage.
 | `mc.break_block(block)` | **action:** breaks it; the drops go into the domain's storage |
 | `mc.place_block(block, item)` | **action:** places the item from the domain's storage |
 | `mc.move_fe(source, target, amount)` | **action:** moves FE between two blocks |
-| `mc.wait(ticks)` | **action:** pauses the run for `ticks` ticks; it does not use up the tick's action |
+| `mc.wait(ticks)` | **long action:** pauses the run for `ticks` ticks |
 
 ## fs: files
 
@@ -87,9 +88,9 @@ with `PermissionError`.
 
 | Function | Gives |
 | --- | --- |
-| `net.http(method, url, body="", headers={})` | **action:** sends an HTTP request and gives its `Response` |
-| `net.connect(url)` | **action:** opens a websocket connection, or keeps the open one |
-| `net.send(url, text)` | **action:** sends a text message on the connection |
+| `net.http(method, url, body="", headers={})` | **long action:** sends an HTTP request and gives its `Response` |
+| `net.connect(url)` | **long action:** opens a websocket connection, or keeps the open one |
+| `net.send(url, text)` | **long action:** sends a text message on the connection |
 | `net.receive(url)` | the oldest message not read yet, or `None` |
 | `net.connected(url)` | whether the connection is open |
 | `net.disconnect(url)` | **action:** closes the connection; `False` if there was none |

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.script.Signature;
+import space.controlnet.ae2federation.script.StandardLibrary;
 
 /**
  * The Automation tab's Library panel as rows: each namespace, sorted, with its function count; under an open one its
@@ -15,7 +16,7 @@ import space.controlnet.ae2federation.script.Signature;
  */
 public final class LibraryRows {
     /** A namespace row ({@code function} empty), or a function row under its namespace. */
-    public record Row(String namespace, String function, int count, boolean open, boolean acts) {
+    public record Row(String namespace, String function, int count, boolean open, boolean acts, boolean lasts) {
     }
 
     private LibraryRows() {
@@ -30,9 +31,10 @@ public final class LibraryRows {
                     || (namespace + "." + function.name()).toLowerCase(Locale.ROOT).contains(query)).toList();
             if (functions.isEmpty()) return;
             boolean shown = !query.isEmpty() || open.contains(namespace);
-            rows.add(new Row(namespace, "", functions.size(), shown, false));
+            rows.add(new Row(namespace, "", functions.size(), shown, false, false));
             if (!shown) return;
-            functions.forEach(function -> rows.add(new Row(namespace, function.name(), 0, false, function.effect())));
+            functions.forEach(function -> rows.add(new Row(namespace, function.name(), 0, false, function.effect(),
+                    StandardLibrary.lasts(function))));
         });
         return rows;
     }

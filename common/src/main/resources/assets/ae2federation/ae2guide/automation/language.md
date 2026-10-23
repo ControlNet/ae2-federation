@@ -58,7 +58,9 @@ A file holds any number of functions. A function calls another of its file by na
 
 * Reads, such as `ae2.amount`, take no time. An **action**, such as `ae2.craft` or `mc.set_redstone`, takes one game
   tick, so a run makes at most one action per tick. Move or craft large amounts in one call.
-* `mc.wait(ticks)` pauses the run for `ticks` ticks; `mc.wait(0)` takes no time.
+* A **long action**, such as `mc.wait` or `net.http`, starts as the tick's action, then the run waits until it
+  finishes: `mc.wait(ticks)` pauses for `ticks` ticks, `net.http` until the answer comes. The wait takes no actions,
+  so the run may act again on the tick it ends.
 * A run takes at most 10,000 steps a tick and goes on in the next one, so `while True:` cannot freeze the server.
 * Integers are 64-bit, a list, string, dict or set holds at most 100,000 items, and calls nest at most 1,000 deep. A program file
   holds at most 64,000 characters.
