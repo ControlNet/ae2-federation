@@ -102,9 +102,11 @@ the answer are lower case. A dry run sends nothing and gives `Response(0, "", {}
 A websocket URL starts with `ws://` or `wss://`. Connections belong to the installation: they stay open between runs,
 and close when the installation is removed. An installation keeps at most 4 open. `net.connect` and `net.send` wait
 like `net.http`; messages arrive in the background, and `net.receive` reads them in order, `None` when none is
-waiting. Unread messages beyond the newest 256 are dropped, and one over 100,000 characters closes the connection.
-What arrived before a close can still be read. A dry run opens nothing: `net.receive` gives `None`. To start a
-run when a message arrives, install it on the event `ws_message`.
+waiting. Unread messages beyond the newest 256, or beyond 1,000,000 characters in all, are dropped, and one over
+100,000 characters closes the connection. What arrived before a close can still be read, also once connected again;
+an installation keeps the unread messages of at most 4 closed connections, and the one closed longest ago goes first.
+A send still going when its wait ends, or when its run stops, closes the connection. A dry run opens nothing:
+`net.receive` gives `None`. To start a run when a message arrives, install it on the event `ws_message`.
 
 In the same `[automation]` section, `allowHttp = false` turns `net.http` off and `allowWebsockets = false` the
 websocket functions, closing open connections; their calls then stop the run with `PermissionError`.

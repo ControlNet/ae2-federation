@@ -437,6 +437,20 @@ public final class ProgramSchedulerGameTests {
             WallClock.await("the next message arrives", () -> received(helper, scene, url) == 2);
         }).until(() -> helper.assertValueEqual(scene.log(0).subList(3, scene.log(0).size()),
                 List.of("started", "done: 'copper 9'"), "The next message started another")).then(1, () -> {
+            // A message, then the server goes away, both before the scheduler looks again (this tick blocks).
+            push(echo, "tin 3");
+            try {
+                echo.dropClients();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            var sockets = WebSockets.of(helper.getLevel().getServer());
+            var id = scene.installations().get(0).id();
+            WallClock.await("the message arrives and the connection closes",
+                    () -> received(helper, scene, url) == 3 && !sockets.connected(id, url));
+        }).until(() -> helper.assertTrue(scene.log(0).contains("done: 'tin 3'"),
+                "Connecting again keeps the message that came just before the close, and it starts a run"))
+                .then(1, () -> {
             scene.scheduler().uninstall(scene.installations().get(0).id());
             WallClock.await("removing the installation closes its connection", () -> echo.clients() == 0);
         }).finish(() -> {

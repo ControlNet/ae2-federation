@@ -9,6 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,9 +48,13 @@ final class WebSocketsTest {
     }
 
     private static void waitFor(BooleanSupplier condition) throws InterruptedException {
-        long until = System.nanoTime() + 5_000_000_000L;
+        waitFor(condition, 5_000);
+    }
+
+    private static void waitFor(BooleanSupplier condition, long millis) throws InterruptedException {
+        long until = System.nanoTime() + millis * 1_000_000L;
         while (!condition.getAsBoolean()) {
-            assertTrue(System.nanoTime() < until, "not within five seconds");
+            assertTrue(System.nanoTime() < until, "not within " + millis + " ms");
             Thread.sleep(10);
         }
     }
@@ -157,6 +165,100 @@ final class WebSocketsTest {
         }
         waitFor(() -> sockets.received(OWNER, url) == WebSockets.MAX_QUEUED + 10);
         assertEquals("m10", sockets.receive(OWNER, url), "the oldest ten were dropped");
+    }
+
+    @Test
+    void anUnreadQueueKeepsAtMostAMillionCharacters() throws IOException, InterruptedException {
+        var url = server.url("feed");
+        answer(sockets.connect(OWNER, url));
+        for (int i = 0; i < 15; i++) {
+            server.push(i + "a".repeat(99_000));
+        }
+        waitFor(() -> sockets.received(OWNER, url) == 15);
+        var first = sockets.receive(OWNER, url);
+        assertEquals("5", first.substring(0, first.length() - 99_000), "the oldest five were dropped");
+    }
+
+    @Test
+    void closedConnectionsDoNotPileUp() throws IOException, InterruptedException {
+        for (int i = 0; i < 12; i++) {
+            var url = server.url("feed" + i);
+            answer(sockets.connect(OWNER, url));
+            server.push("m" + i);
+            waitFor(() -> sockets.received(OWNER, url) == 1);
+            server.dropClients();
+            waitFor(() -> !sockets.connected(OWNER, url));
+        }
+        assertEquals(WebSockets.MAX_CLOSED, sockets.kept(OWNER), "only the latest closed connections are kept");
+        assertEquals("m11", sockets.receive(OWNER, server.url("feed11")), "what they received can still be read");
+        assertNull(sockets.receive(OWNER, server.url("feed0")), "the one closed longest ago was let go");
+    }
+
+    @Test
+    void reconnectingKeepsWhatArrivedBefore() throws IOException, InterruptedException {
+        var url = server.url("feed");
+        answer(sockets.connect(OWNER, url));
+        server.push("before the close");
+        waitFor(() -> sockets.received(OWNER, url) == 1);
+        server.dropClients();
+        waitFor(() -> !sockets.connected(OWNER, url));
+        assertEquals(true, answer(sockets.connect(OWNER, url)));
+        assertEquals(1, sockets.received(OWNER, url), "the count goes on across the new connection");
+        assertEquals("before the close", sockets.receive(OWNER, url));
+    }
+
+    @Test
+    void closingAsTheHandshakeEndsLeavesNothingOpen() throws InterruptedException {
+        var url = server.url("feed");
+        var reached = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        sockets.beforePublish = () -> {
+            reached.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException stop) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        var pending = sockets.connect(OWNER, url);
+        assertTrue(reached.await(5, TimeUnit.SECONDS), "the handshake ended");
+        sockets.closeOwner(OWNER);
+        release.countDown();
+        waitFor(pending::done);
+        assertEquals("OSError: could not connect to '" + url + "'", error(pending::value));
+        waitFor(() -> server.clients() == 0);
+        assertFalse(sockets.connected(OWNER, url));
+    }
+
+    /** More than the operating system buffers while the server reads nothing, so the last sends cannot finish. */
+    private List<Pending> stuckSends(String url) {
+        server.pause();
+        var sends = new ArrayList<Pending>();
+        var text = "铁".repeat(99_000);
+        for (int i = 0; i < 100; i++) {
+            sends.add(sockets.send(OWNER, url, text));
+        }
+        return sends;
+    }
+
+    @Test
+    void aSendStillGoingWhenItsWaitEndsClosesTheConnection() throws InterruptedException {
+        var url = server.url("feed");
+        answer(sockets.connect(OWNER, url));
+        var sends = stuckSends(url);
+        waitFor(() -> sends.stream().allMatch(Pending::done));
+        assertFalse(sockets.connected(OWNER, url), "no send may start while one is still going");
+        assertEquals("OSError: could not send to '" + url + "'", error(sends.getLast()::value));
+    }
+
+    @Test
+    void cancellingASendStillGoingClosesTheConnection() throws InterruptedException {
+        var url = server.url("feed");
+        answer(sockets.connect(OWNER, url));
+        var sends = stuckSends(url);
+        sends.getLast().cancel();
+        waitFor(() -> !sockets.connected(OWNER, url), 1_000);
+        waitFor(() -> sends.stream().allMatch(Pending::done));
     }
 
     @Test

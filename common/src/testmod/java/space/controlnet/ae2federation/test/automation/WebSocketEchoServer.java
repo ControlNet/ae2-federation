@@ -26,6 +26,7 @@ public final class WebSocketEchoServer implements AutoCloseable {
     private final ServerSocket socket;
     private final List<Client> clients = new CopyOnWriteArrayList<>();
     private final List<String> received = new CopyOnWriteArrayList<>();
+    private volatile java.util.concurrent.CountDownLatch paused = new java.util.concurrent.CountDownLatch(0);
 
     public WebSocketEchoServer() throws IOException {
         // The loopback address can be ::1 in the game; url() names 127.0.0.1.
@@ -58,8 +59,25 @@ public final class WebSocketEchoServer implements AutoCloseable {
         }
     }
 
+    /** Drops every client's connection without a close frame; the server keeps accepting new ones. */
+    public void dropClients() throws IOException {
+        for (var client : clients) {
+            client.connection.close();
+        }
+    }
+
+    /** Stops reading from clients after their handshake, so what they send piles up until {@link #resume}. */
+    public void pause() {
+        paused = new java.util.concurrent.CountDownLatch(1);
+    }
+
+    public void resume() {
+        paused.countDown();
+    }
+
     @Override
     public void close() throws IOException {
+        resume();
         socket.close();
         for (var client : clients) {
             client.connection.close();
@@ -95,6 +113,11 @@ public final class WebSocketEchoServer implements AutoCloseable {
                 handshake(in, connection.getOutputStream());
                 var message = new ByteArrayOutputStream();
                 while (true) {
+                    try {
+                        paused.await();
+                    } catch (InterruptedException stop) {
+                        return;
+                    }
                     int first = in.readUnsignedByte();
                     int second = in.readUnsignedByte();
                     boolean fin = (first & 0x80) != 0;

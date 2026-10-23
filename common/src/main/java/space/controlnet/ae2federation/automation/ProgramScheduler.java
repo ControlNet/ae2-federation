@@ -685,17 +685,17 @@ public final class ProgramScheduler {
         if (state.connecting == null && !sockets.connected(id, url) && now >= state.nextPoll) {
             state.nextPoll = now + state.installation.interval();
             try {
+                // The count goes on across connections to the URL, so a message that came just before a close fires.
                 state.connecting = sockets.connect(id, url);
-                // A new connection: every message on it is new.
-                state.polled = 0L;
-                state.hasPolled = true;
             } catch (RunError e) {
                 socketProblem(state, e.getMessage());
             }
         }
         long received = sockets.received(id, url);
-        // A connection opened before this state only sets the baseline.
-        if (state.hasPolled && received > (Long) state.polled) {
+        long before = state.polled instanceof Long count ? count : 0L;
+        // A connection opened before this state only sets the baseline. A count that went back is a URL that was let
+        // go of and connected anew: what it has now is new.
+        if (state.hasPolled && (received > before || received < before && received > 0)) {
             state.gate.fire(state.runs.size());
         }
         state.polled = received;
