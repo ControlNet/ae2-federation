@@ -1,5 +1,9 @@
 # Graph: second wire from a value = extract to variable (G1f-vi, user, 2026-10-23)
 
+**Reverted the same day (user, 2026-10-23):** the share gesture and the Ctrl-move are gone; a plain drag moves a value
+again, and the explicit set-variable card `value =` plus variable chips dragged from the strip replace it. See
+`graph-palette-2026-10-23.md`. The notes below describe the removed design.
+
 - Gesture (user pick): drag a second wire out of a value pin that is already wired. Every non-draft value card's
   pin is always wired, so a plain drag onto an input port now shares (`GraphCards.share` -> `Edits.share`, which is
   `Edits.extract` plus a `Name` on the new port); Ctrl held at the press keeps the old move (`GraphCards.move`).
