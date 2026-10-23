@@ -77,6 +77,6 @@ public final class DictValue {
 
     @Override
     public String toString() {
-        return Ops.repr(this);
+        return Ops.shown(this);
     }
 }

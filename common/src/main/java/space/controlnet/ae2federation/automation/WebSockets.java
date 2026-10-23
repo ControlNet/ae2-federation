@@ -115,6 +115,9 @@ public final class WebSockets {
 
     /** Sends the text; True once it has gone. Not being connected stops the run. */
     public Pending send(String owner, String url, String text) {
+        if (text.codePointCount(0, text.length()) > MAX_CHARACTERS) {
+            throw new RunError("ValueError", "a message holds at most " + MAX_CHARACTERS + " characters");
+        }
         var connection = open(owner, url);
         if (connection == null) {
             throw new RunError("OSError", "not connected to " + Ops.repr(url));

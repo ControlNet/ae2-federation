@@ -148,6 +148,15 @@ final class WebSocketsTest {
     }
 
     @Test
+    void aLongMessageIsRefusedBeforeItIsSent() throws InterruptedException {
+        var url = server.url("feed");
+        answer(sockets.connect(OWNER, url));
+        assertEquals("ValueError: a message holds at most 100000 characters",
+                error(() -> sockets.send(OWNER, url, "铁".repeat(100_001))));
+        assertTrue(sockets.connected(OWNER, url), "the connection stays open");
+    }
+
+    @Test
     void aMessageOverTheStringCapClosesTheConnection() throws IOException, InterruptedException {
         var url = server.url("feed");
         answer(sockets.connect(OWNER, url));

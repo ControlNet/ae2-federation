@@ -123,7 +123,7 @@ public final class ProgramHost implements Evaluator.Host {
     /** A selected block shows as the block there now, as {@code Block('minecraft:chest')}. */
     @Override
     public String repr(Object value) {
-        return Ops.repr(value, own -> own instanceof Block block ? place(block).map(place -> "Block(" + Ops.repr(
+        return Ops.shown(value, own -> own instanceof Block block ? place(block).map(place -> "Block(" + Ops.repr(
                 BuiltInRegistries.BLOCK.getKey(place.level().getBlockState(place.position()).getBlock()).toString())
                 + ")").orElse(block.toString()) : own.toString());
     }

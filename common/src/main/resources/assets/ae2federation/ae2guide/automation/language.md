@@ -62,5 +62,5 @@ A file holds any number of functions. A function calls another of its file by na
   finishes: `mc.wait(ticks)` pauses for `ticks` ticks, `net.http` until the answer comes. The wait takes no actions,
   so the run may act again on the tick it ends.
 * A run takes at most 10,000 steps a tick and goes on in the next one, so `while True:` cannot freeze the server.
-* Integers are 64-bit, a list, string, dict or set holds at most 100,000 items, and calls nest at most 1,000 deep. A program file
-  holds at most 64,000 characters.
+* Integers are 64-bit, a list, string, dict or set holds at most 100,000 items, and calls nest at most 1,000 deep. The text
+  `str` makes of a list, dict or set is a string too. A program file holds at most 64,000 characters.

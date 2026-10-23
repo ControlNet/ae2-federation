@@ -650,40 +650,117 @@ public final class Ops {
         return repr(v, Object::toString);
     }
 
-    /** As {@link #repr(Object)}, with a host's own values (a selected block) written by {@code own}. */
+    /**
+     * As {@link #repr(Object)}, with a host's own values (a selected block) written by {@code own}. The text is a
+     * string, so it stops with {@code MemoryError} past {@link #MAX_SEQUENCE} characters, before it is built further:
+     * a list holding one long string many times over would otherwise fill the memory.
+     */
     public static String repr(Object v, java.util.function.Function<Object, String> own) {
-        return switch (v) {
-            case null -> "None";
-            case Boolean b -> b ? "True" : "False";
-            case Long l -> Long.toString(l);
-            case Double d -> floatRepr(d);
-            case String s -> stringRepr(s);
+        try {
+            return text(v, own);
+        } catch (TooLong cut) {
+            throw new RunError("MemoryError", "lists and strings hold at most " + MAX_SEQUENCE + " items");
+        }
+    }
+
+    /** {@link #repr(Object)} for showing a value: text past the string cap is cut with {@code ...}, never an error. */
+    public static String shown(Object v) {
+        return shown(v, Object::toString);
+    }
+
+    /** {@link #repr(Object, java.util.function.Function)} for showing a value, cut as {@link #shown(Object)} is. */
+    public static String shown(Object v, java.util.function.Function<Object, String> own) {
+        try {
+            return text(v, own);
+        } catch (TooLong cut) {
+            return cut.start + "...";
+        }
+    }
+
+    private static String text(Object v, java.util.function.Function<Object, String> own) {
+        var text = new Text();
+        repr(v, own, text);
+        return text.out.toString();
+    }
+
+    private static void repr(Object v, java.util.function.Function<Object, String> own, Text text) {
+        switch (v) {
+            case null -> text.add("None");
+            case Boolean b -> text.add(b ? "True" : "False");
+            case Long l -> text.add(Long.toString(l));
+            case Double d -> text.add(floatRepr(d));
+            case String s -> text.add(stringRepr(s));
             case ListValue l -> {
-                var parts = new ArrayList<String>();
-                l.items.forEach(item -> parts.add(repr(item, own)));
-                yield "[" + String.join(", ", parts) + "]";
+                text.add("[");
+                for (int i = 0; i < l.items.size(); i++) {
+                    text.add(i == 0 ? "" : ", ");
+                    repr(l.items.get(i), own, text);
+                }
+                text.add("]");
             }
             case DictValue d -> {
-                var parts = new ArrayList<String>();
-                d.entries.values().forEach(entry -> parts.add(repr(entry.key, own) + ": " + repr(entry.value, own)));
-                yield "{" + String.join(", ", parts) + "}";
+                text.add("{");
+                boolean first = true;
+                for (var entry : d.entries.values()) {
+                    text.add(first ? "" : ", ");
+                    first = false;
+                    repr(entry.key, own, text);
+                    text.add(": ");
+                    repr(entry.value, own, text);
+                }
+                text.add("}");
             }
             case SetValue s -> {
                 if (s.size() == 0) {
-                    yield "set()";
+                    text.add("set()");
+                    return;
                 }
-                var parts = new ArrayList<String>();
-                s.items.values().forEach(item -> parts.add(repr(item, own)));
-                yield "{" + String.join(", ", parts) + "}";
+                text.add("{");
+                boolean first = true;
+                for (var item : s.items.values()) {
+                    text.add(first ? "" : ", ");
+                    first = false;
+                    repr(item, own, text);
+                }
+                text.add("}");
             }
-            case RangeValue r -> "range(" + r.start() + ", " + r.stop() + (r.step() == 1 ? "" : ", " + r.step()) + ")";
+            case RangeValue r -> text.add("range(" + r.start() + ", " + r.stop()
+                    + (r.step() == 1 ? "" : ", " + r.step()) + ")");
             case RecordValue r -> {
-                var parts = new ArrayList<String>();
-                r.fields.forEach((name, value) -> parts.add(name + "=" + repr(value, own)));
-                yield typeName(r) + "(" + String.join(", ", parts) + ")";
+                text.add(typeName(r) + "(");
+                boolean first = true;
+                for (var field : r.fields.entrySet()) {
+                    text.add((first ? "" : ", ") + field.getKey() + "=");
+                    first = false;
+                    repr(field.getValue(), own, text);
+                }
+                text.add(")");
             }
-            default -> own.apply(v);
-        };
+            default -> text.add(own.apply(v));
+        }
+    }
+
+    /** A value's text as it is written, stopping at the string cap. */
+    private static final class Text {
+        final StringBuilder out = new StringBuilder();
+
+        void add(String part) {
+            if (out.length() + (long) part.length() > MAX_SEQUENCE) {
+                out.append(part, 0, (int) (MAX_SEQUENCE - out.length()));
+                throw new TooLong(out.toString());
+            }
+            out.append(part);
+        }
+    }
+
+    /** A value's text passed the string cap; holds the text up to the cap for {@link #shown(Object)}. */
+    private static final class TooLong extends RuntimeException {
+        final String start;
+
+        TooLong(String start) {
+            super(null, null, false, false);
+            this.start = start;
+        }
     }
 
     /** Python's shortest repr: fixed notation for exponents from -4 to 15, else {@code 1e+16}. */

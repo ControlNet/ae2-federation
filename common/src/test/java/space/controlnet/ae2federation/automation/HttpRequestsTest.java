@@ -151,6 +151,13 @@ final class HttpRequestsTest {
     }
 
     @Test
+    void aLongBodyIsRefusedBeforeItIsSent() {
+        assertEquals("ValueError: a request body holds at most 100000 characters",
+                error(() -> requests.send("POST", url("/echo"), "铁".repeat(100_001), headers())));
+        assertEquals("", received.get(), "nothing reached the server");
+    }
+
+    @Test
     void aBadRequestStopsTheRunAtOnce() {
         assertEquals("ValueError: url must start with http:// or https://: 'ftp://example.org/'",
                 error(() -> requests.send("GET", "ftp://example.org/", "", headers())));

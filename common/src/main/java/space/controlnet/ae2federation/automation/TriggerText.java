@@ -103,7 +103,7 @@ public final class TriggerText {
             if (arg instanceof String s) {
                 text.append(s.isEmpty() || s.contains(" ") ? '"' + s + '"' : s);
             } else {
-                text.append(Ops.repr(arg));
+                text.append(Ops.shown(arg));
             }
         }
         return text.toString();

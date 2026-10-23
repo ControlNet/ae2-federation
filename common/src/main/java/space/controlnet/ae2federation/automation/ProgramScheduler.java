@@ -761,7 +761,7 @@ public final class ProgramScheduler {
     private boolean finished(String id, ProgramRun run) {
         return switch (run.tick(CREATIVE_STEPS)) {
             case DONE -> {
-                log(id, "done: " + Ops.repr(run.runner().result()));
+                log(id, "done: " + Ops.shown(run.runner().result()));
                 yield true;
             }
             case FAILED -> {

@@ -148,7 +148,7 @@ public final class ProgramCommands {
 
     static String describe(Installation installation) {
         return installation.id() + ": " + installation.file() + "." + installation.function()
-                + Ops.repr(new ListValue(installation.args())) + " on " + installation.device() + ", "
+                + Ops.shown(new ListValue(installation.args())) + " on " + installation.device() + ", "
                 + TriggerText.format(installation.trigger()) + ", at most every " + installation.interval()
                 + " ticks, " + installation.overlap().name().toLowerCase(Locale.ROOT);
     }

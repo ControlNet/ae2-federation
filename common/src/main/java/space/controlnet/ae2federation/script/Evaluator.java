@@ -24,7 +24,7 @@ public final class Evaluator {
 
         /** A value as a dry run shows it; a host writes its own values (a selected block) as it sees them. */
         default String repr(Object value) {
-            return Ops.repr(value);
+            return Ops.shown(value);
         }
 
         /** A line the program printed; a host with nowhere to write it drops it. */
@@ -222,8 +222,10 @@ public final class Evaluator {
                 c.keywords().forEach(k -> keywords.put(k.name(), eval(file, k.value(), locals)));
                 if (c.name().equals("print")) {
                     var separator = keywords.get("sep");
-                    host.print(args.stream().map(Ops::str).collect(java.util.stream.Collectors.joining(
-                            separator == null ? " " : (String) separator)));
+                    var line = args.stream().map(Ops::str).collect(java.util.stream.Collectors.joining(
+                            separator == null ? " " : (String) separator));
+                    Ops.grow(line.length());
+                    host.print(line);
                     return null;
                 }
                 return Ops.builtIn(c.name(), args, keywords);

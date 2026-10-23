@@ -23,6 +23,6 @@ public record RangeValue(long start, long stop, long step) {
 
     @Override
     public String toString() {
-        return Ops.repr(this);
+        return Ops.shown(this);
     }
 }

@@ -533,7 +533,14 @@ final class EvaluatorTest {
                 Arguments.of("('a' * 50000).replace('a', 'bbb')", tooMany),
                 Arguments.of("('a' * 50000).replace('', '-')", tooMany),
                 Arguments.of("'--'.join(['a'] * 40000)", tooMany),
-                Arguments.of("sum(range(1000000000))", "499999999500000000"));
+                Arguments.of("sum(range(1000000000))", "499999999500000000"),
+                // Text made from a collection counts too: one string, many times over, must not fill the memory.
+                Arguments.of("str(['x' * 100000] * 100000)", tooMany),
+                Arguments.of("str([1] * 40000)", tooMany),
+                Arguments.of("len(str([1] * 30000))", "90000"),
+                Arguments.of("str({'a': 'x' * 100000})", tooMany),
+                Arguments.of("str({'x' * 99999})", tooMany),
+                Arguments.of("str([[['x' * 50000]] * 2] * 2)", tooMany));
     }
 
     @ParameterizedTest(name = "{0}")

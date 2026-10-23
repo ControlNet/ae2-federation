@@ -97,6 +97,9 @@ public final class HttpRequests {
             throw new RunError("ValueError", "method must be one of " + String.join(", ", METHODS) + ", not "
                     + Ops.repr(method));
         }
+        if (body.codePointCount(0, body.length()) > MAX_CHARACTERS) {
+            throw new RunError("ValueError", "a request body holds at most " + MAX_CHARACTERS + " characters");
+        }
         var wait = timeout.get();
         var builder = HttpRequest.newBuilder(uri(url)).timeout(wait)
                 .method(method, body.isEmpty() ? HttpRequest.BodyPublishers.noBody()
