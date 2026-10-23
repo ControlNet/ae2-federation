@@ -27,7 +27,6 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
-import space.controlnet.ae2federation.automation.LibraryRows;
 import space.controlnet.ae2federation.automation.ProgramDryRun;
 import space.controlnet.ae2federation.client.automation.CompletionPopup;
 import space.controlnet.ae2federation.client.automation.ScriptChecker;
@@ -36,8 +35,9 @@ import space.controlnet.ae2federation.script.Canvas;
 import space.controlnet.ae2federation.script.Expr;
 import space.controlnet.ae2federation.script.GraphCards;
 import space.controlnet.ae2federation.script.Layout;
+import space.controlnet.ae2federation.script.Palette;
+import space.controlnet.ae2federation.script.ScriptParser;
 import space.controlnet.ae2federation.script.ScriptPrinter;
-import space.controlnet.ae2federation.script.Signature;
 import space.controlnet.ae2federation.script.StandardLibrary;
 import space.controlnet.ae2federation.script.TypeRef;
 
@@ -50,14 +50,19 @@ import space.controlnet.ae2federation.script.TypeRef;
  * <p>A literal or a variable on a card is edited in place: a click opens a field, and Enter or leaving it writes what
  * is typed into the script ({@link GraphCards#put}), which is checked and drawn again as any edit is.
  *
- * <p>A function dragged from the Library becomes a dashed draft card where it is dropped, kept on the client only and
- * lost with the screen (user decision, 2026-10-19). Dragging its value pin onto a card's input port, or its exec pin
- * onto a card's exec output, writes the call there ({@link GraphCards#putCall}, {@link GraphCards#insertCall}). A
- * card's own pins drag the same way: a statement onto another exec output ({@link GraphCards#relocate}), and a value,
- * whose pin is already wired, onto another port as a second wire, which stores it in a variable both ports read
- * ({@link GraphCards#share}; user decision, 2026-10-23); with Ctrl held at the press it moves there instead
- * ({@link GraphCards#move}). The × in a card's head removes it ({@link GraphCards#remove}; user
- * decision, 2026-10-19), and a draft's discards the draft.
+ * <p>An entry dragged from the Library ({@link Palette}: a statement, an operator, a built-in, a value, a player's
+ * function or a library function) shows its card under the pointer and becomes a dashed draft card where it is
+ * dropped, kept on the client only and lost with the screen (user decisions, 2026-10-19 and 2026-10-23). Dragging its
+ * value pin onto a card's input port, or its exec pin onto a card's exec output, writes it there ({@link GraphCards#put},
+ * {@link GraphCards#insertStatement}); a variable it introduces takes a name nothing has yet
+ * ({@link GraphCards#freshName}). A card's own pins drag the same way: a statement onto another exec output
+ * ({@link GraphCards#relocate}), and a value onto another port ({@link GraphCards#move}). The × in a card's head
+ * removes it ({@link GraphCards#remove}; user decision, 2026-10-19), and a draft's discards the draft. A right-click on
+ * the canvas opens the Add menu there ({@link FederationAddMenu}), which drops a draft as the Library does. A variable
+ * dragged from the strip above the canvas shows its chip under the pointer, lights the ports of its type and is
+ * written on the port or the value it is dropped on. An if card's foot adds and removes its last {@code elif}, and a
+ * click on the variable an assignment or a loop names renames it wherever the function uses it (user decisions,
+ * 2026-10-23, boards {@code PaletteCards} and {@code PaletteVariable}).
  *
  * <p>While a function is shown its dry run is asked for again and again ({@link #showDry}): each card shows its value
  * on its output's line, beside the pin, cards the run did not reach are dimmed with their wires, and the card where it
@@ -100,6 +105,20 @@ final class FederationGraphView {
     private static final int DRAFT_EDGE = 0xff9cd3ff;
     private static final int DRAFT_FACE = 0xb32c2735;
     private static final int DRAFT_HEAD = 0xb33a3646;
+    private static final int DRAFT_ACTS = 0xb34b2f73;
+    private static final int DRAFT_LASTS = 0xb36b4f20;
+    /** Where the pointer holds a dragged entry's card: a little into its head. */
+    private static final int GRAB_X = 10;
+    private static final int GRAB_Y = 5;
+    /** The foot of an if card while editing: its height, its buttons' labels, inset, padding and gap. */
+    private static final int FOOT = 12;
+    private static final String MORE = "+ elif";
+    private static final String LESS = "- elif";
+    private static final int FOOT_X = 4;
+    private static final int FOOT_PAD = 3;
+    private static final int FOOT_GAP = 3;
+    /** The edge around a port a dragged variable may go on. */
+    private static final int FITS = 0xffffffff;
     /** A pin's square that takes a press or a drop, centred on the card's edge where the pin is drawn. */
     private static final int PIN = 8;
     /** The remove button in a card's head: its square, and the room it takes after the title. */
@@ -113,32 +132,44 @@ final class FederationGraphView {
     /** Laid over a card the dry run did not reach. */
     private static final int SKIPPED = 0x99201e27;
 
-    /** A Library function being dragged onto the canvas. */
-    record LibraryDrag(String namespace, String function) {
+    /** A Library entry being dragged onto the canvas. */
+    record LibraryDrag(Palette.Entry entry) {
     }
 
-    /** A dropped Library function not yet in the script: its card's top left on the canvas, per shown function. */
-    private record Draft(int number, String namespace, Signature function, float x, float y) {
-        boolean execIn() {
-            return function.effect() || function.result().name().equals("None");
-        }
-
-        boolean valueOut() {
-            return !function.result().name().equals("None");
-        }
-
-        List<Signature.Arg> rows() {
-            return function.args().stream().filter(arg -> arg.defaultValue() == null).toList();
-        }
+    /** A dropped Library entry not yet in the script: its card's top left on the canvas, per shown function. */
+    private record Draft(int number, Palette.Entry entry, float x, float y) {
     }
 
     /**
-     * A wire dragged from an exec pin or a value pin: a draft's, or a card's ({@code card}, the statement or value
-     * it wires); {@code moves} when Ctrl was held at the press, so a card's value moves rather than being shared.
+     * A draft's card for {@code entry}: its size, and the row of its first port, after the exec pin's when it has
+     * one. Its statement's exec outputs take the rows from the top, as a card's do.
      */
-    private record PinDrag(@Nullable Draft draft, @Nullable String card, boolean exec, int color, boolean moves) {
-        PinDrag(@Nullable Draft draft, @Nullable String card, boolean exec, int color) {
-            this(draft, card, exec, color, false);
+    record DraftShape(Palette.Entry entry, int width, int height, int firstRow) {
+        static DraftShape of(Palette.Entry entry) {
+            var font = net.minecraft.client.Minecraft.getInstance().font;
+            int firstRow = entry.execIn() ? 1 : 0;
+            int lines = Math.max(1, Math.max(firstRow + entry.ports().size(), entry.outputs().size()));
+            int widest = 4 + font.width(entry.title()) + END + CLOSE_ROOM;
+            for (int i = 0; i < lines; i++) {
+                int port = i - firstRow;
+                int left = port >= 0 && port < entry.ports().size()
+                        ? LABEL_X + font.width(entry.ports().get(port).label()) : 0;
+                int right = i < entry.outputs().size() ? font.width(entry.outputs().get(i)) + END + 2 : 0;
+                widest = Math.max(widest, left + right + END);
+            }
+            return new DraftShape(entry, Math.max(MIN_WIDTH, widest), BASE + ROW * lines, firstRow);
+        }
+    }
+
+    /** A wire dragged from an exec pin or a value pin: a draft's, or a card's ({@code card}, the statement or value). */
+    private record PinDrag(@Nullable Draft draft, @Nullable String card, boolean exec, int color) {
+    }
+
+    /** A variable dragged from the strip above the canvas, written on the port it is dropped on. */
+    record VariableDrag(String name, @Nullable TypeRef type) {
+        /** Whether a port of {@code type} lights up for it: the same colour, or a type not known on either side. */
+        boolean fits(@Nullable TypeRef port) {
+            return type == null || port == null || color(type) == color(port);
         }
     }
 
@@ -167,10 +198,15 @@ final class FederationGraphView {
     private int extentX;
     private int extentY;
     private final Map<String, List<Draft>> drafts = new HashMap<>();
+    private final FederationAddMenu addMenu;
+    /** What the Library does when the program's own functions may have changed. */
+    private Runnable paletteChanged = () -> {
+    };
     private int drafted;
     /** The draft pin pressed, which drags a wire once the pointer moves. */
     private @Nullable UIElement pressed;
-    private @Nullable PinDrag pressedDrag;
+    /** What the pressed pin or variable drags: a {@link PinDrag} or a {@link VariableDrag}. */
+    private @Nullable Object pressedDrag;
     private float pressX;
     private float pressY;
     /** A button is held: a press and its release must meet the same cards for the click. */
@@ -201,7 +237,7 @@ final class FederationGraphView {
         graphChip.setOnClick(event -> setShown(true));
         graphChip.setActive(false);
         graph.addEventListener(UIEvents.TICK, event -> recentre());
-        // A Library function dropped anywhere on the canvas, over a card or not, becomes a draft there.
+        // A Library entry dropped anywhere on the canvas, over a card or not, becomes a draft there.
         graph.addEventListener(UIEvents.DRAG_PERFORM, event -> {
             if (event.dragHandler.draggingObject instanceof LibraryDrag drag) drop(drag, event.x, event.y);
         });
@@ -219,7 +255,17 @@ final class FederationGraphView {
             if (pin == null || Math.abs(event.x - pressX) + Math.abs(event.y - pressY) < DRAG_THRESHOLD) return;
             pressed = null;
             pin.startDrag(pressedDrag, null);
+            var modular = pin.getModularUI();
+            if (pressedDrag instanceof VariableDrag variable && modular != null) chipGhost(variable,
+                    modular.getDragHandler());
         }, true);
+        addMenu = new FederationAddMenu(box, this::palette,
+                (entry, mouseX, mouseY) -> drop(new LibraryDrag(entry), mouseX, mouseY));
+        // A right-click on the canvas, over a card or not, opens the Add menu there once the button is let go, as a
+        // desktop context menu does; the left button and the middle one pan.
+        graph.addEventListener(UIEvents.MOUSE_UP, event -> {
+            if (event.button == 1 && function != null) addMenu.open(event.x, event.y);
+        });
         apply();
     }
 
@@ -249,6 +295,7 @@ final class FederationGraphView {
     /** Another program is opened: nothing to draw until its script has been checked. */
     void clear() {
         graphs = Map.of();
+        paletteChanged.run();
         drafts.clear();
         dry = null;
         typed.clear();
@@ -263,6 +310,8 @@ final class FederationGraphView {
     void show(String from, Optional<Map<String, ScriptChecker.Graph>> answer) {
         // Every index from the server checks the script again; drawing the same text again would close an open field.
         boolean same = parses && answer.isPresent() && from.equals(drawnFrom);
+        // The last dry run's values are keyed by the old text's cards, which another text numbers differently.
+        if (!from.equals(drawnFrom)) dry = null;
         drawnFrom = from;
         parses = answer.isPresent();
         graphChip.setActive(parses);
@@ -271,6 +320,7 @@ final class FederationGraphView {
             return;
         }
         graphs = answer.get();
+        paletteChanged.run();
         if (function == null || !graphs.containsKey(function)) {
             function = graphs.keySet().stream().findFirst().orElse(null);
             recentre = true;
@@ -381,7 +431,7 @@ final class FederationGraphView {
         var drawn = new HashMap<String, Drawn>();
         for (var card : shownGraph.cards()) {
             drawn.put(card.id(), measure(card, font, dryValue(card, font), dryState(card),
-                    card.card().node().kind() == Canvas.Kind.ENTRY ? params : List.of()));
+                    card.card().node().kind() == Canvas.Kind.ENTRY ? params : List.of(), true));
         }
         var boxes = places(shownGraph, drawn);
         int right = 0;
@@ -395,7 +445,8 @@ final class FederationGraphView {
         for (var card : shownGraph.cards()) {
             var place = boxes.get(card.id());
             graph.addContentChild(new CardElement(drawn.get(card.id()), place.x() + MARGIN, place.y() + MARGIN,
-                    (row, value) -> put(shownGraph, row, value), () -> remove(shownGraph, card.id())));
+                    (row, value) -> put(shownGraph, row, value), () -> remove(shownGraph, card.id()),
+                    edited -> edit(shownGraph, edited)));
         }
         for (var draft : drafts.getOrDefault(function, List.of())) graph.addContentChild(new DraftElement(draft));
         extentX = right + 2 * MARGIN;
@@ -513,6 +564,16 @@ final class FederationGraphView {
         }
     }
 
+    /** Writes an edit of the shown function's canvas into the script, or says on the status line why it cannot be. */
+    private void edit(ScriptChecker.Graph shownGraph, Function<Canvas, String> edit) {
+        if (!text.get().equals(drawnFrom)) return;
+        try {
+            write.accept(edit.apply(shownGraph.canvas()));
+        } catch (IllegalArgumentException e) {
+            refuse.accept(e.getMessage());
+        }
+    }
+
     /** Removes a card from the script, or says on the status line why it cannot be. */
     private void remove(ScriptChecker.Graph shownGraph, String card) {
         if (!text.get().equals(drawnFrom)) return;
@@ -523,26 +584,81 @@ final class FederationGraphView {
         }
     }
 
-    /** A Library function dropped at a point of the screen: a draft card with its head under the pointer. */
+    /**
+     * The groups the Library shows: with the program's own functions while its script parses, else the fixed ones
+     * and the standard library.
+     */
+    List<Palette.Group> palette() {
+        var any = graphs.values().stream().findFirst();
+        if (any.isEmpty()) return Palette.groups(StandardLibrary.NAMESPACES);
+        return Palette.groups(ScriptParser.parse(drawnFrom).program(), any.get().workspace());
+    }
+
+    /** Runs when the program's own functions may have changed, so the Library lists them again. */
+    void onPalette(Runnable changed) {
+        paletteChanged = changed;
+    }
+
+    /**
+     * The card that follows the pointer while {@code entry} is dragged from the Library: the draft it becomes, at the
+     * canvas's scale, with its head under the pointer where the drop puts it.
+     */
+    void ghost(Palette.Entry entry, com.lowdragmc.lowdraglib2.gui.ui.event.DragHandler handler) {
+        var shape = DraftShape.of(entry);
+        float scale = graph.getScale();
+        handler.dragTexture = new com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture() {
+            @Override
+            public void draw(net.minecraft.client.gui.GuiGraphics graphics, float mouseX, float mouseY, float x,
+                    float y, float width, float height, float partialTicks) {
+                graphics.pose().pushPose();
+                graphics.pose().translate(x, y, 0);
+                graphics.pose().scale(scale, scale, 1);
+                paintDraft(graphics, shape, 0, 0, null);
+                graphics.pose().popPose();
+            }
+        };
+        handler.setDragTexture(-GRAB_X * scale, -GRAB_Y * scale, shape.width() * scale, shape.height() * scale);
+    }
+
+    /** The chip that follows the pointer while a variable is dragged from the strip, as the strip draws it. */
+    private static void chipGhost(VariableDrag variable, com.lowdragmc.lowdraglib2.gui.ui.event.DragHandler handler) {
+        var text = variable.name();
+        int width = net.minecraft.client.Minecraft.getInstance().font.width(text) + 8;
+        int color = color(variable.type());
+        handler.dragTexture = new com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture() {
+            @Override
+            public void draw(net.minecraft.client.gui.GuiGraphics graphics, float mouseX, float mouseY, float x,
+                    float y, float w, float h, float partialTicks) {
+                FederationTheme.painted((pen, px, py, pw, ph) -> pill(pen, px, py, pw, ph, color))
+                        .draw(graphics, 0, 0, x, y, w, h, 0);
+                text(graphics, text, x + 4, y + 2, EXEC);
+            }
+        };
+        handler.setDragTexture(-width / 2f, -6, width, 11);
+    }
+
+    /** A Library entry dropped at a point of the screen: a draft card with its head under the pointer. */
     private void drop(LibraryDrag drag, float mouseX, float mouseY) {
-        var signature = LibraryRows.find(StandardLibrary.NAMESPACES, drag.namespace(), drag.function());
-        if (function == null || signature == null) return;
+        if (function == null) return;
         var point = graph.contentRoot.getLocalMouse(mouseX, mouseY);
-        var draft = new Draft(drafted++, drag.namespace(), signature,
-                point.x - graph.contentRoot.getPositionX() - 10, point.y - graph.contentRoot.getPositionY() - 5);
+        var draft = new Draft(drafted++, drag.entry(), point.x - graph.contentRoot.getPositionX() - GRAB_X,
+                point.y - graph.contentRoot.getPositionY() - GRAB_Y);
         drafts.computeIfAbsent(function, name -> new ArrayList<>()).add(draft);
         graph.addContentChild(new DraftElement(draft));
     }
 
     /**
      * A wire dropped on a card's pin: a value pin's on an input row ({@code row}), or an exec pin's on an exec output
-     * ({@code output} of {@code card}). A draft's writes its call there and leaves the canvas; a card's moves its
-     * statement there, and shares its value with that port, or moves it there when Ctrl was held. Dropped where it
-     * already is, nothing changes.
+     * ({@code output} of {@code card}). A draft's writes its entry there and leaves the canvas; a card's moves its
+     * statement or its value there. Dropped where it already is, nothing changes.
      */
     private void wired(UIEvent event, @Nullable GraphCards.Row row, @Nullable String card, @Nullable String output) {
-        if (!(event.dragHandler.draggingObject instanceof PinDrag drag) || drag.exec() != (row == null)) return;
         var shownGraph = function == null ? null : graphs.get(function);
+        if (event.dragHandler.draggingObject instanceof VariableDrag variable && row != null && shownGraph != null) {
+            put(shownGraph, row, variable.name());
+            return;
+        }
+        if (!(event.dragHandler.draggingObject instanceof PinDrag drag) || drag.exec() != (row == null)) return;
         if (shownGraph == null || !text.get().equals(drawnFrom)) return;
         var canvas = shownGraph.canvas();
         var draft = drag.draft();
@@ -554,14 +670,13 @@ final class FederationGraphView {
             String edited;
             if (draft == null) {
                 edited = row == null ? GraphCards.relocate(drawnFrom, canvas, drag.card(), card, output)
-                        : drag.moves() ? GraphCards.move(drawnFrom, canvas, drag.card(), row.node(), row.port())
-                        : GraphCards.share(drawnFrom, canvas, drag.card(), row.node(), row.port(),
-                                shownGraph.workspace());
+                        : GraphCards.move(drawnFrom, canvas, drag.card(), row.node(), row.port());
             } else {
-                edited = row != null
-                        ? GraphCards.putCall(drawnFrom, canvas, row.node(), row.port(), draft.namespace(),
-                                draft.function())
-                        : GraphCards.insertCall(drawnFrom, canvas, card, output, draft.namespace(), draft.function());
+                var entry = draft.entry();
+                var written = entry.variable() == null ? entry.text() : entry.text(GraphCards.freshName(canvas,
+                        entry.variable(), ScriptParser.parse(drawnFrom).program(), shownGraph.workspace()));
+                edited = row != null ? GraphCards.put(drawnFrom, canvas, row.node(), row.port(), null, written)
+                        : GraphCards.insertStatement(drawnFrom, canvas, card, output, written);
                 drafts.getOrDefault(function, new ArrayList<>()).remove(draft);
                 graph.contentRoot.getChildren().stream()
                         .filter(child -> child instanceof DraftElement element && element.draft == draft).toList()
@@ -609,6 +724,15 @@ final class FederationGraphView {
             chip.layout(layout -> layout.width(width));
             chip.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, w, h) ->
                     pill(pen, x, y, w, h, color))));
+            chip.setId("auto_variable_" + variable.name());
+            // A press drags the variable once the pointer moves, onto a port or a value.
+            chip.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+                if (event.button != 0) return;
+                pressed = chip;
+                pressedDrag = new VariableDrag(variable.name(), variable.type());
+                pressX = event.x;
+                pressY = event.y;
+            });
             variables.addChild(chip);
         }
     }
@@ -678,6 +802,12 @@ final class FederationGraphView {
 
     static Drawn measure(GraphCards.Card card, net.minecraft.client.gui.Font font, @Nullable DryValue dry,
             DryState state, List<ParamRow> params) {
+        return measure(card, font, dry, state, params, false);
+    }
+
+    /** {@code editing} leaves room under an if for the buttons that add and remove its {@code elif}. */
+    static Drawn measure(GraphCards.Card card, net.minecraft.client.gui.Font font, @Nullable DryValue dry,
+            DryState state, List<ParamRow> params, boolean editing) {
         var values = new ArrayList<Value>();
         for (var row : card.rows()) values.add(value(row, font));
         boolean execIn = card.statement() && card.card().node().kind() != Canvas.Kind.ENTRY;
@@ -703,7 +833,10 @@ final class FederationGraphView {
             if (line == 0 && dry != null) right = Math.max(right, dry.width());
             width = Math.max(width, left + (right == 0 ? 0 : (left == 0 ? GAP : APART) + right) + END);
         }
-        return new Drawn(card, values, width, BASE + ROW * lines, firstRow, execIn, dry, state, params);
+        boolean foot = editing && card.card().node().kind() == Canvas.Kind.IF;
+        if (foot) width = Math.max(width, FOOT_X + 2 * font.width(MORE) + 2 * FOOT_PAD + FOOT_GAP + END);
+        return new Drawn(card, values, width, BASE + ROW * lines + (foot ? FOOT : 0), firstRow, execIn, dry, state,
+                params);
     }
 
     private static @Nullable Value value(GraphCards.Row row, net.minecraft.client.gui.Font font) {
@@ -813,8 +946,7 @@ final class FederationGraphView {
         pin.addEventListener(UIEvents.MOUSE_DOWN, event -> {
             if (event.button != 0) return;
             pressed = pin;
-            pressedDrag = event.isCtrlDown()
-                    ? new PinDrag(drag.draft(), drag.card(), drag.exec(), drag.color(), true) : drag;
+            pressedDrag = drag;
             pressX = event.x;
             pressY = event.y;
         });
@@ -834,6 +966,13 @@ final class FederationGraphView {
         // An exec wire comes into its statement from the output it is dragged to; a value wire leaves its value.
         var curve = drag.exec() ? new WireCurve(mouse.x, mouse.y, x, y) : new WireCurve(x, y, mouse.x, mouse.y);
         FederationProcessingGraph.dashed(context.graphics, FederationProcessingGraph.polyline(curve), drag.color());
+    }
+
+    /** The variable being dragged from the strip, so the cards light the ports it may go on; none otherwise. */
+    private static @Nullable VariableDrag variableDragged(UIElement element) {
+        var ui = element.getModularUI();
+        return ui != null && ui.getDragHandler().isDragging()
+                && ui.getDragHandler().draggingObject instanceof VariableDrag drag ? drag : null;
     }
 
     /** Whether an exec wire is being dragged, so the cards show where it may go. */
@@ -944,7 +1083,12 @@ final class FederationGraphView {
         /** After an if or a loop with nothing after it, its {@code next}: shown only while an exec wire is dragged. */
         private final boolean openNext;
 
-        CardElement(Drawn drawn, int x, int y, BiConsumer<GraphCards.Row, String> put, Runnable remove) {
+        /** The foot's buttons on an if card while editing, none on other cards. */
+        private final @Nullable UIElement more;
+        private final @Nullable UIElement less;
+
+        CardElement(Drawn drawn, int x, int y, BiConsumer<GraphCards.Row, String> put, Runnable remove,
+                Consumer<Function<Canvas, String>> edit) {
             this.drawn = drawn;
             setId("auto_graph_card_" + drawn.card().id());
             addClass("graph-card");
@@ -991,6 +1135,22 @@ final class FederationGraphView {
                 addChild(parameter(param, drawn.rowY(card.rows().size() + i)));
             }
             if (drawn.dry() != null) addChild(dryLabel(card.id(), drawn.dry(), drawn.width(), drawn.outputY(0)));
+            var node = card.card().node();
+            boolean foot = kind == Canvas.Kind.IF && drawn.height() > BASE;
+            int arms = (int) node.inputs().keySet().stream().filter(k -> k.startsWith("condition")).count();
+            var font = net.minecraft.client.Minecraft.getInstance().font;
+            more = foot ? footButton("auto_graph_elif_add_" + card.id(), FOOT_X, font.width(MORE),
+                    () -> edit.accept(canvas -> GraphCards.addArm(drawnFrom, canvas, card.id()))) : null;
+            less = foot && arms > 1 ? footButton("auto_graph_elif_remove_" + card.id(),
+                    FOOT_X + font.width(MORE) + 2 * FOOT_PAD + FOOT_GAP, font.width(LESS),
+                    () -> edit.accept(canvas -> GraphCards.removeLastArm(drawnFrom, canvas, card.id()))) : null;
+            if (more != null) addChild(more);
+            if (less != null) addChild(less);
+            // The variable an assignment or a loop names is renamed with a click on it in the title.
+            var named = kind == Canvas.Kind.FOR ? node.name()
+                    : kind == Canvas.Kind.ASSIGN && node.inputs().get("target") instanceof Canvas.Input.Chip chip
+                            ? chip.name().name() : null;
+            if (named != null) addChild(renamer(card.id(), named, kind == Canvas.Kind.FOR ? "for " : "", edit));
         }
 
         /** A parameter's value on the function's card: a click opens a field, and Enter or leaving it keeps it. */
@@ -1047,6 +1207,10 @@ final class FederationGraphView {
             area.addEventListener(UIEvents.CLICK, event -> {
                 if (area.getChildren().isEmpty()) open(area, shown, value.width(), typed -> put.accept(row, typed));
             });
+            // A variable dragged from the strip is written in its place.
+            area.addEventListener(UIEvents.DRAG_PERFORM, event -> {
+                if (event.dragHandler.draggingObject instanceof VariableDrag variable) put.accept(row, variable.name());
+            });
             return area;
         }
 
@@ -1097,6 +1261,63 @@ final class FederationGraphView {
             }
             dragged(this, context, drag -> card.id().equals(drag.card()), drawn.execIn() ? x - 1 : x + w + 2,
                     y + FIRST);
+            float footY = y + getSizeHeight() - FOOT + 1;
+            if (more != null) footLabel(graphics, more, MORE, x + FOOT_X, footY);
+            if (less != null) footLabel(graphics, less, LESS, x + FOOT_X + font.width(MORE) + 2 * FOOT_PAD + FOOT_GAP,
+                    footY);
+            var variable = variableDragged(this);
+            if (variable == null) return;
+            for (int i = 0; i < card.rows().size(); i++) {
+                if (!variable.fits(card.rows().get(i).type())) continue;
+                float cy = y + drawn.rowY(i);
+                DrawerHelper.drawSolidRect(graphics, x - 5, cy - 4, 9, 1, FITS);
+                DrawerHelper.drawSolidRect(graphics, x - 5, cy + 4, 9, 1, FITS);
+                DrawerHelper.drawSolidRect(graphics, x - 5, cy - 4, 1, 9, FITS);
+                DrawerHelper.drawSolidRect(graphics, x + 3, cy - 4, 1, 9, FITS);
+            }
+        }
+
+        /** A button in the foot: {@code width} of text with padding, which runs {@code action} on a click. */
+        private static UIElement footButton(String id, int left, int width, Runnable action) {
+            var button = new UIElement();
+            button.setId(id);
+            button.addClass("graph-foot");
+            int top = 0;
+            button.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(left).bottom(top + 1)
+                    .width(width + 2 * FOOT_PAD).height(FOOT - 2));
+            // On the click, not the press: the card is drawn again.
+            button.addEventListener(UIEvents.CLICK, event -> action.run());
+            return button;
+        }
+
+        @OnlyIn(Dist.CLIENT)
+        private static void footLabel(net.minecraft.client.gui.GuiGraphics graphics, UIElement button, String label,
+                float x, float y) {
+            float w = button.getSizeWidth();
+            DrawerHelper.drawSolidRect(graphics, x, y, w, FOOT - 2, button.isHover() ? DRAFT_EDGE : EDGE);
+            DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, w - 2, FOOT - 4, 0xff17141e);
+            text(graphics, label, x + FOOT_PAD, y + 1, DRAFT_EDGE);
+        }
+
+        /**
+         * The variable's name in the title, after {@code before}: a click opens a field there, and Enter or leaving
+         * it renames the variable.
+         */
+        private UIElement renamer(String card, String name, String before,
+                Consumer<Function<Canvas, String>> edit) {
+            var font = net.minecraft.client.Minecraft.getInstance().font;
+            var area = new UIElement();
+            area.setId("auto_graph_rename_" + card);
+            area.addClass("graph-value");
+            int width = font.width(name);
+            int left = 4 + font.width(before);
+            area.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(left).top(1).width(width)
+                    .height(HEAD - 1));
+            area.addEventListener(UIEvents.CLICK, event -> {
+                if (area.getChildren().isEmpty()) open(area, name, width,
+                        typed -> edit.accept(canvas -> GraphCards.renameVariable(drawnFrom, canvas, name, typed)));
+            });
+            return area;
         }
 
         /** A card the dry run did not reach is dimmed, its value well and all. */
@@ -1111,77 +1332,89 @@ final class FederationGraphView {
     }
 
     /**
-     * A draft: a dropped Library function's card, dashed, with its required arguments' ports, its exec pin when it
-     * acts and its value pin when it gives one. A press on a pin drags a wire, drawn dashed to the pointer.
+     * A draft: a dropped Library entry's card, dashed, with its ports, its exec pin when it is a statement or a call
+     * that acts or gives nothing, and its value pin when it gives one. A press on a pin drags a wire, drawn dashed to
+     * the pointer.
      */
     private final class DraftElement extends UIElement {
         private final Draft draft;
+        private final DraftShape shape;
         private final UIElement close;
-        private final int width;
-        private final int height;
-        private final int firstRow;
 
         DraftElement(Draft draft) {
             this.draft = draft;
-            var font = net.minecraft.client.Minecraft.getInstance().font;
-            firstRow = draft.execIn() ? 1 : 0;
-            int lines = Math.max(1, firstRow + draft.rows().size());
-            int widest = 4 + font.width(title()) + END + CLOSE_ROOM;
-            for (var arg : draft.rows()) widest = Math.max(widest, LABEL_X + font.width(arg.name()) + END);
-            width = Math.max(MIN_WIDTH, widest);
-            height = BASE + ROW * lines;
+            shape = DraftShape.of(draft.entry());
             setId("auto_graph_draft_" + draft.number());
             addClass("graph-draft");
-            layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(draft.x()).top(draft.y()).width(width)
-                    .height(height));
+            layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(draft.x()).top(draft.y())
+                    .width(shape.width()).height(shape.height()));
             // Only its pins take presses; a press anywhere else reaches the canvas, which pans.
             setAllowHitTest(false);
-            close = closer(getId() + "_remove", width, () -> {
+            close = closer(getId() + "_remove", shape.width(), () -> {
                 drafts.getOrDefault(function, new ArrayList<>()).remove(draft);
                 graph.removeContentChild(this);
             });
             addChild(close);
-            if (draft.execIn()) addChild(source(pin(getId() + "_in", 0, FIRST), new PinDrag(draft, null, true, EXEC)));
-            if (draft.valueOut()) {
-                addChild(source(pin(getId() + "_out", width, FIRST),
-                        new PinDrag(draft, null, false, color(draft.function().result()))));
+            var entry = draft.entry();
+            if (entry.execIn()) addChild(source(pin(getId() + "_in", 0, FIRST), new PinDrag(draft, null, true, EXEC)));
+            if (entry.valueOut()) {
+                addChild(source(pin(getId() + "_out", shape.width(), FIRST),
+                        new PinDrag(draft, null, false, color(entry.result()))));
             }
-        }
-
-        private String title() {
-            return draft.namespace() + "." + draft.function().name();
         }
 
         @Override
         @OnlyIn(Dist.CLIENT)
         public void drawBackgroundAdditional(GUIContext context) {
             super.drawBackgroundAdditional(context);
-            var graphics = context.graphics;
             float x = getPositionX();
             float y = getPositionY();
-            DrawerHelper.drawSolidRect(graphics, x, y, width, height, DRAFT_FACE);
-            DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, width - 2, HEAD, DRAFT_HEAD);
-            // The edge in dashes of two pixels.
-            for (int i = 0; i < width; i += 4) {
-                DrawerHelper.drawSolidRect(graphics, x + i, y, Math.min(2, width - i), 1, DRAFT_EDGE);
-                DrawerHelper.drawSolidRect(graphics, x + i, y + height - 1, Math.min(2, width - i), 1, DRAFT_EDGE);
-            }
-            for (int i = 0; i < height; i += 4) {
-                DrawerHelper.drawSolidRect(graphics, x, y + i, 1, Math.min(2, height - i), DRAFT_EDGE);
-                DrawerHelper.drawSolidRect(graphics, x + width - 1, y + i, 1, Math.min(2, height - i), DRAFT_EDGE);
-            }
-            text(graphics, title(), x + 4, y + 2, EXEC);
-            cross(graphics, close, x + width - CLOSE + 1, y + 3);
-            if (draft.execIn()) triangle(graphics, x - 3, y + FIRST - 3);
-            if (draft.valueOut()) port(graphics, x + width - 3, y + FIRST - 2, color(draft.function().result()));
-            var rows = draft.rows();
-            for (int i = 0; i < rows.size(); i++) {
-                float cy = y + FIRST + ROW * (firstRow + i);
-                port(graphics, x - 3, cy - 2, color(rows.get(i).type()));
-                text(graphics, rows.get(i).name(), x + LABEL_X, cy - 4, LABEL);
-            }
+            paintDraft(context.graphics, shape, x, y, close);
             dragged(this, context, drag -> drag.draft() == draft && drag.exec(), x - 1, y + FIRST);
-            dragged(this, context, drag -> drag.draft() == draft && !drag.exec(), x + width + 2, y + FIRST);
+            dragged(this, context, drag -> drag.draft() == draft && !drag.exec(), x + shape.width() + 2, y + FIRST);
+        }
+    }
+
+    /**
+     * A draft's card at {@code (x, y)}: the dashed edge and see-through face, the head in an action's colour when it
+     * acts, the title and its × ({@code close}, none on the card that follows the pointer), the pins, the ports with
+     * their labels and a statement's exec outputs with theirs.
+     */
+    @OnlyIn(Dist.CLIENT)
+    private static void paintDraft(net.minecraft.client.gui.GuiGraphics graphics, DraftShape shape, float x, float y,
+            @Nullable UIElement close) {
+        var entry = shape.entry();
+        int width = shape.width();
+        int height = shape.height();
+        var font = net.minecraft.client.Minecraft.getInstance().font;
+        DrawerHelper.drawSolidRect(graphics, x, y, width, height, DRAFT_FACE);
+        int head = entry.lasts() ? DRAFT_LASTS : entry.acts() ? DRAFT_ACTS : DRAFT_HEAD;
+        DrawerHelper.drawSolidRect(graphics, x + 1, y + 1, width - 2, HEAD, head);
+        // The edge in dashes of two pixels.
+        for (int i = 0; i < width; i += 4) {
+            DrawerHelper.drawSolidRect(graphics, x + i, y, Math.min(2, width - i), 1, DRAFT_EDGE);
+            DrawerHelper.drawSolidRect(graphics, x + i, y + height - 1, Math.min(2, width - i), 1, DRAFT_EDGE);
+        }
+        for (int i = 0; i < height; i += 4) {
+            DrawerHelper.drawSolidRect(graphics, x, y + i, 1, Math.min(2, height - i), DRAFT_EDGE);
+            DrawerHelper.drawSolidRect(graphics, x + width - 1, y + i, 1, Math.min(2, height - i), DRAFT_EDGE);
+        }
+        text(graphics, entry.title(), x + 4, y + 2, EXEC);
+        if (close != null) cross(graphics, close, x + width - CLOSE + 1, y + 3);
+        if (entry.execIn()) triangle(graphics, x - 3, y + FIRST - 3);
+        if (entry.valueOut()) port(graphics, x + width - 3, y + FIRST - 2, color(entry.result()));
+        var ports = entry.ports();
+        for (int i = 0; i < ports.size(); i++) {
+            float cy = y + FIRST + ROW * (shape.firstRow() + i);
+            port(graphics, x - 3, cy - 2, color(ports.get(i).type()));
+            text(graphics, ports.get(i).label(), x + LABEL_X, cy - 4, LABEL);
+        }
+        var outputs = entry.outputs();
+        for (int i = 0; i < outputs.size(); i++) {
+            float cy = y + FIRST + ROW * i;
+            triangle(graphics, x + width - 3, cy - 3);
+            var label = outputs.get(i);
+            if (!label.isEmpty()) text(graphics, label, x + width - 5 - font.width(label), cy - 4, LABEL);
         }
     }
 

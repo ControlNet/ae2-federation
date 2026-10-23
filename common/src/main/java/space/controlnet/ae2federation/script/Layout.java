@@ -129,9 +129,8 @@ public final class Layout {
                 for (int i = 0; i < arms; i++) {
                     outputs.add("arm" + i);
                 }
-                if (n.armNotes().size() == arms) {
-                    outputs.add("else");
-                }
+                // Shown with no else too: a statement put there adds it.
+                outputs.add("else");
                 outputs.add("next");
             }
             case WHILE, FOR -> outputs.addAll(List.of("body", "next"));

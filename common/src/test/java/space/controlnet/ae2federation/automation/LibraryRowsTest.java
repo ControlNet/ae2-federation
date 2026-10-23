@@ -7,24 +7,53 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import space.controlnet.ae2federation.script.Candidate;
+import space.controlnet.ae2federation.script.Catalog;
+import space.controlnet.ae2federation.script.Palette;
+import space.controlnet.ae2federation.script.Program;
+import space.controlnet.ae2federation.script.ScriptParser;
 import space.controlnet.ae2federation.script.Signature;
 import space.controlnet.ae2federation.script.StandardLibrary;
 import space.controlnet.ae2federation.script.TypeRef;
+import space.controlnet.ae2federation.script.Workspace;
 
-/** The Library panel's rows: namespaces with their counts, and the functions of the open ones or of a search. */
+/** The Library panel's rows: groups with their counts, and the entries of the open ones or of a search. */
 final class LibraryRowsTest {
     private static Signature fn(String name, boolean acts) {
         return new Signature(name, List.of(), new TypeRef("int", List.of()), "", acts, "");
     }
 
-    private static final Map<String, List<Signature>> LIBRARY = Map.of(
-            "mc", List.of(fn("amount", false), fn("set_redstone", true)),
-            "ae2", List.of(fn("amount", false), fn("craftable", false), fn("craft", true)));
+    private static Palette.Group namespace(String name, Signature... functions) {
+        return new Palette.Group(name, true, Stream.of(functions).map(f -> Palette.call(name, f)).toList());
+    }
+
+    private static final List<Palette.Group> LIBRARY = List.of(
+            namespace("ae2", fn("amount", false), fn("craftable", false), fn("craft", true)),
+            namespace("mc", fn("amount", false), fn("set_redstone", true)));
+
+    /** Test-only catalogue: the standard library's namespaces and no item, interface or network values. */
+    private static final Workspace WORKSPACE = new Workspace(Map.of(), new Catalog() {
+        @Override
+        public List<Candidate> values(TypeRef type, String prefix) {
+            return List.of();
+        }
+
+        @Override
+        public Set<String> kinds(String id) {
+            return Set.of();
+        }
+
+        @Override
+        public boolean exists(TypeRef type, String value) {
+            return false;
+        }
+    });
 
     private static List<String> labels(List<LibraryRows.Row> rows) {
         return rows.stream().map(row -> row.function().isEmpty()
-                ? row.namespace() + (row.open() ? " v " : " > ") + row.count()
+                ? row.group() + (row.open() ? " v " : " > ") + row.count()
                 : "  " + row.function() + (row.acts() ? " *" : "")).toList();
     }
 
@@ -55,7 +84,7 @@ final class LibraryRowsTest {
 
     @Test
     void longActionsAreMarkedApart() {
-        var rows = LibraryRows.rows(StandardLibrary.NAMESPACES, "net.", Set.of());
+        var rows = LibraryRows.rows(Palette.groups(new Program(List.of(), List.of()), WORKSPACE), "net.", Set.of());
         var marks = rows.stream().filter(row -> !row.function().isEmpty())
                 .map(row -> row.function() + (row.lasts() ? " long" : row.acts() ? " action" : "")).toList();
         assertEquals(List.of("http long", "connect long", "send long", "receive", "connected", "disconnect action"),
@@ -63,10 +92,36 @@ final class LibraryRowsTest {
     }
 
     @Test
-    void aFunctionIsFoundByItsNamespaceAndName() {
-        assertNotNull(LibraryRows.find(StandardLibrary.NAMESPACES, "ae2", "craft"));
-        assertNull(LibraryRows.find(StandardLibrary.NAMESPACES, "ae2", "nothing"));
-        assertNull(LibraryRows.find(StandardLibrary.NAMESPACES, "nothing", "craft"));
+    void anEntryIsFoundByItsGroupAndName() {
+        var groups = Palette.groups(new Program(List.of(), List.of()), WORKSPACE);
+        assertNotNull(LibraryRows.find(groups, "ae2", "craft"));
+        assertNotNull(LibraryRows.find(groups, Palette.STATEMENTS, "while"));
+        assertNull(LibraryRows.find(groups, "ae2", "nothing"));
+        assertNull(LibraryRows.find(groups, "nothing", "craft"));
+    }
+
+    @Test
+    void theStatementsOperatorsBuiltInsAndValuesComeBeforeTheNamespaces() {
+        var self = ScriptParser.parse("""
+                def refill(chest: Interface) -> None:
+                    ae2.craft("minecraft:iron_ingot", 1)
+
+                def _low() -> bool:
+                    return False
+                """).program();
+        var labels = labels(LibraryRows.rows(Palette.groups(self, WORKSPACE), "", Set.of(Palette.MINE)));
+        assertEquals(List.of("statements > 7", "operators > 17", "builtins > 17", "values > 3", "mine v 2",
+                "  refill *", "  _low"), labels.subList(0, 7));
+        assertEquals(List.of("ae2", "ae2f", "fs", "mc", "net"),
+                labels.subList(7, labels.size()).stream().map(label -> label.split(" ")[0]).toList());
+    }
+
+    @Test
+    void aSearchFindsStatementsOperatorsAndBuiltInsByName() {
+        var labels = labels(LibraryRows.rows(Palette.groups(new Program(List.of(), List.of()), WORKSPACE), "in",
+                Set.of()));
+        assertEquals(List.of("statements v 1", "  continue", "operators v 2", "  in", "  not in", "builtins v 3",
+                "  int", "  min", "  print", "ae2 v 1", "  crafting"), labels.subList(0, 11));
     }
 
     @Test

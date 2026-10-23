@@ -19,7 +19,6 @@ import org.lwjgl.glfw.GLFW;
 import space.controlnet.ae2federation.automation.AutomationRegistration;
 import space.controlnet.ae2federation.automation.ComputingDevices;
 import space.controlnet.ae2federation.automation.Installation;
-import space.controlnet.ae2federation.automation.LibraryRows;
 import space.controlnet.ae2federation.automation.LocalCopies;
 import space.controlnet.ae2federation.automation.NetworkShortIds;
 import space.controlnet.ae2federation.automation.ProgramScheduler;
@@ -226,29 +225,10 @@ public final class AutomationTabScenario implements UIScenario {
                 .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
                 .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
                         && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
-                // A value's pin is already wired: a second wire shares it through a variable (G1f-vi, user decision).
-                // Zoomed out a step, so the statements inside the if are on screen.
-                .scroll("#auto_graph", -3)
-                .drag(alarmPin("minus"), alarmPin("level"))
-                .waitUntil("a second wire stores the value in a variable both ports read", context ->
-                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS.replace(
-                                "        ae2.craft(iron, 64 - now)\n        mc.set_redstone(lamp, 15)\n",
-                                "        value = 64 - now\n        ae2.craft(iron, value)\n"
-                                        + "        mc.set_redstone(lamp, value)\n")))
-                .frames(2).screenshot("ui-automation-graph-shared")
-                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
-                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
-                        && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                // A value's pin dragged to another port moves the value there, leaving a plain value behind; the
+                // second-wire share was dropped for the set-variable card (user decision, 2026-10-23).
                 .drag(alarmPin("minus"), alarmPin("bound"))
-                .waitUntil("a second wire to a port that runs first is refused on the status line", context ->
-                        context.all("#automation_answer.refused").size() == 1)
-                .check("the refused share leaves the script alone", context ->
-                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
-                // With Ctrl held at the press the value moves instead, leaving a plain value behind.
-                .keyDown(GLFW.GLFW_KEY_LEFT_CONTROL)
-                .drag(alarmPin("minus"), alarmPin("bound"))
-                .keyUp(GLFW.GLFW_KEY_LEFT_CONTROL)
-                .waitUntil("a value wired to another port with Ctrl leaves a plain value behind", context ->
+                .waitUntil("a value wired to another port leaves a plain value behind", context ->
                         String.join("\n", editor(context).getLines()).equals(IRON_TOOLS
                                 .replace("if now < 64:", "if now < 64 - now:")
                                 .replace("ae2.craft(iron, 64 - now)", "ae2.craft(iron, 0)")))
@@ -281,6 +261,101 @@ public final class AutomationTabScenario implements UIScenario {
                 .waitUntil("its × discards the draft", context -> context.all(".graph-draft").isEmpty())
                 .check("and the script is as it was", context ->
                         String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                // The Library offers statements, operators, built-ins, values and the program's own functions above
+                // the namespaces, and a dragged entry shows its card under the pointer (user decisions, 2026-10-23).
+                .check("the Library lists its groups above the namespaces", context ->
+                        context.el("#auto_library_ns_statements .library-count").text().equals("7")
+                                && context.el("#auto_library_ns_operators .library-count").text().equals("17")
+                                && context.el("#auto_library_ns_builtins .library-count").text().equals("17")
+                                && context.el("#auto_library_ns_values .library-count").text().equals("3")
+                                // iron_tools' three functions and smelting's raw_iron_low.
+                                && context.el("#auto_library_ns_mine .library-count").text().equals("4"))
+                // A library function's card follows the pointer as a statement's does.
+                .group("hold ae2.craft over the graph", builder -> hold(builder, "#auto_library_fn_ae2_craft", 0.6f))
+                .frames(2).screenshot("ui-automation-graph-ghost-call")
+                .check("the dragged function's card follows the pointer", context -> {
+                    var handler = context.el("#auto_graph").as(UIElement.class).getModularUI().getDragHandler();
+                    return handler.isDragging() && handler.dragTexture != null && handler.width > 40;
+                })
+                .step("drop the call", AutomationTabScenario::release)
+                .waitUntil("the call is a draft", context -> context.all("#auto_graph_draft_3").size() == 1)
+                .click("#auto_graph_draft_3_remove")
+                .waitUntil("and is discarded", context -> context.all(".graph-draft").isEmpty())
+                .click("#auto_library_ns_statements")
+                .group("hold if over the graph", builder -> hold(builder, "#auto_library_fn_statements_if", 0.6f))
+                .frames(2).screenshot("ui-automation-graph-ghost")
+                .check("the dragged entry's card follows the pointer", context -> {
+                    var handler = context.el("#auto_graph").as(UIElement.class).getModularUI().getDragHandler();
+                    return handler.isDragging() && handler.dragTexture != null && handler.width > 40;
+                })
+                .step("drop it", AutomationTabScenario::release)
+                .waitUntil("the if is a draft", context -> context.all("#auto_graph_draft_4").size() == 1)
+                .drag("#auto_graph_draft_4_in", alarmPin("out"))
+                .waitUntil("its exec pin wired after a statement writes an if there", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS.replace(
+                                "    now = ae2.amount(iron)\n",
+                                "    now = ae2.amount(iron)\n    if False:\n        pass\n")))
+                .frames(2).screenshot("ui-automation-graph-if")
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
+                        && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                .drag("#auto_library_fn_statements_valuex20x3d", "#auto_graph")
+                .waitUntil("a set-variable draft", context -> context.all("#auto_graph_draft_5").size() == 1)
+                .drag("#auto_graph_draft_5_in", alarmPin("out"))
+                .waitUntil("it sets a variable named value", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS.replace(
+                                "    now = ae2.amount(iron)\n", "    now = ae2.amount(iron)\n    value = None\n")))
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
+                        && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                .click("#auto_library_ns_statements")
+                // A click on the variable a statement names renames it wherever the function uses it.
+                .click(alarmPin("rename now"))
+                .type("stock")
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("the variable is renamed throughout the function", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS.replace(
+                                "now = ae2.amount(iron)", "stock = ae2.amount(iron)")
+                                .replace("if now < 64:", "if stock < 64:").replace("64 - now", "64 - stock")))
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
+                        && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                // An if card's foot adds an elif.
+                .click(alarmPin("add elif"))
+                .waitUntil("+ elif adds one before the else", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS.substring(0,
+                                IRON_TOOLS.lastIndexOf("    else:\n")) + "    elif False:\n        pass\n"
+                                + IRON_TOOLS.substring(IRON_TOOLS.lastIndexOf("    else:\n"))))
+                .frames(2).screenshot("ui-automation-graph-elif")
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
+                        && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                // A variable dragged from the strip lights the ports of its type and is written where it is dropped.
+                .group("hold now over the graph", builder -> hold(builder, "#auto_variable_now", 0.85f))
+                .frames(2).screenshot("ui-automation-graph-variable")
+                .check("the variable's chip follows the pointer", context -> {
+                    var handler = context.el("#auto_graph").as(UIElement.class).getModularUI().getDragHandler();
+                    return handler.isDragging() && handler.dragTexture != null;
+                })
+                .step("let go of it", AutomationTabScenario::release)
+                .drag("#auto_variable_now", alarmBound())
+                .waitUntil("dropped on a value, the variable is written there", context ->
+                        String.join("\n", editor(context).getLines()).equals(IRON_TOOLS.replace("now < 64", "now < now")))
+                .step("put the script back", context -> editor(context).setValue(IRON_TOOLS.split("\n", -1), true))
+                .waitUntil("the alarm has nine cards again", context -> context.all(".graph-card").size() == 9
+                        && String.join("\n", editor(context).getLines()).equals(IRON_TOOLS))
+                // A right-click on the canvas opens the Add menu there; Enter drops the first match.
+                .rightClick("#auto_graph")
+                .check("the Add menu opens with its search focused", context ->
+                        context.el("#auto_graph_add").isVisible()
+                                && context.el("#auto_graph_add_search").as(TextField.class).isFocused())
+                .type("range")
+                .frames(2).screenshot("ui-automation-graph-add-menu")
+                .key(GLFW.GLFW_KEY_ENTER)
+                .waitUntil("Enter drops the first match as a draft and closes the menu", context ->
+                        context.all("#auto_graph_draft_6").size() == 1 && !context.el("#auto_graph_add").isVisible())
+                .click("#auto_graph_draft_6_remove")
+                .waitUntil("its × discards it", context -> context.all(".graph-draft").isEmpty())
                 .click("#auto_library_ns_ae2")
                 .click("#auto_library_ns_mc")
                 .click("#auto_function_refill")
@@ -523,7 +598,8 @@ public final class AutomationTabScenario implements UIScenario {
                 .frames(2).screenshot("ui-automation-library")
                 .click("#auto_library_fn_ae2_craft")
                 .check("a function's page shows its signature, that it acts, its summary and its example", context -> {
-                    var craft = LibraryRows.find(StandardLibrary.NAMESPACES, "ae2", "craft");
+                    var craft = StandardLibrary.NAMESPACES.get("ae2").stream()
+                            .filter(function -> function.name().equals("craft")).findFirst().orElseThrow();
                     var texts = context.all("#auto_library_doc .library-text").stream().map(text -> text.text())
                             .toList();
                     var example = context.el("#auto_library_doc .script-editor").as(ScriptEditor.class);
@@ -813,6 +889,8 @@ public final class AutomationTabScenario implements UIScenario {
             case "level" -> "#auto_graph_in_" + lamp + "_arg1";
             case "remove minus" -> "#auto_graph_remove_" + minus;
             case "remove now" -> "#auto_graph_remove_" + alarm.body().get(1).id();
+            case "rename now" -> "#auto_graph_rename_" + alarm.body().get(1).id();
+            case "add elif" -> "#auto_graph_elif_add_" + branch.id();
             default -> throw new IllegalArgumentException(kind);
         };
     }
@@ -830,6 +908,40 @@ public final class AutomationTabScenario implements UIScenario {
             case "lamp off" -> branch.orElse().body().get(0).id();
             default -> throw new IllegalArgumentException(kind);
         };
+    }
+
+    /** Where a held drag goes: over the graph, a share of its height down; and where it is let go. */
+    private static final float[] HELD = new float[2];
+
+    /**
+     * Presses on {@code from} and drags it over the graph without letting go, as a player holds it there. The frame
+     * draws the drag texture at the game's cursor, which synthetic input leaves where the press was, so a screenshot
+     * shows the held card there.
+     */
+    private static void hold(ScenarioBuilder builder, String from, float down) {
+        float[] start = new float[2];
+        builder.step("aim at " + from, context -> {
+            var source = context.el(from).as(UIElement.class);
+            var graph = context.el("#auto_graph").as(UIElement.class);
+            start[0] = source.getPositionX() + source.getSizeWidth() / 2;
+            start[1] = source.getPositionY() + source.getSizeHeight() / 2;
+            HELD[0] = graph.getPositionX() + graph.getSizeWidth() * 0.45f;
+            HELD[1] = graph.getPositionY() + graph.getSizeHeight() * down;
+            context.input().moveTo(start[0], start[1]);
+        });
+        builder.step("press " + from, context -> context.input().mouseDown(start[0], start[1],
+                com.lowdragmc.lowdraglib2.uitest.input.Keys.MOUSE_LEFT));
+        builder.step("nudge " + from, context -> context.input().dragTo(start[0] + 1, start[1] + 1,
+                com.lowdragmc.lowdraglib2.uitest.input.Keys.MOUSE_LEFT));
+        builder.step("leave " + from, context -> context.input().dragTo((start[0] + HELD[0]) / 2,
+                (start[1] + HELD[1]) / 2, com.lowdragmc.lowdraglib2.uitest.input.Keys.MOUSE_LEFT));
+        builder.step("hold over the graph", context -> context.input().dragTo(HELD[0], HELD[1],
+                com.lowdragmc.lowdraglib2.uitest.input.Keys.MOUSE_LEFT));
+    }
+
+    /** Lets go of a held drag where it is held. */
+    private static void release(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        context.input().mouseUp(HELD[0], HELD[1], com.lowdragmc.lowdraglib2.uitest.input.Keys.MOUSE_LEFT);
     }
 
     private static boolean graphOffered(com.lowdragmc.lowdraglib2.uitest.TestContext context) {

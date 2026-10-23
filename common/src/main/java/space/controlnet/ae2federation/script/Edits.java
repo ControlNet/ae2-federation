@@ -173,22 +173,6 @@ public final class Edits {
         return draft.done();
     }
 
-    /**
-     * The graph's second wire from a value: stores the value in a new variable, as {@link #extract} does, and reads
-     * the variable on another port too; what that port held is dropped.
-     */
-    public static Canvas share(Canvas canvas, String value, String name, String node, String port, Ids ids) {
-        var draft = new Draft(canvas);
-        draft.value(value);
-        if (!draft.node(node).inputs().containsKey(port)) {
-            throw refuse(node + " has no port " + port);
-        }
-        if (draft.within(value).contains(node)) {
-            throw refuse("a value cannot feed itself");
-        }
-        return put(extract(canvas, value, name, ids), node, port, new Expr.Name(ids.next(), name));
-    }
-
     // ---- if arms ----
 
     /** Adds an {@code elif} with {@code condition} after the last one, its body empty. */
@@ -564,17 +548,34 @@ public final class Edits {
             boolean exists = switch (n.kind()) {
                 case ENTRY -> output.equals("next");
                 case WHILE, FOR -> output.equals("next") || output.equals("body");
-                case IF -> output.equals("next") || output.equals("else") && hasElse(n)
+                case IF -> output.equals("next") || output.equals("else")
                         || armIndex(output) >= 0 && armIndex(output) < conditions(n);
                 default -> STATEMENTS.contains(n.kind()) && output.equals("next");
             };
             if (!exists) {
                 throw refuse(from + " has no exec output " + output);
             }
+            // The graph shows every if's else; the first statement put there adds it.
+            if (n.kind() == Canvas.Kind.IF && output.equals("else") && !hasElse(n)) {
+                var armNotes = new ArrayList<>(n.armNotes());
+                armNotes.add(Notes.NONE);
+                set(copy(n, n.name(), n.type(), n.inputs(), n.params(), n.docstring(), n.notes(), armNotes));
+            }
             var old = links.stream().filter(l -> l.from().equals(from) && l.output().equals(output)).findFirst();
             old.ifPresent(links::remove);
             links.add(new Canvas.Link(from, output, statement));
-            old.ifPresent(l -> links.add(new Canvas.Link(statement, "next", l.to())));
+            if (old.isEmpty()) {
+                return;
+            }
+            // A body's lone pass only stood for nothing there; the statement takes its place.
+            var displaced = node(old.get().to());
+            boolean lonePass = displaced.kind() == Canvas.Kind.PASS && displaced.notes().equals(Notes.NONE)
+                    && links.stream().noneMatch(l -> l.from().equals(displaced.id()));
+            if (lonePass) {
+                nodes.remove(displaced.id());
+            } else {
+                links.add(new Canvas.Link(statement, "next", displaced.id()));
+            }
         }
 
         /** The edited canvas, projected again from the function it gives. */

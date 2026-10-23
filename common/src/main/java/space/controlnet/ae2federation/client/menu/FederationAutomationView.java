@@ -157,7 +157,6 @@ final class FederationAutomationView {
             newName.setText("", false);
             if (show) newName.focus();
         });
-        new FederationLibraryPanel(ui);
         graphs = new FederationGraphView(ui, shown -> {
             if (shown) editor.hideCompletion();
         }, this::text, edited -> {
@@ -167,6 +166,7 @@ final class FederationAutomationView {
             edited();
         }, refusal -> answer(new ProgramSync.Answer(0, false, refusal)), this::installedArgs,
                 () -> dryTicks = DRY_TICKS);
+        new FederationLibraryPanel(ui, graphs);
         editView = element("auto_edit_view", UIElement.class);
         installView = element("auto_install_view", UIElement.class);
         install = new FederationInstallView(ui, this::answer, this::openInEditor);

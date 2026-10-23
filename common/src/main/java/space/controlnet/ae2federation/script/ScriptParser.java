@@ -75,6 +75,25 @@ public final class ScriptParser {
         return assign.value();
     }
 
+    /**
+     * One statement typed on its own, such as a card dropped on the graph; an {@code if} or a loop takes its body on
+     * the lines after it, indented. It is read as if inside a loop, so {@code break} and {@code continue} are
+     * statements too; where it goes decides whether they may stand there. Its nodes take their IDs from {@code ids}.
+     * Refused with the first problem's message unless the text is one statement.
+     */
+    public static Stmt statement(String text, Ids ids) {
+        if (text.isBlank()) throw new IllegalArgumentException("write one statement");
+        var errors = new ArrayList<ScriptError>();
+        var body = new StringBuilder();
+        text.strip().lines().forEach(line -> body.append("        ").append(line).append('\n'));
+        var parser = new ScriptParser(Lexer.lex("def _() -> None:\n    while True:\n" + body, errors), errors, ids);
+        var program = parser.file();
+        if (!errors.isEmpty()) throw new IllegalArgumentException(errors.get(0).message());
+        var statements = ((Stmt.While) program.functions().get(0).body().get(0)).body();
+        if (statements.size() != 1) throw new IllegalArgumentException("write one statement");
+        return statements.get(0);
+    }
+
     /** Thrown to abandon the current statement; carries no stack trace. */
     private static final class Failure extends RuntimeException {
         final ScriptError error;

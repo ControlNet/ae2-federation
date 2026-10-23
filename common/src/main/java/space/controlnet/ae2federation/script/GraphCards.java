@@ -131,18 +131,13 @@ public final class GraphCards {
         return namespace + "." + function.name() + "(" + String.join(", ", args) + ")";
     }
 
-    /** {@code text} with a library call ({@link #callText}) put on a port, as {@link #put} puts a typed value. */
-    public static String putCall(String text, Canvas canvas, String node, String port, String namespace,
-            Signature function) {
-        return put(text, canvas, node, port, null, callText(namespace, function));
-    }
-
-    /** {@code text} with a library call ({@link #callText}) as a statement on the exec output {@code output}. */
-    public static String insertCall(String text, Canvas canvas, String from, String output, String namespace,
-            Signature function) {
+    /**
+     * {@code text} with {@code statement}, one statement such as a dropped card's ({@link Palette.Entry#text}), on the
+     * exec output {@code output} of {@code from}; a call that acts is a statement too.
+     */
+    public static String insertStatement(String text, Canvas canvas, String from, String output, String statement) {
         var ids = new Ids("n", ScriptParser.parse(text).positions().keySet());
-        var call = (Expr.Call) ScriptParser.expression(callText(namespace, function), ids);
-        var edited = Edits.insert(canvas, from, output, new Stmt.CallStmt(ids.next(), Notes.NONE, call));
+        var edited = Edits.insert(canvas, from, output, ScriptParser.statement(statement, ids));
         return Library.splice(text, edited.toFunction());
     }
 
@@ -157,46 +152,10 @@ public final class GraphCards {
     }
 
     /**
-     * {@code text} with a second wire from the value card {@code value} to a port ({@link Edits#share}): the value is
-     * stored in a new variable just before the statement that uses it, named by {@link #variableName}, and both ports
-     * read it. Refused when that gives a problem the text did not have, such as reading the variable before it is set.
+     * A name for a new variable of {@code canvas}, a function of {@code program}: {@code base}, or with {@code _2},
+     * {@code _3}, ... when a variable, a function, a built-in, a namespace or a file of the workspace has it already.
      */
-    public static String share(String text, Canvas canvas, String value, String node, String port,
-            Workspace workspace) {
-        var parsed = ScriptParser.parse(text);
-        var ids = new Ids("n", parsed.positions().keySet());
-        var name = variableName(canvas, value, parsed.program(), workspace);
-        var edited = Library.splice(text, Edits.share(canvas, value, name, node, port, ids).toFunction());
-        var added = new ArrayList<>(messages(ScriptParser.parse(edited).program(), workspace));
-        messages(parsed.program(), workspace).forEach(added::remove);
-        if (added.stream().anyMatch(message -> message.contains("'" + name + "' where it is not associated"))) {
-            throw new IllegalArgumentException(name + " would be read before it is set; drag from the value that runs "
-                    + "first");
-        }
-        if (!added.isEmpty()) {
-            throw new IllegalArgumentException(added.get(0));
-        }
-        return edited;
-    }
-
-    private static List<String> messages(Program program, Workspace workspace) {
-        return Checker.check(program, workspace).problems().stream().map(Checker.Problem::message).toList();
-    }
-
-    /**
-     * A new variable's name for the value card {@code value}: the function, method or field it reads
-     * ({@code ae2.amount(...)} gives {@code amount}), else {@code value}, as is a built-in's, whose name the variable
-     * would hide. A name already taken in the function, its file or the workspace gets {@code _2}, {@code _3}, ...
-     */
-    static String variableName(Canvas canvas, String value, Program program, Workspace workspace) {
-        var node = canvas.node(value);
-        boolean builtIn = node.kind() == Canvas.Kind.CALL && node.namespace() == null
-                && !node.inputs().containsKey("receiver") && Checker.BUILT_INS.contains(node.name());
-        var base = switch (node.kind()) {
-            case CALL -> builtIn ? "value" : node.name();
-            case ATTRIBUTE -> node.name();
-            default -> "value";
-        };
+    public static String freshName(Canvas canvas, String base, Program program, Workspace workspace) {
         var taken = new HashSet<>(Canvas.locals(canvas.toFunction()));
         program.definitions().forEach(definition -> taken.add(definition.name()));
         taken.addAll(Checker.BUILT_INS);
@@ -210,6 +169,24 @@ public final class GraphCards {
                 return base + "_" + i;
             }
         }
+    }
+
+    /** {@code text} with an {@code elif False:} added to the if card {@code node}, after its last arm. */
+    public static String addArm(String text, Canvas canvas, String node) {
+        var ids = new Ids("n", ScriptParser.parse(text).positions().keySet());
+        return Library.splice(text, Edits.addArm(canvas, node, ScriptParser.expression("False", ids)).toFunction());
+    }
+
+    /** {@code text} without the last {@code elif} of the if card {@code node}, and the statements under it. */
+    public static String removeLastArm(String text, Canvas canvas, String node) {
+        int arms = (int) canvas.node(node).inputs().keySet().stream().filter(k -> k.startsWith("condition")).count();
+        if (arms < 2) throw new IllegalArgumentException("this if has no elif");
+        return Library.splice(text, Edits.removeArm(canvas, node, "arm" + (arms - 1)).toFunction());
+    }
+
+    /** {@code text} with the variable {@code from} of {@code canvas} named {@code to} wherever the function uses it. */
+    public static String renameVariable(String text, Canvas canvas, String from, String to) {
+        return Library.splice(text, Edits.renameVariable(canvas, from, to.strip()).toFunction());
     }
 
     /** {@code text} with the statement card {@code statement} moved to the exec output {@code output} of {@code from}. */
@@ -238,7 +215,8 @@ public final class GraphCards {
         throw new IllegalArgumentException(card + " feeds no port");
     }
 
-    private static String filler(TypeRef type) {
+    /** A plain value of {@code type}, written where a value is needed and none is given yet. */
+    static String filler(TypeRef type) {
         if (type == null) return "None";
         return switch (type.name()) {
             case "int" -> "0";

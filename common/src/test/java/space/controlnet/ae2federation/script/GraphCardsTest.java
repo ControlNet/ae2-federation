@@ -109,7 +109,7 @@ final class GraphCardsTest {
                 "names: list[str] = | value:list[str]=wire >",
                 "list -> list[str]",
                 "for item | in:list[Item]=(items) >body >next",
-                "if | cond:bool=wire >then >next",
+                "if | cond:bool=wire >then >else >next",
                 "_low | name:Item=(item) min:int=8 -> bool",
                 ".append | object:list[str]=(names) object:Item=(item) >",
                 "total = len | :list[str]=(names) >",
@@ -201,8 +201,8 @@ final class GraphCardsTest {
     void aDraftWiredToAPortIsWrittenAsItsValue() {
         var row = row("low_iron_alarm", "-", "b");
         assertEquals(IRON_TOOLS.replace("ae2.craft(iron, 64 - now)", "ae2.craft(iron, 64 - ae2.amount(\"\"))"),
-                GraphCards.putCall(IRON_TOOLS, canvas("low_iron_alarm"), row.node(), row.port(), "ae2",
-                        library("ae2", "amount")));
+                GraphCards.put(IRON_TOOLS, canvas("low_iron_alarm"), row.node(), row.port(), null,
+                        Palette.call("ae2", library("ae2", "amount")).text()));
     }
 
     @Test
@@ -211,13 +211,13 @@ final class GraphCardsTest {
                 .findFirst().orElseThrow();
         assertEquals(IRON_TOOLS.replace("    now = ae2.amount(iron)\n",
                         "    now = ae2.amount(iron)\n    mc.set_redstone(None, 0)\n"),
-                GraphCards.insertCall(IRON_TOOLS, canvas("low_iron_alarm"), assign.id(), "next", "mc",
-                        library("mc", "set_redstone")));
+                GraphCards.insertStatement(IRON_TOOLS, canvas("low_iron_alarm"), assign.id(), "next",
+                        Palette.call("mc", library("mc", "set_redstone")).text()));
         var branch = cards("low_iron_alarm").stream().filter(card -> card.title().equals("if")).findFirst()
                 .orElseThrow();
         assertEquals(IRON_TOOLS.replace("    else:\n", "    else:\n        ae2.craftable(\"\")\n"),
-                GraphCards.insertCall(IRON_TOOLS, canvas("low_iron_alarm"), branch.id(), "else", "ae2",
-                        library("ae2", "craftable")));
+                GraphCards.insertStatement(IRON_TOOLS, canvas("low_iron_alarm"), branch.id(), "else",
+                        Palette.call("ae2", library("ae2", "craftable")).text()));
     }
 
     private static GraphCards.Card card(String function, String title, int nth) {
@@ -252,55 +252,113 @@ final class GraphCardsTest {
     }
 
     @Test
-    void aSecondWireFromAValueStoresItInAVariableBothPortsRead() {
-        var minus = card("low_iron_alarm", "-", 0);
-        var level = row("low_iron_alarm", "mc.set_redstone", "level");
-        assertEquals(IRON_TOOLS.replace("""
-                        ae2.craft(iron, 64 - now)
-                        mc.set_redstone(lamp, 15)
-                """, """
-                        value = 64 - now
-                        ae2.craft(iron, value)
-                        mc.set_redstone(lamp, value)
-                """), GraphCards.share(IRON_TOOLS, canvas("low_iron_alarm"), minus.id(), level.node(), level.port(),
-                WORKSPACE));
-    }
-
-    @Test
-    void aSecondWireThatWouldReadTheVariableBeforeItIsSetIsRefused() {
-        var minus = card("low_iron_alarm", "-", 0);
-        var bound = row("low_iron_alarm", "<", "b");
-        var refused = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
-                GraphCards.share(IRON_TOOLS, canvas("low_iron_alarm"), minus.id(), bound.node(), bound.port(),
-                        WORKSPACE));
-        assertEquals("value would be read before it is set; drag from the value that runs first", refused.getMessage());
-        var inside = row("low_iron_alarm", "-", "b");
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> GraphCards.share(
-                IRON_TOOLS, canvas("low_iron_alarm"), minus.id(), inside.node(), inside.port(), WORKSPACE),
-                "a value cannot feed itself");
-    }
-
-    @Test
-    void aSharedValueIsNamedAfterWhatItCalls() {
+    void aNewVariableTakesANameNothingHasYet() {
         var text = """
-                def f(lamp: Interface, stack: Stack) -> None:
-                    amount = 1
-                    mc.set_redstone(lamp, ae2.amount("minecraft:iron_ingot") // 64)
-                    mc.set_redstone(lamp, len("abc") + stack.amount + amount)
-                    mc.set_redstone(lamp, 0)
+                def f(lamp: Interface) -> None:
+                    value = 1
+                    amount = 2
                 """;
         var program = ScriptParser.parse(text).program();
-        var result = Checker.check(program, WORKSPACE);
-        assertEquals(List.of(), result.problems());
-        var canvas = Canvas.of(program.functions().get(0), result);
-        var cards = GraphCards.of(canvas, program, WORKSPACE);
-        java.util.function.Function<String, String> named = title -> GraphCards.variableName(canvas,
-                cards.stream().filter(card -> card.title().equals(title)).findFirst().orElseThrow().id(), program,
-                WORKSPACE);
-        assertEquals("amount_2", named.apply("ae2.amount"), "a call's name, past the variables already there");
-        assertEquals("value", named.apply("len"), "a built-in's name would hide it");
-        assertEquals("amount_2", named.apply(".amount"), "a field's name");
-        assertEquals("value", named.apply("//"), "anything else");
+        var canvas = Canvas.of(program.functions().get(0), Checker.check(program, WORKSPACE));
+        assertEquals("value_2", GraphCards.freshName(canvas, "value", program, WORKSPACE));
+        assertEquals("item", GraphCards.freshName(canvas, "item", program, WORKSPACE));
+        assertEquals("len_2", GraphCards.freshName(canvas, "len", program, WORKSPACE), "a built-in's name");
+        assertEquals("f_2", GraphCards.freshName(canvas, "f", program, WORKSPACE), "a function's name");
+    }
+
+    private static Palette.Entry entry(String group, String name) {
+        return Palette.groups(PROGRAM, WORKSPACE).stream().filter(g -> g.key().equals(group))
+                .flatMap(g -> g.entries().stream()).filter(e -> e.name().equals(name)).findFirst().orElseThrow();
+    }
+
+    private static final String EMPTY = """
+            def f(n: int) -> None:
+                n = 1
+            """;
+
+    /** The text with {@code statement} put after the function's first statement, as a dropped card wired there. */
+    private static String after(String statement) {
+        var program = ScriptParser.parse(EMPTY).program();
+        var canvas = Canvas.of(program.functions().get(0), Checker.check(program, WORKSPACE));
+        var first = GraphCards.of(canvas, program, WORKSPACE).get(1).id();
+        return GraphCards.insertStatement(EMPTY, canvas, first, "next", statement);
+    }
+
+    @Test
+    void eachStatementIsWrittenAfterTheOneItIsWiredTo() {
+        java.util.function.Function<String, String> written = name -> after(entry(Palette.STATEMENTS, name)
+                .text(name.equals("for") ? "item" : "value"));
+        assertEquals(EMPTY + "    value = None\n", written.apply("value ="));
+        assertEquals(EMPTY + "    if False:\n        pass\n", written.apply("if"));
+        assertEquals(EMPTY + "    for item in []:\n        pass\n", written.apply("for"));
+        assertEquals(EMPTY + "    while False:\n        pass\n", written.apply("while"));
+        assertEquals(EMPTY + "    return None\n", written.apply("return"));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> written.apply("break"),
+                "break only stands in a loop");
+        assertEquals(EMPTY + "    print(\"\")\n", after(entry(Palette.BUILT_INS, "print").text()),
+                "a call that gives nothing is a statement too");
+        assertEquals(EMPTY + "    value_2 = None\n", after(entry(Palette.STATEMENTS, "value =").text("value_2")));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> after("x = "));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> after("x = 1\ny = 2"));
+    }
+
+    @Test
+    void everyValueIsWrittenOnAPortAndChecksThere() {
+        var row = row("low_iron_alarm", "-", "b");
+        for (var group : List.of(Palette.OPERATORS, Palette.BUILT_INS, Palette.VALUES)) {
+            for (var entry : Palette.groups(PROGRAM, WORKSPACE).stream().filter(g -> g.key().equals(group))
+                    .findFirst().orElseThrow().entries()) {
+                if (!entry.valueOut()) continue;
+                var text = GraphCards.put(IRON_TOOLS, canvas("low_iron_alarm"), row.node(), row.port(), null,
+                        entry.text());
+                // Written in place of the value, in parentheses where the operator binds less tightly.
+                var start = text.indexOf("ae2.craft(iron, 64 - ") + "ae2.craft(iron, 64 - ".length();
+                // The line ends with the craft's own parenthesis.
+                var shown = text.substring(start, text.indexOf("\n", start) - 1);
+                assertEquals(true, shown.equals(entry.text()) || shown.equals("(" + entry.text() + ")"),
+                        entry.name() + ": " + shown);
+                assertEquals(true, ScriptParser.parse(text).ok(), entry.name());
+            }
+        }
+    }
+
+    @Test
+    void aStatementWiredIntoABodyOfPassTakesThePassesPlace() {
+        var text = after(entry(Palette.STATEMENTS, "if").text());
+        var program = ScriptParser.parse(text).program();
+        var canvas = Canvas.of(program.functions().get(0), Checker.check(program, WORKSPACE));
+        var branch = GraphCards.of(canvas, program, WORKSPACE).stream().filter(card -> card.title().equals("if"))
+                .findFirst().orElseThrow();
+        assertEquals(List.of("then", "else"), branch.outputs().stream().map(GraphCards.Output::label).toList(),
+                "an if without an else still shows one");
+        var then = GraphCards.insertStatement(text, canvas, branch.id(), "arm0", "n = 2");
+        assertEquals(EMPTY + "    if False:\n        n = 2\n", then);
+        var orElse = GraphCards.insertStatement(text, canvas, branch.id(), "else", "n = 3");
+        assertEquals(EMPTY + "    if False:\n        pass\n    else:\n        n = 3\n", orElse,
+                "the first statement put on else adds it");
+    }
+
+    @Test
+    void anIfTakesAndLosesItsLastElif() {
+        var branch = card("low_iron_alarm", "if", 0);
+        var added = GraphCards.addArm(IRON_TOOLS, canvas("low_iron_alarm"), branch.id());
+        assertEquals(IRON_TOOLS.replace("    else:\n        mc.set_redstone(lamp, 0)\n",
+                "    elif False:\n        pass\n    else:\n        mc.set_redstone(lamp, 0)\n"), added);
+        var program = ScriptParser.parse(added).program();
+        var canvas = Canvas.of(program.functions().get(1), Checker.check(program, WORKSPACE));
+        var again = GraphCards.of(canvas, program, WORKSPACE).stream().filter(card -> card.title().equals("if"))
+                .findFirst().orElseThrow();
+        assertEquals(IRON_TOOLS, GraphCards.removeLastArm(added, canvas, again.id()));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> GraphCards.removeLastArm(IRON_TOOLS, canvas("low_iron_alarm"), branch.id()));
+    }
+
+    @Test
+    void aVariableIsRenamedWhereverTheFunctionUsesIt() {
+        assertEquals(IRON_TOOLS.replace("now", "stock"),
+                GraphCards.renameVariable(IRON_TOOLS, canvas("low_iron_alarm"), "now", " stock "));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> GraphCards.renameVariable(IRON_TOOLS, canvas("low_iron_alarm"), "now", "2x"));
     }
 
     @Test

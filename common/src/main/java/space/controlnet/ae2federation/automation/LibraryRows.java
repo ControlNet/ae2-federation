@@ -3,45 +3,58 @@ package space.controlnet.ae2federation.automation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import org.jetbrains.annotations.Nullable;
-import space.controlnet.ae2federation.script.Signature;
-import space.controlnet.ae2federation.script.StandardLibrary;
+import space.controlnet.ae2federation.script.Palette;
 
 /**
- * The Automation tab's Library panel as rows: each namespace, sorted, with its function count; under an open one its
- * functions in the library's order. A search (ignoring case, on the function's name or its qualified name such as
- * {@code mc.amount}) lists only the matches, under their namespaces, open and counting the matches.
+ * The Automation tab's Library panel as rows: each group of the palette ({@link Palette#groups}) in its order, with
+ * its entry count; under an open one its entries in order. A search (ignoring case, on the entry's name or, in a
+ * namespace, its qualified name such as {@code mc.amount}) lists only the matches, under their groups, open and
+ * counting the matches.
  */
 public final class LibraryRows {
-    /** A namespace row ({@code function} empty), or a function row under its namespace. */
-    public record Row(String namespace, String function, int count, boolean open, boolean acts, boolean lasts) {
+    /**
+     * A group's row ({@code entry} null), or an entry's row under its group. {@code namespace} when the group is a
+     * namespace, whose name shows as written; the others show their translated names.
+     */
+    public record Row(String group, boolean namespace, @Nullable Palette.Entry entry, int count, boolean open) {
+        public String function() {
+            return entry == null ? "" : entry.name();
+        }
+
+        public boolean acts() {
+            return entry != null && entry.acts();
+        }
+
+        public boolean lasts() {
+            return entry != null && entry.lasts();
+        }
     }
 
     private LibraryRows() {
     }
 
-    public static List<Row> rows(Map<String, List<Signature>> library, String search, Set<String> open) {
+    public static List<Row> rows(List<Palette.Group> groups, String search, Set<String> open) {
         var query = search.strip().toLowerCase(Locale.ROOT);
         var rows = new ArrayList<Row>();
-        library.keySet().stream().sorted().forEach(namespace -> {
-            var functions = library.get(namespace).stream().filter(function -> query.isEmpty()
-                    || function.name().toLowerCase(Locale.ROOT).contains(query)
-                    || (namespace + "." + function.name()).toLowerCase(Locale.ROOT).contains(query)).toList();
-            if (functions.isEmpty()) return;
-            boolean shown = !query.isEmpty() || open.contains(namespace);
-            rows.add(new Row(namespace, "", functions.size(), shown, false, false));
-            if (!shown) return;
-            functions.forEach(function -> rows.add(new Row(namespace, function.name(), 0, false, function.effect(),
-                    StandardLibrary.lasts(function))));
-        });
+        for (var group : groups) {
+            var entries = group.entries().stream().filter(entry -> query.isEmpty()
+                    || entry.name().toLowerCase(Locale.ROOT).contains(query)
+                    || group.namespace() && (group.key() + "." + entry.name()).toLowerCase(Locale.ROOT)
+                            .contains(query)).toList();
+            if (entries.isEmpty()) continue;
+            boolean shown = !query.isEmpty() || open.contains(group.key());
+            rows.add(new Row(group.key(), group.namespace(), null, entries.size(), shown));
+            if (!shown) continue;
+            entries.forEach(entry -> rows.add(new Row(group.key(), group.namespace(), entry, 0, false)));
+        }
         return rows;
     }
 
-    /** The function {@code name} of {@code namespace}, or null. */
-    public static @Nullable Signature find(Map<String, List<Signature>> library, String namespace, String name) {
-        return library.getOrDefault(namespace, List.of()).stream().filter(function -> function.name().equals(name))
-                .findFirst().orElse(null);
+    /** The entry {@code name} of the group {@code group}, or null. */
+    public static @Nullable Palette.Entry find(List<Palette.Group> groups, String group, String name) {
+        return groups.stream().filter(g -> g.key().equals(group)).flatMap(g -> g.entries().stream())
+                .filter(entry -> entry.name().equals(name)).findFirst().orElse(null);
     }
 }
