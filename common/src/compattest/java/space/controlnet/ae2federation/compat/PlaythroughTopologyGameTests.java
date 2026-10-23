@@ -9,7 +9,8 @@ public final class PlaythroughTopologyGameTests {
     @RunsAlone
     @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = 1000000)
     public static void playthroughTopology(GameTestHelper helper) throws Exception {
-        PlaythroughCraftingGameTests.runTopology(helper);
+        if ("recover".equals(System.getProperty("ae2federation.compat.transitRestartPhase"))) PlaythroughFactory.resumeRestart(helper);
+        else PlaythroughCraftingGameTests.runTopology(helper);
     }
     private PlaythroughTopologyGameTests() { }
 }

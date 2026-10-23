@@ -112,6 +112,7 @@ public final class PlaythroughCraftingGameTests {
                             || topologyMode && items.isEmpty() && !PlaythroughTopology.DEFAULT_TARGETS.contains(task.item())) continue;
                     var tag = TagParser.parseTag(task.snbt());
                     long count = tag.contains("count") ? tag.getLong("count") : 1;
+                    if (topologyMode) count = Long.getLong(PlaythroughTopology.PREFIX + "orderAmount", count);
                     if (count <= 0) throw new IllegalStateException("Invalid quest count: " + task.id());
                     var stack = task.hasComponents() ? ItemStack.parseOptional(helper.getLevel().registryAccess(), tag.getCompound("item"))
                             : PlaythroughRecipes.key(task.item()).toStack();
@@ -207,6 +208,12 @@ public final class PlaythroughCraftingGameTests {
                     factory.initialize();
                 }
                 var result = factory.tick();
+                if (factory.restartPending()) {
+                    factory.prepareRestart(baseline);
+                    restoreTicks();
+                    helper.succeed();
+                    return;
+                }
                 if (result != null) {
                     if (topologyMode && baseline != null && !layouts.get(layoutIndex).capacity().equals("over-limit")
                             && baseline.pass() && result.pass() && !PlaythroughTopology.inventoriesEqual(baseline, result))
@@ -221,7 +228,7 @@ public final class PlaythroughCraftingGameTests {
                             add(target, baseline, result, proof.standIns());
                             var row = rows.getLast();
                             row.put("layout", layouts.get(layoutIndex)); row.put("perturbation", currentPerturbation());
-                            row.put("expectedOutcome", layouts.get(layoutIndex).capacity().equals("over-limit") ? "clean-refusal" : "complete-after-restoration");
+                            row.put("expectedOutcome", layouts.get(layoutIndex).capacity().equals("over-limit") ? "clean-refusal" : currentPerturbation().equals("cancel") ? "cancelled-output-retained" : "complete-after-restoration");
                             if (firstAttempt != null) {
                                 row.put("firstAttempt", firstAttempt); row.put("confirmation", result);
                                 if (result.pass()) row.put("classification", "flaky");

@@ -114,6 +114,13 @@ public final class OtherDimensionSite implements AutoCloseable {
                 || unloading.stream().anyMatch(blockEntity -> !blockEntity.isRemoved());
     }
 
+    /** Read-only unload evidence; does not request or reload a chunk. */
+    public String unloadDiagnostics() {
+        return "loaded=" + chunks.stream().filter(chunk -> level.hasChunk(chunk.x, chunk.z)).count()
+                + ", live=" + unloading.stream().filter(entity -> !entity.isRemoved())
+                .map(entity -> entity.getClass().getSimpleName() + "@" + entity.getBlockPos()).limit(12).toList();
+    }
+
     /** Whether every chunk of the region ticks its block entities. */
     public boolean ticking() {
         return chunks.stream().allMatch(this::ticking);
