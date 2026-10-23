@@ -30,12 +30,17 @@ public final class PlaythroughCraftingGameTests {
         new Run(helper).start();
     }
 
+    static void runRemainderRegression(GameTestHelper helper) throws Exception {
+        new Run(helper, "minecraft:cake").start();
+    }
+
     private record Target(String chapter, String chapterId, String quest, String questId, String taskId,
                           String item, long count, AEItemKey key) { }
 
     private static final class Run {
         private final GameTestHelper helper;
         private final List<Target> targets = new ArrayList<>();
+        private final List<Target> eligibleTasks = new ArrayList<>();
         private final List<Map<String, Object>> skipped = new ArrayList<>();
         private final List<Map<String, Object>> rows = new ArrayList<>();
         private final List<Map<String, String>> deferred = new ArrayList<>();
@@ -56,11 +61,19 @@ public final class PlaythroughCraftingGameTests {
         private int index;
         private String harnessError = "";
         private boolean completed;
+        private boolean stopping;
+        private PlaythroughFactory closedFactory;
+        private Map<String, Object> incomplete = Map.of();
+        private final boolean sprint = Boolean.parseBoolean(System.getProperty("ae2federation.playthrough.sprint", "true"));
+        private boolean sprintOwned;
+        private final int wallSeconds = Integer.getInteger("ae2federation.playthrough.wallSeconds", 1400);
 
-        Run(GameTestHelper helper) { this.helper = helper; }
+        private final String regressionItem;
+        Run(GameTestHelper helper) { this(helper, null); }
+        Run(GameTestHelper helper, String regressionItem) { this.helper = helper; this.regressionItem = regressionItem; }
 
         void start() throws Exception {
-            if (!Set.of("crafting-only", "crafting-frontier").contains(mode) || maximum < 0 || skip < 0 || budget < 1) {
+            if (!Set.of("crafting-only", "crafting-frontier").contains(mode) || maximum < 0 || skip < 0 || budget < 1 || wallSeconds < 1 || wallSeconds > 1400) {
                 throw new IllegalArgumentException("Invalid playthrough mode/limit/tick budget");
             }
             var probe = new QuestCoverageCompatGameTests.Probe();
@@ -89,6 +102,7 @@ public final class PlaythroughCraftingGameTests {
                             : PlaythroughRecipes.key(task.item()).toStack();
                     if (stack.isEmpty()) throw new IllegalStateException("Cannot decode quest stack: " + task.id());
                     var target = new Target(ch.title(), ch.id(), quest.title(), quest.id(), task.id(), task.item(), count, AEItemKey.of(stack));
+                    if (recipes.hasCraftingRecipe(task.item())) eligibleTasks.add(target);
                     if (!recipes.hasCraftingRecipe(task.item())) {
                         var row = metadata(target); row.put("reason", "own recipe is not crafting (or has no readable producer); Phase 3");
                         skipped.add(row);
@@ -98,8 +112,19 @@ public final class PlaythroughCraftingGameTests {
                     else deferred.add(Map.of("task", task.id(), "item", task.item(), "reason", "maxTargets filter"));
                 }
             }
+            if (regressionItem != null) {
+                targets.clear(); eligibleTasks.clear(); skipped.clear(); deferred.clear();
+                var target = new Target("Harness regression", "harness-regression", "Container remainders", "remainders",
+                        "remainders", regressionItem, 1, PlaythroughRecipes.key(regressionItem));
+                targets.add(target); eligibleTasks.add(target);
+            }
             if (targets.isEmpty()) throw new IllegalStateException("Chapter filter selected no crafting targets: " + chapter);
             write();
+            if (sprint) {
+                var manager = helper.getLevel().getServer().tickRateManager();
+                if (manager.isSprinting()) throw new IllegalStateException("Playthrough requires ownership of tick sprint");
+                manager.requestGameToSprint(1000000); sprintOwned = true;
+            }
             helper.runAfterDelay(1, this::tick);
         }
 
@@ -114,10 +139,22 @@ public final class PlaythroughCraftingGameTests {
 
         private void tick() {
             try {
-                if (index == targets.size() || factory == null && baseline == null && (System.nanoTime() - started) / 1_000_000_000L > 1400) {
+                if (closedFactory != null) { closedFactory.verifyClosed(); closedFactory = null; }
+                if (stopping || index == targets.size()) {
+                    completed = true; restoreTicks(); write(); helper.succeed(); return;
+                }
+                if (deadlineReached()) {
+                    var state = new LinkedHashMap<String, Object>(metadata(targets.get(index)));
+                    state.put("reason", "wall-clock deadline; neither layout is classified");
+                    state.put("layout", baseline == null ? "baseline" : "federated");
+                    if (baseline != null) state.put("completedBaseline", baseline);
+                    if (factory != null) state.put("active", factory.interruption());
+                    incomplete = state;
                     for (int i = index; i < targets.size(); i++) deferred.add(Map.of("task", targets.get(i).taskId(),
-                            "item", targets.get(i).item(), "reason", "1400 second harness runtime limit"));
-                    completed = true; write(); helper.succeed(); return;
+                            "item", targets.get(i).item(), "reason", "wall-clock deadline"));
+                    write();
+                    if (factory != null) { factory.close(); closedFactory = factory; factory = null; }
+                    stopping = true; restoreTicks(); write(); helper.runAfterDelay(25, this::tick); return;
                 }
                 var target = targets.get(index);
                 if (factory == null) {
@@ -129,9 +166,13 @@ public final class PlaythroughCraftingGameTests {
                             row.put("classification", "not-bootstrappable"); row.put("reason", exception.getMessage());
                             row.put("standIns", Map.of()); row.put("recipes", List.of()); rows.add(row);
                             index++; write(); helper.runAfterDelay(1, this::tick); return;
+                        } catch (PlaythroughRecipes.Nondeterministic exception) {
+                            var row = metadata(target);
+                            row.put("classification", "nondeterministic"); row.put("reason", exception.getMessage());
+                            row.put("standIns", Map.of()); row.put("recipes", List.of()); rows.add(row);
+                            index++; write(); helper.runAfterDelay(1, this::tick); return;
                         } catch (IllegalArgumentException exception) {
-                            var failure = new PlaythroughFactory.Result(false, 0, "pattern-encoding", exception.getMessage(), Map.of(), Map.of(), 0,
-                                    Map.of("execution", "NOT_CHECKED: pattern encoding failed"), Map.of(), 0, 0, 0, 0, 0, 0);
+                            var failure = PlaythroughFactory.Result.unexecuted("pattern-encoding", exception.getMessage());
                             add(target, failure, failure, Map.of());
                             index++; proof = null; write(); helper.runAfterDelay(1, this::tick); return;
                         }
@@ -139,29 +180,41 @@ public final class PlaythroughCraftingGameTests {
                     com.mojang.logging.LogUtils.getLogger().info("AE2F_PLAYTHROUGH_ORDER target={}/{} item={} count={} layout={}",
                             index + 1, targets.size(), target.item(), target.count(), baseline == null ? "baseline" : "federated");
                     factory = new PlaythroughFactory(helper, baseline != null, proof, target.key(), target.count(), budget);
+                    factory.initialize();
                 }
                 var result = factory.tick();
                 if (result != null) {
-                    factory.close(); factory = null;
+                    factory.close(); closedFactory = factory; factory = null;
                     if (baseline == null) baseline = result;
                     else {
                         add(target, baseline, result, proof.standIns()); index++; baseline = null; proof = null; write();
                     }
-                    helper.runAfterDelay(10, this::tick); return;
+                    helper.runAfterDelay(25, this::tick); return;
                 }
                 helper.runAfterDelay(1, this::tick);
             } catch (Exception exception) {
                 harnessError = exception.toString();
-                if (factory != null) { factory.close(); factory = null; }
+                if (factory != null) {
+                    try { factory.close(); } catch (Exception cleanup) { exception.addSuppressed(cleanup); }
+                    factory = null;
+                }
+                restoreTicks();
                 try { write(); } catch (Exception writing) { exception.addSuppressed(writing); }
                 throw new IllegalStateException("Playthrough harness failed at target " + index, exception);
             }
         }
 
         private void add(Target target, PlaythroughFactory.Result base, PlaythroughFactory.Result fed, Map<String, List<String>> standIns) {
+            if (base.pass() && fed.pass() && !base.inventories().equals(fed.inventories())) {
+                fed = fed.failure("inventory-parity", "Full per-cell inventories differ from the passing baseline");
+            }
             var row = metadata(target);
             row.put("baseline", base); row.put("federated", fed); row.put("standIns", standIns);
             row.put("classification", base.pass() ? fed.pass() ? "both-pass" : "baseline-only" : fed.pass() ? "federated-only" : "both-fail");
+            if (base.invariant().equals("recipe-signature") || fed.invariant().equals("recipe-signature")
+                    || !base.signatures().equals(fed.signatures())) row.put("classification", "nondeterministic");
+            row.put("inventoryComparison", base.inventories().equals(fed.inventories()) ? "PASS" : "Layout inventories differ");
+            row.put("expectedSignatures", proof == null ? Map.of() : proof.signatures());
             row.put("recipes", proof == null ? List.of() : proof.patterns().keySet());
             rows.add(row);
             com.mojang.logging.LogUtils.getLogger().info("AE2F_PLAYTHROUGH_RESULT item={} class={} baseline={} federated={}",
@@ -178,7 +231,7 @@ public final class PlaythroughCraftingGameTests {
 
         private static Map<String, Integer> counts() {
             var counts = new LinkedHashMap<String, Integer>();
-            for (var name : List.of("both-pass", "baseline-only", "both-fail", "federated-only", "not-bootstrappable")) counts.put(name, 0);
+            for (var name : List.of("both-pass", "baseline-only", "both-fail", "federated-only", "not-bootstrappable", "nondeterministic")) counts.put(name, 0);
             return counts;
         }
 
@@ -189,10 +242,18 @@ public final class PlaythroughCraftingGameTests {
                 var name = row.get("classification").toString(); overall.merge(name, 1, Integer::sum);
                 chapters.computeIfAbsent(row.get("chapter").toString(), ignored -> counts()).merge(name, 1, Integer::sum);
             }
+            String checkpoint = java.util.UUID.randomUUID().toString();
             var report = new LinkedHashMap<String, Object>();
+            report.put("checkpointId", checkpoint);
+            report.put("nextEligibleOffset", skip + index);
+            report.put("nextTask", skip + index < eligibleTasks.size() ? metadata(eligibleTasks.get(skip + index)) : Map.of());
+            report.put("eligibleTargetCount", eligibleTasks.size());
+            report.put("incompleteTarget", incomplete);
+            report.put("sprint", sprint); report.put("wallSeconds", wallSeconds);
+            report.put("elapsedSeconds", (System.nanoTime() - started) / 1_000_000_000.0);
             report.put("itemFilter", items);
             report.put("materialSource", "Complete Phase 0 provided set plus selected stand-ins; AE2 excludes the requested output during planning.");
-            report.put("schemaVersion", 2); report.put("mode", mode); report.put("chapterFilter", chapter);
+            report.put("schemaVersion", 3); report.put("mode", mode); report.put("chapterFilter", chapter);
             report.put("skipTargets", skip);
             report.put("ticksPerCraft", Integer.getInteger("ae2federation.playthrough.ticksPerCraft", 20));
             report.put("assemblerCopies", Integer.getInteger("ae2federation.playthrough.assemblerCopies", 28));
@@ -205,10 +266,10 @@ public final class PlaythroughCraftingGameTests {
             report.put("overall", overall); report.put("chapters", chapters); report.put("targets", rows);
             report.put("skippedNonCrafting", skipped); report.put("deferred", deferred);
             Files.createDirectories(directory);
-            Files.writeString(directory.resolve("playthrough-crafting.json"), new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(report));
+            String json = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(report);
             var text = new StringBuilder("# Quest crafting playthrough\n\nMode: ").append(mode).append(". Serial, chapter filter: ")
-                    .append(chapter).append(". Completed: ").append(completed).append(".\n\n")
-                    .append("| Chapter | Both pass | Baseline only | Both fail | Federated only | Not bootstrappable |\n|---|---:|---:|---:|---:|---:|\n");
+                    .append(chapter).append(". Checkpoint: ").append(checkpoint).append(". Completed: ").append(completed).append(".\n\n")
+                    .append("| Chapter | Both pass | Baseline only | Both fail | Federated only | Not bootstrappable | Nondeterministic |\n|---|---:|---:|---:|---:|---:|---:|\n");
             var summary = new LinkedHashMap<>(chapters); summary.put("Overall", overall);
             summary.forEach((name, values) -> { text.append('|').append(escape(name)); values.values().forEach(v -> text.append('|').append(v)); text.append("|\n"); });
             text.append("\nBaseline only indicates a likely Federation bug; JSON retains used items and extraction counts.\n\n")
@@ -229,7 +290,19 @@ public final class PlaythroughCraftingGameTests {
             text.append("\n## Skipped own non-crafting recipes\n\n");
             for (var row : skipped) text.append("- ").append(row.get("chapter")).append(" / ").append(row.get("questId")).append(": `").append(row.get("item")).append("`\n");
             text.append("\nDeferred by filters/runtime: ").append(deferred.size()).append(". See JSON for task IDs and reasons.\n\nHarness error: ").append(harnessError).append('\n');
-            Files.writeString(directory.resolve("playthrough-crafting.md"), text.toString());
+            text.append("\nNext eligible offset: ").append(skip + index).append(". Incomplete: ").append(escape(incomplete.toString())).append('\n');
+            PlaythroughCheckpoint.write(directory.resolve("playthrough-crafting.md"), text.toString());
+            // JSON is authoritative. A differing Markdown checkpoint ID indicates a stale rendering.
+            PlaythroughCheckpoint.write(directory.resolve("playthrough-crafting.json"), json);
+        }
+
+        private boolean deadlineReached() {
+            return (System.nanoTime() - started) / 1_000_000_000L >= wallSeconds
+                    || System.currentTimeMillis() >= Long.getLong("ae2federation.compat.deadlineEpochMillis", Long.MAX_VALUE) - 60000;
+        }
+
+        private void restoreTicks() {
+            if (sprintOwned) { helper.getLevel().getServer().tickRateManager().stopSprinting(); sprintOwned = false; }
         }
 
         private static String escape(String text) { return text.replace("|", "\\|").replace("\n", " "); }

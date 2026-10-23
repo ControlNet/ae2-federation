@@ -74,3 +74,50 @@ The 256m AppFlux component uses three native 256k storage blocks (786432 bytes).
 independently confirmed both layouts. Reports retain each layout's measured ticks rather than substituting smoke
 measurements. The final merger checks task identity, every invariant, used/extracted items, planned net output,
 CPU capacity, budget formula and matching plan metrics between layouts.
+
+## Complete inventory and return-state review
+
+`PlaythroughAccounting` computes full final cell contents as plan used items + pattern outputs + ingredient
+remainders - pattern inputs, with execution counts and exact component-bearing keys. The requester has priority
+1000, so the complete balance belongs there; both other physical cells must be empty. Compare per-cell inventories
+between layouts as well. Quartz fibre legitimately leaves two black stained glass in addition to its three outputs.
+
+The public `CraftingReturnLedger.save` snapshot exposes every debt/held/transit key, watched job and unknown-job
+marker. Filter by every fixture network identity observed during execution; never limit the keys to recipe outputs.
+Capture residuals before test teardown. Compat-side reflection discards only fixture-owned debts/transit, then the
+normal projection sweep retires settled jobs and its crafting-link cache. That sweep runs every 20 ticks: verify
+cleanup after 25 ticks, and allow 25 idle ticks before final order invariants. Ten ticks caused premature cleanup
+verification failures. No production source changes are necessary.
+
+Recipe signatures preserve exact output and remainder key/count maps. Compare repeated assembly and decoding,
+installed provider details, fresh decoding at completion, and both layouts. Observed disagreement is
+`nondeterministic`, not one of the four differential execution outcomes. Sampling cannot prove arbitrary mod code
+is deterministic in all future states.
+
+Construction only validates and creates Java helpers; `initialize` mutates the level after the driver owns the
+factory reference. Record positions before placement, attempt all cleanup operations, and preserve exceptions.
+Checkpoints are sibling-temp + fsync + atomic rename, with JSON authoritative and matching Markdown checkpoint IDs.
+They record next eligible offset/task and incomplete-pair evidence. Active-stage wall-clock deadlines defer without
+classifying a partial pair. `compat_run.py` passes an absolute process deadline, reserving 60 seconds for cleanup.
+
+Vanilla tick sprint is owned only by the isolated playthrough run and is restored on normal completion, deadline
+and caught exception. The runner supports isolated suffixes, per-process JVM properties and parallel bounded chunks;
+`tools/compat_playthrough.py` merges and validates complete coverage. Synthetic report-corruption tests are explicitly
+separate from real gameplay evidence.
+
+The real `playthroughRemainders` cake regression exposed a likely Federation return defect: identical signatures,
+source counts, idle CPUs and empty machine buffers, but three empty buckets remain in the factory cell with owed=3
+and held=3 while the cake and seven surplus eggs reach the requester. This persisted after a full return sweep and
+in the normal-tick single-target confirmation. The NAST recipe chain crafts buckets before milk buckets, so buckets
+are also installed pattern outputs; do not claim this particular case alone proves an old whitelist bypass. It
+independently exercises full remainder inventory and debt accounting. Keep it separate from AE2 chapter counts.
+
+
+The full six-finding review rerun used three concurrent 40-task chunks: 138, 158 and 289 seconds, all harness PASS.
+All 120 chapter task identities and classes were unchanged: 119 both-pass, one not-bootstrappable, zero both-fail,
+zero one-sided and zero nondeterministic. The separate cake regression remained baseline-only in final normal-tick
+and sprint confirmations, with identical inventories and signatures; the 25-tick settlement did not resolve it.
+Final small-set speed parity: 34.519 seconds normal versus 7.909 sprint for the test portion, 118 versus 98 seconds
+including startup. A 22-second active-stage deadline preserved the incomplete federated pair at offset 1, and the
+continuation completed the remaining tasks. The focused remainder test has a separate opt-in group to prevent
+chapter reports being overwritten when selecting the chapter group. Both groups are excluded from `all`.

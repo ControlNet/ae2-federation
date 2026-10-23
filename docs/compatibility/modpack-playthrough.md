@@ -99,14 +99,38 @@ Properties use the `ae2federation.playthrough.` prefix:
 | `mode` | `crafting-frontier` | Or `crafting-only`, using the same provided-resource policy. |
 | `targetTicks` | `1200` | Planning/publication budget and base execution budget in ticks. |
 | `ticksPerCraft` | `20` | Execution budget factor: `targetTicks + ticksPerCraft * ceil(totalCrafts / assemblerCopies)`. |
+| `sprint` | `true` | Vanilla tick sprint while this isolated playthrough runs; restored on completion, deadline or exception. Other compat groups keep normal ticking. |
+| `wallSeconds` | `1400` | Active-stage wall-clock deadline, 1–1400 seconds; the runner also reserves 60 seconds before its process deadline. |
 | `assemblerCopies` | `28` | Maximum identical provider/assembler copies (1–28), reduced to fit 28 providers total. Actual copies are the conservative per-recipe parallelism in the budget formula. |
 
 Execution is serial and isolated with `@RunsAlone`. Construction has 400 ticks; an unbuilt layout fails the harness.
-New target pairs stop after 1400 seconds, leaving headroom within NAST's 1800-second process timeout. A large
-pair started just before that guard can still exceed the process limit. For the current NAST AE2 chapter, use two
-bounded runs: `maxTargets=96`, then `skipTargets=96` with `maxTargets=0`. The second run starts with the largest
-plan so it receives the full process allowance. JSON lists deferred tasks. Continue with `skipTargets` equal to
-the previous `skipTargets + completedTargetCount`; preserve reports before rerunning, since the compat runner rebuilds its run directory. The default covers only the first 16 tasks.
+The wall-clock deadline is checked during every active stage, independently of tick budgets and TPS. On expiry,
+the current pair is checkpointed as `incompleteTarget`, cleaned up and deferred, with neither layout assigned a
+result class. JSON records `nextEligibleOffset` and `nextTask`; resume that offset, preferably with a smaller chunk
+so the interrupted target starts early. Construction/teardown and report writes are synchronous; an indefinitely
+blocked server thread cannot be interrupted by an in-thread deadline. The runner's process deadline is the final bound.
+
+Checkpoints use sibling temporary files, fsync and atomic replacement. JSON is authoritative; JSON and Markdown
+carry matching `checkpointId` values. A mismatched Markdown ID means the rendering is stale, not that the JSON
+continuation offset should be guessed. Preserve reports before reusing a run directory.
+
+Run the current 120-task AE2 chapter as three parallel chunks (each process orders its own targets serially):
+
+```bash
+python3 tools/compat_run.py --accept-eula --tests playthroughCrafting nast \
+  --run-suffix phase1 --chunks 3 --chunk-size 40 -j 3 \
+  --jvm-property ae2federation.playthrough.chapter=ae2 \
+  --summary build/playthrough/chunk-summary.json
+python3 tools/compat_playthrough.py --output build/playthrough \
+  neoforge-1.21.1/build/compat/runs/nast-phase1-chunk1 \
+  neoforge-1.21.1/build/compat/runs/nast-phase1-chunk2 \
+  neoforge-1.21.1/build/compat/runs/nast-phase1-chunk3
+```
+
+For N chunks choose `--chunks N --chunk-size ceil(120/N) -j N`; the last chunk can be short.
+`--run-suffix` isolates directories, and repeatable `--jvm-property KEY=VALUE` passes properties only to those servers.
+Without these options the runner's existing CLI behaviour is unchanged. The merger rejects missing/duplicate tasks,
+settings mismatches, incomplete runs and inconsistent passing evidence. Keep single-target confirmation runs separate.
 
 Frontier mode tries crafting routes first and explicitly supplies required non-crafting intermediates as **stand-ins**.
 A conversion cycle cannot create its seed: NAST's glass decompression still needs cooking. Only items with an
@@ -123,12 +147,33 @@ Targets whose own recipe is not crafting are listed separately for Phase 3. `not
 non-execution category, outside the four layout result classes: the shared Phase 0 resolver cannot prove a finite
 crafting route with the target removed from supplied resources, but adding only a seed of the target enables a
 producer. This detects direct and indirect self-seeding recipes without item-specific exceptions.
+`nondeterministic` is also outside the four result classes: repeated assembly, decoding, installed-pattern or
+cross-layout signatures differ. Signatures contain exact component-bearing output keys/counts and remainder
+keys/counts. Three initial samples and checks in both installed layouts detect observed variation; they cannot
+prove that arbitrary mod recipes are deterministic under every possible state.
 
 Each layout records ticks, every post-order invariant, failure reason, per-network target stock, planned used items
-and actual source extractions. It also records `expectedAmount`, `totalCrafts`, `planBytes`, `cpuBytes`,
+and actual source extractions. `expectedInventories` is the complete material balance: plan used items plus all
+pattern outputs and remainders, minus all pattern inputs, multiplied by execution counts. The requester has the
+highest storage priority; materials/factory cells must be empty and the requester must contain that exact balance.
+`inventories` records every key in every physical cell; the pair also compares those inventories directly.
+All debt, held-stock and transit entries for any fixture network are read through the ledger's public saved-data
+snapshot, including unexpected keys. Teardown records residual entries before removing fixture-owned debt/transit
+through compat-side reflection, lets the normal service retire watched jobs, then verifies no references remain
+after a 25-tick settling interval. Final order checks also wait 25 idle ticks to cover the complete 20-tick
+return sweep. Main-mod code is unchanged.
+
+The report also records `expectedAmount`, `totalCrafts`, `planBytes`, `cpuBytes`,
 `assemblerParallelism` and `tickBudget`. Passing requires the plan's net target output in requester storage, an idle CPU, empty
-provider/assembler buffers, exact extraction accounting, and zero return debt for every network pair and pattern
-output key. Expected target output is the sum of every target output in `patternTimes()`, less all target inputs
+provider/assembler buffers, exact extraction accounting, zero return debt/transit for all fixture keys, and
+complete final inventories matching the plan and the other layout. Expected target output is the sum of every target output in `patternTimes()`, less all target inputs
 consumed by those patterns, multiplied by their execution counts. Batch surplus is collected and drained with the
 requested items. Timeout reasons include plan bytes, crafts, parallelism and budget for diagnosis. Harness and crafting-future
 exceptions fail the test; other server log exceptions are not intercepted. Read `server-console.log` for diagnosis.
+
+The focused `playthroughRemainders` regression runs a real `minecraft:cake` recipe through the same driver,
+including its bucket returns. Its report is separate from quest chapter counts.
+
+```bash
+python3 tools/compat_run.py --accept-eula --tests playthroughRemainders --run-suffix remainders nast
+```

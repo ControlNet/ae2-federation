@@ -25,7 +25,11 @@ final class PlaythroughRecipes {
     static final class NotBootstrappable extends IllegalArgumentException {
         NotBootstrappable(String message) { super(message); }
     }
-    record Proof(Map<String, ItemStack> patterns, Set<AEItemKey> supplies, Map<String, List<String>> standIns) { }
+    static final class Nondeterministic extends RuntimeException {
+        Nondeterministic(String message) { super(message); }
+    }
+    record Proof(Map<String, ItemStack> patterns, Set<AEItemKey> supplies, Map<String, List<String>> standIns,
+                 Map<String, PlaythroughAccounting.Signature> signatures) { }
     private final GameTestHelper helper;
     private final QuestCoverageCompatGameTests.Probe probe;
     private final boolean frontier;
@@ -64,7 +68,7 @@ final class PlaythroughRecipes {
         var proof = resolve(item, true, new HashSet<>());
         var supplies = new HashSet<>(proof.supplies());
         probe.providedItems().stream().map(PlaythroughRecipes::key).forEach(supplies::add);
-        return new Proof(proof.patterns(), supplies, proof.standIns());
+        return new Proof(proof.patterns(), supplies, proof.standIns(), proof.signatures());
     }
 
     boolean hasCraftingRecipe(String item) {
@@ -76,7 +80,7 @@ final class PlaythroughRecipes {
         var recipes = probe.producers().getOrDefault(item, List.of());
         if (!root && item.equals(target)) throw new IllegalArgumentException("target cannot be supplied as its own ingredient");
         if (!root && (probe.providedItems().contains(item) || !probe.producers().containsKey(item))) {
-            return new Proof(Map.of(), Set.of(key(item)), Map.of());
+            return new Proof(Map.of(), Set.of(key(item)), Map.of(), Map.of());
         }
         if (!root && cache.containsKey(item)) return cache.get(item);
         if (!reachable.containsKey(item) || visiting.contains(item)) {
@@ -139,7 +143,7 @@ final class PlaythroughRecipes {
         if (!choose(actual, choices, grid, 0, width, new int[] {4096}, visiting, proofs, failures)) {
             throw new IllegalArgumentException("no reachable recipe.matches-approved grid within 4096 combinations: " + failures);
         }
-        var input = CraftingInput.of(3, 3, grid);
+        var input = CraftingInput.ofPositioned(3, 3, grid).input();
         var output = actual.assemble(input, helper.getLevel().registryAccess());
         if (output.isEmpty() || !BuiltInRegistries.ITEM.getKey(output.getItem()).toString().equals(recipe.output())) {
             throw new IllegalArgumentException("assembled output differs from Phase 0 output");
@@ -148,15 +152,27 @@ final class PlaythroughRecipes {
         if (PatternDetailsHelper.decodePattern(pattern, helper.getLevel()) == null) {
             throw new IllegalArgumentException("AE2 rejected encoded crafting pattern");
         }
+        var signature = PlaythroughAccounting.signature(output, actual.getRemainingItems(input), helper.getLevel());
+        for (int sample = 0; sample < 3; sample++) {
+            var fresh = CraftingInput.ofPositioned(3, 3, grid.stream().map(ItemStack::copy).toList()).input();
+            var observed = PlaythroughAccounting.signature(actual.assemble(fresh, helper.getLevel().registryAccess()),
+                    actual.getRemainingItems(fresh), helper.getLevel());
+            var decoded = PlaythroughAccounting.signature(PatternDetailsHelper.decodePattern(pattern, helper.getLevel()), helper.getLevel());
+            if (!signature.equals(observed) || !signature.equals(decoded)) throw new Nondeterministic(recipe.id()
+                    + ": signature=" + signature + ", repeated=" + observed + ", decoded=" + decoded);
+        }
+        var signatures = new TreeMap<String, PlaythroughAccounting.Signature>();
         var patterns = new LinkedHashMap<String, ItemStack>();
         var supplies = new HashSet<AEItemKey>();
         var standIns = new TreeMap<String, List<String>>();
         for (var stack : grid) if (!stack.isEmpty()) {
             var proof = proofs.get(AEItemKey.of(stack));
             patterns.putAll(proof.patterns()); supplies.addAll(proof.supplies()); standIns.putAll(proof.standIns());
+            signatures.putAll(proof.signatures());
         }
         patterns.put(recipe.id(), pattern);
-        return new Proof(patterns, supplies, standIns);
+        signatures.put(recipe.id(), signature);
+        return new Proof(patterns, supplies, standIns, signatures);
     }
 
     private boolean choose(CraftingRecipe recipe, List<List<ItemStack>> choices, List<ItemStack> grid,
@@ -173,7 +189,7 @@ final class PlaythroughRecipes {
                 try {
                     var proof = resolve(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(), false, visiting);
                     // Supplied component-bearing ingredients must expose precisely the key the pattern consumes.
-                    if (proof.patterns().isEmpty()) proof = new Proof(Map.of(), Set.of(AEItemKey.of(stack)), proof.standIns());
+                    if (proof.patterns().isEmpty()) proof = new Proof(Map.of(), Set.of(AEItemKey.of(stack)), proof.standIns(), Map.of());
                     proofs.put(AEItemKey.of(stack), proof);
                 } catch (IllegalArgumentException exception) {
                     if (failures.size() < 3) failures.add(exception.getMessage());
@@ -196,7 +212,7 @@ final class PlaythroughRecipes {
     private Proof standIn(String item) {
         return new Proof(Map.of(), Set.of(key(item)), Map.of(item, probe.producers().get(item).stream()
                 .map(QuestCoverageCompatGameTests.Recipe::recipeClass).filter(type -> !type.equals("crafting"))
-                .distinct().sorted().toList()));
+                .distinct().sorted().toList()), Map.of());
     }
 
     private int ingredientRank(ItemStack stack) {

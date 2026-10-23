@@ -25,6 +25,7 @@ import concurrent.futures
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -218,7 +219,8 @@ def run_bare(name: str, profile: dict, timeout: int) -> dict:
     return result
 
 
-def run_profile(name: str, profile: dict, tests: str, timeout: int, parallel: int = 1) -> dict:
+def run_profile(name: str, profile: dict, tests: str, timeout: int, parallel: int = 1,
+                properties: dict[str, str] | None = None) -> dict:
     directory = RUNS / name
     started = time.monotonic()
     try:
@@ -229,7 +231,8 @@ def run_profile(name: str, profile: dict, tests: str, timeout: int, parallel: in
     log = directory / "server-console.log"
     command = ["java", f"-Xmx{profile.get('memory', '4G')}", f"-Dae2federation.compat.tests={tests}",
                f"-Dae2federation.compat.report={report}", f"-Dae2federation.compat.parallel={parallel}",
-               *profile.get("jvmArgs", []),
+               *profile.get("jvmArgs", []), *[f"-D{key}={value}" for key, value in (properties or {}).items()],
+               f"-Dae2federation.compat.deadlineEpochMillis={int((time.time() + timeout - (time.monotonic() - started)) * 1000)}",
                f"@libraries/net/neoforged/neoforge/{profile['neoforge']}/unix_args.txt", "nogui"]
     with log.open("w") as stream:
         server = subprocess.Popen(command, cwd=directory, stdin=subprocess.DEVNULL, stdout=stream,
@@ -339,7 +342,25 @@ def main() -> int:
                         help="start each profile without AE2 Federation, to see whether a failure is its own")
     parser.add_argument("--accept-eula", action="store_true", help="accept the Minecraft EULA for the test servers")
     parser.add_argument("--summary", type=Path, help="write the results as JSON")
+    parser.add_argument("--run-suffix", default="", help="suffix isolated run directories, e.g. runs/nast-smoke")
+    parser.add_argument("--jvm-property", action="append", default=[], metavar="KEY=VALUE",
+                        help="per-process JVM system property; repeat for multiple properties")
+    parser.add_argument("--chunks", type=int, default=1, help="run each profile in N isolated playthrough chunks")
+    parser.add_argument("--chunk-size", type=int, help="eligible targets per chunk; requires --chunks")
     args = parser.parse_args()
+    if args.run_suffix and not re.fullmatch(r"[A-Za-z0-9_-]+", args.run_suffix):
+        parser.error("run suffix must contain only letters, numbers, underscores or hyphens")
+    properties = {}
+    for value in args.jvm_property:
+        key, separator, setting = value.partition("=")
+        if not separator or not re.fullmatch(r"[A-Za-z0-9_.-]+", key): parser.error("JVM properties must be KEY=VALUE")
+        if key in {"ae2federation.compat.report", "ae2federation.compat.deadlineEpochMillis"}:
+            parser.error(f"{key} is owned by the runner")
+        properties[key] = setting
+    if args.chunks < 1 or args.chunk_size is not None and args.chunk_size < 1:
+        parser.error("chunks and chunk-size must be positive")
+    if args.chunks > 1 and args.chunk_size is None: parser.error("--chunks requires --chunk-size")
+    if args.bare and (properties or args.chunks > 1): parser.error("JVM properties/chunks require compat tests")
     profiles = load_profiles()
     names = list(profiles) if args.all else [name for name, profile in profiles.items()
                                              if profile.get("group") in args.group] + args.profiles
@@ -371,9 +392,20 @@ def main() -> int:
             unpack_pack(profiles[name]["pack"])
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        futures = {(pool.submit(run_bare, name, profiles[name], profiles[name].get("timeout", 900)) if args.bare else
-                    pool.submit(run_profile, name, profiles[name], args.tests or ",".join(profiles[name]["tests"]),
-                                profiles[name].get("timeout", 900), args.parallel)): name for name in dict.fromkeys(names)}
+        futures = {}
+        for name in dict.fromkeys(names):
+            for chunk in range(args.chunks):
+                run_name = name + ("-" + args.run_suffix if args.run_suffix else "")
+                settings = dict(properties)
+                if args.chunk_size is not None:
+                    run_name += f"-chunk{chunk + 1}"
+                    prefix = "ae2federation.playthrough."
+                    settings[prefix + "skipTargets"] = str(int(properties.get(prefix + "skipTargets", "0")) + chunk * args.chunk_size)
+                    settings[prefix + "maxTargets"] = str(args.chunk_size)
+                future = (pool.submit(run_bare, run_name, profiles[name], profiles[name].get("timeout", 900)) if args.bare else
+                          pool.submit(run_profile, run_name, profiles[name], args.tests or ",".join(profiles[name]["tests"]),
+                                      profiles[name].get("timeout", 900), args.parallel, settings))
+                futures[future] = run_name
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
             results.append(result)
