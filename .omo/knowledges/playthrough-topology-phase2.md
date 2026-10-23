@@ -48,11 +48,11 @@
 
 - The real two-JVM restart passed with the same crafting UUID and owed=held=1 after restart. An unpowered
   requester exposes zero active CPUs until the Router is restored; waiting for CPU visibility before restoration
-  deadlocks the harness and does not establish cancellation. Final balance, CPU release and debt checks passed.
-- Continuous tick sprint can starve vanilla ChunkMap's unloadQueue: its callbacks run only when haveTime is true
-  (unless the queue exceeds 2000). Both 30- and 120-second waits reproduced cold-fixture timeouts followed by warm
-  passing retries. The optional pauseSprintForUnload diagnostic pauses sprint for actual unload/reload and resumes it afterward.
-  Do not bypass isRemoved/chunk absence or simulate the lifecycle; retain the earlier flaky reports.
+  deadlocks the harness. Read the requester's CraftingBlockEntity cluster instead: busy and
+  craftingLogic.getLastLink() equal to the saved ID proves resumption before the Router returns (else
+  job-lost-on-reload). Final balance, CPU release and debt checks passed.
+- Continuous tick sprint starves vanilla ChunkMap's unloadQueue: its callbacks run only when haveTime is true
+  (unless the queue exceeds 2000). Do not bypass isRemoved/chunk absence or simulate the lifecycle.
 - The ordinary Bridge outage removes its cable host and Bridge together. `bridge-part` preserves the earlier
   part-only merge/split operation as an explicit regression, instead of dismissing its observed remaining debt.
 - All 30 seeded cancellation cases passed, but the first 30 Java Random seeds sampled only beam, 2x2 bundle and
@@ -60,17 +60,25 @@
   evidence that every dimension value executed. No-Switch Router passed all seven disturbances using actual
   Federation Pattern Provider front-port membership.
 
-- Pausing sprint did NOT fix the unload finding: seeds 0 and 1 each timed out twice at 120 seconds with live
-  factory chest/controller/provider/assembler/Switch objects despite zero loaded/ticking chunks. Keep normal
-  playthrough sprint as the default; pauseSprintForUnload=true preserves the normal-tick diagnostic. Earlier
-  sprinted runs recorded a cold timeout followed by a genuinely unloaded, busy-CPU, clean-completion retry.
-  Treat the cause as unresolved; do not claim the vanilla queue hypothesis was established.
+- Unload cause, from DistanceManager/ChunkMap reflection (PlaythroughChunkDiagnostics, 2026-10-23): while the
+  4096-craft job still had inputs to push, every tick showed an `unknown:33` ticket on the factory chunk (40953
+  of 40954 samples), with zero harness accesses and no nearby tickets. PatternProviderLogic.pushPattern ->
+  ICraftingMachine.of -> level.getCapability -> getBlockState is a main-thread getChunk that re-acquires the
+  holder from pendingUnloads. Once the job ended, the chunk sat at `L45 pending` with unloadQueue 1399 under sprint
+  and never unloaded; a warm retry unloaded because the queue had reached 2000. Pausing sprint alone failed because
+  at 20 tps the job keeps pushing for ~34 minutes. Fix (harness): release the site only when the requester CPU's
+  craftingLogic inventory holds nothing unpushed, and pause sprint for the unload window by default. Seeds 0 and 1
+  then unloaded cold in 0.25-0.3 s with a busy CPU and passed on the first attempt.
 
 - Part-only Bridge merge/split reproduces a return-debt leak with just one assembler: seed 0, networks=3,
   join=bridge, power=NORTH, roles=WEST/EAST/NORTH, target ae2:blank_pattern count 1,
   perturbations=bridge-part, assemblerCopies=1. Both attempts pass exact inventory/CPU/buffer checks but retain
   owed=1, held=0 after the requester receives its one output. This is the smallest tested reproduction;
   production code remains unchanged. See the copied cont-bridge-part-min report and phase2-handoff.md.
+- Review fixes (2026-10-23): `cable` cuts center+factory face, restoring the exact block (native cable via
+  placeCable); a disturbance that did not happen is `perturbation-not-executed`, outside byDimension/byPerturbation;
+  preconditions are checked per case after the baseline (`skipped-precondition`); Endpoint buses sit on the side
+  away from the hub (factory=WEST/power=WEST previously merged a subnet into the factory via the power cell).
 - The restart aggregation unit test uses synthetic reports, not Minecraft: it verifies that a passing isolated
   confirmation retains the original failure, reports flaky in both summaries and Markdown, and presents the
   confirmation as the final federated result. It must not be counted as gameplay coverage.

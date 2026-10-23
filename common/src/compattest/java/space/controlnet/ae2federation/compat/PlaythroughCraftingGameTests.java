@@ -200,6 +200,15 @@ public final class PlaythroughCraftingGameTests {
                             index++; proof = null; write(); helper.runAfterDelay(1, this::tick); return;
                         }
                     }
+                    if (topologyMode && baseline != null) {
+                        String skipped = PlaythroughFactory.precondition(layouts.get(layoutIndex), currentPerturbation(), baseline.totalCrafts());
+                        if (!skipped.isEmpty()) {
+                            var row = metadata(target);
+                            row.put("layout", layouts.get(layoutIndex)); row.put("perturbation", currentPerturbation());
+                            row.put("classification", "skipped-precondition"); row.put("reason", skipped); row.put("baseline", baseline);
+                            rows.add(row); advanceCase(); write(); helper.runAfterDelay(1, this::tick); return;
+                        }
+                    }
                     com.mojang.logging.LogUtils.getLogger().info("AE2F_PLAYTHROUGH_ORDER target={}/{} item={} count={} layout={}",
                             index + 1, targets.size(), target.item(), target.count(), baseline == null ? "baseline" : "federated");
                     factory = topologyMode && baseline != null
@@ -231,13 +240,14 @@ public final class PlaythroughCraftingGameTests {
                             row.put("expectedOutcome", layouts.get(layoutIndex).capacity().equals("over-limit") ? "clean-refusal" : currentPerturbation().equals("cancel") ? "cancelled-output-retained" : "complete-after-restoration");
                             if (firstAttempt != null) {
                                 row.put("firstAttempt", firstAttempt); row.put("confirmation", result);
-                                if (result.pass()) row.put("classification", "flaky");
-                                row.put("repeatability", result.pass() ? "flaky" : firstAttempt.invariant().equals(result.invariant()) ? "reproduced-invariant" : "different-failure");
+                                // A first attempt whose disturbance never ran is no failure: the confirmation is the case.
+                                boolean ran = !firstAttempt.invariant().equals(PlaythroughFactory.NOT_EXECUTED);
+                                if (ran && result.pass()) row.put("classification", "flaky");
+                                row.put("repeatability", !ran ? "first-attempt-not-executed" : result.pass() ? "flaky"
+                                        : firstAttempt.invariant().equals(result.invariant()) ? "reproduced-invariant" : "different-failure");
                                 firstAttempt = null;
                             }
-                            if (layouts.get(layoutIndex).capacity().equals("over-limit")) perturbationIndex = perturbations.size() - 1;
-                            if (++perturbationIndex == perturbations.size()) { perturbationIndex = 0; layoutIndex++; }
-                            if (layoutIndex == layouts.size()) { layoutIndex = 0; index++; baseline = null; proof = null; }
+                            advanceCase();
                             write();
                         }
                     } else {
@@ -258,22 +268,24 @@ public final class PlaythroughCraftingGameTests {
             }
         }
 
+        private void advanceCase() {
+            if (layouts.get(layoutIndex).capacity().equals("over-limit")) perturbationIndex = perturbations.size() - 1;
+            if (++perturbationIndex == perturbations.size()) { perturbationIndex = 0; layoutIndex++; }
+            if (layoutIndex == layouts.size()) { layoutIndex = 0; index++; baseline = null; proof = null; }
+        }
+
         private String currentPerturbation() {
             return layouts.get(layoutIndex).capacity().equals("over-limit") ? "none" : perturbations.get(perturbationIndex);
         }
 
         private void add(Target target, PlaythroughFactory.Result base, PlaythroughFactory.Result fed, Map<String, List<String>> standIns) {
             boolean refusal = topologyMode && layouts.get(layoutIndex).capacity().equals("over-limit");
-            if (!refusal && base.pass() && fed.pass() && !PlaythroughTopology.inventoriesEqual(base, fed)) {
-                fed = fed.failure("inventory-parity", "Full per-cell inventories differ from the passing baseline");
-            }
+            var comparison = PlaythroughTopology.compare(base, fed, refusal);
+            fed = comparison.federated();
             var row = metadata(target);
             row.put("baseline", base); row.put("federated", fed); row.put("standIns", standIns);
-            row.put("classification", base.pass() ? fed.pass() ? "both-pass" : "baseline-only" : fed.pass() ? "federated-only" : "both-fail");
-            if (base.invariant().equals("recipe-signature") || fed.invariant().equals("recipe-signature")
-                    || !refusal && !base.signatures().equals(fed.signatures())) row.put("classification", "nondeterministic");
-            if (refusal) row.put("classification", fed.pass() ? "expected-refusal" : "refusal-mismatch");
-            row.put("inventoryComparison", refusal ? "NOT_APPLICABLE: expected refusal" : PlaythroughTopology.inventoriesEqual(base, fed) ? "PASS" : "Layout inventories differ");
+            row.put("classification", comparison.classification());
+            row.put("inventoryComparison", comparison.inventoryComparison());
             row.put("expectedSignatures", proof == null ? Map.of() : proof.signatures());
             row.put("recipes", proof == null ? List.of() : proof.patterns().keySet());
             rows.add(row);

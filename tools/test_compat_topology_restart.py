@@ -43,6 +43,28 @@ class RestartConfirmationTest(unittest.TestCase):
             self.assertIn('|flaky|flaky|: |', markdown)
             self.assertIn('Both complete attempt results are retained in JSON', markdown)
 
+    def test_clean_but_lost_job_is_confirmed_and_never_both_pass(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            first = pathlib.Path(temporary) / 'first'
+            second = pathlib.Path(temporary) / 'second'
+            for directory in (first, second):
+                directory.mkdir()
+                report = {'cases': [{'classification': 'job-lost-on-reload',
+                                     'federated': {'pass': True, 'invariant': '', 'reason': ''}}],
+                          'byDimension': {'join=router-switch': {'job-lost-on-reload': 1}},
+                          'byPerturbation': {'restart': {'job-lost-on-reload': 1}}}
+                (directory / 'playthrough-topology.json').write_text(json.dumps(report))
+                (directory / 'playthrough-topology.md').write_text('|job-lost-on-reload|not-required|: |\n')
+            arguments = ['compat_transit_restart.py', '--no-build', '--accept-eula', '--playthrough-topology']
+            with mock.patch('sys.argv', arguments), mock.patch.object(
+                    compat_transit_restart, 'run_phases', side_effect=[first, second]) as phases, contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(compat_transit_restart.main(), 0)
+            self.assertEqual(phases.call_count, 2)
+            row = json.loads((first / 'playthrough-topology.json').read_text())['cases'][0]
+            self.assertEqual(row['classification'], 'job-lost-on-reload')
+            self.assertEqual(row['repeatability'], 'reproduced-invariant')
+            self.assertEqual(row['confirmationClassification'], 'job-lost-on-reload')
+
 
 if __name__ == '__main__':
     unittest.main()

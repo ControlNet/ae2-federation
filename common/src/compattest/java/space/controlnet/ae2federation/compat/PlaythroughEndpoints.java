@@ -10,7 +10,13 @@ import appeng.block.crafting.PushDirection;
 import appeng.blockentity.crafting.MolecularAssemblerBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEParts;
+import appeng.api.crafting.IPatternDetails;
+import appeng.api.networking.IGrid;
+import appeng.api.stacks.AEItemKey;
+import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.function.Consumer;
@@ -49,7 +55,9 @@ final class PlaythroughEndpoints {
         return new PlaythroughRecipes.Proof(patterns, original.supplies(), original.standIns(), signatures);
     }
 
-    static void place(GameTestHelper helper, BlockPos provider, Direction outward, boolean local, Consumer<BlockPos> track) {
+    /** {@code lateral} points from the hub along the factory arm, perpendicular to {@code outward}. */
+    static void place(GameTestHelper helper, BlockPos provider, Direction outward, Direction lateral, boolean local, Consumer<BlockPos> track) {
+        if (lateral.getAxis() == outward.getAxis()) throw new IllegalArgumentException("Endpoint bus side must be beside the provider line");
         var endpoint = provider.relative(outward);
         var assembler = endpoint.relative(outward);
         track.accept(provider); track.accept(endpoint); track.accept(assembler);
@@ -59,8 +67,8 @@ final class PlaythroughEndpoints {
         helper.setBlock(endpoint, ProcessingRegistration.ENDPOINT.get().defaultBlockState()
                 .setValue(BlockStateProperties.FACING, outward.getOpposite()));
         helper.setBlock(assembler, AEBlocks.MOLECULAR_ASSEMBLER.block());
-        // Keep the bus beside, never on, the provider/Endpoint/assembler line.
-        var lateral = outward.getAxis() == Direction.Axis.X ? Direction.NORTH : Direction.EAST;
+        // Keep the bus beside, never on, the provider/Endpoint/assembler line, and on the side away from the hub,
+        // where the member chest, its power cell and the arm cannot touch it.
         for (var pos : List.of(endpoint.relative(lateral), assembler.relative(lateral))) {
             track.accept(pos);
             PartHelper.setPart(helper.getLevel(), helper.absolutePos(pos), null, null, AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT));
@@ -72,17 +80,39 @@ final class PlaythroughEndpoints {
         }
     }
 
-    static boolean ready(GameTestHelper helper, BlockPos provider, BlockPos endpoint, boolean local) {
+    /** Whether the provider's executing logic, its lane for a Federation Provider, holds exactly {@code pattern}. */
+    static boolean ready(GameTestHelper helper, BlockPos provider, BlockPos endpoint, boolean local, ItemStack pattern) {
         var binding = EndpointTargetBinding.findEndpoint(helper.getLevel(), helper.absolutePos(endpoint));
         if (binding == null) return false;
-        if (local) return binding.runtime().mode().orElse(null) instanceof EndpointModeGeneration.Local;
+        var expected = AEItemKey.of(pattern);
+        if (local) return binding.runtime().mode().orElse(null) instanceof EndpointModeGeneration.Local
+                && holds(((PatternProviderLogicHost) helper.getBlockEntity(provider)).getLogic().getAvailablePatterns(), expected);
         var owner = helper.<FederationPatternProviderBlockEntity>getBlockEntity(provider);
         if (owner.runtime().isEmpty()) return false;
-        if (owner.laneCount() == 0) {
-            String status = owner.toggleEndpoint(owner.mappedProvider().mappingHandle(0), binding);
-            return status.startsWith("accepted-");
+        // Toggling an Endpoint that already has a lane would unmap it.
+        if (owner.laneFor(binding.endpointIdentity()).isEmpty()) {
+            owner.toggleEndpoint(owner.mappedProvider().mappingHandle(0), binding);
+            return false;
         }
-        return owner.lane(0).getAvailablePatterns().size() == 1;
+        var lane = owner.laneFor(binding.endpointIdentity()).get();
+        return holds(owner.lane(lane).getAvailablePatterns(), expected);
+    }
+
+    private static boolean holds(List<IPatternDetails> patterns, AEItemKey expected) {
+        return patterns.size() == 1 && patterns.getFirst().getDefinition().equals(expected);
+    }
+
+    /** Each Endpoint subnet is its own grid: no member network or other subnet merged into it. */
+    static String isolation(GameTestHelper helper, Collection<BlockPos> endpoints, Collection<IGrid> members) {
+        var seen = new HashSet<IGrid>();
+        for (var endpoint : endpoints) {
+            var binding = EndpointTargetBinding.findEndpoint(helper.getLevel(), helper.absolutePos(endpoint));
+            var subnet = binding == null ? null : binding.subnetNode().getGrid();
+            if (subnet == null) return "No Endpoint subnet at " + endpoint;
+            if (members.contains(subnet)) return "Endpoint subnet at " + endpoint + " merged into a member network";
+            if (!seen.add(subnet)) return "Endpoint subnet at " + endpoint + " merged into another Endpoint subnet";
+        }
+        return "";
     }
 
     static void program(GameTestHelper helper, BlockPos assembler, ItemStack pattern) {

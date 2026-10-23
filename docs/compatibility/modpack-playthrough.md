@@ -211,32 +211,48 @@ original crafting patterns and processing patterns with identical inputs/outputs
 Endpoint is the provider's adjacent target; its adjacent assembler executes the recipe. Each distinct recipe has
 its own assembler, up to four in this fixture. Federation Provider checks inspect the executing Endpoint lane,
 including its return inventory. Local mode uses a powered Endpoint subnet. Split recipes occupy separate factories.
+Each subnet bus sits on the side of its provider line away from the hub, clear of the member chest and power cell;
+building asserts that every subnet is its own grid. A Federation Provider is ready once its Endpoint lane holds
+exactly the expected pattern; a local provider once it holds it in Local mode.
 
 The original six joins are sampled by default. Pin `join=quantum` for actual paired Quantum Cubes and a nether
 factory through `OtherDimensionSite`; it requires projection, at least three networks, and an east factory.
-Pin `join=bridge` for a native requester backbone with separate Bridge-linked members. Pin `join=router` for one Router with no Switches: Federation Pattern Provider front ports attach the native
+Pin `join=bridge` for a native requester backbone with separate Bridge-linked members; extra CPUs are placed
+as on the other joins. Pin `join=router` for one Router with no Switches: Federation Pattern Provider front ports attach the native
 members. A Router cannot attach native grids directly; these Providers publish the native boundary.
 P2P's powered carrier is transport infrastructure outside the member count.
 
 `perturbations` defaults to `none,cable,router,STORAGE,CRAFTING,ME_POWER`. An owed ledger entry while the CPU is
 busy proves the first accepted push. Restore after 40 ticks, wait for power and CPU visibility, then use Phase 1's
 25 idle ticks to cover the 20-tick return sweep. Every completed case checks full inventories, extractions,
-signatures, buffers, CPU release and all ledger/transit entries. Pin the additional disturbances explicitly:
+signatures, buffers, CPU release and all ledger/transit entries. `cable` cuts the factory arm's first block
+(`center` plus the factory role's face) and `router` the hub; each restores exactly the block it removed, native
+cable included (the hub is native cable on the Bridge join). Preconditions are checked before each case is built,
+after the target's baseline: a case that cannot run on its layout or plan is a `skipped-precondition` row with its
+reason, not a harness error. Pin the additional disturbances explicitly:
 
 - `bridge`: on the Bridge join, remove/restore its cable host and Bridge together. Removing only the part exposes
   native cable and can merge the two grids. `bridge-part` tests that merge/split operation separately, with the
   same required zero-debt, output-retention outcome.
-- `chunk`: on Quantum, release the factory site's tickets, require actual block-entity removal while the CPU
-  remains busy, then reload after 40 unloaded ticks. Tick sprint remains enabled by default;
-  `pauseSprintForUnload=true` runs the unload/reload window at normal tick speed for diagnosis. `orderAmount=4096` and the existing
-  `ae2federation.playthrough.assemblerCopies=1` keep an unaccelerated assembler's job active. A failed unload is
-  recorded as a result, not counted as coverage. `unloadSeconds` defaults to 120 (allowed range 1–300).
+- `chunk`: on Quantum, release the factory site's tickets once the requester CPU holds no unpushed input, as the
+  existing unload scenes do; require actual block-entity removal while the CPU remains busy, then reload after 40
+  unloaded ticks. Until every input is pushed, AE2's push attempts read the factory blocks on the main thread and
+  reload the chunk each tick. Sprint pauses for the unload window (`pauseSprintForUnload=false` keeps it), since
+  vanilla drains its unload queue only in spare tick time or above 2000 entries. An unaccelerated assembler
+  (`ae2federation.playthrough.assemblerCopies=1`) keeps the last craft in flight; `orderAmount=4096` remains the
+  measured command. A timed-out unload, or a job that ended first, is `perturbation-not-executed`: outside the
+  outcome summaries and not coverage. Read-only ticket/holder diagnostics are recorded at unload or timeout.
+  `unloadSeconds` defaults to 120 (allowed range 1–300).
 - `cancel`: use a single-craft target such as blank pattern. Cancel after the first push; require its accepted
   output at the requester, an idle CPU and zero debt/transit with the same full material balance.
 - `restart`: use the command above. The existing runner drives `transitRestartPhase=prepare/recover` in two
   actual JVMs sharing a world. Preparation disconnects the Router after a push and preserves the original job
   with `RestartChunkTickets`; recovery restores the Router and validates the saved plan's exact balance without
-  submitting a replacement job. Clean native cancellation must retain the same output balance and clear all debt. This focused case uses router-switch projection and a single-craft target.
+  submitting a replacement job. Before the Router returns, the requester's CPU blocks must hold a busy job with
+  the saved crafting ID (read from the CPU, since an unpowered requester lists no CPUs); otherwise the row is
+  `job-lost-on-reload`, however cleanly it settles. The row then goes through the same baseline comparison as the
+  others, and post-restart extractions are counted. Recovery releases the restart tickets also when it fails.
+  This focused case uses router-switch projection and a single-craft target.
 
 The fixed capacity fixtures use three members, multi-hop joins and west power. Demand 8 must craft; demand 9
 must refuse projection with no extraction, stock, job or debt. Seeds congruent to 5/6 modulo 7 select those
@@ -244,8 +260,10 @@ fixtures; `capacity=normal` overrides that for ordinary layouts. `capacityCases=
 additions. Capacity fixtures ignore ordinary pins and require this branch's default limit of 8.
 
 Reports `playthrough-topology.json` and `.md` contain dimensions, case evidence and dimension/perturbation
-summaries. Harness PASS means the report completed; inspect classifications and `completed` separately.
-Failed cases get an isolated same-seed confirmation, retaining both attempts. Ordinary cases use fresh fixtures
+summaries. `perturbation-not-executed` and `skipped-precondition` rows appear only under `notRunByPerturbation`.
+Harness PASS means the report completed; inspect classifications and `completed` separately.
+Failed and not-executed cases get an isolated same-seed confirmation, retaining both attempts; after a
+not-executed first attempt, the confirmation is classified on its own (`first-attempt-not-executed`). Ordinary cases use fresh fixtures
 in one process; restart cases use a second fresh world and another process pair. `--chunks N --chunk-size S`
 partitions seeds. Build once, then use `--no-build`; run at most four NAST servers at once (8 GB each).
 Actual coverage and unresolved findings are recorded in `build/playthrough/phase2-handoff.md`.

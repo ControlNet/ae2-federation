@@ -32,19 +32,23 @@ def main() -> int:
         report = directory / "playthrough-topology.json"
         first = json.loads(report.read_text())
         row = first["cases"][0]
-        if not row["federated"]["pass"]:
+        # A job lost on reload can still settle cleanly, so the class, not the result, decides on a confirmation.
+        if row["classification"] != "both-pass":
             confirmation_directory = run_phases(args)
             if confirmation_directory is None:
                 return 1
             confirmation = json.loads((confirmation_directory / "playthrough-topology.json").read_text())["cases"][0]
+            confirmed = confirmation["classification"] == "both-pass"
             row["firstAttempt"] = row["federated"]
             row["confirmation"] = confirmation["federated"]
+            row["confirmationClassification"] = confirmation["classification"]
             row["federated"] = row["confirmation"]
             row["confirmationDirectory"] = confirmation_directory.name
-            row["repeatability"] = ("flaky" if row["confirmation"]["pass"] else
-                                    "reproduced-invariant" if row["firstAttempt"]["invariant"] == row["confirmation"]["invariant"] else "different-failure")
+            row["repeatability"] = ("flaky" if confirmed else
+                                    "reproduced-invariant" if row["classification"] == confirmation["classification"]
+                                    and row["firstAttempt"]["invariant"] == row["confirmation"]["invariant"] else "different-failure")
             old = row["classification"]
-            if row["confirmation"]["pass"]:
+            if confirmed:
                 row["classification"] = "flaky"
                 for summary in (first["byDimension"], first["byPerturbation"]):
                     for counts in summary.values():

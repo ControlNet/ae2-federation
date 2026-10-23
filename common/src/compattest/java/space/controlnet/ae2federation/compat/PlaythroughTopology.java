@@ -97,13 +97,36 @@ final class PlaythroughTopology {
         return first.equals(second);
     }
 
+    /** Classes for cases that did not run; they stay outside the outcome summaries. */
+    static final java.util.Set<String> NOT_RUN = java.util.Set.of(PlaythroughFactory.NOT_EXECUTED, "skipped-precondition");
+
+    record Comparison(PlaythroughFactory.Result federated, String classification, String inventoryComparison) { }
+
+    /** Every row's baseline comparison: inventory parity, recipe signatures and outcome class. */
+    static Comparison compare(PlaythroughFactory.Result base, PlaythroughFactory.Result fed, boolean refusal) {
+        if (!refusal && base.pass() && fed.pass() && !inventoriesEqual(base, fed)) {
+            fed = fed.failure("inventory-parity", "Full per-cell inventories differ from the passing baseline");
+        }
+        String classification = base.pass() ? fed.pass() ? "both-pass" : "baseline-only" : fed.pass() ? "federated-only" : "both-fail";
+        if (base.invariant().equals("recipe-signature") || fed.invariant().equals("recipe-signature")
+                || !refusal && !base.signatures().equals(fed.signatures())) classification = "nondeterministic";
+        if (refusal) classification = fed.pass() ? "expected-refusal" : "refusal-mismatch";
+        if (fed.invariant().equals(PlaythroughFactory.NOT_EXECUTED)) classification = PlaythroughFactory.NOT_EXECUTED;
+        return new Comparison(fed, classification, refusal ? "NOT_APPLICABLE: expected refusal" : inventoriesEqual(base, fed) ? "PASS" : "Layout inventories differ");
+    }
+
     static void write(Path directory, List<Layout> layouts, List<Map<String, Object>> rows,
                       boolean completed, String harnessError, Map<String, Object> incomplete) throws Exception {
         var dimensions = new TreeMap<String, Map<String, Integer>>();
         var perturbations = new TreeMap<String, Map<String, Integer>>();
+        var notRun = new TreeMap<String, Map<String, Integer>>();
         for (var row : rows) {
             if (!(row.get("layout") instanceof Layout layout)) continue;
             String outcome = row.get("classification").toString();
+            if (NOT_RUN.contains(outcome)) {
+                notRun.computeIfAbsent(row.get("perturbation").toString(), ignored -> new TreeMap<>()).merge(outcome, 1, Integer::sum);
+                continue;
+            }
             layout.dimensions().forEach((key, value) -> dimensions.computeIfAbsent(key + "=" + value, ignored -> new TreeMap<>()).merge(outcome, 1, Integer::sum));
             perturbations.computeIfAbsent(row.get("perturbation").toString(), ignored -> new TreeMap<>()).merge(outcome, 1, Integer::sum);
         }
@@ -118,7 +141,7 @@ final class PlaythroughTopology {
                 "Cancellation and restart use a single-craft target; chunk unload requires a Quantum factory",
                 "Restart uses the existing prepare/recover runner and a router-switch projection layout"));
         report.put("dimensionValues", DIMENSIONS); report.put("layouts", layouts); report.put("cases", rows);
-        report.put("byDimension", dimensions); report.put("byPerturbation", perturbations);
+        report.put("byDimension", dimensions); report.put("byPerturbation", perturbations); report.put("notRunByPerturbation", notRun);
         var text = new StringBuilder("# Playthrough topology\n\nCheckpoint: ").append(checkpoint)
                 .append(". Completed: ").append(completed).append(".\n\n")
                 .append("Expected: every implemented layout and restoration completes with Phase 1 accounting.\n\n")
@@ -134,6 +157,7 @@ final class PlaythroughTopology {
         }
         text.append("\n## By dimension\n\n"); dimensions.forEach((key, value) -> text.append("- ").append(key).append(": ").append(value).append('\n'));
         text.append("\n## By perturbation\n\n"); perturbations.forEach((key, value) -> text.append("- ").append(key).append(": ").append(value).append('\n'));
+        text.append("\n## Not run (not coverage)\n\n"); notRun.forEach((key, value) -> text.append("- ").append(key).append(": ").append(value).append('\n'));
         text.append("\nHarness error: ").append(harnessError).append("\n\nIncomplete: ").append(incomplete).append('\n');
         PlaythroughCheckpoint.write(directory.resolve("playthrough-topology.md"), text.toString());
         PlaythroughCheckpoint.write(directory.resolve("playthrough-topology.json"), new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(report));

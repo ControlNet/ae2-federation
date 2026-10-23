@@ -88,7 +88,10 @@ final class PlaythroughFactory implements AutoCloseable {
             Map<String, Long> expectedStock, Map<String, Long> used, Map<String, Long> extracted,
             Map<String, String> patterns, Map<String, PlaythroughAccounting.Signature> signatures,
             List<Long> placed, List<Long> providers, List<Long> assemblers, Map<Long, Direction> providerNetworks,
-            List<String> networks, List<PolicyKey> policies, Map<String, Object> evidence, Result baseline) { }
+            List<String> networks, List<PolicyKey> policies, Map<String, Object> evidence, Result baseline,
+            String craftingId, boolean targetCrafted, List<String> supplies) { }
+    private int resumeWait;
+    private boolean resumeVerified;
 
     private int unloadedAt;
     private long unloadStarted;
@@ -97,6 +100,9 @@ final class PlaythroughFactory implements AutoCloseable {
     private List<net.minecraft.world.level.block.entity.BlockEntity> unloadingFactory = List.of();
     private boolean reloading;
     private boolean sprintPausedForUnload;
+    private PlaythroughChunkDiagnostics chunkDiagnostics;
+    /** A disturbance that did not happen to a running job: not a result, and not coverage. */
+    static final String NOT_EXECUTED = "perturbation-not-executed";
     private P2PTunnels tunnels;
     private FederationP2PTunnelPart tunnelInput;
     private FederationP2PTunnelPart tunnelOutput;
@@ -105,6 +111,8 @@ final class PlaythroughFactory implements AutoCloseable {
     private final Map<String, Object> perturbationEvidence = new TreeMap<>();
     private final Map<BlockPos, Direction> providerNetworks = new HashMap<>();
     private final Map<PolicyKey, PolicyRule> interruptedRules = new HashMap<>();
+    private BlockPos cut;
+    private net.minecraft.world.level.block.state.BlockState cutState;
 
     private BlockPos center() { return topology == null ? CENTER : new BlockPos(12, 12, 14); }
     private int distance() { return topology == null ? 1 : 5; }
@@ -179,11 +187,8 @@ final class PlaythroughFactory implements AutoCloseable {
         if (unloadSeconds < 1 || unloadSeconds > 300) throw new IllegalArgumentException("unloadSeconds must be 1..300");
         if (perturbation.equals("chunk") && !layout.join().equals("quantum"))
             throw new IllegalArgumentException("Factory chunk disturbance requires a Quantum remote factory");
-        if (layout.join().equals("quantum")) {
-            if (!layout.path().equals("projection") || layout.networks() == 2 || factoryFace() != Direction.EAST)
-                throw new IllegalArgumentException("Quantum factory requires projection and at least three separate networks");
-            remote = new PlaythroughRemote(helper);
-        }
+        if (layout.join().equals("quantum") && (!layout.path().equals("projection") || layout.networks() == 2 || factoryFace() != Direction.EAST))
+            throw new IllegalArgumentException("Quantum factory requires projection and at least three separate networks");
         if (endpointPath()) {
             this.proof = PlaythroughEndpoints.processing(helper, proof);
             patternGroups = proof.patterns().size(); copies = 1;
@@ -194,6 +199,25 @@ final class PlaythroughFactory implements AutoCloseable {
             copies = Math.min(Integer.getInteger("ae2federation.playthrough.assemblerCopies", 28), 28 / patternGroups);
             if (copies < 1) throw new IllegalArgumentException("Split factory exceeds 28 providers");
         }
+        // Last, so a refused layout leaves no forced nether site behind.
+        if (layout.join().equals("quantum")) remote = new PlaythroughRemote(helper);
+    }
+
+    /** Why a disturbance cannot run on this layout and baseline plan, or empty. Checked before each case is built. */
+    static String precondition(PlaythroughTopology.Layout layout, String perturbation, long baselineCrafts) {
+        if (!layout.capacity().equals("normal")) return "";
+        if (layout.join().equals("quantum") && (!layout.path().equals("projection") || layout.networks() == 2 || layout.role(1) != Direction.EAST))
+            return "Quantum factory requires projection, at least three networks and an east factory";
+        if (layout.join().equals("bridge") && layout.networks() < 3) return "Bridge star requires at least three networks";
+        return switch (perturbation) {
+            case "chunk" -> layout.join().equals("quantum") ? "" : "Factory chunk disturbance requires a Quantum remote factory";
+            case "bridge", "bridge-part" -> layout.join().equals("bridge") ? "" : "Bridge disturbance requires the bridge join";
+            case "cancel" -> baselineCrafts == 1 ? "" : "Cancellation proof requires a single-craft target; baseline plan crafts " + baselineCrafts;
+            case "restart" -> "prepare".equals(System.getProperty("ae2federation.compat.transitRestartPhase"))
+                    && layout.join().equals("router-switch") && layout.path().equals("projection") && baselineCrafts == 1 ? ""
+                    : "Restart requires the prepare phase, router-switch projection and a single craft; baseline plan crafts " + baselineCrafts;
+            default -> "";
+        };
     }
 
     private void initializeTopology() {
@@ -207,6 +231,7 @@ final class PlaythroughFactory implements AutoCloseable {
                     var bridge = bridges.placeBridge(center().relative(face, 4), face);
                     if (face == factoryFace()) factoryBridge = bridge;
                 }
+                placeExtraCpu(face);
             }
             return;
         }
@@ -222,8 +247,7 @@ final class PlaythroughFactory implements AutoCloseable {
                 setBlock(port, ProcessingRegistration.PROVIDER.get().defaultBlockState()
                         .setValue(BlockStateProperties.FACING, face.getOpposite()));
             } else place(center().relative(face, 4), RouterRegistration.SWITCH.get());
-            if (topology.extraCpus() && !FACES.contains(face))
-                place(face == Direction.SOUTH ? chestPos(face).west() : chestPos(face).relative(face), AEBlocks.CRAFTING_STORAGE_256K.block());
+            placeExtraCpu(face);
         }
         if (topology.join().equals("beam")) {
             helper.setBlock(center().west(2), Blocks.AIR);
@@ -281,6 +305,11 @@ final class PlaythroughFactory implements AutoCloseable {
 
     private void nativeCable(BlockPos pos) { placed.add(pos); routers.nativePorts().placeCable(pos); }
 
+    private void placeExtraCpu(Direction face) {
+        if (topology.extraCpus() && !FACES.contains(face))
+            place(face == Direction.SOUTH ? chestPos(face).west() : chestPos(face).relative(face), AEBlocks.CRAFTING_STORAGE_256K.block());
+    }
+
     private void perturb() {
         if (perturbation.equals("none")) return;
         if (perturbedAt == 0) {
@@ -296,15 +325,8 @@ final class PlaythroughFactory implements AutoCloseable {
                 setBlock(center(), Blocks.AIR.defaultBlockState());
                 restartPending = true;
             } else if (perturbation.equals("chunk")) {
-                unloadingFactory = placed.stream().filter(remote::contains).map(this::entity).filter(java.util.Objects::nonNull).toList();
-                if (unloadingFactory.isEmpty()) throw new IllegalStateException("No factory block entities to unload");
-                var tickManager = helper.getLevel().getServer().tickRateManager();
-                sprintPausedForUnload = Boolean.getBoolean(PlaythroughTopology.PREFIX + "pauseSprintForUnload") && tickManager.isSprinting();
-                if (sprintPausedForUnload) tickManager.stopSprinting();
-                perturbationEvidence.put("sprintPausedForUnload", sprintPausedForUnload);
-                remote.site.releaseTickets();
-                unloadStarted = System.nanoTime();
-                perturbationEvidence.put("ticketsReleased", true);
+                // The site's tickets are released by the chunk branch of tick(), once every input is pushed.
+                perturbationEvidence.put("jobAtFirstPush", jobStatus());
             } else if (perturbation.equals("bridge") || perturbation.equals("bridge-part")) {
                 if (factoryBridge == null) throw new IllegalArgumentException("Bridge disturbance requires the bridge join");
                 factoryBridge.getHost().removePart(factoryBridge);
@@ -317,7 +339,11 @@ final class PlaythroughFactory implements AutoCloseable {
                 perturbationEvidence.put("cancelled", true);
                 restored = true;
             } else if (perturbation.equals("cable") || perturbation.equals("router")) {
-                helper.setBlock(perturbation.equals("router") ? center() : center().east(), Blocks.AIR);
+                // The factory's own link, or the hub; restored as exactly the block that was cut.
+                cut = perturbation.equals("router") ? center() : center().relative(factoryFace());
+                cutState = helper.getBlockState(cut);
+                perturbationEvidence.put("cut", cut + " " + net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(cutState.getBlock()));
+                helper.setBlock(cut, Blocks.AIR);
             } else {
                 var capability = PolicyCapability.valueOf(perturbation);
                 var service = PolicyService.get(helper.getLevel());
@@ -333,12 +359,41 @@ final class PlaythroughFactory implements AutoCloseable {
             if (perturbation.equals("bridge") || perturbation.equals("bridge-part")) {
                 if (perturbation.equals("bridge")) routers.nativePorts().placeCable(center().relative(factoryFace(), 4));
                 factoryBridge = new space.controlnet.ae2federation.test.bridge.BridgeFixtures(helper).placeBridge(center().relative(factoryFace(), 4), factoryFace());
-            } else if (perturbation.equals("router") || perturbation.equals("restart")) setBlock(center(), RouterRegistration.ROUTER.get().defaultBlockState());
-            else if (perturbation.equals("cable")) helper.setBlock(center().east(), RouterRegistration.FEDERATION_CABLE.get());
-            else interruptedRules.forEach(this::editRule);
+            } else if (perturbation.equals("restart")) setBlock(center(), RouterRegistration.ROUTER.get().defaultBlockState());
+            else if (perturbation.equals("cable") || perturbation.equals("router")) {
+                // Native cable is a multipart host; place it the way the fixture built it.
+                if (cutState.is(AEBlocks.CABLE_BUS.block())) routers.nativePorts().placeCable(cut);
+                else helper.setBlock(cut, cutState);
+                perturbationEvidence.put("restoredBlock", net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(helper.getBlockState(cut).getBlock()).toString());
+            } else interruptedRules.forEach(this::editRule);
             restored = true;
             perturbationEvidence.put("restoredTick", ticks);
         }
+    }
+
+    /**
+     * As the existing unload scenes do, release the site only once the CPU holds no input it has not pushed. Until
+     * then every push attempt reads the factory's blocks on the main thread, which reloads their chunk at once. Tick
+     * sprint leaves vanilla no spare time for its unload queue, which then drains only above 2000 entries, so sprint
+     * pauses for the unload window unless {@code pauseSprintForUnload=false}.
+     */
+    private boolean releaseFactory() {
+        var cpu = requesterCpu();
+        if (cpu != null && cpu.isBusy()) for (var held : cpu.craftingLogic.getInventory().list) if (held.getLongValue() > 0) return false;
+        unloadingFactory = placed.stream().filter(remote::contains).map(this::entity).filter(java.util.Objects::nonNull).toList();
+        if (unloadingFactory.isEmpty()) throw new IllegalStateException("No factory block entities to unload");
+        perturbationEvidence.put("allInputsPushedTick", ticks);
+        perturbationEvidence.put("jobAtRelease", jobStatus());
+        if (cpu == null || !cpu.isBusy()) return true;
+        var tickManager = helper.getLevel().getServer().tickRateManager();
+        sprintPausedForUnload = Boolean.parseBoolean(System.getProperty(PlaythroughTopology.PREFIX + "pauseSprintForUnload", "true")) && tickManager.isSprinting();
+        if (sprintPausedForUnload) tickManager.stopSprinting();
+        perturbationEvidence.put("sprintPausedForUnload", sprintPausedForUnload);
+        chunkDiagnostics = new PlaythroughChunkDiagnostics(remote.site.level(), unloadingFactory.stream().map(entity -> entity.getBlockPos()).toList());
+        remote.site.releaseTickets();
+        unloadStarted = System.nanoTime();
+        perturbationEvidence.put("ticketsReleased", true);
+        return true;
     }
 
     private void resumeSprintAfterUnload() {
@@ -381,7 +436,7 @@ final class PlaythroughFactory implements AutoCloseable {
             var outward = assemblySides.get(sideIndex);
             var assemblerPos = pos.relative(outward, endpointPath() ? 2 : 1);
             if (endpointPath()) {
-                PlaythroughEndpoints.place(helper, pos, outward, topology.path().equals("local-endpoint"), placed::add);
+                PlaythroughEndpoints.place(helper, pos, outward, factoryFace, topology.path().equals("local-endpoint"), placed::add);
                 endpoints.put(pos, pos.relative(outward));
             } else {
                 setBlock(pos, AEBlocks.PATTERN_PROVIDER.block().defaultBlockState());
@@ -408,12 +463,24 @@ final class PlaythroughFactory implements AutoCloseable {
     }
 
     private void setBlock(BlockPos pos, net.minecraft.world.level.block.state.BlockState state) {
-        if (remote != null && remote.contains(pos)) remote.site.setBlock(pos, state);
+        if (remote != null && remote.contains(pos)) { watchUnload(pos); remote.site.setBlock(pos, state); }
         else helper.setBlock(pos.offset(originOffset), state);
     }
 
     private net.minecraft.world.level.block.entity.BlockEntity entity(BlockPos pos) {
-        return remote != null && remote.contains(pos) ? remote.site.getBlockEntity(pos) : helper.getBlockEntity(pos.offset(originOffset));
+        if (remote != null && remote.contains(pos)) { watchUnload(pos); return remote.site.getBlockEntity(pos); }
+        return helper.getBlockEntity(pos.offset(originOffset));
+    }
+
+    /** A harness access to the remote factory between ticket release and reload would load its chunk again. */
+    private void watchUnload(BlockPos pos) {
+        if (chunkDiagnostics != null && !reloading) chunkDiagnostics.touched(pos);
+    }
+
+    /** The requester job's AE2 progress, read without touching the factory's chunks. */
+    private String jobStatus() {
+        return grid(requesterFace()).getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy())
+                .map(cpu -> String.valueOf(cpu.getJobStatus())).toList().toString();
     }
 
     Result tick() throws Exception {
@@ -422,10 +489,22 @@ final class PlaythroughFactory implements AutoCloseable {
         if (result != null) return result;
         ticks++;
         if (perturbation.equals("chunk") && perturbedAt > 0 && !restored) {
+            // The ordinary job budget bounds the wait for every push; only the unload window pauses it.
+            if (chunkDiagnostics == null) {
+                if (ticks - readyTick > budget) return finish(false, "job-complete", diagnostic());
+                if (!releaseFactory()) return null;
+                if (chunkDiagnostics == null) {
+                    restored = true;
+                    return finish(false, NOT_EXECUTED, "No busy requester CPU when the factory site was to be released");
+                }
+            }
             readyTick++;
+            if (!reloading) chunkDiagnostics.sample();
             if (!reloading && System.nanoTime() - unloadStarted > unloadSeconds * 1_000_000_000L) {
                 unloadFailure = "Factory chunks did not unload: " + remote.site.tickDiagnostics() + " " + remote.site.unloadDiagnostics()
                         + ", factoryLive=" + unloadingFactory.stream().filter(entity -> !entity.isRemoved()).map(entity -> entity.getClass().getSimpleName() + "@" + entity.getBlockPos()).toList();
+                perturbationEvidence.put("unloadTimeout", chunkDiagnostics.report());
+                perturbationEvidence.put("jobAtTimeout", jobStatus());
                 remote.site.forceAgain(); reloading = true;
             }
             if (!reloading) {
@@ -437,9 +516,16 @@ final class PlaythroughFactory implements AutoCloseable {
                     perturbationEvidence.put("removedFactoryEntities", unloadingFactory.size());
                     perturbationEvidence.put("unloadSeconds", (System.nanoTime() - unloadStarted) / 1_000_000_000.0);
                     perturbationEvidence.put("transportUnload", remote.site.unloadDiagnostics());
+                    perturbationEvidence.put("unloadChunks", chunkDiagnostics.report());
+                    perturbationEvidence.put("jobAtUnload", jobStatus());
                     boolean busy = grid(requesterFace()).getCraftingService().getCpus().stream().anyMatch(cpu -> cpu.isBusy());
                     perturbationEvidence.put("busyAtUnload", busy);
-                    if (!busy) throw new IllegalStateException("Job completed before actual factory chunk unload");
+                    if (!busy) {
+                        // The disturbance did not happen to a running job; reload and record that, not a result.
+                        unloadFailure = "Job completed before actual factory chunk unload";
+                        remote.site.forceAgain(); reloading = true;
+                        return null;
+                    }
                 }
                 if (ticks - unloadedAt < 40) return null;
                 remote.site.forceAgain(); reloading = true;
@@ -449,7 +535,7 @@ final class PlaythroughFactory implements AutoCloseable {
             restored = true;
             resumeSprintAfterUnload();
             perturbationEvidence.put("restoredTick", ticks);
-            if (!unloadFailure.isEmpty()) return finish(false, "chunk-unloaded", unloadFailure);
+            if (!unloadFailure.isEmpty()) return finish(false, NOT_EXECUTED, unloadFailure);
         }
         for (var face : faces()) if (grid(face) != null) {
             FederationDomainRegistryAccess.confirmedNetworkId(grid(face)).ifPresent(networks::add);
@@ -535,7 +621,13 @@ final class PlaythroughFactory implements AutoCloseable {
                 }
                 if (!patternsInstalled) for (var pos : providers) ((PatternProviderLogicHost) entity(pos)).getLogic().updatePatterns();
                 patternsInstalled = true;
-                if (endpointPath()) for (var pos : providers) if (!PlaythroughEndpoints.ready(helper, pos, endpoints.get(pos), topology.path().equals("local-endpoint"))) return null;
+                if (endpointPath()) {
+                    var installed = new ArrayList<>(proof.patterns().values());
+                    for (int i = 0; i < providers.size(); i++) if (!PlaythroughEndpoints.ready(helper, providers.get(i), endpoints.get(providers.get(i)),
+                            topology.path().equals("local-endpoint"), installed.get(i))) return null;
+                    String isolation = PlaythroughEndpoints.isolation(helper, endpoints.values(), faces().stream().map(this::grid).toList());
+                    if (!isolation.isEmpty()) throw new IllegalStateException("Endpoint fixture did not build: " + isolation);
+                }
                 String mismatch = checkSignatures();
                 if (!mismatch.isEmpty()) return finish(false, "recipe-signature", mismatch);
                 stage = 3; readyTick = ticks;
@@ -625,7 +717,7 @@ final class PlaythroughFactory implements AutoCloseable {
         if (plan != null) for (var entry : plan.usedItems()) used.put(keyName(entry.getKey()), entry.getLongValue());
         var extracted = new TreeMap<String, Long>();
         if (resumed != null) extracted.putAll(resumed.extracted());
-        if (source != null) source.extracted.forEach((key, value) -> extracted.put(keyName(key), value));
+        if (source != null) source.extracted.forEach((key, value) -> extracted.merge(keyName(key), value, Math::addExact));
         var checks = new java.util.LinkedHashMap<String, String>();
         if (topology != null) {
             cleanup.put("perturbation", perturbationEvidence);
@@ -721,8 +813,10 @@ final class PlaythroughFactory implements AutoCloseable {
         readyTick = ticks;
     }
 
+    /** For a resumed job, the answer prepare measured on the original plan. */
     private boolean craftsTarget() {
-        return resumed != null || plan != null && plan.patternTimes().entrySet().stream().anyMatch(entry -> entry.getValue() > 0
+        if (resumed != null) return resumed.targetCrafted();
+        return plan != null && plan.patternTimes().entrySet().stream().anyMatch(entry -> entry.getValue() > 0
                 && entry.getKey().getOutputs().stream().anyMatch(output -> output.what().equals(target)));
     }
 
@@ -806,6 +900,11 @@ final class PlaythroughFactory implements AutoCloseable {
         var extracted = new TreeMap<String, Long>();
         source.extracted.forEach((key, value) -> extracted.put(keyName(key), value));
         if (!used.equals(extracted)) throw new IllegalStateException("All planned inputs must be in the saved CPU before restart");
+        var cpu = requesterCpu();
+        var link = cpu == null || !cpu.isBusy() ? null : cpu.craftingLogic.getLastLink();
+        if (link == null) throw new IllegalStateException("Restart requires the requester CPU's running crafting link");
+        var supplies = new ArrayList<String>();
+        proof.supplies().forEach(key -> supplies.add(key.toStack().save(helper.getLevel().registryAccess()).toString()));
         var encoded = new TreeMap<String, String>();
         proof.patterns().forEach((id, stack) -> encoded.put(id, stack.save(helper.getLevel().registryAccess()).toString()));
         var allocation = new TreeMap<Long, Direction>();
@@ -815,49 +914,90 @@ final class PlaythroughFactory implements AutoCloseable {
                 used, extracted, encoded, proof.signatures(), placed.stream().map(BlockPos::asLong).toList(),
                 providers.stream().map(BlockPos::asLong).toList(), assemblers.stream().map(BlockPos::asLong).toList(),
                 allocation, networks.stream().map(id -> id.value().toString()).toList(), List.copyOf(policies),
-                perturbationEvidence, baseline);
-        restartTickets(helper, BlockPos.of(state.origin()), true);
+                perturbationEvidence, baseline, link.getCraftingID().toString(), craftsTarget(), supplies);
         PlaythroughCheckpoint.write(RESTART, RESTART_JSON.toJson(state));
+        restartTickets(helper, BlockPos.of(state.origin()), true);
+    }
+
+    private appeng.me.cluster.implementations.CraftingCPUCluster requesterCpu() {
+        return entity(center().relative(requesterFace(), distance() + 1)) instanceof appeng.blockentity.crafting.CraftingBlockEntity crafting
+                ? crafting.getCluster() : null;
+    }
+
+    /**
+     * Before the Router returns, the restarted world must hold the saved job on the requester's own CPU: busy with the
+     * saved crafting id. Read from the CPU blocks, as an unpowered requester lists no CPUs. Starts the post-restart
+     * extraction count. False while the CPU may still be forming.
+     */
+    private boolean observeResume() {
+        var cpu = requesterCpu();
+        var link = cpu == null ? null : cpu.craftingLogic.getLastLink();
+        boolean running = cpu != null && cpu.isBusy() && link != null && link.getCraftingID().toString().equals(resumed.craftingId());
+        if (!running && ++resumeWait < 200) return false;
+        resumeVerified = running;
+        perturbationEvidence.put("savedCraftingId", resumed.craftingId());
+        perturbationEvidence.put("cpuBeforeRestore", cpu == null ? "no formed requester CPU" : "busy=" + cpu.isBusy() + ", craftingId=" + (link == null ? null : link.getCraftingID()));
+        perturbationEvidence.put("resumedBeforeRestore", running);
+        perturbationEvidence.put("visibleCpusBeforeRestore", grid(requesterFace()).getCraftingService().getCpus().size());
+        perturbationEvidence.put("busyBeforeRestore", grid(requesterFace()).getCraftingService().getCpus().stream().anyMatch(visible -> visible.isBusy()));
+        perturbationEvidence.put("afterRestart", PlaythroughAccounting.ledger(helper.getLevel(), networks));
+        var supplies = new java.util.HashSet<AEItemKey>();
+        for (var stack : resumed.supplies()) {
+            try {
+                supplies.add(AEItemKey.of(net.minecraft.world.item.ItemStack.parseOptional(helper.getLevel().registryAccess(), net.minecraft.nbt.TagParser.parseTag(stack))));
+            } catch (com.mojang.brigadier.exceptions.CommandSyntaxException exception) {
+                throw new IllegalStateException("Saved supply is unreadable: " + stack, exception);
+            }
+        }
+        // Any extraction after the restart is counted against the saved plan, as one before it would be.
+        source = new PlaythroughSource(helper.getLevel(), absolute(chestPos(materialFace())), chest(materialFace()).getMainNode().getNode(), supplies);
+        return true;
     }
 
     static void resumeRestart(GameTestHelper helper) throws Exception {
         var state = RESTART_JSON.fromJson(java.nio.file.Files.readString(RESTART), RestartState.class);
         if (state.pid() == ProcessHandle.current().pid()) throw new IllegalStateException("Restart recovery requires a different JVM");
-        var patterns = new java.util.LinkedHashMap<String, net.minecraft.world.item.ItemStack>();
-        for (var entry : state.patterns().entrySet()) patterns.put(entry.getKey(), net.minecraft.world.item.ItemStack.parseOptional(
-                helper.getLevel().registryAccess(), net.minecraft.nbt.TagParser.parseTag(entry.getValue())));
-        var proof = new PlaythroughRecipes.Proof(patterns, Set.of(), Map.of(), state.signatures());
-        var factory = new PlaythroughFactory(helper, state.layout(), "restart", proof, PlaythroughRecipes.key(state.target()), state.amount(), state.budget());
-        factory.originOffset = BlockPos.of(state.origin()).subtract(helper.absolutePos(BlockPos.ZERO));
-        factory.resumed = state; factory.initialized = true; factory.stage = 5; factory.perturbedAt = 1;
-        factory.copies = state.copies(); factory.totalCrafts = state.crafts(); factory.expectedAmount = state.expectedAmount();
-        factory.cpuBytes = state.cpuBytes(); factory.expectedStock = state.expectedStock();
-        state.placed().forEach(pos -> factory.placed.add(BlockPos.of(pos)));
-        state.providers().forEach(pos -> factory.providers.add(BlockPos.of(pos)));
-        state.assemblers().forEach(pos -> factory.assemblers.add(BlockPos.of(pos)));
-        state.providerNetworks().forEach((pos, face) -> factory.providerNetworks.put(BlockPos.of(pos), face));
-        state.networks().forEach(id -> factory.networks.add(new NetworkId(java.util.UUID.fromString(id))));
-        factory.policies.addAll(state.policies()); factory.perturbationEvidence.putAll(state.evidence());
-        factory.perturbationEvidence.put("differentJvm", true);
+        // The prepared world keeps its restart tickets until recovery ends, also when it fails.
+        final PlaythroughFactory factory;
+        try {
+            var patterns = new java.util.LinkedHashMap<String, net.minecraft.world.item.ItemStack>();
+            for (var entry : state.patterns().entrySet()) patterns.put(entry.getKey(), net.minecraft.world.item.ItemStack.parseOptional(
+                    helper.getLevel().registryAccess(), net.minecraft.nbt.TagParser.parseTag(entry.getValue())));
+            var proof = new PlaythroughRecipes.Proof(patterns, Set.of(), Map.of(), state.signatures());
+            factory = new PlaythroughFactory(helper, state.layout(), "restart", proof, PlaythroughRecipes.key(state.target()), state.amount(), state.budget());
+            factory.originOffset = BlockPos.of(state.origin()).subtract(helper.absolutePos(BlockPos.ZERO));
+            factory.resumed = state; factory.initialized = true; factory.stage = 5; factory.perturbedAt = 1;
+            factory.copies = state.copies(); factory.totalCrafts = state.crafts(); factory.expectedAmount = state.expectedAmount();
+            factory.cpuBytes = state.cpuBytes(); factory.expectedStock = state.expectedStock();
+            state.placed().forEach(pos -> factory.placed.add(BlockPos.of(pos)));
+            state.providers().forEach(pos -> factory.providers.add(BlockPos.of(pos)));
+            state.assemblers().forEach(pos -> factory.assemblers.add(BlockPos.of(pos)));
+            state.providerNetworks().forEach((pos, face) -> factory.providerNetworks.put(BlockPos.of(pos), face));
+            state.networks().forEach(id -> factory.networks.add(new NetworkId(java.util.UUID.fromString(id))));
+            factory.policies.addAll(state.policies()); factory.perturbationEvidence.putAll(state.evidence());
+            factory.perturbationEvidence.put("differentJvm", true);
+        } catch (Exception exception) {
+            restartTickets(helper, BlockPos.of(state.origin()), false);
+            throw exception;
+        }
         var directory = java.nio.file.Path.of(System.getProperty("ae2federation.compat.report")).toAbsolutePath().getParent();
         helper.onEachTick(() -> {
             try {
                 if (factory.closed) return;
                 if (factory.faces().stream().anyMatch(face -> factory.grid(face) == null)) return;
-                if (factory.ticks == 0) {
-                    factory.perturbationEvidence.put("visibleCpusBeforeRestore", factory.grid(factory.requesterFace()).getCraftingService().getCpus().size());
-                    factory.perturbationEvidence.put("busyBeforeRestore", factory.grid(factory.requesterFace()).getCraftingService().getCpus().stream().anyMatch(cpu -> cpu.isBusy()));
-                    factory.perturbationEvidence.put("afterRestart", PlaythroughAccounting.ledger(helper.getLevel(), factory.networks));
-                }
+                if (factory.ticks == 0 && factory.source == null && !factory.observeResume()) return;
                 var result = factory.tick();
                 if (result == null) return;
                 factory.close();
                 restartTickets(helper, BlockPos.of(state.origin()), false);
                 var row = new java.util.LinkedHashMap<String, Object>();
                 row.put("layout", state.layout()); row.put("item", state.target()); row.put("perturbation", "restart");
-                row.put("baseline", state.baseline()); row.put("federated", result);
-                row.put("classification", result.pass() ? "both-pass" : "baseline-only");
-                row.put("expectedOutcome", "original-job-completes-or-cancels-cleanly-after-process-restart");
+                var comparison = PlaythroughTopology.compare(state.baseline(), result, false);
+                row.put("baseline", state.baseline()); row.put("federated", comparison.federated());
+                // A job lost on reload is its own outcome, however cleanly its debts settle.
+                row.put("classification", factory.resumeVerified ? comparison.classification() : "job-lost-on-reload");
+                row.put("inventoryComparison", comparison.inventoryComparison());
+                row.put("expectedOutcome", "original-job-resumes-and-completes-after-process-restart");
                 helper.runAfterDelay(25, () -> {
                     try {
                         factory.verifyClosed();
@@ -865,7 +1005,11 @@ final class PlaythroughFactory implements AutoCloseable {
                         helper.succeed();
                     } catch (Exception exception) { throw new IllegalStateException(exception); }
                 });
-            } catch (Exception exception) { throw new IllegalStateException("Restart recovery failed", exception); }
+            } catch (Exception exception) {
+                try { factory.close(); } catch (Exception cleanup) { exception.addSuppressed(cleanup); }
+                try { restartTickets(helper, BlockPos.of(state.origin()), false); } catch (Exception cleanup) { exception.addSuppressed(cleanup); }
+                throw new IllegalStateException("Restart recovery failed", exception);
+            }
         });
     }
 
