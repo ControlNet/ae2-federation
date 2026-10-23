@@ -13,6 +13,7 @@
   "tests": [
     "core",
     "neoecoae",
+    "neoecoae-computing",
     "neoecoprototype"
   ]
 }
