@@ -560,11 +560,11 @@ public final class AutomationTabScenario implements UIScenario {
                                 && context.el("#auto_install_device_" + device + " .install-device-lines .install-muted").text()
                                         .startsWith("Creative \u00b7 "))
                 .click("#auto_install_view .installation")
-                .check("the aside shows the arguments, trigger, gap, overlap and state", context -> {
+                .check("the aside shows the arguments, trigger, gap, overlap, cost and state", context -> {
                     var texts = context.all("#auto_install_aside .install-value-text").stream()
                             .map(text -> text.text()).toList();
                     return context.el("#auto_install_view .installation").as(UIElement.class).hasClass("selected")
-                            && texts.equals(java.util.List.of("Iron Ingot", "256", "20 ticks", "Idle"))
+                            && texts.equals(java.util.List.of("Iron Ingot", "256", "20 ticks", "8 CU \u00b7 0 B/s", "Idle"))
                             && chosen(context, "#auto_install_trigger_manual")
                             && chosen(context, "#auto_install_overlap_ignore");
                 })
