@@ -69,7 +69,8 @@ request until it reaches storage.
 
 Files live in the world's workspace folder, `<world>/ae2federation/workspace`, which every program of the world
 shares. A path is relative, with `/` between names, as in `"logs/iron.txt"`; one that leads out of the folder stops
-the run. A file holds text of up to 100,000 characters, and the folder at most 16 MB.
+the run. A file holds text of up to 100,000 characters, and the folder at most 16 MB. Only plain files are read or
+written; anything else at the path, such as a pipe, stops the run with `OSError`.
 
 The server can turn files off: `allowFileAccess = false` in the `[automation]` section of
 `config/ae2federation-server.toml`, where `workspaceSizeMb` sets the folder's size. An `fs` call then stops the run

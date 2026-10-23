@@ -62,7 +62,7 @@ AE2会在接下来几刻里规划任务， 规划好后交给空闲的CPU。 规
 
 ## fs： 文件
 
-文件放在世界的工作区文件夹`<world>/ae2federation/workspace`里， 这个世界的所有程序共用它。 路径是相对路径， 名字之间用`/`分隔， 例如`"logs/iron.txt"`； 指向文件夹以外的路径会让运行停止。 一个文件最多存100,000个字符的文本， 整个文件夹最多16 MB。
+文件放在世界的工作区文件夹`<world>/ae2federation/workspace`里， 这个世界的所有程序共用它。 路径是相对路径， 名字之间用`/`分隔， 例如`"logs/iron.txt"`； 指向文件夹以外的路径会让运行停止。 一个文件最多存100,000个字符的文本， 整个文件夹最多16 MB。 只读写普通文件； 路径上是别的东西（例如管道）时， 运行以`OSError`停止。
 
 服务器可以关闭文件功能： 在`config/ae2federation-server.toml`的`[automation]`部分设置`allowFileAccess = false`； 同一部分的`workspaceSizeMb`设置文件夹的大小。 关闭后， `fs`调用会以`PermissionError`停止运行。
 

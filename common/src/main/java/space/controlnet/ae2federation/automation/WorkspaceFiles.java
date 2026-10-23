@@ -1,17 +1,27 @@
 package space.controlnet.ae2federation.automation;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.SecureDirectoryStream;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.function.LongSupplier;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.Nullable;
@@ -28,15 +38,28 @@ import space.controlnet.ae2federation.script.RunError;
  * <p>Keeping paths inside the folder and the caps keep runs correct and the server stable; they are not permissions,
  * which wait for the mod's permission system (user, 2026-10-22). The folder is made by the first change, so reading
  * an unused workspace leaves nothing behind. Server thread only.
+ *
+ * <p>The checks go by path, and another program on the server could swap a folder for a link right after them. So
+ * every read, write, delete and listing walks from the workspace's real folder through the names the checks saw,
+ * links inside the workspace already followed, opening each folder without following a link: a link swapped in
+ * meanwhile fails the walk instead of leading out. Only regular files are read or written, since a pipe would block
+ * the server thread, and a read stops at the size cap however much the file grew. What is left: a folder made on the
+ * way to a new file is made by path, so a swap at that moment could make an empty folder outside; on a platform without
+ * {@link SecureDirectoryStream} (Windows) the access itself goes by path again, with the race the walk closes
+ * elsewhere.
  */
 public final class WorkspaceFiles {
     public static final int MAX_CHARACTERS = 100_000;
     public static final long DEFAULT_CAP_BYTES = 16L * 1024 * 1024;
     /** As many entries as a list holds. */
     private static final int MAX_ENTRIES = 100_000;
+    /** A character takes at most four bytes, so a larger file is too long without decoding it. */
+    private static final long MAX_BYTES = 4L * MAX_CHARACTERS;
 
     private final Path root;
     private final LongSupplier capBytes;
+    /** Tests only: runs between the checks and the access, where another program could change the folder. */
+    volatile Runnable beforeAccess = () -> { };
 
     public WorkspaceFiles(Path root, LongSupplier capBytes) {
         this.root = root.toAbsolutePath().normalize();
@@ -53,13 +76,18 @@ public final class WorkspaceFiles {
             throw osError(Ops.repr(path) + " is a folder");
         }
         try {
-            // A character takes at most four bytes, so a larger file is too long without decoding it.
-            if (Files.size(file) > 4L * MAX_CHARACTERS) {
-                throw osError(Ops.repr(path) + " holds more than " + MAX_CHARACTERS + " characters");
+            if (Files.size(file) > MAX_BYTES) {
+                throw tooLong(path);
             }
-            var text = decode(Files.readAllBytes(file), path);
+            var text = decode(at(file, path, true, (folder, name) -> {
+                regular(folder, name, file, path);
+                try (var channel = folder == null ? Files.newByteChannel(file)
+                        : folder.newByteChannel(name, Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))) {
+                    return limited(channel, path);
+                }
+            }), path);
             if (text.codePointCount(0, text.length()) > MAX_CHARACTERS) {
-                throw osError(Ops.repr(path) + " holds more than " + MAX_CHARACTERS + " characters");
+                throw tooLong(path);
             }
             return text;
         } catch (IOException exception) {
@@ -82,12 +110,18 @@ public final class WorkspaceFiles {
             throw osError(Ops.repr(strip(path)) + " is not a folder");
         }
         var names = new ArrayList<String>();
-        try (Stream<Path> entries = Files.list(folder)) {
-            for (var entry : (Iterable<Path>) entries::iterator) {
-                if (names.size() == MAX_ENTRIES) {
-                    throw osError("the folder holds more than " + MAX_ENTRIES + " entries");
+        try {
+            var walk = realNames(folder, path);
+            beforeAccess.run();
+            try (var secure = folder(walk);
+                    DirectoryStream<Path> entries = secure != null ? secure : Files.newDirectoryStream(folder)) {
+                for (var entry : entries) {
+                    if (names.size() == MAX_ENTRIES) {
+                        throw osError("the folder holds more than " + MAX_ENTRIES + " entries");
+                    }
+                    var name = entry.getFileName();
+                    names.add(name + (isFolder(secure, name, folder.resolve(name)) ? "/" : ""));
                 }
-                names.add(entry.getFileName() + (Files.isDirectory(entry) ? "/" : ""));
             }
         } catch (IOException exception) {
             throw osError(exception);
@@ -104,7 +138,7 @@ public final class WorkspaceFiles {
         characters(text.codePointCount(0, text.length()));
         room(bytes.length - size(file));
         if (!simulate) {
-            store(file, bytes, false);
+            store(file, path, bytes, false);
         }
         return true;
     }
@@ -118,7 +152,7 @@ public final class WorkspaceFiles {
         characters((long) existing.codePointCount(0, existing.length()) + text.codePointCount(0, text.length()));
         room(bytes.length);
         if (!simulate) {
-            store(file, bytes, true);
+            store(file, path, bytes, true);
         }
         return true;
     }
@@ -138,7 +172,16 @@ public final class WorkspaceFiles {
                 }
             }
             if (!simulate) {
-                Files.delete(file);
+                at(file, path, false, (folder, name) -> {
+                    if (folder == null) {
+                        Files.delete(file);
+                    } else if (attributes(folder, name).isDirectory()) {
+                        folder.deleteDirectory(name);
+                    } else {
+                        folder.deleteFile(name);
+                    }
+                    return null;
+                });
             }
             return true;
         } catch (DirectoryNotEmptyException exception) {
@@ -218,12 +261,136 @@ public final class WorkspaceFiles {
         return new RunError("ValueError", "path must stay inside the workspace: " + Ops.repr(shown));
     }
 
+    /**
+     * The names from the workspace's real folder to the place, links on the way followed now; the nearest part of the
+     * place that exists is resolved, the rest kept as written. Names that would climb out stop the run.
+     */
+    private List<String> realNames(Path place, String shown) throws IOException {
+        var realRoot = root.toRealPath();
+        var rest = new ArrayDeque<String>();
+        var existing = place;
+        while (!existing.equals(root) && !Files.exists(existing, LinkOption.NOFOLLOW_LINKS)) {
+            rest.push(existing.getFileName().toString());
+            existing = existing.getParent();
+        }
+        var names = new ArrayList<String>();
+        for (var part : realRoot.relativize(existing.equals(root) ? realRoot : existing.toRealPath())) {
+            if (!part.toString().isEmpty()) {
+                names.add(part.toString());
+            }
+        }
+        names.addAll(rest);
+        if (names.stream().anyMatch(name -> name.equals("..") || name.equals("."))) {
+            throw outside(shown);
+        }
+        return names;
+    }
+
+    /** One access: the folder holding the place and the place's name in it, or both null where only paths work. */
+    private interface Access<T> {
+        T apply(@Nullable SecureDirectoryStream<Path> folder, @Nullable Path name) throws IOException;
+    }
+
+    /**
+     * Runs {@code use} on the folder holding the place, walked to as the class comment says. With {@code follow}, a
+     * link that is the place itself is followed too, as reading and writing do; deleting removes the link.
+     */
+    private <T> T at(Path place, String shown, boolean follow, Access<T> use) throws IOException {
+        List<String> names;
+        if (follow) {
+            names = realNames(place, shown);
+        } else {
+            names = new ArrayList<>(realNames(place.getParent(), shown));
+            names.add(place.getFileName().toString());
+        }
+        beforeAccess.run();
+        try (var folder = folder(names.subList(0, names.size() - 1))) {
+            return use.apply(folder, folder == null ? null : Path.of(names.getLast()));
+        }
+    }
+
+    /** The folder at {@code names}, each step opened without following a link; null without such folders. */
+    private @Nullable SecureDirectoryStream<Path> folder(List<String> names) throws IOException {
+        var stream = Files.newDirectoryStream(root.toRealPath());
+        if (!(stream instanceof SecureDirectoryStream<Path> secure)) {
+            stream.close();
+            return null;
+        }
+        var folder = secure;
+        try {
+            for (var name : names) {
+                var next = folder.newDirectoryStream(Path.of(name), LinkOption.NOFOLLOW_LINKS);
+                folder.close();
+                folder = next;
+            }
+            return folder;
+        } catch (IOException | RuntimeException failure) {
+            folder.close();
+            throw failure;
+        }
+    }
+
+    private static BasicFileAttributes attributes(SecureDirectoryStream<Path> folder, Path name) throws IOException {
+        return folder.getFileAttributeView(name, BasicFileAttributeView.class, LinkOption.NOFOLLOW_LINKS)
+                .readAttributes();
+    }
+
+    /** Whether a listed entry is a folder, a link to one included, as the listing marks it. */
+    private static boolean isFolder(@Nullable SecureDirectoryStream<Path> folder, Path name, Path path) {
+        if (folder == null) {
+            return Files.isDirectory(path);
+        }
+        try {
+            return folder.getFileAttributeView(name, BasicFileAttributeView.class).readAttributes().isDirectory();
+        } catch (IOException dangling) {
+            return false;
+        }
+    }
+
+    /** Fails unless the place is a regular file; a missing one passes, for writing makes it. */
+    private static void regular(@Nullable SecureDirectoryStream<Path> folder, @Nullable Path name, Path file,
+            String path) throws IOException {
+        BasicFileAttributes found;
+        try {
+            found = folder == null ? Files.readAttributes(file, BasicFileAttributes.class) : attributes(folder, name);
+        } catch (NoSuchFileException missing) {
+            return;
+        }
+        if (found.isDirectory()) {
+            throw osError(Ops.repr(path) + " is a folder");
+        }
+        if (!found.isRegularFile()) {
+            throw osError(Ops.repr(path) + " is not a regular file");
+        }
+    }
+
+    /** The channel's bytes, refused as soon as they pass {@link #MAX_BYTES}, however the file grew. */
+    private static byte[] limited(SeekableByteChannel channel, String path) throws IOException {
+        var out = new ByteArrayOutputStream();
+        var buffer = ByteBuffer.allocate(8192);
+        while (channel.read(buffer) >= 0) {
+            if (out.size() + buffer.position() > MAX_BYTES) {
+                throw tooLong(path);
+            }
+            out.write(buffer.array(), 0, buffer.position());
+            buffer.clear();
+        }
+        return out.toByteArray();
+    }
+
+    private static RunError tooLong(String path) {
+        return osError(Ops.repr(path) + " holds more than " + MAX_CHARACTERS + " characters");
+    }
+
     // ---- writing ----
 
-    /** Fails when the place is a folder, or a part of the way to it is a file. */
+    /** Fails when the place is a folder or not a regular file, or a part of the way to it is a file. */
     private void writable(Path file, String path) {
         if (Files.isDirectory(file)) {
             throw osError(Ops.repr(path) + " is a folder");
+        }
+        if (Files.exists(file) && !Files.isRegularFile(file)) {
+            throw osError(Ops.repr(path) + " is not a regular file");
         }
         var names = path.split("/");
         var way = root;
@@ -271,14 +438,24 @@ public final class WorkspaceFiles {
         }
     }
 
-    private static void store(Path file, byte[] bytes, boolean append) {
+    private void store(Path file, String path, byte[] bytes, boolean append) {
         try {
+            // Made by path: a link swapped in at this moment could make an empty folder outside, never a file.
             Files.createDirectories(file.getParent());
-            if (append) {
-                Files.write(file, bytes, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-            } else {
-                Files.write(file, bytes);
-            }
+            at(file, path, true, (folder, name) -> {
+                regular(folder, name, file, path);
+                var how = append ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING;
+                try (var channel = folder == null
+                        ? Files.newByteChannel(file, StandardOpenOption.WRITE, StandardOpenOption.CREATE, how)
+                        : folder.newByteChannel(name, Set.<OpenOption>of(StandardOpenOption.WRITE,
+                                StandardOpenOption.CREATE, how, LinkOption.NOFOLLOW_LINKS))) {
+                    var buffer = ByteBuffer.wrap(bytes);
+                    while (buffer.hasRemaining()) {
+                        channel.write(buffer);
+                    }
+                }
+                return null;
+            });
         } catch (IOException exception) {
             throw osError(exception);
         }

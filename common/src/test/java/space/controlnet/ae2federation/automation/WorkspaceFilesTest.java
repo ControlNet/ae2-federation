@@ -4,11 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
@@ -186,5 +191,86 @@ final class WorkspaceFilesTest {
         files.write("x.txt", "", false);
         assertTrue(Files.isDirectory(root()));
         assertEquals("", files.read("x.txt"));
+    }
+
+    /** {@code dir} becomes a link to {@code target}, as another program on the server could do at any moment. */
+    private static void swapForLink(Path dir, Path target) {
+        try {
+            try (var entries = Files.list(dir)) {
+                for (var entry : (Iterable<Path>) entries::iterator) {
+                    Files.delete(entry);
+                }
+            }
+            Files.delete(dir);
+            Files.createSymbolicLink(dir, target);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @Test
+    void aLinkSwappedInAfterTheChecksLeadsNowhere() throws IOException {
+        var outside = Files.createDirectories(world.resolve("outside"));
+        Files.writeString(outside.resolve("secret.txt"), "no");
+        Files.writeString(outside.resolve("keep.txt"), "kept");
+        var files = files();
+        files.write("logs/result.txt", "old", false);
+        var logs = root().resolve("logs");
+
+        files.beforeAccess = () -> swapForLink(logs, outside);
+        error(() -> files.write("logs/secret.txt", "overwritten", false));
+        assertEquals("no", Files.readString(outside.resolve("secret.txt")), "a write cannot reach outside");
+
+        Files.delete(logs);
+        files.beforeAccess = () -> { };
+        files.write("logs/secret.txt", "inside", false);
+        files.beforeAccess = () -> swapForLink(logs, outside);
+        error(() -> files.read("logs/secret.txt"));
+
+        Files.delete(logs);
+        files.beforeAccess = () -> { };
+        files.write("logs/keep.txt", "inside", false);
+        files.beforeAccess = () -> swapForLink(logs, outside);
+        error(() -> files.delete("logs/keep.txt", false));
+        assertEquals("kept", Files.readString(outside.resolve("keep.txt")), "a delete cannot reach outside");
+
+        Files.delete(logs);
+        files.beforeAccess = () -> { };
+        files.write("logs/inside.txt", "x", false);
+        files.beforeAccess = () -> swapForLink(logs, outside);
+        error(() -> files.list("logs"));
+    }
+
+    @Test
+    void onlyRegularFilesAreReadOrWritten() throws IOException, InterruptedException {
+        Files.createDirectories(root());
+        var pipe = root().resolve("pipe");
+        int made;
+        try {
+            made = new ProcessBuilder("mkfifo", pipe.toString()).start().waitFor();
+        } catch (IOException noMkfifo) {
+            made = -1;
+        }
+        Assumptions.assumeTrue(made == 0, "needs mkfifo");
+        var files = files();
+        assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
+            assertEquals("OSError: 'pipe' is not a regular file", error(() -> files.read("pipe")));
+            assertEquals("OSError: 'pipe' is not a regular file", error(() -> files.write("pipe", "x", false)));
+            assertEquals("OSError: 'pipe' is not a regular file", error(() -> files.append("pipe", "x", false)));
+        }, "a pipe would block the server thread");
+    }
+
+    @Test
+    void aFileThatGrowsAfterTheCheckIsReadOnlyUpToTheCap() throws IOException {
+        var files = files();
+        files.write("growing.txt", "small", false);
+        files.beforeAccess = () -> {
+            try (var file = new RandomAccessFile(root().resolve("growing.txt").toFile(), "rw")) {
+                file.setLength(10L * 1024 * 1024 * 1024);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        };
+        assertEquals("OSError: 'growing.txt' holds more than 100000 characters", error(() -> files.read("growing.txt")));
     }
 }
