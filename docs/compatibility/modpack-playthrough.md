@@ -536,6 +536,9 @@ Results on NAST 2.2.1 (projection, seed 0):
 | 应用能源2 | 130 | 130 | 0 | 0 | 0 | 21 pass, 5 unobtainable | 5 |
 | AE2闪电科技 | 86 | 37 | 43 | 5 | 1 not-bootstrappable | 14 pass, 7 unobtainable | 2 |
 
+These chapter runs used commit 8640f856, before the per-member stock rule and the `diverged` class existed. On the
+final checks, the first 40 AE2 tasks with a disturbance on every order gave the same 40 both-pass results.
+
 No target was baseline-only or federated-only. In AE2 the bases earned the Seed Reprocessor, Blast Furnace,
 Reaction Chamber, Inscriber, Furnace, Crystal Aggregator and Crystal Assembler. 96 of 151 passing orders reused
 stock (733 items). Lightning Tech crafted and consumed 10,000 `minecraft:cooked_cod`. Its Lightning Simulation Room
