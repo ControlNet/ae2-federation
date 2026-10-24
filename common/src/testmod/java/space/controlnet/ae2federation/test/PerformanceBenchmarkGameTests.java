@@ -36,6 +36,8 @@ import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.test.perf.BulkItemStorage;
+import space.controlnet.ae2federation.test.perf.BusFarmScene;
+import space.controlnet.ae2federation.test.perf.FullTickClock;
 import space.controlnet.ae2federation.test.perf.EnergyMeshScene;
 import space.controlnet.ae2federation.test.perf.MenuBroadcasts;
 import space.controlnet.ae2federation.test.perf.NativeEnergyMeshScene;
@@ -61,6 +63,13 @@ public final class PerformanceBenchmarkGameTests {
      * measured burst of operations still settle what the burst left behind.
      */
     private static final int IDLE_SETTLE_TICKS = 100;
+    /** Item types on the main network of the bus benchmarks. */
+    private static final int BUS_TYPES = 10_000;
+    /**
+     * Longest warm-up of the bus benchmarks. AE2 drops a bus that could not work yet to its slowest rate and speeds it
+     * up by two ticks per operation, so a scene takes about a thousand ticks to reach its full rate.
+     */
+    private static final int BUS_WARMUP_TICKS = 3000;
 
     private PerformanceBenchmarkGameTests() {
     }
@@ -247,6 +256,126 @@ public final class PerformanceBenchmarkGameTests {
             perf.count("idleDependencyRefreshes", mounts.dependencyRefreshCount() - idleStart[1]);
             helper.assertValueEqual(bulk.amount(iron), 1_000_000L, "Every benchmark insert must be extracted again");
             fixtures.close();
+        });
+    }
+
+    /** Ten subnets with a thousand buses each, all of them on the main network itself: the AE2 floor. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 12000, required = true, manualOnly = true)
+    public static void perfBusesTenSubnetsDirect(GameTestHelper helper) {
+        busFarm(helper, "perfbusestensubnetsdirect", BusFarmScene.Layout.DIRECT, 10, 1000);
+    }
+
+    /** Ten subnets with a thousand buses each, reaching the main network through a Storage Bus on an ME Interface. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 12000, required = true, manualOnly = true)
+    public static void perfBusesTenSubnetsNative(GameTestHelper helper) {
+        busFarm(helper, "perfbusestensubnetsnative", BusFarmScene.Layout.NATIVE, 10, 1000);
+    }
+
+    /** Ten subnets with a thousand buses each, reaching the main network through a Bridge and a storage rule. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 12000, required = true, manualOnly = true)
+    public static void perfBusesTenSubnetsFederation(GameTestHelper helper) {
+        busFarm(helper, "perfbusestensubnetsfederation", BusFarmScene.Layout.FEDERATION, 10, 1000);
+    }
+
+    /** A thousand subnets with ten buses each, all of them on the main network itself: the AE2 floor. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 12000, required = true, manualOnly = true)
+    public static void perfBusesThousandSubnetsDirect(GameTestHelper helper) {
+        busFarm(helper, "perfbusesthousandsubnetsdirect", BusFarmScene.Layout.DIRECT, 1000, 10);
+    }
+
+    /** A thousand subnets with ten buses each, reaching the main network through Storage Buses on ME Interfaces. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 12000, required = true, manualOnly = true)
+    public static void perfBusesThousandSubnetsNative(GameTestHelper helper) {
+        busFarm(helper, "perfbusesthousandsubnetsnative", BusFarmScene.Layout.NATIVE, 1000, 10);
+    }
+
+    /** A thousand subnets with ten buses each, reaching the main network through Bridges and storage rules. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 12000, required = true, manualOnly = true)
+    public static void perfBusesThousandSubnetsFederation(GameTestHelper helper) {
+        busFarm(helper, "perfbusesthousandsubnetsfederation", BusFarmScene.Layout.FEDERATION, 1000, 10);
+    }
+
+    /**
+     * Builds a {@link BusFarmScene} and runs every bus until a hundred ticks reach 99% of AE2's fastest bus rate (or
+     * {@link #BUS_WARMUP_TICKS} pass), then reports the median, mean and slowest whole server tick over the next
+     * {@link #WINDOW_TICKS} and how many bus operations reached the main network's storage per tick, so layouts are
+     * compared at the same work.
+     */
+    private static void busFarm(GameTestHelper helper, String testId, BusFarmScene.Layout layout, int subnets,
+            int busesEach) {
+        var scene = new BusFarmScene(helper, layout, subnets, busesEach, BUS_TYPES);
+        var perf = new PerfMeasure(testId);
+        var server = helper.getLevel().getServer();
+        // Whole ticks: the server's own tick times stop before the Post event, where AE2 ticks every bus.
+        var setup = new FullTickClock.Window(server);
+        var setupStarted = System.nanoTime();
+        var mounts = StorageMountService.get(helper.getLevel());
+        var stage = new int[] {0};
+        var built = server.getTickCount();
+        var window = new FullTickClock.Window[1];
+        var start = new long[3];
+        var full = (long) subnets * busesEach / 5 * 100;
+        var warm = new long[] {-1, 0};
+        helper.succeedWhen(() -> {
+            if (stage[0] == 0) {
+                helper.assertTrue(scene.build(), "Building the scene");
+                perf.count("placements", scene.placements());
+                perf.count("buildTicks", server.getTickCount() - built);
+                stage[0] = 1;
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(scene.ready(), "Waiting for every subnet to reach the main network");
+                perf.count("readyTicks", server.getTickCount() - built);
+                perf.record("setupMaxTick", setup.maxTickNanos() / 1e6, "ms/tick");
+                perf.record("setupSeconds", (System.nanoTime() - setupStarted) / 1e9, "s");
+                if (layout == BusFarmScene.Layout.FEDERATION) {
+                    perf.record("allRulesEdit", scene.ruleEditNanos() / 1e6, "ms");
+                }
+                window[0] = new FullTickClock.Window(server);
+                stage[0] = 2;
+            }
+            if (warm[0] < 0) {
+                if (window[0].ticks() % 100 == 0) {
+                    var operations = scene.operations();
+                    if (operations - warm[1] >= full * 99 / 100 || window[0].ticks() >= BUS_WARMUP_TICKS) {
+                        warm[0] = window[0].ticks();
+                        perf.count("warmupTicks", warm[0]);
+                    }
+                    warm[1] = operations;
+                }
+                start[0] = scene.operations();
+                start[1] = AuthorityEpoch.current();
+                start[2] = mounts.dependencyRefreshCount();
+                helper.assertTrue(false, "Running every bus up to its full rate");
+            }
+            helper.assertTrue(window[0].ticks() > warm[0] + WINDOW_TICKS, "Measuring with every bus working");
+            var ticks = window[0].ticks() - warm[0];
+            var operations = scene.operations() - start[0];
+            helper.assertTrue(operations > 0, "The buses must move items to and from the main network");
+            perf.count("subnets", subnets);
+            perf.count("buses", (long) subnets * busesEach);
+            perf.count("types", BUS_TYPES);
+            perf.record("medianTick", window[0].medianTickNanos() / 1e6, "ms/tick");
+            perf.record("meanTick", window[0].meanTickNanos() / 1e6, "ms/tick");
+            perf.record("maxTick", window[0].maxTickNanos() / 1e6, "ms/tick");
+            perf.record("busOperations", (double) operations / ticks, "ops/tick");
+            // AE2 runs a working bus at most every 5 ticks: the share of that rate the buses reached.
+            perf.record("busRate", 100.0 * operations / ticks / (subnets * busesEach / 5.0), "%");
+            perf.count("authorityEpochs", AuthorityEpoch.current() - start[1]);
+            perf.count("dependencyRefreshes", mounts.dependencyRefreshCount() - start[2]);
+            perf.count("itemsInChests", scene.itemsInChests());
+            if (layout == BusFarmScene.Layout.FEDERATION) {
+                var toggle = scene.toggleOneRule();
+                perf.record("oneRuleOff", toggle[0] / 1e6, "ms");
+                perf.record("oneRuleOn", toggle[1] / 1e6, "ms");
+            }
+            perf.record("teardown", scene.clear() / 1e6, "ms");
         });
     }
 
