@@ -299,10 +299,10 @@ A server that keeps running more than 30 seconds after writing its report is sto
 behind. Each run directory, including `server-console.log` and `compat-report.json`, is under
 `neoforge-1.21.1/build/compat/runs/<profile>`. In CI, the `Compatibility` workflow runs one job per profile and
 summarises the reports in the job summary. Modpack profiles run there on release and hotfix branches, weekly, and when
-the workflow is dispatched with `modpacks`. Weekly, and when the workflow is dispatched with `latest`, a separate job
-also runs each modpack on its newest release. That job caches nothing, frees runner disk space only when it has a new
-pack to download, and leaves the pins as they are. To run only the newest releases:
+the workflow is dispatched with `modpacks`. A separate `Newest modpacks` workflow runs each modpack on its newest
+release, weekly and on demand, so a pack update fails there and not in `Compatibility`. It caches nothing, frees runner
+disk space only when it has a new pack to download, and leaves the pins as they are:
 
 ```bash
-gh workflow run compat.yml --ref dev -f groups=none -f latest=true
+gh workflow run latest-modpacks.yml --ref dev
 ```
