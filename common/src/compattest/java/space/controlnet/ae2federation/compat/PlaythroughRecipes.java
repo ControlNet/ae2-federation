@@ -40,8 +40,15 @@ final class PlaythroughRecipes {
               Map<String, PlaythroughAccounting.Signature> signatures) {
             this(patterns, supplies, standIns, signatures, Map.of());
         }
+        /** Patterns the factory's Molecular Assemblers run: crafting and assembler-kind machine recipes. */
         Map<String, ItemStack> craftingPatterns() {
-            var result = new LinkedHashMap<>(patterns); machines.keySet().forEach(result::remove); return result;
+            var result = new LinkedHashMap<>(patterns); shelf().keySet().forEach(result::remove); return result;
+        }
+        /** Machine recipes that need their own shelf site. */
+        Map<String, PlaythroughMachineAdapter.Recipe> shelf() {
+            var result = new TreeMap<>(machines);
+            result.values().removeIf(recipe -> PlaythroughMachineAdapters.byId(recipe.adapter()).assembler());
+            return result;
         }
     }
     private final GameTestHelper helper;
@@ -187,7 +194,9 @@ final class PlaythroughRecipes {
         if (PatternDetailsHelper.decodePattern(pattern, helper.getLevel()) == null) {
             throw new IllegalArgumentException("AE2 rejected encoded crafting pattern");
         }
-        var signature = PlaythroughAccounting.signature(output, actual.getRemainingItems(input), helper.getLevel());
+        // Some tools damage the input stack itself while computing remainders; keep the encoded grid intact.
+        var first = CraftingInput.ofPositioned(3, 3, grid.stream().map(ItemStack::copy).toList()).input();
+        var signature = PlaythroughAccounting.signature(output, actual.getRemainingItems(first), helper.getLevel());
         for (int sample = 0; sample < 3; sample++) {
             var fresh = CraftingInput.ofPositioned(3, 3, grid.stream().map(ItemStack::copy).toList()).input();
             var observed = PlaythroughAccounting.signature(actual.assemble(fresh, helper.getLevel().registryAccess()),

@@ -17,7 +17,13 @@ final class PlaythroughMachineAdapters {
             new PlaythroughReactionChamberAdapter(),
             PlaythroughLightningTechAdapter.overloadProcessing(),
             PlaythroughLightningTechAdapter.lightningAssembly(),
-            PlaythroughLightningTechAdapter.lightningSimulation()
+            PlaythroughLightningTechAdapter.lightningSimulation(),
+            new PlaythroughSmithingAdapter(),
+            new PlaythroughStonecuttingAdapter(),
+            new PlaythroughCrystalAggregatorAdapter(),
+            new PlaythroughEnergizingAdapter(),
+            new PlaythroughDataReassemblerAdapter(),
+            new PlaythroughReprocessorAdapter()
     );
     static final List<PlaythroughMachineAdapter> ENABLED = selected();
 
