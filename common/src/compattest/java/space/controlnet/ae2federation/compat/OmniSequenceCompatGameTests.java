@@ -26,11 +26,28 @@ public final class OmniSequenceCompatGameTests {
     private OmniSequenceCompatGameTests() {
     }
 
-    /** The consumer's only CPU is a Transfinite Compute Nexus, whose virtual CPUs drive the provider's pattern. */
+    /**
+     * The consumer's only CPU is a Transfinite Compute Nexus, whose virtual CPUs drive the provider's pattern. A powered
+     * Nexus also hands its network's calculations to Applied Enhancements' Aelis planner, so the consumer's plan for the
+     * provider's pattern must be Aelis'.
+     */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void nexusCrafting(GameTestHelper helper) {
-        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "ae2:molecular_assembler", List.of(NEXUS));
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "ae2:molecular_assembler", List.of(NEXUS))
+                .checkingPlan((plan, local) -> helper.assertTrue(aelisPlan(plan),
+                        "The Nexus must hand the consumer's plan to Aelis"));
         helper.succeedWhen(scene::tick);
+    }
+
+    /** Whether Aelis made {@code plan}, as Applied Enhancements records the plan's calculation path. */
+    private static boolean aelisPlan(appeng.api.networking.crafting.ICraftingPlan plan) {
+        try {
+            var metadata = Class.forName("com.appliedenhancements.api.AelisExactCraftingPlanApi")
+                    .getMethod("read", appeng.api.networking.crafting.ICraftingPlan.class).invoke(null, plan);
+            return metadata.getClass().getMethod("path").invoke(metadata).toString().equals("AELIS");
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Applied Enhancements has no plan metadata", exception);
+        }
     }
 
     /** The Transfinite Compute Nexus' job is cancelled after the push. */

@@ -192,6 +192,47 @@ public final class NeoEcoCompatGameTests {
         helper.succeedWhen(new Warehouse(helper, Tier.L4)::run);
     }
 
+    /**
+     * Neo ECO's own planner, as its crafting screen starts it with cycle planning on, chains a seed pattern that only
+     * the provider network has; see {@link CyclePlanningScene}.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void ecoPlannerCycle(GameTestHelper helper) {
+        // Neo ECO gives the plans its planner makes only to its own computation systems.
+        helper.succeedWhen(new CyclePlanningScene(helper, "Neo ECO's planner", NeoEcoCompatGameTests::ecoPlannerRequest,
+                NeoEcoCompatGameTests::ecoOwnedPlan)
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4),
+                        () -> fitComputationCell(helper, Tier.L4))::tick);
+    }
+
+    /** Wraps {@code plain} as Neo ECO's screens do: ECOPlannerRequester with cycle planning on and nothing fuzzy. */
+    private static appeng.api.networking.crafting.ICraftingSimulationRequester ecoPlannerRequest(
+            appeng.api.networking.crafting.ICraftingSimulationRequester plain) {
+        try {
+            var options = Class.forName("cn.dancingsnow.neoecoae.api.me.planning.ECOPlannerOptions")
+                    .getConstructor(boolean.class, boolean.class, java.util.Set.class)
+                    .newInstance(true, false, java.util.Set.of());
+            return (appeng.api.networking.crafting.ICraftingSimulationRequester) Class.forName(
+                    "cn.dancingsnow.neoecoae.api.me.planning.ECOPlannerRequester")
+                    .getConstructor(appeng.api.networking.crafting.ICraftingSimulationRequester.class,
+                            options.getClass())
+                    .newInstance(plain, options);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Neo ECO's planner request is not available", exception);
+        }
+    }
+
+    /** Whether Neo ECO's planner made {@code plan}, as its registry of planning results records it. */
+    private static boolean ecoOwnedPlan(appeng.api.networking.crafting.ICraftingPlan plan) {
+        try {
+            return (boolean) Class.forName("cn.dancingsnow.neoecoae.api.me.planning.ECOPlanningResultRegistry")
+                    .getMethod("isECOOwnedPlan", appeng.api.networking.crafting.ICraftingPlan.class)
+                    .invoke(null, plan);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Neo ECO's planning registry is not available", exception);
+        }
+    }
+
     /** The warehouse chain's stages; see {@link #ecoWarehouseChain}. */
     static final class Warehouse {
         private static final appeng.api.stacks.AEItemKey IRON =

@@ -1,18 +1,39 @@
 package space.controlnet.ae2federation.compat;
 
+import appeng.api.crafting.IPatternDetails;
+import appeng.api.networking.IGrid;
+import appeng.api.networking.crafting.ICraftingPlan;
+import appeng.api.parts.PartHelper;
+import appeng.api.util.AEColor;
 import appeng.core.definitions.AEBlocks;
+import appeng.core.definitions.AEParts;
 import appeng.util.inv.AppEngInternalInventory;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.level.block.entity.BlockEntity;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /** Federation features with Data Energistics' own blocks. */
@@ -31,7 +52,7 @@ public final class DataEnergisticsCompatGameTests {
     public static void federationTunnelTurnsBackIntoAnMeTunnel(GameTestHelper helper) {
         var level = helper.getLevel();
         var tunnel = space.controlnet.ae2federation.p2p.FederationP2PRegistration.TUNNEL.get().getDefaultInstance();
-        var p2p = net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM,
+        var p2p = net.minecraft.tags.TagKey.create(Registries.ITEM,
                 net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("ae2", "p2p"));
         helper.assertTrue(tunnel.is(p2p), "The Federation P2P tunnel must be in Data Energistics' ae2:p2p tag");
         var input = net.minecraft.world.item.crafting.CraftingInput.of(1, 1, List.of(tunnel));
@@ -107,6 +128,204 @@ public final class DataEnergisticsCompatGameTests {
         var tag = entity.saveWithoutMetadata(registries);
         slot.writeToNBT(tag, "provider_slot", registries);
         entity.loadWithComponents(tag, registries);
+    }
+
+    /**
+     * Data Energistics' own crafting planner, the Trinity planner, plans with a pattern that only the provider network
+     * has. The consumer's only CPU is a Trinity Data Core, built from the mod's own guide structures; its pattern cores
+     * hold no pattern. A network with a formed Trinity CPU hands its calculations to the Trinity planner, so the
+     * consumer's plan for four sticks must be a Trinity plan that fires the provider's pattern as often as the provider
+     * network's own plan does; the Trinity CPU then pushes through the projection and the sticks are stored exactly.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "matter_fabrication_well", timeoutTicks = 1200)
+    public static void trinityPlanning(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "ae2:molecular_assembler", List.of());
+        var trinity = new TrinityDataCore(helper);
+        scene.consumerCpuStructure(test -> trinity.place(), () -> trinity.ready(scene.consumerGrid()))
+                .checkingPlan((plan, local) -> {
+                    helper.assertTrue(plan.getClass().getName().equals(TrinityDataCore.PLAN),
+                            "The Trinity planner must make the consumer's plan, not " + TrinityDataCore.describe(plan));
+                    var fired = TrinityDataCore.firings(plan);
+                    var remote = TrinityDataCore.identities(helper, local);
+                    helper.assertTrue(!fired.isEmpty() && fired.equals(remote),
+                            "The Trinity plan must craft with the provider's own pattern as often as the provider network"
+                                    + " does: " + fired.values() + " against " + remote.values());
+                    trinity.assertOnlyTrinityCpus(scene.consumerGrid());
+                });
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * A Trinity Data Core facing north in the {@code matter_fabrication_well} template, east and south of the networks
+     * of {@link AddonCraftingScene}. Its main structure and its CPU and crafting child structures are placed block by
+     * block from the guide structures Data Energistics ships, the children sharing the main structure's controller. The
+     * main structure's Information Exchange Depot goes where the guide shows quartz vibrant glass under the controller,
+     * its cable bus spots get covered cables, and the controller goes in last, as a player builds it. A glass cable runs
+     * from west of the consumer's cable to the depot through the open channel in front of it.
+     *
+     * <p>The crafting child is needed even though the Trinity crafts nothing itself: until its pattern catalog is
+     * active, the depot's own crafting provider reports its custody incomplete, and the Trinity CPU dispatches no
+     * pattern at all, its job waiting forever with the inputs taken.
+     */
+    private static final class TrinityDataCore {
+        static final String PLAN = "com.fish_dan_.data_energistics.common.crafting.trinity.planning.plan.TrinityCraftingPlan";
+        private static final String DIAGNOSED =
+                "com.fish_dan_.data_energistics.common.crafting.trinity.planning.gateway.TrinityDiagnosedCraftingPlan";
+        private static final String VIRTUAL_CPU =
+                "com.fish_dan_.data_energistics.common.crafting.trinity.execution.cpu.TrinityDataCoreVirtualCpu";
+        private static final String CORE = "data_energistics:trinity_data_core";
+        /** The main structure's (0, 0, 0). */
+        private static final BlockPos ORIGIN = new BlockPos(10, 1, 12);
+        /** The controller in each guide structure, where the three overlap. */
+        private static final BlockPos MAIN_CONTROLLER = new BlockPos(13, 2, 7);
+        private static final BlockPos CPU_CONTROLLER = new BlockPos(0, 2, 0);
+        private static final BlockPos CRAFTING_CONTROLLER = new BlockPos(8, 2, 0);
+        private static final BlockPos CONTROLLER = ORIGIN.offset(MAIN_CONTROLLER);
+        /** The main structure's replaceable compartment right under the controller. */
+        private static final BlockPos DEPOT = CONTROLLER.below();
+
+        private final GameTestHelper helper;
+
+        TrinityDataCore(GameTestHelper helper) {
+            this.helper = helper;
+        }
+
+        /** The cable to the depot, the main structure, the two children, and then the controller. */
+        void place() {
+            var start = AddonCraftingScene.FIRST_CPU;
+            // West of the consumer's cable, south to four blocks short of the structure, east, down, and south in.
+            var turn = new BlockPos(start.getX(), start.getY(), ORIGIN.getZ() - 4);
+            for (int z = start.getZ(); z <= turn.getZ(); z++) cable(new BlockPos(start.getX(), start.getY(), z));
+            for (int x = turn.getX() + 1; x <= DEPOT.getX(); x++) cable(new BlockPos(x, turn.getY(), turn.getZ()));
+            for (int y = turn.getY() - 1; y >= DEPOT.getY(); y--) cable(new BlockPos(DEPOT.getX(), y, turn.getZ()));
+            for (int z = turn.getZ() + 1; z < DEPOT.getZ(); z++) cable(new BlockPos(DEPOT.getX(), DEPOT.getY(), z));
+            var controller = placeGuideStructure("trinity_data_core_main.snbt", ORIGIN);
+            placeGuideStructure("trinity_data_core_cpu.snbt", CONTROLLER.subtract(CPU_CONTROLLER));
+            placeGuideStructure("trinity_data_core_crafting.snbt", CONTROLLER.subtract(CRAFTING_CONTROLLER));
+            helper.setBlock(CONTROLLER, controller);
+        }
+
+        /**
+         * Places one of the mod's guide structures with its {@code (0, 0, 0)} at {@code origin}, all but its
+         * controller, whose state it returns.
+         */
+        private BlockState placeGuideStructure(String file,
+                BlockPos origin) {
+            CompoundTag structure;
+            try {
+                structure = TagParser.parseTag(Files.readString(
+                        ModList.get().getModFileById("data_energistics").getFile()
+                                .findResource("assets", "data_energistics", "ae2guide", "structure", file)));
+            } catch (IOException | CommandSyntaxException exception) {
+                throw new IllegalStateException("Data Energistics' structure " + file + " is unreadable", exception);
+            }
+            var blocks = helper.getLevel().holderLookup(Registries.BLOCK);
+            var palette = structure.getList("palette", Tag.TAG_COMPOUND);
+            BlockState controller = null;
+            for (var tag : structure.getList("blocks", Tag.TAG_COMPOUND)) {
+                var entry = (CompoundTag) tag;
+                var pos = entry.getList("pos", Tag.TAG_INT);
+                var position = origin.offset(pos.getInt(0), pos.getInt(1), pos.getInt(2));
+                var state = NbtUtils.readBlockState(blocks, palette.getCompound(entry.getInt("state")));
+                if (state.is(AddonCraftingScene.block(CORE))) {
+                    helper.assertTrue(position.equals(CONTROLLER), "The controller of " + file + " is not at " + CONTROLLER);
+                    controller = state;
+                } else if (position.equals(DEPOT)) {
+                    helper.assertTrue(state.is(AddonCraftingScene.block("ae2:quartz_vibrant_glass")),
+                            "The guide must show quartz vibrant glass under the controller, not " + state);
+                    helper.setBlock(position, AddonCraftingScene.block("data_energistics:trinity_information_exchange_depot"));
+                } else if (state.is(AddonCraftingScene.block("ae2:cable_bus"))) {
+                    helper.assertTrue(PartHelper.setPart(helper.getLevel(), helper.absolutePos(position),
+                            null, null, AEParts.COVERED_CABLE.item(
+                                    AEColor.TRANSPARENT)) != null, "A covered cable must go at " + position);
+                } else {
+                    helper.setBlock(position, state);
+                }
+            }
+            helper.assertTrue(controller != null, "The structure " + file + " has no controller");
+            return controller;
+        }
+
+        /**
+         * True once all three structures have formed, the depot is online, the empty pattern catalog is active, and the
+         * consumer network has the Trinity's CPUs and no others; until then, what the controller reports.
+         */
+        boolean ready(IGrid consumer) {
+            var core = helper.getLevel().getBlockEntity(helper.absolutePos(CONTROLLER));
+            helper.assertTrue(core != null && core.getBlockState().is(AddonCraftingScene.block(CORE)),
+                    "No Trinity Data Core at " + CONTROLLER);
+            helper.assertTrue((boolean) invoke(core, "isStructureFormed"), "Waiting for the main structure: "
+                    + invoke(core, "getLastFailureReason") + " at " + invoke(core, "getLastFailurePosition"));
+            helper.assertTrue((boolean) invoke(core, "isCpuStructureFormed"), "Waiting for the CPU child structure: "
+                    + invoke(core, "getCpuLastFailureReason") + " at " + invoke(core, "getCpuLastFailurePosition"));
+            helper.assertTrue((boolean) invoke(core, "isCraftingStructureFormed"), "Waiting for the crafting child structure: "
+                    + invoke(core, "getCraftingLastFailureReason") + " at " + invoke(core, "getCraftingLastFailurePosition"));
+            helper.assertTrue((boolean) invoke(core, "hasActiveInformationExchangeDepot"),
+                    "Waiting for the Information Exchange Depot to come online");
+            helper.assertTrue((boolean) invoke(core, "isCpuProviderAvailable"), "Waiting for the Trinity's CPUs");
+            helper.assertTrue((boolean) invoke(core, "isPatternProviderAvailable"), "Waiting for the pattern catalog");
+            assertOnlyTrinityCpus(consumer);
+            return true;
+        }
+
+        void assertOnlyTrinityCpus(IGrid consumer) {
+            var cpus = consumer.getCraftingService().getCpus();
+            helper.assertTrue(!cpus.isEmpty() && cpus.stream().allMatch(cpu -> cpu.getClass().getName().equals(VIRTUAL_CPU)),
+                    "The consumer's only CPUs must be the Trinity's: "
+                            + cpus.stream().map(cpu -> cpu.getClass().getSimpleName()).toList());
+        }
+
+        /**
+         * How often a Trinity plan fires each pattern. A Trinity plan leaves AE2's pattern times empty and keeps its
+         * firings by Data Energistics' own pattern identity, made from the pattern's definition, inputs and outputs.
+         */
+        static Map<Object, Long> firings(ICraftingPlan plan) {
+            var firings = new HashMap<Object, Long>();
+            ((Map<?, ?>) invoke(plan, "patternFirings")).forEach((identity, count) ->
+                    firings.put(identity, ((BigInteger) count).longValueExact()));
+            return firings;
+        }
+
+        /** An AE2 plan's pattern times, each pattern by the identity Data Energistics gives it. */
+        static Map<Object, Long> identities(GameTestHelper helper,
+                ICraftingPlan plan) {
+            try {
+                var signature = Class.forName("com.fish_dan_.data_energistics.common.trinity.pattern."
+                        + "TrinityPatternPublicationSignature");
+                var capture = signature.getMethod("capture", IPatternDetails.class);
+                var identity = Class.forName("com.fish_dan_.data_energistics.common.crafting.trinity.planning.graph."
+                        + "TrinityPatternIdentity").getMethod("capture", signature,
+                        HolderLookup.Provider.class);
+                var identities = new HashMap<Object, Long>();
+                for (var entry : plan.patternTimes().entrySet()) {
+                    identities.merge(identity.invoke(null, capture.invoke(null, entry.getKey()),
+                            helper.getLevel().registryAccess()), entry.getValue(), Long::sum);
+                }
+                return identities;
+            } catch (ReflectiveOperationException exception) {
+                throw new IllegalStateException("Data Energistics' pattern identity is unavailable", exception);
+            }
+        }
+
+        /** A plan's class, and for a plan the Trinity planner refused, its diagnostic. */
+        static String describe(ICraftingPlan plan) {
+            var name = plan.getClass().getName();
+            return name.equals(DIAGNOSED) ? name + " " + invoke(plan, "diagnostic") : name;
+        }
+
+        private void cable(BlockPos position) {
+            helper.assertTrue(PartHelper.setPart(helper.getLevel(), helper.absolutePos(position), null,
+                    null, AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT)) != null,
+                    "A cable must go at " + position);
+        }
+
+        private static Object invoke(Object target, String name) {
+            try {
+                return target.getClass().getMethod(name).invoke(target);
+            } catch (ReflectiveOperationException exception) {
+                throw new IllegalStateException(target.getClass().getName() + " has no usable " + name, exception);
+            }
+        }
     }
 
     /** Data Energistics' Adaptive Pattern Provider runs the Endpoint in Local mode once an AE2 provider is fitted. */

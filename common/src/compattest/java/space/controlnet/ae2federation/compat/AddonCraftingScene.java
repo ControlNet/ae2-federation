@@ -76,6 +76,8 @@ final class AddonCraftingScene {
             (entity, pattern) -> ((PatternContainer) entity).getTerminalPatternInventory().addItems(pattern).isEmpty();
     private java.util.function.BiConsumer<ICraftingPlan, ICraftingPlan> checkPlan = (plan, local) -> {
     };
+    private java.util.function.Consumer<net.minecraft.world.level.block.entity.BlockEntity> changeProviderAfterLink;
+    private boolean providerChanged;
     private boolean cpuOnCable;
     private boolean providerWithoutStorage;
     private boolean cancelAfterPush;
@@ -325,6 +327,17 @@ final class AddonCraftingScene {
         return this;
     }
 
+    /**
+     * Once the consumer already sees the provider's pattern, changes the provider as its player would, such as by
+     * switching a mode that makes it decode its patterns again: the consumer must then plan with the provider's new
+     * pattern objects, not the ones it saw first.
+     */
+    AddonCraftingScene changingProviderAfterLink(
+            java.util.function.Consumer<net.minecraft.world.level.block.entity.BlockEntity> change) {
+        changeProviderAfterLink = change;
+        return this;
+    }
+
     /** Puts the pattern into a provider that keeps its patterns elsewhere; true when it took the pattern. */
     AddonCraftingScene installingPatternsWith(
             java.util.function.BiPredicate<net.minecraft.world.level.block.entity.BlockEntity, ItemStack> install) {
@@ -551,6 +564,18 @@ final class AddonCraftingScene {
             case 4 -> {
                 helper.assertTrue(consumerGrid().getCraftingService().isCraftable(output()),
                         "Waiting for the provider's pattern on the consumer");
+                if (changeProviderAfterLink != null) {
+                    var entity = helper.getLevel().getBlockEntity(helper.absolutePos(providerPos));
+                    if (!providerChanged) {
+                        changeProviderAfterLink.accept(entity);
+                        providerChanged = true;
+                        helper.fail("Changed the provider after the consumer saw its pattern");
+                    }
+                    var current = ((PatternProviderLogicHost) entity).getLogic().getAvailablePatterns();
+                    var seen = consumerGrid().getCraftingService().getCraftingFor(output());
+                    helper.assertTrue(current.stream().allMatch(pattern -> seen.stream().anyMatch(s -> s == pattern)),
+                            "Waiting for the consumer to see the changed provider's own pattern objects");
+                }
                 storeInputs("The consumer's chest must take the inputs");
                 begin();
                 stage = 5;

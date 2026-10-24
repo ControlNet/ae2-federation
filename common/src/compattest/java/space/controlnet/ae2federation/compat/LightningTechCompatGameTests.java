@@ -144,7 +144,8 @@ public final class LightningTechCompatGameTests {
      * foundry network whose only crafter is a formed Tianshu Matter Warping Matrix and which has no storage, the two on
      * one Router, each built as AE2 Lightning Tech's own guide shows it. The Supercomputer runs the job, the Matrix
      * crafts it and its results come back to the district. The exercise breaks one block of the Matrix's casing: sticks leave the district's
-     * craftables until it is put back.
+     * craftables until it is put back. The Supercomputer offers Thunderbolt's v2 planner to its network, so the
+     * district's plan for the foundry's pattern must come from v2, as Thunderbolt records it for the crafting screen.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "matter_fabrication_well", timeoutTicks = 1600)
     public static void tianshuOrdersFromMatrix(GameTestHelper helper) {
@@ -163,11 +164,44 @@ public final class LightningTechCompatGameTests {
                         entity -> formed(helper, controller), RouterCraftingScene.STICKS, 8, RouterCraftingScene.PLANKS, 4,
                         "foundry")
                 .poweredBy("district")
+                .planningWith(LightningTechCompatGameTests::trackPlanner, (future, plan) -> helper.assertValueEqual(
+                        selectedPlanner(future), "thunderbolt:v2", "The district's planner"))
                 .thenRemoving(matrix.offset(-3, 0, 0), RouterCraftingScene.STICKS, "district");
         helper.succeedWhen(scene::tick);
     }
 
     private static final int MATRIX_PORT_HEIGHT = 5;
+
+    private static final String PLANNING_STATUS =
+            "com.moakiee.thunderbolt.core.crafting.algorithm.CraftingAlgorithmCalculationStatus";
+
+    /** Starts {@code start} as Thunderbolt's crafting screen does, so that it records the planner it chose. */
+    @SuppressWarnings("unchecked")
+    private static java.util.concurrent.Future<appeng.api.networking.crafting.ICraftingPlan> trackPlanner(
+            appeng.api.networking.crafting.ICraftingSimulationRequester requester,
+            java.util.function.Supplier<java.util.concurrent.Future<appeng.api.networking.crafting.ICraftingPlan>> start) {
+        try {
+            return (java.util.concurrent.Future<appeng.api.networking.crafting.ICraftingPlan>) Class.forName(
+                    PLANNING_STATUS).getMethod("track", appeng.api.networking.crafting.ICraftingSimulationRequester.class,
+                    java.util.function.Supplier.class).invoke(null, requester, start);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Thunderbolt's planning status is not available", exception);
+        }
+    }
+
+    /** The planner Thunderbolt chose for a tracked calculation, such as thunderbolt:v2 or ae2:vanilla. */
+    private static String selectedPlanner(
+            java.util.concurrent.Future<appeng.api.networking.crafting.ICraftingPlan> future) {
+        try {
+            var status = Class.forName(PLANNING_STATUS);
+            var selected = String.valueOf(status.getMethod("selected", java.util.concurrent.Future.class)
+                    .invoke(null, future));
+            status.getMethod("forget", java.util.concurrent.Future.class).invoke(null, future);
+            return selected;
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Thunderbolt's planning status is not available", exception);
+        }
+    }
 
     /**
      * Cables from {@code start} up to beside a Tianshu Matter Warping Matrix's Port, and the Matrix itself at {@code

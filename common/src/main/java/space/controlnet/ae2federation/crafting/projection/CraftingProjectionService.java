@@ -123,7 +123,7 @@ public final class CraftingProjectionService implements AutoCloseable {
      * changes still use coalesced discovery; removal only touches already observed projections by object identity.
      */
     public static synchronized void globalProviderRemoved(MinecraftServer server, IGrid source, ICraftingProvider provider) {
-        if (provider instanceof PatternProjection) return;
+        if (PatternProjection.isProjection(provider)) return;
         var service = SERVICES.get(server);
         if (service == null) return;
         for (var entry : List.copyOf(service.projected.entrySet())) {
@@ -132,7 +132,7 @@ public final class CraftingProjectionService implements AutoCloseable {
             var projection = projected.projections().remove(provider);
             if (projection == null) continue;
             projection.withdraw();
-            projected.consumer().getCraftingService().removeGlobalCraftingProvider(projection);
+            projected.consumer().getCraftingService().removeGlobalCraftingProvider(projection.registered());
             var status = service.statuses.get(entry.getKey().rule());
             if (status != null && status.active()) {
                 int patterns = projected.projections().values().stream()
@@ -334,7 +334,7 @@ public final class CraftingProjectionService implements AutoCloseable {
         for (var real : stale) {
             var projection = entry.projections().remove(real);
             projection.withdraw();
-            crafting.removeGlobalCraftingProvider(projection);
+            crafting.removeGlobalCraftingProvider(projection.registered());
         }
         int patterns = 0;
         for (var real : reals) {
@@ -351,9 +351,9 @@ public final class CraftingProjectionService implements AutoCloseable {
                     };
                 });
                 entry.projections().put(real, projection);
-                crafting.addGlobalCraftingProvider(projection);
+                crafting.addGlobalCraftingProvider(projection.registered());
             } else if (projection.refresh()) {
-                crafting.refreshGlobalCraftingProvider(projection);
+                crafting.refreshGlobalCraftingProvider(projection.registered());
             }
             patterns += projection.getAvailablePatterns().size();
         }
@@ -366,7 +366,7 @@ public final class CraftingProjectionService implements AutoCloseable {
         var crafting = entry.consumer().getCraftingService();
         for (var projection : entry.projections().values()) {
             projection.withdraw();
-            crafting.removeGlobalCraftingProvider(projection);
+            crafting.removeGlobalCraftingProvider(projection.registered());
         }
         entry.projections().clear();
     }

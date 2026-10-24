@@ -63,6 +63,10 @@ final class RouterCraftingScene implements AutoCloseable {
     private final Set<PolicyKey> configured = new LinkedHashSet<>();
     private int stage;
     private String refused;
+    private java.util.function.BiFunction<ICraftingSimulationRequester, java.util.function.Supplier<Future<ICraftingPlan>>,
+            Future<ICraftingPlan>> planning = (requester, start) -> start.get();
+    private java.util.function.BiConsumer<Future<ICraftingPlan>, ICraftingPlan> checkPlan = (future, plan) -> {
+    };
     private String powering;
     private String[] switchOff;
     private AEItemKey gone;
@@ -238,6 +242,18 @@ final class RouterCraftingScene implements AutoCloseable {
     }
 
     /**
+     * Starts every consumer's calculation through {@code planning}, as an addon's crafting screen does around AE2's
+     * call, and checks each finished plan and its calculation with {@code check} before the job goes in.
+     */
+    RouterCraftingScene planningWith(java.util.function.BiFunction<ICraftingSimulationRequester,
+            java.util.function.Supplier<Future<ICraftingPlan>>, Future<ICraftingPlan>> planning,
+            java.util.function.BiConsumer<Future<ICraftingPlan>, ICraftingPlan> check) {
+        this.planning = planning;
+        checkPlan = check;
+        return this;
+    }
+
+    /**
      * After every order, {@code consumer}'s Crafting rule on {@code source} is switched off, as the guide's exercise has
      * its player do: {@code gone} must stop being craftable there while {@code kept} still is.
      */
@@ -363,9 +379,10 @@ final class RouterCraftingScene implements AutoCloseable {
                                 "The chest must take the inputs");
                     }
                     for (var order : member.orders) {
-                        order.planFuture = grid(member).getCraftingService().beginCraftingCalculation(
-                                helper.getLevel(), requester(member), order.what, order.amount,
-                                CalculationStrategy.REPORT_MISSING_ITEMS);
+                        var requester = requester(member);
+                        order.planFuture = planning.apply(requester, () -> grid(member).getCraftingService()
+                                .beginCraftingCalculation(helper.getLevel(), requester, order.what, order.amount,
+                                        CalculationStrategy.REPORT_MISSING_ITEMS));
                     }
                 }
                 stage = 6;
@@ -377,6 +394,7 @@ final class RouterCraftingScene implements AutoCloseable {
                         helper.assertTrue(planReady(order), "Waiting for " + member.name + "'s plan");
                         helper.assertFalse(order.plan.simulation(), member.name + "'s own inputs must be enough for "
                                 + order.what + ": " + order.plan.missingItems());
+                        checkPlan.accept(order.planFuture, order.plan);
                     }
                 }
                 for (var member : consumers()) {
