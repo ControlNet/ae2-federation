@@ -19,6 +19,7 @@ import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger;
+import space.controlnet.ae2federation.crafting.projection.HeldReturnTransfer;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.*;
 import space.controlnet.ae2federation.test.crafting.PatternProjectionFixture;
@@ -249,6 +250,97 @@ public final class ReturnCoverageGameTests {
                     assertFluidSettled(helper, fixture, lava, 2 * bucket);
                     PolicyEvidence.write("projectionfluiddisconnectedreturn", 17,
                             Map.of("output", "lava", "heldWhileApart", "2", "handedBackAfterReconnect", "2"));
+                    fixture.close();
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * A restart with fluid debt outstanding: two buckets of lava arrive while the Bridge is removed and are held for
+     * the consumer, and one of them is moved into transit (the provider's fluid cell taken out, the bucket in an
+     * extract-only test storage, handed to a test target that takes nothing). The crafting service restarts with its
+     * ledger read back from the saved form, and both networks reload: owed, held and transit come back for the fluid
+     * key. Once the cell and the Bridge are back, the reloaded job gets both buckets.
+     *
+     * <p>Simulated restart, as in {@code projectionCpuLateAfterRestart}: the service is closed as the server's stop
+     * closes it, the ledger goes through {@code save}/{@code load}, and the block entities of both networks reload in
+     * one tick. The server itself keeps running.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1400)
+    public static void projectionFluidRestartReturn(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper).withFluidCells();
+        var lava = AEFluidKey.of(Fluids.LAVA);
+        long bucket = AEFluidKey.AMOUNT_BUCKET;
+        var extractOnly = FaultStorage.extractOnly();
+        var unmount = new Runnable[1];
+        var cell = new net.minecraft.world.item.ItemStack[1];
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(fixture.ready(), "Waiting for native networks"))
+                .thenExecute(() -> {
+                    fixture.installProcessingPattern(PatternDetailsHelper.encodeProcessingPattern(
+                            List.of(new GenericStack(PatternProjectionFixture.cobblestone(), 1)),
+                            List.of(new GenericStack(lava, bucket))));
+                    fixture.setRule(fixture.crafting(), RuleMode.ENABLED);
+                    fixture.putInConsumer(PatternProjectionFixture.cobblestone(), 2);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.consumerService().isCraftable(lava), "Waiting for projection"))
+                .thenExecute(() -> fixture.begin(lava, 2 * bucket))
+                .thenWaitUntil(() -> helper.assertTrue(fixture.planReady(), "Waiting for plan"))
+                .thenExecute(() -> helper.assertTrue(fixture.submit(), "Native CPU accepts the job"))
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.inMachine(Items.COBBLESTONE), 2L, "Two inputs dispatched"))
+                .thenExecute(fixture::disconnect)
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.projections(), 0, "Waiting for the patterns to be withdrawn"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.runMachine(lava, 2 * bucket), 2 * bucket,
+                            "The provider network takes both buckets");
+                    helper.assertValueEqual(fixture.heldForConsumer(lava), 2 * bucket,
+                            "The lava is held for the consumer");
+                    helper.assertValueEqual(fixture.providerFluids().extract(lava, bucket, Actionable.MODULATE,
+                            IActionSource.empty()), bucket, "One bucket moves out of the provider's fluid cell");
+                    extractOnly.put(lava, bucket);
+                    unmount[0] = fixture.mountOnProvider(extractOnly, -1);
+                    cell[0] = fixture.takeProviderFluidCell();
+                })
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.onProviderNetwork(lava), bucket,
+                        "Waiting for the provider network to list the extract-only storage"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(HeldReturnTransfer.handBack(CraftingReturnLedger.get(helper.getLevel()),
+                            fixture.providerNetwork(), fixture.providerGrid(), fixture.consumerNetwork(), lava, bucket,
+                            new FaultStorage(Long.MAX_VALUE, 0)), 0L, "A target that takes nothing gets nothing");
+                    helper.assertValueEqual(extractOnly.held(lava), 0L, "The extract-only storage gave its bucket");
+                    helper.assertValueEqual(fixture.transit(lava), bucket, "The bucket nobody took stays in transit");
+                    unmount[0].run();
+                    // A service restart: the ledger goes through its saved form, the service starts anew, and both
+                    // networks reload from their saved block entities.
+                    var level = helper.getLevel();
+                    var server = level.getServer();
+                    CraftingProjectionService.closeServer(server);
+                    var registries = level.registryAccess();
+                    var saved = CraftingReturnLedger.get(level).save(new net.minecraft.nbt.CompoundTag(), registries);
+                    var reloaded = CraftingReturnLedger.load(saved, registries);
+                    server.overworld().getDataStorage().set(CraftingReturnLedger.DATA_NAME, reloaded);
+                    helper.assertTrue(CraftingReturnLedger.get(level) == reloaded,
+                            "The reloaded ledger is the world's");
+                    fixture.reloadAll();
+                    helper.assertValueEqual(fixture.owed(lava), 2 * bucket, "The fluid debt survives the restart");
+                    helper.assertValueEqual(fixture.heldForConsumer(lava), 2 * bucket,
+                            "The held lava survives the restart");
+                    helper.assertValueEqual(fixture.transit(lava), bucket, "The transit lava survives the restart");
+                    helper.assertValueEqual(fixture.watchedJobs(), 1, "The job is watched again");
+                    fixture.restoreProviderFluidCell(cell[0]);
+                    fixture.reconnect();
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.connected(), "Waiting for the Bridge to link again"))
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.busyConsumerCpus(), 0L,
+                        "Waiting for the held and transit lava to reach the reloaded job: " + fixture.returns(lava)))
+                .thenIdle(25)
+                .thenExecute(() -> {
+                    assertFluidSettled(helper, fixture, lava, 2 * bucket);
+                    helper.assertValueEqual(extractOnly.held(lava), 0L, "The test storage keeps none");
+                    PolicyEvidence.write("projectionfluidrestartreturn", 29, Map.of("output", "lava",
+                            "heldAcrossRestart", "2", "transitAcrossRestart", "1",
+                            "restart", "SavedData round trip and block entity reload"));
                     fixture.close();
                 })
                 .thenSucceed();

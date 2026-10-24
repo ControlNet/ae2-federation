@@ -107,6 +107,27 @@ public final class NeoEcoCompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /**
+     * The real ECO CPU runs a projected processing job whose output is a fluid: the hand-run test machine turns each
+     * cobblestone into a bucket of lava on the provider network, and the return router hands it to the consumer.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemFluidReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(), AddonCraftingScene.lavaMachine())
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().outputStoredOnConsumer();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** As {@link #computationSystemFluidReturn}, with the ECO job cancelled before the lava comes back. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemFluidCancel(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(), AddonCraftingScene.lavaMachine())
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().outputStoredOnConsumer().cancellingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
     static AddonCraftingScene computationOrdering(GameTestHelper helper, Tier tier) {
         var start = AddonCraftingScene.PROVIDER.offset(0, -1, -1);
         return AddonCraftingScene.structure(helper, tier.id("crafting_system_l4"), List.of(),

@@ -42,3 +42,38 @@ python3 tools/compat_run.py --accept-eula --tests oxidizerchemicalprojectedretur
 - Chemical outputs held while unlinked, and fluid outputs through a real fluid machine (the vanilla tests use the
   hand-run chest machine inserting into the provider network).
 - Merged-Grid receipt (`cpuReceived`) with a non-item key.
+
+## Second round: restart, unlinked chemicals, merged Grid, addon CPUs (2026-10-24)
+- No defect in main code; no main code changed. One known gap reproduced: independent addon CPUs in a merged Grid.
+- Restart: `projectionfluidrestartreturn` holds 2 buckets while the Bridge is removed, moves one into transit
+  (provider fluid cell out, extract-only `FaultStorage`, hand-back to a target that takes nothing), then closes the
+  service, round-trips the ledger through `save`/`load` and reloads both networks' block entities. Owed 2000,
+  held 2000 and transit 1000 come back for the fluid key; after the cell and Bridge return the job gets both buckets.
+  `PatternProjectionFixture.reloadAll()` now skips refreshing the Bridge part while it is removed.
+- Chemicals while unlinked: `oxidizerchemicaldisconnectedreturn` (mekanism). `disconnectingAfterPush()` now accepts
+  a real machine; `relinkingAfterDisconnect()` places the Bridge back instead of cancelling, after checking held and
+  a detached `save`/`load` copy of the ledger for the chemical key.
+- Merged Grid with a fluid: `projectionmergedbridgefluidreturn` (dev, required). `preferConsumerChest()` also raises
+  the consumer's fluid chest when the fixture has fluid cells, or the finished job may store its lava on the
+  provider's cell inside the joined Grid (a layout effect, not a defect).
+- Addon CPUs with fluid output: `computationsystemfluidreturn`, `computationsystemfluidcancel` (Neo ECO),
+  `quantumcorefluidreturn` (Advanced AE), `mentalmathunitfluidreturn` (Lightning Tech). They use
+  `AddonCraftingScene.lavaMachine()` (the hand-run chest machine, a bucket of lava per cobblestone, 1k fluid cell).
+- Gap: merged Grid on an addon CPU. `AddonCpuMergedGridProbes` (group `addon-cpu-merged-probes`, in no profile)
+  fails for all three addons the same way: while merged owed 2000, the CPU takes its lava natively; after the split
+  the debt is still 2000, the next player bucket stored on the provider is claimed and handed to the finished job
+  (consumer ends with 3000, owed 1000). `nativecpumergedfluidreturn` in the same class passes (control).
+  - Cause: only `CraftingCpuReceiptMixin` (AE2 `CraftingCpuLogic.insert`) reports receipts; addon CPUs run their own
+    logic (`ECOCraftingCPULogic`, `AdvCraftingCPULogic`, `Ae2LtTimeWheelCraftingCpuLogic`).
+  - Addon APIs checked (Neo ECO 21.2.9, Advanced AE 1.6.12, ae2lt 2.1.1 / Thunderbolt 2.0.1): each logic has a
+    public `insert`, `getWaitingFor` and a key-only `addListener(Consumer<AEKey>)`; none has a receipt event. Neo
+    ECO's `ECOCraftingLifecycle` listener reports job start, pattern dispatch and job finish only.
+  - Options: per-addon optional mixins at the head of each logic's `insert` (owner approval needed); or a sampled
+    waiting-amount diff through the existing lifecycle adapter, which cannot tell the final receipt from a finishing
+    clear and so is not safe; or accept and document (current state).
+
+```sh
+python3 tools/dev_gametests.py projectionfluidrestartreturn projectionmergedbridgefluidreturn
+python3 tools/compat_run.py --accept-eula --tests oxidizerchemicaldisconnectedreturn mekanism
+python3 tools/compat_run.py --accept-eula --tests mentalmathunitmergedfluidreturn,nativecpumergedfluidreturn ae2-lightning-tech
+```

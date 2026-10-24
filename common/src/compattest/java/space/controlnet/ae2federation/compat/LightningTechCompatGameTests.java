@@ -97,6 +97,14 @@ public final class LightningTechCompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /** The Pigmee Mental Math Unit runs a projected job whose output is a bucket of lava per cobblestone. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void mentalMathUnitFluidReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(MENTAL_MATH_UNIT),
+                AddonCraftingScene.lavaMachine()).craftingOnly().outputStoredOnConsumer();
+        helper.succeedWhen(scene::tick);
+    }
+
     /** A Pigmee Mental Math Unit is the Federation Pattern Provider network's CPU for a job through an Endpoint. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
     public static void mentalMathUnitEndpoint(GameTestHelper helper) {

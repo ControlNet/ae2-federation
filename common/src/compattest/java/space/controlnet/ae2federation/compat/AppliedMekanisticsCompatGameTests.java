@@ -95,6 +95,20 @@ public final class AppliedMekanisticsCompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /**
+     * As {@link #oxidizerChemicalProjectedReturn}, with the Bridge removed once the charcoal is in the oxidizer: the
+     * carbon it ejects while the networks are apart is held in the provider's chemical cell, its debt and held amount
+     * read back from the ledger's saved form, and once the Bridge is back the job gets it and the return settles.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void oxidizerChemicalDisconnectedReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("ae2:1k_crafting_storage"),
+                new ProviderOxidizer(AddonStorageScene.key(helper, "appmek:chemical", "mekanism:carbon")))
+                .requesting(1).craftingOnly().outputStoredOnConsumer().disconnectingAfterPush()
+                .relinkingAfterDisconnect();
+        helper.succeedWhen(scene::tick);
+    }
+
     /** An oxidizer east of the provider: charcoal in and carbon out on its west side, energy from its east. */
     private record ProviderOxidizer(AEKey carbon) implements AddonCraftingScene.Machine {
         @Override

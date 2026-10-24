@@ -81,6 +81,14 @@ public final class AdvancedAECompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /** The Quantum Computer Core runs a projected job whose output is a bucket of lava per cobblestone. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void quantumCoreFluidReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(QUANTUM_CORE),
+                AddonCraftingScene.lavaMachine()).cpuOnCable().craftingOnly().outputStoredOnConsumer();
+        helper.succeedWhen(scene::tick);
+    }
+
     /** A lone Quantum Computer Core is the Federation Pattern Provider network's CPU for a job through an Endpoint. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
     public static void quantumCoreEndpoint(GameTestHelper helper) {

@@ -90,6 +90,8 @@ public final class PatternProjectionFixture implements AutoCloseable {
     private static final BlockPos PROVIDER_FLUID_CHEST = BASE.north(3);
     private boolean fluidCells;
     private boolean bridgePlaced;
+    /** The Bridge part is removed ({@link #disconnect}) and not placed again yet. */
+    private boolean bridgeRemoved;
     private boolean consumerCpuPlaced;
     private boolean processingPlaced;
     private boolean processingPatternInstalled;
@@ -193,6 +195,18 @@ public final class PatternProjectionFixture implements AutoCloseable {
         return fluidCell(PROVIDER_FLUID_CHEST);
     }
 
+    /** Takes the 1k fluid cell out of the provider's fluid chest, which then stores no fluid; the cell is returned. */
+    public ItemStack takeProviderFluidCell() {
+        var chest = helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(PROVIDER_FLUID_CHEST);
+        var cell = chest.getCell().copy();
+        chest.setCell(ItemStack.EMPTY);
+        return cell;
+    }
+
+    public void restoreProviderFluidCell(ItemStack cell) {
+        helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(PROVIDER_FLUID_CHEST).setCell(cell);
+    }
+
     private MEStorage fluidCell(BlockPos position) {
         if (!fluidCells) throw new IllegalStateException("This fixture has no fluid cells");
         return Objects.requireNonNull(helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(position)
@@ -243,11 +257,13 @@ public final class PatternProjectionFixture implements AutoCloseable {
     /** Removes the Bridge, so the two networks no longer share a Federation Domain; both stay loaded. */
     public void disconnect() {
         bridge.removeFirstBridge();
+        bridgeRemoved = true;
     }
 
     /** Places the Bridge again, so the two networks share a Federation Domain once more. */
     public void reconnect() {
         bridge.placeFirstBridge();
+        bridgeRemoved = false;
     }
 
     public boolean connected() {
@@ -274,9 +290,15 @@ public final class PatternProjectionFixture implements AutoCloseable {
         helper.setBlock(JOINING_CABLE, Blocks.AIR);
     }
 
-    /** Gives the consumer's ME chest priority, so stock stored anywhere both networks see lands there first. */
+    /**
+     * Gives the consumer's ME chest priority, and its fluid chest when it has one, so stock stored anywhere both
+     * networks see lands there first.
+     */
     public void preferConsumerChest() {
         bridge.consumerChest().setPriority(1);
+        if (fluidCells) {
+            helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(CONSUMER_FLUID_CHEST).setPriority(1);
+        }
     }
 
     /** Whether the two networks are one AE2 Grid now. */
@@ -499,11 +521,11 @@ public final class PatternProjectionFixture implements AutoCloseable {
 
     /**
      * Unloads and reloads every block of both networks in one tick, as a server restart does, so AE2 builds both Grids
-     * anew from the saved data, the consumer's running job included.
+     * anew from the saved data, the consumer's running job included. With the Bridge removed there is no part to find.
      */
     public void reloadAll() {
         BlockEntityReload.reload(helper, BASE.offset(site == null ? -1 : -5, -1, -3), BASE.offset(3, 1, 3));
-        bridge.refreshFirstBridgePart();
+        if (!bridgeRemoved) bridge.refreshFirstBridgePart();
     }
 
     /**

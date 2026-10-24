@@ -44,7 +44,9 @@ switches the two rules separately, and loading a save adds no rule.
 - **Returns.** An accepted push records what P now owes C in `CraftingReturnLedger`: the pattern's outputs, plus the
   container items its inputs leave behind, such as empty buckets. The ledger is saved data, so a debt survives a
   reload. Every `AEKey` type takes the same path: fluid outputs (vanilla GameTests) and Applied Mekanistics chemical
-  outputs (the `mekanism` compatibility profile) are routed, held, handed back and settled as items are.
+  outputs (the `mekanism` compatibility profile) are routed, held, handed back and settled as items are, including
+  owed, held and transit amounts read back after a restart, chemicals held while the Bridge is removed, and fluid
+  outputs of jobs on Neo ECO, Advanced AE and Lightning Tech CPUs.
   - P's `CraftingReturnRouter` is mounted on P's storage at `Integer.MAX_VALUE` and is preferred only for owed keys. It
     lists and extracts real saved transit stock. It does not list debt or `held` as additional inventory.
   - It hands back at most `min(inserted, owed, C.getRequestedAmount)` into C's storage, where AE2's
@@ -99,8 +101,10 @@ switches the two rules separately, and loading a save adds no rule.
     native CPU takes (`min(amount, getWaitingFor)`); while the CPU's Grid also carries P's nodes, it settles that much
     of what P owes the CPU's network, oldest debt first. The public CPU listener cannot do this: it names only a key,
     and a finishing job clears its remaining waits with the same notification. Independent addon CPUs are not
-    observed. An output that arrives in the joined Grid when no CPU waits for it goes to shared storage and keeps its
-    debt.
+    observed: Neo ECO, Advanced AE and Lightning Tech CPUs take the output in the joined Grid, the debt stays after
+    the split, and the next unit P stores is claimed for the finished job. Their logic classes offer the same key-only
+    listener and no receipt event; `AddonCpuMergedGridProbes` reproduces this outside every profile's test list. An
+    output that arrives in the joined Grid when no CPU waits for it goes to shared storage and keeps its debt.
   - Genuine native CPU removal ends its native job but does not erase machine return ownership. Outputs from already
     dispatched inputs still belong to the consumer, including after cancellation; they no longer depend on sharing
     the factory's inventory. If the consumer itself is permanently removed, responsibility remains diagnostic state;
@@ -160,12 +164,14 @@ materials, manual return, cancel, revoked, disconnected,
 reload, without storage, chain, chain blocked, mutual, container return (three glass bottles back from a three-push
 sugar job), container reuse (one bottle filled and reused for six sugar), container push (water as a fluid, a water
 bucket and a snowball substitute match AE2's own container expectation; a refused push owes nothing), fluid return
-(lava as the output, flint with a late bucket of water, lava after a cancel, lava held while the Bridge is removed),
+(lava as the output, flint with a late bucket of water, lava after a cancel, lava held while the Bridge is removed,
+held and transit lava across a restart),
 CPU out of sight
 (a CPU in another dimension unloaded mid-job), CPU out of sight beside another job (a second job next to a cancelled
 one), CPU late after restart (the CPU loaded long after a restart), merged mid-job (the Grids joined by removing only
-the Bridge part, or by a placed cable, then split; later provider stone stays there) and hand-back faults (a refusing
-target, a target whose real insert takes less than it simulated, an extract-only source and a full executing network).
+the Bridge part, or by a placed cable, then split; later provider stone or lava stays there) and hand-back faults (a
+refusing target, a target whose real insert takes less than it simulated, an extract-only source and a full executing
+network).
 Cross-dimension crafting has its own `cross-dimension.*` GameTests: a nether Provider projected to an overworld
 consumer, and a Provider driving an Endpoint in another dimension at the same coordinates through restart, a broken
 link, a replaced Endpoint, a real chunk unload of either side and a nether level close. The CPU and level-close cases
