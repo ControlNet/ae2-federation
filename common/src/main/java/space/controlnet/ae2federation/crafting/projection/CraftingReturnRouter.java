@@ -7,6 +7,7 @@ import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.IStorageMounts;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.identity.NetworkId;
@@ -20,7 +21,15 @@ import space.controlnet.ae2federation.storage.provenance.FederationManagedStorag
  * hands a consumer no more than the ledger owes and its CPUs still wait for; the rest stays on the executing network.
  * What a consumer is owed but does not take now, because the networks are not linked, the consumer is not loaded or
  * its CPU is out of sight, also stays there and is counted as held, to be handed back by {@link HeldReturnTransfer}
- * once the consumer can take it.
+ * once the consumer can take it. What a consumer is owed after all its jobs ended, such as the output of a job it
+ * cancelled, goes straight into its storage, so it needs no storage on the executing network to wait in.
+ *
+ * <p>What a provider gives back beyond any debt, such as a byproduct no pattern names, goes where it would go if the
+ * provider were on the network that pushed to it: into the storage of the consumer whose CPU pushed to that provider
+ * last, read from the source AE2's pattern provider gives its returns. So a network of pattern providers with no storage
+ * of its own does not clog. Only a network with no crafting CPU does this: one with a CPU may be running its own job
+ * through the same provider, and AE2 ends such a job when its output arrives but lets the output go on into storage,
+ * so by the time it reaches this router nothing tells it from a byproduct. Those networks keep what is not owed.
  *
  * <p>The only stock it lists is the executing network's transit stock: what was taken out to hand back but went
  * nowhere (see {@link CraftingReturnLedger}). It is listed and can be taken out like any stored item, so it is never
@@ -32,16 +41,21 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
     private final IGrid executingGrid;
     private final CraftingReturnLedger ledger;
     private final Function<NetworkId, @Nullable IGrid> consumerGrids;
+    private final Predicate<NetworkId> jobsEnded;
+    private final Function<IActionSource, @Nullable NetworkId> pusher;
     private final space.controlnet.ae2federation.observability.statistics.FederationStatistics statistics;
     private final Storage storage = new Storage();
 
     CraftingReturnRouter(NetworkId executing, IGrid executingGrid, CraftingReturnLedger ledger,
-            Function<NetworkId, @Nullable IGrid> consumerGrids,
+            Function<NetworkId, @Nullable IGrid> consumerGrids, Predicate<NetworkId> jobsEnded,
+            Function<IActionSource, @Nullable NetworkId> pusher,
             space.controlnet.ae2federation.observability.statistics.FederationStatistics statistics) {
         this.executing = executing;
         this.executingGrid = executingGrid;
         this.ledger = ledger;
         this.consumerGrids = consumerGrids;
+        this.jobsEnded = jobsEnded;
+        this.pusher = pusher;
         this.statistics = statistics;
     }
 
@@ -92,47 +106,92 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
 
         @Override
         public long insert(AEKey what, long amount, Actionable mode, IActionSource source) {
-            if (!ledger.owes(executing, what)) return 0;
             long handed = 0;
             long left = amount;
-            // First to the consumers whose CPUs take it now, oldest push first.
-            for (var owed : ledger.consumers(executing, what).entrySet()) {
-                if (left <= 0) break;
-                var consumer = consumerGrids.apply(owed.getKey());
-                if (consumer == null || consumer == executingGrid) continue;
-                long offer = Math.min(left, waiting(consumer, what, owed.getValue()));
-                if (offer <= 0) continue;
-                // The consumer's own crafting storage takes it for the waiting CPU, as for any insert there.
-                long accepted = consumer.getStorageService().getInventory().insert(what, offer, mode, source);
-                if (mode == Actionable.MODULATE) {
-                    ledger.take(executing, owed.getKey(), what, accepted, 0);
-                    statistics.meter(executing, owed.getKey()).add(what, accepted);
+            long stored = 0;
+            // What is owed and has not arrived yet; only what arrives beyond it is free for a byproduct's pusher.
+            long unarrived = 0;
+            if (ledger.owes(executing, what)) {
+                for (var owed : ledger.consumers(executing, what).entrySet()) {
+                    unarrived += Math.max(0, owed.getValue() - ledger.held(executing, owed.getKey(), what));
                 }
-                handed += accepted;
-                left -= accepted;
+                // First to the consumers whose CPUs take it now, oldest push first.
+                for (var owed : ledger.consumers(executing, what).entrySet()) {
+                    if (left <= 0) break;
+                    var consumer = consumerGrids.apply(owed.getKey());
+                    if (consumer == null || consumer == executingGrid) continue;
+                    long offer = Math.min(left, waiting(consumer, what, owed.getValue()));
+                    if (offer <= 0) continue;
+                    // The consumer's own crafting storage takes it for the waiting CPU, as for any insert there.
+                    long accepted = consumer.getStorageService().getInventory().insert(what, offer, mode, source);
+                    take(owed.getKey(), what, accepted, mode);
+                    handed += accepted;
+                    left -= accepted;
+                }
+                // Then into the storage of the consumers whose jobs all ended: no CPU will wait for it any more.
+                for (var owed : ledger.consumers(executing, what).entrySet()) {
+                    if (left <= 0) break;
+                    var consumer = consumerGrids.apply(owed.getKey());
+                    if (consumer == null || consumer == executingGrid || !jobsEnded.test(owed.getKey())) continue;
+                    long offer = Math.min(left, owed.getValue() - ledger.held(executing, owed.getKey(), what));
+                    if (offer <= 0) continue;
+                    long accepted = consumer.getStorageService().getInventory().insert(what, offer, mode, source);
+                    take(owed.getKey(), what, accepted, mode);
+                    handed += accepted;
+                    left -= accepted;
+                }
+                // The enclosing native NetworkStorage will simulate its own mounts after this router. Claiming their
+                // capacity here too would count the same free space twice when the insert exceeds the routed amount.
+                // MODULATE must intercept actual local acceptance so only real arrivals become held.
+                if (mode == Actionable.MODULATE) stored = hold(what, left, source);
+                left -= stored;
             }
-            // The enclosing native NetworkStorage will simulate its own mounts after this router. Claiming their
-            // capacity here too would count the same free space twice when the insert exceeds the routed amount.
-            // MODULATE must intercept actual local acceptance so only real arrivals become held.
-            if (mode == Actionable.SIMULATE) return handed;
-            // Claim only stock actually accepted by the executing Grid's native storage. A rejected insert remains
-            // in the machine and can be retried indefinitely; attempts must never inflate held arrival counts.
+            long beyondDebt = left - Math.max(0, unarrived - handed - stored);
+            if (beyondDebt > 0) handed += toPusher(what, beyondDebt, mode, source);
+            return handed + stored;
+        }
+
+        private void take(NetworkId consumer, AEKey what, long accepted, Actionable mode) {
+            if (mode != Actionable.MODULATE) return;
+            ledger.take(executing, consumer, what, accepted, 0);
+            statistics.meter(executing, consumer).add(what, accepted);
+        }
+
+        /**
+         * Claims only stock actually accepted by the executing Grid's native storage. A rejected insert remains in the
+         * machine and can be retried indefinitely; attempts must never inflate held arrival counts.
+         */
+        private long hold(AEKey what, long left, IActionSource source) {
             long eligible = 0;
             for (var owed : ledger.consumers(executing, what).entrySet()) {
                 if (consumerGrids.apply(owed.getKey()) != executingGrid) {
                     eligible += Math.max(0, owed.getValue() - ledger.held(executing, owed.getKey(), what));
                 }
             }
-            long stored = HeldReturnTransfer.ownStorage(executingGrid).insert(what, Math.min(left, eligible), mode, source);
-            if (mode == Actionable.MODULATE) {
-                long assign = stored;
-                for (var owed : ledger.consumers(executing, what).entrySet()) {
-                    if (assign <= 0) break;
-                    if (consumerGrids.apply(owed.getKey()) == executingGrid) continue;
-                    assign -= ledger.hold(executing, owed.getKey(), what, assign);
-                }
+            long stored = HeldReturnTransfer.ownStorage(executingGrid).insert(what, Math.min(left, eligible),
+                    Actionable.MODULATE, source);
+            long assign = stored;
+            for (var owed : ledger.consumers(executing, what).entrySet()) {
+                if (assign <= 0) break;
+                if (consumerGrids.apply(owed.getKey()) == executingGrid) continue;
+                assign -= ledger.hold(executing, owed.getKey(), what, assign);
             }
-            return handed + stored;
+            return stored;
+        }
+
+        /**
+         * Hands {@code amount}, which no one is owed, to the storage of the consumer that pushed last to the provider
+         * {@code source} names, when the executing network has no CPU of its own; returns how much it took.
+         */
+        private long toPusher(AEKey what, long amount, Actionable mode, IActionSource source) {
+            if (!executingGrid.getCraftingService().getCpus().isEmpty()) return 0;
+            var consumerId = pusher.apply(source);
+            if (consumerId == null || consumerId.equals(executing)) return 0;
+            var consumer = consumerGrids.apply(consumerId);
+            if (consumer == null || consumer == executingGrid) return 0;
+            long accepted = consumer.getStorageService().getInventory().insert(what, amount, mode, source);
+            if (mode == Actionable.MODULATE) statistics.meter(executing, consumerId).add(what, accepted);
+            return accepted;
         }
 
         @Override

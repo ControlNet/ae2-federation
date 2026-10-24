@@ -5,6 +5,8 @@ import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.ICraftingLink;
 import appeng.api.networking.crafting.ICraftingProvider;
 import appeng.api.networking.crafting.ICraftingService;
+import appeng.api.networking.security.IActionHost;
+import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.crafting.CraftingBlockEntity;
@@ -80,6 +82,8 @@ public final class CraftingProjectionService implements AutoCloseable {
     private long reconciledEpoch = Long.MIN_VALUE;
     private long ticks;
     private long sweeps;
+    /** Counts accepted pushes through projections, to tell which consumer pushed to a provider last. */
+    private long pushes;
     /** The Federation links of the domain topology {@link #linksRegistry} had at {@link #linksTopology}. */
     private FederationLinks links;
     private Object linksRegistry;
@@ -382,6 +386,7 @@ public final class CraftingProjectionService implements AutoCloseable {
                 projection = new PatternProjection(real, (pushed, details, containerItems, inputs) -> {
                     var jobs = observeJobs(consumer);
                     return () -> {
+                        pushed.markPushed(++pushes);
                         owe(pair, provider, details, containerItems, jobs);
                         var statistics = statistics();
                         statistics.pushed(pair.consumer(), pair.executing());
@@ -493,10 +498,40 @@ public final class CraftingProjectionService implements AutoCloseable {
             if (routers.containsKey(grid)) return;
             // An output returns only while the networks are linked; otherwise it is held where it arrived.
             var router = new CraftingReturnRouter(network, grid, ledger, consumer -> linked(network, consumer)
-                    ? federationDomains.grid(consumer).orElse(null) : null, statistics());
+                    ? federationDomains.grid(consumer).orElse(null) : null, consumer -> jobsEnded(ledger, consumer),
+                    source -> pusher(grid, source), statistics());
             routers.put(grid, router);
             grid.getStorageService().addGlobalStorageProvider(router);
         });
+    }
+
+    /** Whether every job of {@code consumer} the ledger watches has ended, and none may still run out of sight. */
+    private boolean jobsEnded(CraftingReturnLedger ledger, NetworkId consumer) {
+        var state = jobs(ledger, consumer);
+        return !state.outOfSight() && state.finished();
+    }
+
+    /**
+     * The consumer whose CPU pushed last, through a projection, to the real provider of {@code executing} that
+     * {@code source} names, as AE2's pattern provider names itself when it hands its returns to its network; null when
+     * {@code source} is not such a provider or no consumer pushed to it.
+     */
+    private @Nullable NetworkId pusher(IGrid executing, IActionSource source) {
+        var node = source.machine().map(IActionHost::getActionableNode).orElse(null);
+        if (node == null || node.getGrid() != executing) return null;
+        var provider = node.getService(ICraftingProvider.class);
+        if (provider == null) return null;
+        NetworkId consumer = null;
+        long latest = 0;
+        for (var entry : projected.entrySet()) {
+            if (entry.getValue().provider() != executing) continue;
+            var projection = entry.getValue().projections().get(provider);
+            if (projection != null && projection.lastPush() > latest) {
+                latest = projection.lastPush();
+                consumer = entry.getKey().consumer();
+            }
+        }
+        return consumer;
     }
 
     /** Whether {@code first} and {@code second} are joined through Federation Domains now. */

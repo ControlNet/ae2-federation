@@ -82,10 +82,12 @@ public final class ReturnReentryGameTests {
         try {
             var type = Class.forName("space.controlnet.ae2federation.crafting.projection.CraftingReturnRouter");
             var constructor = type.getDeclaredConstructor(NetworkId.class, IGrid.class, CraftingReturnLedger.class, Function.class,
-                    space.controlnet.ae2federation.observability.statistics.FederationStatistics.class);
+                    java.util.function.Predicate.class, Function.class, space.controlnet.ae2federation.observability.statistics.FederationStatistics.class);
             constructor.setAccessible(true);
             return (IStorageProvider) constructor.newInstance(fixture.providerNetwork(), fixture.providerGrid(), ledger,
-                    (Function<NetworkId, IGrid>) ignored -> null, space.controlnet.ae2federation.observability.LevelObservabilityService.get(helper.getLevel()).statistics());
+                    (Function<NetworkId, IGrid>) ignored -> null,
+                    (java.util.function.Predicate<NetworkId>) ignored -> false,
+                    (Function<appeng.api.networking.security.IActionSource, NetworkId>) ignored -> null, space.controlnet.ae2federation.observability.LevelObservabilityService.get(helper.getLevel()).statistics());
         } catch (ReflectiveOperationException failure) { throw new IllegalStateException(failure); }
     }
 

@@ -88,6 +88,8 @@ public final class PatternProjectionFixture implements AutoCloseable {
     /** South of the consumer's ME chest and north of the provider's: each touches only its own network. */
     private static final BlockPos CONSUMER_FLUID_CHEST = BASE.south(2);
     private static final BlockPos PROVIDER_FLUID_CHEST = BASE.north(3);
+    /** East of the processing provider and north of the assembler's: touches only the provider network. */
+    private static final BlockPos PROVIDER_CPU = BASE.east(2).north(2);
     private boolean fluidCells;
     private boolean bridgePlaced;
     /** The Bridge part is removed ({@link #disconnect}) and not placed again yet. */
@@ -410,6 +412,40 @@ public final class PatternProjectionFixture implements AutoCloseable {
         return consumerService().submitJob(plan, null, null, true, IActionSource.empty()).successful();
     }
 
+    /** Puts a 1k crafting storage on the provider network, so it can run a job of its own. */
+    public void placeProviderCpu() {
+        helper.setBlock(PROVIDER_CPU, AEBlocks.CRAFTING_STORAGE_1K.block());
+        helper.<CraftingBlockEntity>getBlockEntity(PROVIDER_CPU).getMainNode()
+                .loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", providerNetwork()));
+    }
+
+    /** Plans {@code amount} of {@code what} on the provider network's own crafting service, as its terminal does. */
+    public Future<ICraftingPlan> planOnProvider(AEKey what, long amount) {
+        var node = bridge.providerChest().getMainNode().getNode();
+        ICraftingSimulationRequester requester = new ICraftingSimulationRequester() {
+            @Override
+            public IActionSource getActionSource() {
+                return IActionSource.empty();
+            }
+
+            @Override
+            public appeng.api.networking.IGridNode getGridNode() {
+                return node;
+            }
+        };
+        return providerGrid().getCraftingService().beginCraftingCalculation(helper.getLevel(), requester, what, amount,
+                CalculationStrategy.REPORT_MISSING_ITEMS);
+    }
+
+    public boolean submitOnProvider(ICraftingPlan plan) {
+        return providerGrid().getCraftingService().submitJob(plan, null, null, true, IActionSource.empty())
+                .successful();
+    }
+
+    public long busyProviderCpus() {
+        return providerGrid().getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy()).count();
+    }
+
     public long busyConsumerCpus() {
         return consumerService().getCpus().stream().filter(cpu -> cpu.isBusy()).count();
     }
@@ -440,6 +476,28 @@ public final class PatternProjectionFixture implements AutoCloseable {
         chest.clearContent();
         return providerGrid().getStorageService().getInventory().insert(output, amount, Actionable.MODULATE,
                 IActionSource.empty());
+    }
+
+    /**
+     * Runs the machine through the processing provider: empties it, and puts {@code amount} of {@code output} into the
+     * provider's return inventory, as a machine ejecting into the provider does. AE2's provider then hands it to its
+     * network with itself as the source.
+     */
+    public void ejectIntoProvider(AEKey output, long amount) {
+        helper.<ChestBlockEntity>getBlockEntity(machinePos).clearContent();
+        helper.assertValueEqual(processingProvider().getLogic().getReturnInv().insert(output, amount,
+                Actionable.MODULATE, IActionSource.empty()), amount, "The provider's return inventory must take it");
+    }
+
+    /** What the processing provider's return inventory still holds of {@code what}; it cannot be extracted from. */
+    public long inProviderReturns(AEKey what) {
+        var returns = processingProvider().getLogic().getReturnInv();
+        long amount = 0;
+        for (int slot = 0; slot < returns.size(); slot++) {
+            var stack = returns.getStack(slot);
+            if (stack != null && stack.what().equals(what)) amount += stack.amount();
+        }
+        return amount;
     }
 
     public void putInConsumer(AEKey what, long amount) {

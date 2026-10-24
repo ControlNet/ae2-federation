@@ -95,6 +95,15 @@ switches the two rules separately, and loading a save adds no rule.
     no invented job-to-output association. Unknown lifecycles conservatively retain debt and may require manual
     recovery from the executing network's own storage after cancellation. `/ae2federation returns list` exposes owed,
     held, transit, and unknown-CPU state to operators. No Storage rule is required for automatic return.
+  - An arrival owed to a consumer whose observed jobs have all ended goes straight into that consumer's storage at
+    the router, so the executing network needs no storage of its own for late outputs; what the consumer cannot take
+    is held as before, or stays in the machine's provider when the executing network cannot store it either.
+  - An arrival beyond every debt, such as a byproduct no pattern lists, goes to the storage of the consumer whose CPU
+    pushed last, through a projection, to the provider that returns it, as if that provider were on the consumer's
+    network. The provider is read from the source AE2's pattern provider gives its returns (a `MachineSource` whose
+    node offers that `ICraftingProvider`). Only an executing network with no crafting CPU does this: AE2 ends a job
+    when its final output reaches the CPU but lets the output go on into storage, so on a network with CPUs the
+    router cannot tell a finished native job's output from a byproduct, and such networks keep what is not owed.
   - When native cable joins P and C into one AE2 Grid (a Bridge part removed, a cable placed between them), their
     identities are a pending merge: Federation sees neither, withdraws the projections and unmounts the router, and
     AE2's `CraftingServiceStorage`, mounted first at `Integer.MAX_VALUE`, hands P's output straight to the waiting CPUs

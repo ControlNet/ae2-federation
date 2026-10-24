@@ -111,7 +111,7 @@ public final class ReturnCoverageGameTests {
 
     /**
      * One pattern makes flint and a bucket of water. The job ends with its flint while a bucket of water is still out;
-     * that bucket arrives afterwards, is held on the provider network and handed to the consumer's storage.
+     * that bucket arrives afterwards and, as no job waits for it any more, goes straight into the consumer's storage.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
             required = true, timeoutTicks = 1000)
@@ -143,9 +143,10 @@ public final class ReturnCoverageGameTests {
                     helper.assertValueEqual(fixture.busyConsumerCpus(), 0L, "The job ends with its flint");
                     helper.assertValueEqual(fixture.owed(water), bucket, "The job's end leaves the second bucket owed");
                     helper.assertValueEqual(fixture.runMachine(water, bucket), bucket, "Processor returns the late bucket");
-                    helper.assertValueEqual(fixture.heldForConsumer(water), bucket, "The late bucket is held for the consumer");
-                    helper.assertValueEqual(fixture.held(fixture.providerFluids(), water), bucket,
-                            "The late bucket waits in the provider's fluid cell");
+                    helper.assertValueEqual(fixture.heldForConsumer(water), 0L,
+                            "The late bucket is not held: the job has ended");
+                    helper.assertValueEqual(fixture.held(fixture.providerFluids(), water), 0L,
+                            "The late bucket goes straight to the consumer, not into the provider's fluid cell");
                 })
                 .thenIdle(25)
                 .thenExecute(() -> {
@@ -191,8 +192,8 @@ public final class ReturnCoverageGameTests {
                     helper.assertValueEqual(fixture.owed(lava), 2 * bucket, "Cancellation preserves undelivered output");
                     helper.assertValueEqual(fixture.runMachine(lava, 2 * bucket), 2 * bucket,
                             "Processor releases its remaining two buckets");
-                    helper.assertValueEqual(fixture.heldForConsumer(lava), 2 * bucket,
-                            "The late buckets are held for the cancelled consumer");
+                    helper.assertValueEqual(fixture.heldForConsumer(lava), 0L,
+                            "The late buckets go straight to the cancelled consumer's storage, not held");
                 })
                 .thenIdle(25)
                 .thenExecute(() -> {

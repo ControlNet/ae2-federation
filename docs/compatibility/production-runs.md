@@ -42,7 +42,7 @@ Every profile runs the `core` group:
 | `processingThreeEndpoints` | One Federation Pattern Provider runs processing jobs through three Endpoints with Blocking mode. |
 | `endpointSharedEnergy` | A claimed Endpoint powers its subnet from the Provider's network. |
 | `remoteCraftingPlacedBlocks`, `remoteProcessingPlacedBlocks` | The crafting scene with AE2's own placed blocks. This is the control for each addon's variant. |
-| `remoteProcessingCancel` | The consumer cancels a projected job after the push: the late output stays on the provider network and nothing stays owed. This is the control for each addon CPU's variant. |
+| `remoteProcessingCancel` | The consumer cancels a projected job after the push: the late output reaches the consumer's storage, the provider network keeps none, and nothing stays owed. This is the control for each addon CPU's variant. |
 | `remoteProcessingDisconnected` | The Bridge is removed after the push: the pattern leaves the consumer, the output stays on the provider network, and the consumer's job keeps waiting with its debt still owed. This is the control for each addon CPU's variant. |
 | `endpointLocalFurnace`, `endpointLocalPatternProviderPart` | Another network's AE2 Pattern Provider, as a block or as a cable part, touches an Endpoint's Federation face and runs the furnace job in Local mode. This is the control for each addon provider's variant. |
 | `patternAccessTerminal` | After a job through an Endpoint, AE2's Pattern Access Terminal lists the Federation Pattern Provider once, with its pattern, and none of its lanes. |

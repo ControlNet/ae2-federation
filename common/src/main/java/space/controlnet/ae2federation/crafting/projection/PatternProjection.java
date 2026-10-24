@@ -48,6 +48,8 @@ final class PatternProjection implements ICraftingProvider {
     private List<IPatternDetails> patterns;
     private boolean live = true;
     private int priority;
+    /** The {@link #markPushed} sequence of its last accepted push; 0 before any. */
+    private long lastPush;
 
     PatternProjection(ICraftingProvider real, PushListener listener) {
         this.real = Objects.requireNonNull(real);
@@ -134,6 +136,15 @@ final class PatternProjection implements ICraftingProvider {
 
     ICraftingProvider real() {
         return real;
+    }
+
+    /** Records an accepted push as the {@code sequence}th through any projection, so a provider's latest pusher shows. */
+    void markPushed(long sequence) {
+        lastPush = sequence;
+    }
+
+    long lastPush() {
+        return lastPush;
     }
 
     /**
