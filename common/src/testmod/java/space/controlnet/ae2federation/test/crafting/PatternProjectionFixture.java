@@ -85,6 +85,10 @@ public final class PatternProjectionFixture implements AutoCloseable {
     private final BlockPos machinePos = BASE.east().north(3);
     /** Free, and beside both the consumer's CPU (south) and the provider's blue cable (east). */
     private static final BlockPos JOINING_CABLE = BASE.west().north();
+    /** South of the consumer's ME chest and north of the provider's: each touches only its own network. */
+    private static final BlockPos CONSUMER_FLUID_CHEST = BASE.south(2);
+    private static final BlockPos PROVIDER_FLUID_CHEST = BASE.north(3);
+    private boolean fluidCells;
     private boolean bridgePlaced;
     private boolean consumerCpuPlaced;
     private boolean processingPlaced;
@@ -165,6 +169,36 @@ public final class PatternProjectionFixture implements AutoCloseable {
      * The consumer network's id, read once it is confirmed and kept: while part of a Grid is unloaded its identity
      * may not be confirmed, but the network is the same.
      */
+    /**
+     * Gives each network a second ME chest with a 1k fluid cell, placed in the same tick as the rest of the fixture:
+     * the consumer then stores fluids its jobs make, and the provider holds fluids it cannot return yet.
+     */
+    public PatternProjectionFixture withFluidCells() {
+        for (var position : List.of(CONSUMER_FLUID_CHEST, PROVIDER_FLUID_CHEST)) {
+            helper.setBlock(position, AEBlocks.ME_CHEST.block());
+            helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(position)
+                    .setCell(appeng.core.definitions.AEItems.FLUID_CELL_1K.stack());
+        }
+        fluidCells = true;
+        return this;
+    }
+
+    /** The consumer's fluid cell from {@link #withFluidCells()}. */
+    public MEStorage consumerFluids() {
+        return fluidCell(CONSUMER_FLUID_CHEST);
+    }
+
+    /** The provider's fluid cell from {@link #withFluidCells()}. */
+    public MEStorage providerFluids() {
+        return fluidCell(PROVIDER_FLUID_CHEST);
+    }
+
+    private MEStorage fluidCell(BlockPos position) {
+        if (!fluidCells) throw new IllegalStateException("This fixture has no fluid cells");
+        return Objects.requireNonNull(helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(position)
+                .getOriginalCellInventory(0));
+    }
+
     public NetworkId consumerNetwork() {
         if (consumerId == null) consumerId = bridge.mainNetwork();
         return consumerId;
@@ -375,9 +409,14 @@ public final class PatternProjectionFixture implements AutoCloseable {
 
     /** Runs the machine: empties it, and puts {@code outputs} stone into the provider network as its output. */
     public long runMachine(long outputs) {
+        return runMachine(stone(), outputs);
+    }
+
+    /** Runs the machine for another pattern: empties it, and puts {@code amount} of {@code output} into the network. */
+    public long runMachine(AEKey output, long amount) {
         var chest = helper.<ChestBlockEntity>getBlockEntity(machinePos);
         chest.clearContent();
-        return providerGrid().getStorageService().getInventory().insert(stone(), outputs, Actionable.MODULATE,
+        return providerGrid().getStorageService().getInventory().insert(output, amount, Actionable.MODULATE,
                 IActionSource.empty());
     }
 

@@ -43,7 +43,8 @@ switches the two rules separately, and loading a save adds no rule.
   refuses pushes before it is removed, so nothing is pushed through it afterwards.
 - **Returns.** An accepted push records what P now owes C in `CraftingReturnLedger`: the pattern's outputs, plus the
   container items its inputs leave behind, such as empty buckets. The ledger is saved data, so a debt survives a
-  reload.
+  reload. Every `AEKey` type takes the same path: fluid outputs (vanilla GameTests) and Applied Mekanistics chemical
+  outputs (the `mekanism` compatibility profile) are routed, held, handed back and settled as items are.
   - P's `CraftingReturnRouter` is mounted on P's storage at `Integer.MAX_VALUE` and is preferred only for owed keys. It
     lists and extracts real saved transit stock. It does not list debt or `held` as additional inventory.
   - It hands back at most `min(inserted, owed, C.getRequestedAmount)` into C's storage, where AE2's
@@ -158,7 +159,9 @@ retired within 25 idle ticks), partial output followed by cancellation, cancelle
 materials, manual return, cancel, revoked, disconnected,
 reload, without storage, chain, chain blocked, mutual, container return (three glass bottles back from a three-push
 sugar job), container reuse (one bottle filled and reused for six sugar), container push (water as a fluid, a water
-bucket and a snowball substitute match AE2's own container expectation; a refused push owes nothing), CPU out of sight
+bucket and a snowball substitute match AE2's own container expectation; a refused push owes nothing), fluid return
+(lava as the output, flint with a late bucket of water, lava after a cancel, lava held while the Bridge is removed),
+CPU out of sight
 (a CPU in another dimension unloaded mid-job), CPU out of sight beside another job (a second job next to a cancelled
 one), CPU late after restart (the CPU loaded long after a restart), merged mid-job (the Grids joined by removing only
 the Bridge part, or by a placed cable, then split; later provider stone stays there) and hand-back faults (a refusing

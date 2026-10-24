@@ -69,6 +69,32 @@ public final class AppliedMekanisticsCompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /**
+     * The same oxidizer under a Crafting rule alone, with a chemical cell on the consumer too: the provider's return
+     * router hands the carbon to the consumer's waiting CPU, which stores it on the consumer. Nothing stays owed, held,
+     * in transit or on the provider network, and the job retires from the return ledger.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void oxidizerChemicalProjectedReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("ae2:1k_crafting_storage"),
+                new ProviderOxidizer(AddonStorageScene.key(helper, "appmek:chemical", "mekanism:carbon")))
+                .craftingOnly().outputStoredOnConsumer();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * As {@link #oxidizerChemicalProjectedReturn}, with the consumer's job cancelled once the charcoal is in the
+     * oxidizer: the carbon it ejects afterwards is held on the provider network and handed to the consumer's storage,
+     * and only that delivery settles the debt.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void oxidizerChemicalCancelledReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("ae2:1k_crafting_storage"),
+                new ProviderOxidizer(AddonStorageScene.key(helper, "appmek:chemical", "mekanism:carbon")))
+                .requesting(1).craftingOnly().outputStoredOnConsumer().cancellingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
     /** An oxidizer east of the provider: charcoal in and carbon out on its west side, energy from its east. */
     private record ProviderOxidizer(AEKey carbon) implements AddonCraftingScene.Machine {
         @Override

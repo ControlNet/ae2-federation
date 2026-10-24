@@ -54,6 +54,8 @@ final class AddonCraftingScene {
     static final BlockPos FIRST_CPU = BASE.west();
     /** The provider network's last cable. */
     static final BlockPos PROVIDER_CABLE = PROVIDER.west();
+    /** South of the consumer's ME Chest, touching only the consumer network. */
+    private static final BlockPos CONSUMER_OUTPUT_CHEST = BASE.south(2);
     private static final AEItemKey PLANKS = AEItemKey.of(Items.OAK_PLANKS);
     private static final AEItemKey STICKS = AEItemKey.of(Items.STICK);
     private static final AEItemKey COBBLESTONE = AEItemKey.of(Items.COBBLESTONE);
@@ -76,6 +78,7 @@ final class AddonCraftingScene {
     private boolean cpuOnCable;
     private boolean providerWithoutStorage;
     private boolean cancelAfterPush;
+    private boolean outputOnConsumer;
     private boolean lateByproduct;
     private boolean craftingOnly;
     private boolean disconnectAfterPush;
@@ -348,12 +351,26 @@ final class AddonCraftingScene {
     }
 
     /**
-     * Cancels the consumer's job once the provider has pushed every input into the chest machine, then runs the
-     * machine: the late output must reach the consumer and only actual delivery settles the debt.
+     * Cancels the consumer's job once the provider has pushed every input into the machine, then runs the machine: the
+     * late output must reach the consumer and only actual delivery settles the debt. A real machine must take longer
+     * than a tick, so the job is still waiting when every input has gone out.
      */
     AddonCraftingScene cancellingAfterPush() {
-        if (!(machine instanceof ChestMachine)) throw new IllegalStateException("Only the chest machine can wait");
+        if (machine == null) throw new IllegalStateException("Only a processing machine can wait");
         cancelAfterPush = true;
+        return this;
+    }
+
+    /**
+     * The consumer gets an ME Chest of its own with the machine's output cell, so what it makes is stored on the
+     * consumer even when an item cell cannot hold it. The end then checks the return ledger as well: nothing owed, held
+     * or in transit, the job retired, and none of the output left on the provider network.
+     */
+    AddonCraftingScene outputStoredOnConsumer() {
+        if (machine == null || machine.outputCell() == null) {
+            throw new IllegalStateException("Only a machine with an output cell needs one on the consumer");
+        }
+        outputOnConsumer = true;
         return this;
     }
 
@@ -398,6 +415,11 @@ final class AddonCraftingScene {
                 if (machine != null && machine.outputCell() != null) {
                     helper.setBlock(outputChestPos, appeng.core.definitions.AEBlocks.ME_CHEST.block());
                     helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(outputChestPos)
+                            .setCell(new ItemStack(item(machine.outputCell())));
+                }
+                if (outputOnConsumer) {
+                    helper.setBlock(CONSUMER_OUTPUT_CHEST, appeng.core.definitions.AEBlocks.ME_CHEST.block());
+                    helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(CONSUMER_OUTPUT_CHEST)
                             .setCell(new ItemStack(item(machine.outputCell())));
                 }
                 if (providerWithoutStorage) bridge.providerChest().setCell(ItemStack.EMPTY);
@@ -500,8 +522,13 @@ final class AddonCraftingScene {
                     stage = 9;
                     helper.fail("Running the job");
                 }
-                helper.assertValueEqual(inChest(assemblerPos, Items.COBBLESTONE), jobs,
-                        "Waiting for the provider to push every input");
+                if (machine instanceof ChestMachine) {
+                    helper.assertValueEqual(inChest(assemblerPos, Items.COBBLESTONE), jobs,
+                            "Waiting for the provider to push every input");
+                } else {
+                    // A real machine leaves no count to read; every accepted push is owed in the ledger.
+                    helper.assertValueEqual(owed(), requested(), "Waiting for the provider to push every input");
+                }
                 var busy = consumerGrid().getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy()).toList();
                 helper.assertValueEqual(busy.size(), 1, "The consumer's CPU must be running the job");
                 if (disconnectAfterPush) {
@@ -533,8 +560,7 @@ final class AddonCraftingScene {
             case 7 -> {
                 helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
                         "The consumer's job must be cancelled");
-                helper.assertValueEqual(CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(),
-                        bridge.mainNetwork(), output()), jobs, "Cancellation preserves the dispatched output responsibility");
+                helper.assertValueEqual(owed(), requested(), "Cancellation preserves the dispatched output responsibility");
                 machine.collect(helper, assemblerPos, bridge.outerGrid().getStorageService().getInventory());
                 stage = 8;
                 helper.fail("Ran the machine after the cancel");
@@ -544,8 +570,10 @@ final class AddonCraftingScene {
                         bridge.mainNetwork(), output()), 0L, "Actual late delivery settles cancellation responsibility");
                 helper.assertValueEqual(held(providerChest(), output()), 0L,
                         "The provider retains none of the cancelled consumer's output");
-                helper.assertValueEqual(held(consumerChest(), output()), jobs, "Late output reaches the cancelled consumer");
+                helper.assertValueEqual(held(consumerOutput(), output()), requested(),
+                        "Late output reaches the cancelled consumer");
                 helper.assertValueEqual(held(consumerChest(), input()), 0L, "The pushed inputs are not given back twice");
+                if (outputOnConsumer) assertReturnsSettled();
             }
             case 17 -> {
                 helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
@@ -579,9 +607,15 @@ final class AddonCraftingScene {
                             "The consumer's own storage must hold everything made");
                 }
                 var made = held(consumerChest(), output()) + held(providerChest(), output())
-                        + (processing && machine.outputCell() != null ? held(outputChest(), output()) : 0);
+                        + (processing && machine.outputCell() != null ? held(outputChest(), output()) : 0)
+                        + (outputOnConsumer ? held(consumerOutput(), output()) : 0);
                 helper.assertValueEqual(made, requested() * tookOrders.size(),
                         "The job must store exactly what was requested");
+                if (outputOnConsumer) {
+                    helper.assertValueEqual(held(consumerOutput(), output()), requested() * tookOrders.size(),
+                            "Everything made is stored on the consumer");
+                    assertReturnsSettled();
+                }
                 for (var input : inputs().keySet()) {
                     helper.assertValueEqual(held(consumerChest(), input), 0L, "The consumer's inputs were used");
                 }
@@ -701,6 +735,38 @@ final class AddonCraftingScene {
             cpu.getClass().getMethod("cancelJob").invoke(cpu);
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException(cpu.getClass().getName() + " cannot cancel its job", exception);
+        }
+    }
+
+    /** Where the consumer stores the output: its own output chest, else its ME Chest. */
+    private MEStorage consumerOutput() {
+        if (!outputOnConsumer) return consumerChest();
+        return Objects.requireNonNull(helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(
+                CONSUMER_OUTPUT_CHEST).getOriginalCellInventory(0));
+    }
+
+    /** What the provider network still owes the consumer of the output. */
+    private long owed() {
+        return CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(), bridge.mainNetwork(), output());
+    }
+
+    /**
+     * The return is complete: nothing owed, held or in transit, the consumer's watched jobs retired, its CPUs idle and
+     * empty, and none of the output anywhere on the provider network.
+     */
+    private void assertReturnsSettled() {
+        var ledger = CraftingReturnLedger.get(helper.getLevel());
+        var factory = bridge.outerNetwork();
+        var consumer = bridge.mainNetwork();
+        helper.assertValueEqual(owed(), 0L, "Delivery settles the output's debt");
+        helper.assertValueEqual(ledger.held(factory, consumer, output()), 0L, "Nothing is held for the consumer");
+        helper.assertValueEqual(ledger.transit(factory, output()), 0L, "Nothing is in transit");
+        helper.assertValueEqual(held(bridge.outerGrid().getStorageService().getInventory(), output()), 0L,
+                "The provider network keeps none of the output");
+        helper.assertTrue(ledger.jobs(consumer).isEmpty(), "Waiting for the consumer's job to retire: " + ledger.jobs(consumer));
+        for (var cpu : consumerGrid().getCraftingService().getCpus()) {
+            helper.assertTrue(!cpu.isBusy() && (!(cpu instanceof appeng.me.cluster.implementations.CraftingCPUCluster
+                    cluster) || cluster.craftingLogic.getInventory().list.isEmpty()), "The consumer's CPU is idle and empty");
         }
     }
 
