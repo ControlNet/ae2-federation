@@ -28,6 +28,10 @@
     "appflux-mekanism",
     "appflux-enderio",
     "appflux-industrialforegoing",
-    "appliedenhancements"
+    "appliedenhancements",
+    "computationsystemmergedfluidreturn",
+    "quantumcoremergedfluidreturn",
+    "mentalmathunitmergedfluidreturn",
+    "nativecpumergedfluidreturn"
   ]
 }

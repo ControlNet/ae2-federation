@@ -12,6 +12,8 @@
   ],
   "tests": [
     "core",
-    "advanced-ae"
+    "advanced-ae",
+    "quantumcoremergedfluidreturn",
+    "nativecpumergedfluidreturn"
   ]
 }

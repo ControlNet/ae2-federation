@@ -39,8 +39,8 @@ final class CompatTestClasses {
         groups.put("neoecoae", NeoEcoCompatGameTests.class);
         groups.put("neoecoprototype", NeoEcoPrototypeCompatGameTests.class);
         groups.put("useless-mod", UselessModCompatGameTests.class);
-        // Known gap: never in a profile's list, run by test id (see the class).
-        groups.put("addon-cpu-merged-probes", AddonCpuMergedGridProbes.class);
+        // Spans several addons: each profile names its addon's tests by id (see the class).
+        groups.put("addon-cpu-merged", AddonCpuMergedGridGameTests.class);
         return groups;
     }
 }

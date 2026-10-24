@@ -46,7 +46,8 @@ switches the two rules separately, and loading a save adds no rule.
   reload. Every `AEKey` type takes the same path: fluid outputs (vanilla GameTests) and Applied Mekanistics chemical
   outputs (the `mekanism` compatibility profile) are routed, held, handed back and settled as items are, including
   owed, held and transit amounts read back after a restart, chemicals held while the Bridge is removed, and fluid
-  outputs of jobs on Neo ECO, Advanced AE and Lightning Tech CPUs.
+  outputs of jobs on Neo ECO, Advanced AE and Lightning Tech CPUs, also when the networks are joined into one Grid
+  mid-job (`AddonCpuMergedGridGameTests`, in each addon's profile).
   - P's `CraftingReturnRouter` is mounted on P's storage at `Integer.MAX_VALUE` and is preferred only for owed keys. It
     lists and extracts real saved transit stock. It does not list debt or `held` as additional inventory.
   - It hands back at most `min(inserted, owed, C.getRequestedAmount)` into C's storage, where AE2's
@@ -96,15 +97,38 @@ switches the two rules separately, and loading a save adds no rule.
     held, transit, and unknown-CPU state to operators. No Storage rule is required for automatic return.
   - When native cable joins P and C into one AE2 Grid (a Bridge part removed, a cable placed between them), their
     identities are a pending merge: Federation sees neither, withdraws the projections and unmounts the router, and
-    AE2's `CraftingServiceStorage`, mounted first at `Integer.MAX_VALUE`, hands P's output straight to C's waiting CPU.
-    That receipt is the delivery. A small AE2 19.2.17 hook at the head of `CraftingCpuLogic.insert` reads what a
-    native CPU takes (`min(amount, getWaitingFor)`); while the CPU's Grid also carries P's nodes, it settles that much
-    of what P owes the CPU's network, oldest debt first. The public CPU listener cannot do this: it names only a key,
-    and a finishing job clears its remaining waits with the same notification. Independent addon CPUs are not
-    observed: Neo ECO, Advanced AE and Lightning Tech CPUs take the output in the joined Grid, the debt stays after
-    the split, and the next unit P stores is claimed for the finished job. Their logic classes offer the same key-only
-    listener and no receipt event; `AddonCpuMergedGridProbes` reproduces this outside every profile's test list. An
-    output that arrives in the joined Grid when no CPU waits for it goes to shared storage and keeps its debt.
+    AE2's `CraftingServiceStorage`, mounted first at `Integer.MAX_VALUE`, hands P's output straight to the waiting CPUs
+    through `CraftingService.insertIntoCpus`. That receipt is the delivery. Every addon that runs its own CPUs feeds
+    them from that method and adds their waits to `getRequestedAmount`: Neo ECO, Advanced AE, Lightning Tech (through
+    Thunderbolt) and Data Energistics' Trinity Data Core. So one AE2 19.2.17 `@WrapMethod` around `insertIntoCpus`,
+    outermost by its mixin priority, sees AE2's and the addons' CPUs alike. For a MODULATE insert while the Grid carries
+    both a network that owes the key and the network it owes, it reads how much the CPUs wait for before and after the
+    call: the larger of `getRequestedAmount` and the sum over `getCpus()` of the lifecycle adapters' exact waits. The
+    second count is needed because one addon's hook can cut the others short: Neo ECO 21.2.9's cancellable return inject
+    on `getRequestedAmount` returns before Advanced AE's and Thunderbolt's run, so in a pack with Neo ECO (the NAST
+    pack) the public total misses Advanced AE and Lightning Tech CPUs. With `owed` what such debtors owe such consumers
+    of the key, it settles `min(owed, max(0, taken - max(0, before - owed)))`, oldest debt first, where `taken =
+    min(amount, before - after)`. It uses the fall in the waits, not the method's result: AE2 counts a final output as
+    received even when the job has no requester to take it, as a terminal job has, and then returns 0 for it. The cap at
+    `amount` keeps a finishing job's cleared surplus waits out of `taken`. The public CPU listener cannot do this
+    either: it names only a key, and a finishing job clears its remaining waits with the same notification. Outside a
+    joined Grid no Grid carries both ends of a debt, so the router stays the only path that settles; a hand-back into
+    C's storage passes C's `insertIntoCpus` and settles nothing there.
+  - Limits of the joined-Grid receipt. AE2 does not say which job took an output, so other waits for the same key count
+    first; when the projected job took it anyway, its debt stays, and after the split the next unit P stores is handed
+    to the finished job. One output can end the wait of every requester-less job waiting for it as its final output;
+    `taken` is capped at the amount delivered, so that counts once, again for other waits first. A debt whose job has
+    already ended (cancelled with outputs outstanding) is still counted in `owed`, so another job's receipt of that key
+    in the joined Grid can settle it. A saturated total (`Long.MAX_VALUE`) settles nothing. A wait that a CPU ends for
+    another key than the one delivered (AE2 Utility's fuzzy matching, Useless Mod's and Lightning Tech's claims for
+    other expected outputs) does not show in the delivered key's waits and settles nothing; neither does a CPU missing
+    from both counts. Two addon paths reach a CPU without `insertIntoCpus`: Neo ECO's `insertIntoCpuForJob`, used only
+    for a batch an ECO CPU pushed straight to an ECO parallel provider, never through a projection; and Data
+    Energistics' Trinity pattern cores, which route their outputs into their own Data Core's CPUs
+    (`insertExactIntoCpus`), not covered when P's provider is a Trinity pattern core. Lightning Tech's Tianshu
+    supercomputer plans only from the Matrix controllers on its own Grid and runs on an escrow of the inputs, so it
+    never pushes through a projection and never waits for an output. An output that arrives in the joined Grid when no
+    CPU waits for it goes to shared storage and keeps its debt.
   - Genuine native CPU removal ends its native job but does not erase machine return ownership. Outputs from already
     dispatched inputs still belong to the consumer, including after cancellation; they no longer depend on sharing
     the factory's inventory. If the consumer itself is permanently removed, responsibility remains diagnostic state;
@@ -169,7 +193,9 @@ held and transit lava across a restart),
 CPU out of sight
 (a CPU in another dimension unloaded mid-job), CPU out of sight beside another job (a second job next to a cancelled
 one), CPU late after restart (the CPU loaded long after a restart), merged mid-job (the Grids joined by removing only
-the Bridge part, or by a placed cable, then split; later provider stone or lava stays there) and hand-back faults (a
+the Bridge part, or by a placed cable, then split; later provider stone or lava stays there), merged with mixed demand
+(a native job on the consumer's other CPU waits for the same stone; the one stone delivered while merged settles
+nothing, and after the split each job gets its stone) and hand-back faults (a
 refusing target, a target whose real insert takes less than it simulated, an extract-only source and a full executing
 network).
 Cross-dimension crafting has its own `cross-dimension.*` GameTests: a nether Provider projected to an overworld

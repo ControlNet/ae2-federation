@@ -139,15 +139,15 @@ public final class CraftingReturnLedger extends SavedData {
         return amounts;
     }
 
-    /** The executing networks that owe {@code consumer} {@code key} and how much each, in the order they first owed. */
-    Map<NetworkId, Long> debtors(NetworkId consumer, AEKey key) {
-        var amounts = new LinkedHashMap<NetworkId, Long>();
+    /** Every debt of {@code key}, by executing network in the order it first owed, then by consumer in push order. */
+    List<Owed> debts(AEKey key) {
+        var debts = new java.util.ArrayList<Owed>();
         owed.forEach((executing, keys) -> {
             var consumers = keys.get(key);
-            var debt = consumers == null ? null : consumers.get(consumer);
-            if (debt != null) amounts.put(executing, debt.owed);
+            if (consumers != null) consumers.forEach((consumer, debt) ->
+                    debts.add(new Owed(executing, consumer, key, debt.owed, debt.held)));
         });
-        return amounts;
+        return debts;
     }
 
     /**

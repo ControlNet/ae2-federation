@@ -4,10 +4,10 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.ICraftingLink;
 import appeng.api.networking.crafting.ICraftingProvider;
+import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.crafting.CraftingBlockEntity;
-import appeng.me.cluster.implementations.CraftingCPUCluster;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,7 +29,6 @@ import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.IdentityEpoch;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityRegistry;
-import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.BindingDiagnostic;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
@@ -143,31 +142,71 @@ public final class CraftingProjectionService implements AutoCloseable {
     }
 
     /**
-     * Called as a native CPU takes {@code amount} of {@code what} that it waits for. While the CPU's Grid also carries
-     * nodes of a network that owes the CPU's network {@code what}, the two networks are one AE2 Grid: their identities
-     * are a pending merge, so Federation sees neither and routes nothing, and AE2's own crafting storage hands the
-     * machine's output straight to the CPU. That is the delivery of what is owed, and the only place it can be seen.
+     * How much of {@code what} networks that {@code grid} carries owe other networks it carries. A Grid carries two
+     * networks only while native cable joins them: their identities are a pending merge, so Federation sees neither and
+     * routes nothing, and AE2's own crafting storage hands a machine's output straight to the waiting CPUs. Zero at
+     * once while nothing is owed.
      */
-    public static synchronized void cpuReceived(CraftingCPUCluster cpu, AEKey what, long amount) {
-        if (!(cpu.getLevel() instanceof ServerLevel cpuLevel)) return;
-        var service = SERVICES.get(cpuLevel.getServer());
-        if (service != null) service.received(cpu, what, amount);
+    public static synchronized long owedWithin(IGrid grid, AEKey what) {
+        var service = service(grid);
+        return service == null ? 0
+                : service.debtsWithin(grid, what).stream().mapToLong(CraftingReturnLedger.Owed::amount).sum();
     }
 
-    private void received(CraftingCPUCluster cpu, AEKey what, long amount) {
+    /**
+     * Called after {@code grid}'s crafting service handed {@code amount} of {@code what} to its CPUs, which together
+     * waited for {@code before} of it and now wait for {@code after} ({@link #waiting}). In one Grid AE2 does not say which job took the
+     * output: what the debts within the Grid ({@link #owedWithin}) cannot explain counts for other waits first, and only
+     * the rest settles those debts, oldest first. Outside a joined Grid nothing is owed within it, so the return router
+     * stays the only path that settles.
+     */
+    public static synchronized void cpusReceived(IGrid grid, AEKey what, long amount, long before, long after) {
+        var service = service(grid);
+        if (service != null) service.received(grid, what, amount, before, after);
+    }
+
+    /**
+     * What the CPUs of {@code crafting} wait for of {@code what}. Its public total is what the addons that run their
+     * own CPUs extend, but one addon's hook can cut the others short: Neo ECO 21.2.9's cancellable return inject on
+     * {@code getRequestedAmount} returns before Advanced AE's and Thunderbolt's run. So the CPUs it lists are counted
+     * too, with the lifecycle adapters' exact amounts, and the larger count is taken; each count can only miss waits.
+     */
+    public static long waiting(ICraftingService crafting, AEKey what) {
+        long listed = 0;
+        for (var cpu : crafting.getCpus()) {
+            long amount = CraftingCpuLifecycle.waiting(cpu, what);
+            if (amount > 0) listed = listed > Long.MAX_VALUE - amount ? Long.MAX_VALUE : listed + amount;
+        }
+        return Math.max(crafting.getRequestedAmount(what), listed);
+    }
+
+    private static @Nullable CraftingProjectionService service(IGrid grid) {
+        var pivot = grid.getPivot();
+        return pivot == null ? null : SERVICES.get(pivot.getLevel().getServer());
+    }
+
+    private List<CraftingReturnLedger.Owed> debtsWithin(IGrid grid, AEKey what) {
         var ledger = CraftingReturnLedger.get(level);
-        var grid = cpu.getGrid();
-        var node = cpu.getNode();
-        if (!ledger.owesAnything() || grid == null || node == null) return;
-        var consumer = grid.getService(NetworkIdentityService.class).lineage(node).networkId();
+        if (!ledger.owesAnything()) return List.of();
         var claims = NetworkIdentityRegistry.get(level).claimIndex();
-        long left = amount;
-        // Oldest debt first, as the router hands returns out. In one Grid AE2 does not say where the stock came from.
-        for (var debtor : ledger.debtors(consumer, what).entrySet()) {
+        return ledger.debts(what).stream().filter(debt -> claims.carries(grid, debt.executing())
+                && claims.carries(grid, debt.consumer())).toList();
+    }
+
+    private void received(IGrid grid, AEKey what, long amount, long before, long after) {
+        // A saturated total says nothing about how much was taken.
+        if (before == Long.MAX_VALUE) return;
+        // A job that finishes clears what else it waited for, so the waits can fall by more than was delivered.
+        long taken = Math.min(amount, Math.max(0, before - after));
+        if (taken <= 0) return;
+        var debts = debtsWithin(grid, what);
+        long owed = debts.stream().mapToLong(CraftingReturnLedger.Owed::amount).sum();
+        long left = Math.min(owed, Math.max(0, taken - Math.max(0, before - owed)));
+        var ledger = CraftingReturnLedger.get(level);
+        for (var debt : debts) {
             if (left <= 0) break;
-            if (!claims.carries(grid, debtor.getKey())) continue;
-            long delivered = Math.min(left, debtor.getValue());
-            ledger.take(debtor.getKey(), consumer, what, delivered, 0);
+            long delivered = Math.min(left, debt.amount());
+            ledger.take(debt.executing(), debt.consumer(), what, delivered, 0);
             left -= delivered;
         }
     }

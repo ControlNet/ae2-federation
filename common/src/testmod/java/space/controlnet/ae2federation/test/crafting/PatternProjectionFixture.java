@@ -750,6 +750,17 @@ public final class PatternProjectionFixture implements AutoCloseable {
         return consumerService().submitJob(plan, null, cpu, true, IActionSource.empty()).successful();
     }
 
+    /** Submits the plan to {@code cpu} for {@code requester}, as a machine on the consumer network asking for it does. */
+    public boolean submitOn(appeng.api.networking.crafting.ICraftingCPU cpu,
+            appeng.api.networking.crafting.ICraftingRequester requester) {
+        return consumerService().submitJob(plan, requester, cpu, true, IActionSource.empty()).successful();
+    }
+
+    /** A node of the consumer network: its ME chest's. */
+    public appeng.api.networking.IGridNode consumerNode() {
+        return bridge.consumerChest().getMainNode().getNode();
+    }
+
     /** The CPUs the consumer's crafting service lists now. */
     public int visibleConsumerCpus() {
         return consumerService().getCpus().size();

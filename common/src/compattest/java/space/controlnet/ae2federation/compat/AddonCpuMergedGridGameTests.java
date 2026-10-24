@@ -6,16 +6,15 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
- * Known gap, kept out of every profile's test list: an independent addon CPU waits for a projected output while only
- * the Bridge part is removed, so the fluix cable under it joins both networks into one AE2 Grid. The output reaches the
- * addon CPU natively, but only AE2's own {@code CraftingCpuLogic} reports that receipt to Federation, so the debt stays
- * after the split and the next output the provider network stores is claimed for the finished job. Each probe fails
- * until addon CPU receipts are observed; run one by its id with the addon's profile, for example
- * {@code python3 tools/compat_run.py --accept-eula --tests mentalmathunitmergedfluidreturn ae2-lightning-tech}.
+ * An independent addon CPU waits for a projected output while only the Bridge part is removed, so the fluix cable under
+ * it joins both networks into one AE2 Grid. The output reaches the addon CPU natively, through AE2's crafting service,
+ * which each addon extends to feed its own CPUs; Federation reads what all CPUs wait for around that call, so the
+ * receipt settles the debt, and after the split the next output the provider network stores stays its own. The class
+ * spans several addons, so each profile names its addon's test by id, with the AE2 CPU control beside it.
  */
 @PrefixGameTestTemplate(false)
-public final class AddonCpuMergedGridProbes {
-    private AddonCpuMergedGridProbes() {
+public final class AddonCpuMergedGridGameTests {
+    private AddonCpuMergedGridGameTests() {
     }
 
     /** AE2 Lightning Tech's Pigmee Mental Math Unit (profile {@code ae2-lightning-tech}). */
@@ -46,9 +45,7 @@ public final class AddonCpuMergedGridProbes {
         helper.succeedWhen(scene::tick);
     }
 
-    /**
-     * Control: the same scene with AE2's own crafting CPU, whose receipt Federation observes, settles (any profile).
-     */
+    /** Control: the same scene with AE2's own crafting CPU, beside the addon's hooks into the crafting service. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
     public static void nativeCpuMergedFluidReturn(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("ae2:1k_crafting_storage"),

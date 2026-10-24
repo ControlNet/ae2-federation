@@ -59,7 +59,8 @@ python3 tools/compat_run.py --accept-eula --tests oxidizerchemicalprojectedretur
 - Addon CPUs with fluid output: `computationsystemfluidreturn`, `computationsystemfluidcancel` (Neo ECO),
   `quantumcorefluidreturn` (Advanced AE), `mentalmathunitfluidreturn` (Lightning Tech). They use
   `AddonCraftingScene.lavaMachine()` (the hand-run chest machine, a bucket of lava per cobblestone, 1k fluid cell).
-- Gap: merged Grid on an addon CPU. `AddonCpuMergedGridProbes` (group `addon-cpu-merged-probes`, in no profile)
+- Gap (fixed later the same day by `CraftingServiceReceiptMixin`; the class is now `AddonCpuMergedGridGameTests` in each
+  addon profile, see merged-grid-return-debt-2026-10-23.md): merged Grid on an addon CPU. `AddonCpuMergedGridProbes` (group `addon-cpu-merged-probes`, in no profile)
   fails for all three addons the same way: while merged owed 2000, the CPU takes its lava natively; after the split
   the debt is still 2000, the next player bucket stored on the provider is claimed and handed to the finished job
   (consumer ends with 3000, owed 1000). `nativecpumergedfluidreturn` in the same class passes (control).
