@@ -16,7 +16,7 @@ This page appears because Mekanism is installed.
 <ItemLink id="ae2federation:pattern_provider" />; two <ItemLink id="ae2federation:processing_endpoint" />s;
 <ItemLink id="ae2federation:cable" />; a <ItemLink id="mekanism:enrichment_chamber" /> and a
 <ItemLink id="mekanism:energized_smelter" />, each with a charged <ItemLink id="mekanism:basic_energy_cube" />, a
-hopper and a <ItemLink id="ae2:storage_bus" />; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
+hopper and a <ItemLink id="ae2:storage_bus" />.
 
 <GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/ore_line.snbt" />
@@ -31,9 +31,6 @@ hopper and a <ItemLink id="ae2:storage_bus" />; two <ItemLink id="ae2federation:
   </BoxAnnotation>
   <BoxAnnotation color="#5ccd78" min="0 1 0" max="3 4 1">
     Second Endpoint and its subnet: the Energized Smelter smelts the dust into iron ingots
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="6 1 0" max="7 3 1">
-    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

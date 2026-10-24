@@ -19,7 +19,7 @@ item_ids:
 * 接触ME线缆或设备时， 这个面加入那个网络， 不占用频道， 也没有待机耗电；
 * 接触<ItemLink id="ae2federation:cable" />、<ItemLink id="ae2federation:router" />、另一个交换机、联邦样板供应器前面或处理端点前面时， 这个面把联邦域继续向外连接。
 
-一个交换机方块上最多可以汇集六个不同的网络， 它们仍是各自独立的网络。 两个面接同一个网络也可以， 只算一次。 每个交换机方块每tick消耗2 FE（[能量](../mechanics/power.md)）。
+一个交换机方块上最多可以汇集六个不同的网络， 它们仍是各自独立的网络。 两个面接同一个网络也可以， 只算一次。
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/switch_hub.snbt" />

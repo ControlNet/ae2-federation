@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 在主网络上下单铁锭， 让两台各在一个端点后面的Mekanism机器把每块铁矿石变成两个铁锭： 富集仓把它变成两份铁粉， 电力熔炼炉再把铁粉炼成铁锭。 这一页出现， 是因为安装了Mekanism。
 
-**需要**： 你的主网络， 带合成CPU、合成终端， 存储里有铁矿石； 一个<ItemLink id="ae2federation:pattern_provider" />； 两个<ItemLink id="ae2federation:processing_endpoint" />； <ItemLink id="ae2federation:cable" />； 一台<ItemLink id="mekanism:enrichment_chamber" />和一台<ItemLink id="mekanism:energized_smelter" />， 每台配一个充好电的<ItemLink id="mekanism:basic_energy_cube" />、一个漏斗和一个<ItemLink id="ae2:storage_bus" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
+**需要**： 你的主网络， 带合成CPU、合成终端， 存储里有铁矿石； 一个<ItemLink id="ae2federation:pattern_provider" />； 两个<ItemLink id="ae2federation:processing_endpoint" />； <ItemLink id="ae2federation:cable" />； 一台<ItemLink id="mekanism:enrichment_chamber" />和一台<ItemLink id="mekanism:energized_smelter" />， 每台配一个充好电的<ItemLink id="mekanism:basic_energy_cube" />、一个漏斗和一个<ItemLink id="ae2:storage_bus" />。
 
 <GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/ore_line.snbt" />
@@ -25,9 +25,6 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#5ccd78" min="0 1 0" max="3 4 1">
     第二个端点和它的子网： 电力熔炼炉把铁粉炼成铁锭
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="6 1 0" max="7 3 1">
-    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

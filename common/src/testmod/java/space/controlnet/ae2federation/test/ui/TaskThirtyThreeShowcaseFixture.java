@@ -264,7 +264,6 @@ final class TaskThirtyThreeShowcaseFixture {
     static void cleanup(ServerContext context) {
         space.controlnet.ae2federation.domain.CableCapacityLimit.set(true,
                 space.controlnet.ae2federation.domain.CableCapacityLimit.DEFAULT_CAPACITY);
-        stopConverterFeed(context);
         var state = context.<State>get(STATE);
         if (state == null) return;
         var policies = PolicyService.get(context.level());
@@ -285,7 +284,6 @@ final class TaskThirtyThreeShowcaseFixture {
         mineCpus(state).forEach(cpu -> blocks.add(cpu.getKey()));
         for (var network : state.remoteNetworks) blocks.addAll(List.of(network));
         if (state.remoteRouter != null) blocks.add(state.remoteRouter);
-        blocks.addAll(state.converter);
         for (var position : blocks) context.level().setBlockAndUpdate(position, Blocks.AIR.defaultBlockState());
     }
 
@@ -402,114 +400,6 @@ final class TaskThirtyThreeShowcaseFixture {
         return tick - since >= 20;
     }
 
-    /** The share of its buffer the showcase converter holds, as the design board's gauge shows it. */
-    private static final double CONVERTER_FILL = 0.825;
-    /** TEST-ONLY: the converter the server tick tops up with the domain's use, or null when nothing is fed. */
-    private static volatile BlockPos feeding;
-    private static boolean feederRegistered;
-
-    /**
-     * Runs the domain on a 1x1x2 Beam Converter standing on the middle cable, its front down, with power required. The
-     * buffer starts at {@link #CONVERTER_FILL} and the server tick feeds it the domain's use, standing in for a
-     * generator, so the topology's gauge shows a domain that runs.
-     */
-    static void placeConverter(ServerContext context) {
-        var state = state(context);
-        var cable = state.cables.get(1);
-        var converter = List.of(cable.above(), cable.above(2));
-        for (var position : converter) {
-            require(context.level().isEmptyBlock(position), "Showcase converter position must be empty: " + position);
-            context.level().setBlockAndUpdate(position, space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER
-                    .get().defaultBlockState().setValue(space.controlnet.ae2federation.power.BeamConverterBlock.FACING,
-                            Direction.DOWN));
-        }
-        state.converter = converter;
-    }
-
-    /** Whether the converter has formed and joined the Router's domain; it then gets its stock and power is required. */
-    static boolean converterJoined(ServerContext context) {
-        var state = state(context);
-        var level = context.level();
-        if (!state.converter.stream().allMatch(position -> space.controlnet.ae2federation.router.RouterBlock.formed(
-                level.getBlockState(position)))) {
-            return false;
-        }
-        var routerNode = FederationDomainRegistryAccess.nodeId(level, TaskFifteenWorldFixture.routerPosition(context));
-        var converterNode = FederationDomainRegistryAccess.nodeId(level, state.converter.get(0));
-        var joined = FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
-                .anyMatch(domain -> domain.nodes().contains(routerNode) && domain.nodes().contains(converterNode));
-        if (!joined) return false;
-        var capacity = space.controlnet.ae2federation.power.BeamConverterBlockEntity.CAPACITY;
-        for (var position : state.converter) {
-            ((space.controlnet.ae2federation.power.BeamConverterBlockEntity) level.getBlockEntity(position))
-                    .setStored(capacity * CONVERTER_FILL);
-        }
-        space.controlnet.ae2federation.power.OperatingPowerRule.set(true,
-                space.controlnet.ae2federation.power.OperatingPowerRule.DEFAULT_MULTIPLIER);
-        feeding = state.converter.get(0);
-        if (!feederRegistered) {
-            feederRegistered = true;
-            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(TaskThirtyThreeShowcaseFixture::feedConverter);
-        }
-        return true;
-    }
-
-    /** Whether the Router's domain runs on its converter. */
-    static boolean converterRuns(ServerContext context) {
-        return routerDomainReading(context).filter(reading -> reading.running() && reading.capacity() > 0).isPresent();
-    }
-
-    /** Removes the converter: the domain can no longer pay and stops. */
-    static void removeConverter(ServerContext context) {
-        feeding = null;
-        for (var position : state(context).converter) {
-            context.level().setBlockAndUpdate(position, Blocks.AIR.defaultBlockState());
-        }
-    }
-
-    static boolean domainUnpowered(ServerContext context) {
-        return routerDomainReading(context).filter(reading -> !reading.running()).isPresent();
-    }
-
-    private static java.util.Optional<space.controlnet.ae2federation.power.OperatingPowerService.Reading> routerDomainReading(
-            ServerContext context) {
-        var level = context.level();
-        var routerNode = FederationDomainRegistryAccess.nodeId(level, TaskFifteenWorldFixture.routerPosition(context));
-        return FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
-                .filter(domain -> domain.nodes().contains(routerNode)).findFirst()
-                .flatMap(domain -> space.controlnet.ae2federation.power.OperatingPowerService.reading(level.getServer(),
-                        domain.federationDomainId()));
-    }
-
-    /** TEST-ONLY generator: each tick, the converter takes in what the domain used on the last one, rounded up. */
-    private static void feedConverter(net.neoforged.neoforge.event.tick.ServerTickEvent.Pre event) {
-        var position = feeding;
-        if (position == null) return;
-        var level = event.getServer().overworld();
-        if (!level.isLoaded(position)
-                || !(level.getBlockEntity(position) instanceof space.controlnet.ae2federation.power.BeamConverterBlockEntity converter)) {
-            return;
-        }
-        var node = FederationDomainRegistryAccess.nodeId(level, position);
-        FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
-                .filter(domain -> domain.nodes().contains(node)).findFirst()
-                .flatMap(domain -> space.controlnet.ae2federation.power.OperatingPowerService.reading(event.getServer(),
-                        domain.federationDomainId()))
-                .ifPresent(reading -> converter.energy(Direction.UP)
-                        .receiveEnergy((int) Math.ceil(reading.use().total()), false));
-    }
-
-    /** Turns the power rule off, as a server without it runs. */
-    static void powerOff(ServerContext context) {
-        stopConverterFeed(context);
-    }
-
-    private static void stopConverterFeed(ServerContext context) {
-        feeding = null;
-        space.controlnet.ae2federation.power.OperatingPowerRule.set(false,
-                space.controlnet.ae2federation.power.OperatingPowerRule.DEFAULT_MULTIPLIER);
-    }
-
     /** Ticks of storage traffic before the statistics page is opened: most of its two-minute range. */
     private static final int TRAFFIC_TICKS = 1_500;
     /**
@@ -586,7 +476,6 @@ final class TaskThirtyThreeShowcaseFixture {
         private BlockPos remoteRouter;
         private List<BlockPos[]> remoteNetworks = List.of();
         private BlockPos hallEndpoint;
-        private List<BlockPos> converter = List.of();
         private boolean stocked;
         private long trafficStart;
         private long trafficSlot;
