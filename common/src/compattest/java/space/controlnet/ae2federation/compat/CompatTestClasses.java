@@ -40,7 +40,6 @@ final class CompatTestClasses {
         groups.put("neoecoprototype", NeoEcoPrototypeCompatGameTests.class);
         groups.put("useless-mod", UselessModCompatGameTests.class);
         // Spans several addons: each profile names its addon's tests by id (see the class).
-        groups.put("addon-cpu-merged", AddonCpuMergedGridGameTests.class);
         return groups;
     }
 }

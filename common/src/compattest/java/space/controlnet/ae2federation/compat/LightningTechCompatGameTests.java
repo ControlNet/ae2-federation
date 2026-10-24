@@ -342,4 +342,16 @@ public final class LightningTechCompatGameTests {
             throw new IllegalStateException("The Tianshu controller cannot be read", exception);
         }
     }
+
+    /**
+     * As {@link #mentalMathUnitFluidReturn}, merged mid-job: only the Bridge part is removed while the job waits, so
+     * the fluix cable under it joins both networks into one AE2 Grid; the CPU takes the lava natively, the debt
+     * settles, and after the split the provider keeps its next lava.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void mentalMathUnitMergedFluidReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("ae2lt:pigmee_mentalmath_unit"),
+                AddonCraftingScene.lavaMachine()).craftingOnly().outputStoredOnConsumer().mergingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
 }

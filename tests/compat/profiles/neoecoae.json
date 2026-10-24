@@ -11,8 +11,6 @@
   ],
   "tests": [
     "core",
-    "neoecoae",
-    "computationsystemmergedfluidreturn",
-    "nativecpumergedfluidreturn"
+    "neoecoae"
   ]
 }

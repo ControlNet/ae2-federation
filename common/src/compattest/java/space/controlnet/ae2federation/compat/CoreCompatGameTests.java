@@ -229,4 +229,15 @@ public final class CoreCompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /**
+     * A projected lava job on AE2's own crafting CPU, merged mid-job: only the Bridge part is removed, so the fluix
+     * cable under it joins both networks into one AE2 Grid. The CPU takes the lava through the crafting service, beside
+     * whatever hooks the loaded addons add there; the debt settles, and after the split the provider keeps its next lava.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void nativeCpuMergedFluidReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("ae2:1k_crafting_storage"),
+                AddonCraftingScene.lavaMachine()).craftingOnly().outputStoredOnConsumer().mergingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
 }

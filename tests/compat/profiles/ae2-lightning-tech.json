@@ -12,8 +12,6 @@
   ],
   "tests": [
     "core",
-    "ae2-lightning-tech",
-    "mentalmathunitmergedfluidreturn",
-    "nativecpumergedfluidreturn"
+    "ae2-lightning-tech"
   ]
 }

@@ -47,7 +47,7 @@ switches the two rules separately, and loading a save adds no rule.
   outputs (the `mekanism` compatibility profile) are routed, held, handed back and settled as items are, including
   owed, held and transit amounts read back after a restart, chemicals held while the Bridge is removed, and fluid
   outputs of jobs on Neo ECO, Advanced AE and Lightning Tech CPUs, also when the networks are joined into one Grid
-  mid-job (`AddonCpuMergedGridGameTests`, in each addon's profile).
+  mid-job (each addon's `*MergedFluidReturn` test, with the AE2 CPU control `nativeCpuMergedFluidReturn` in `core`).
   - P's `CraftingReturnRouter` is mounted on P's storage at `Integer.MAX_VALUE` and is preferred only for owed keys. It
     lists and extracts real saved transit stock. It does not list debt or `held` as additional inventory.
   - It hands back at most `min(inserted, owed, C.getRequestedAmount)` into C's storage, where AE2's

@@ -526,4 +526,19 @@ public final class NeoEcoCompatGameTests {
         }
         throw new IllegalStateException(tier.id(name) + " has no facing");
     }
+
+    /**
+     * As {@link #computationSystemFluidReturn}, merged mid-job: only the Bridge part is removed while the job waits, so
+     * the fluix cable under it joins both networks into one AE2 Grid; the CPU takes the lava natively, the debt
+     * settles, and after the split the provider keeps its next lava.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemMergedFluidReturn(GameTestHelper helper) {
+        var tier = Tier.L4;
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(), AddonCraftingScene.lavaMachine())
+                .consumerCpuStructure(test -> placeComputationSystem(test, tier),
+                        () -> fitComputationCell(helper, tier))
+                .craftingOnly().outputStoredOnConsumer().mergingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
 }
