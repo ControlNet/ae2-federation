@@ -14,7 +14,7 @@ storage or energy cell of its own. This page appears because Applied Flux and Me
 **You need:** a power bank network with ME Drives holding <ItemLink id="appflux:fe_1k_cell" />s and an energy cell; a
 workshop network with a terminal and a <ItemLink id="appflux:flux_accessor" />; a <ItemLink id="mekanism:crusher" />;
 a <ItemLink id="ae2federation:switch" /> both networks touch. How FE gets into the cells is in
-[Applied Flux's guide](appflux:appflux/flux_cells.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
+[Applied Flux's guide](appflux:appflux/flux_cells.md).
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/power_bank.snbt" />
@@ -29,9 +29,6 @@ a <ItemLink id="ae2federation:switch" /> both networks touch. How FE gets into t
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
     One Switch: each face joins the network it touches
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
-    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

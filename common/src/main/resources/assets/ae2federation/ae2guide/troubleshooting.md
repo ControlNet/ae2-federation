@@ -17,13 +17,6 @@ reason.
 A stopped domain's cables glow red and thin, and its topology screen turns dark red. Its networks keep working on
 their own and share nothing until the cause is gone; then the domain starts again by itself.
 
-* **"This Federation domain has too little FE in its ME Federation Beam Converters, so this Federation domain has
-  stopped."** The domain needs more FE than its converters hold. Pipe FE into a
-  <ItemLink id="ae2federation:beam_converter" /> from another mod's generator, or build one if the domain has none.
-  Vanilla and AE2 produce no FE; a Bridge-only domain needs none. See [Power](mechanics/power.md).
-* **The converter has FE, but the domain still stops.** A converter supplies only when its front has the
-  cross-section of the largest cable in its domain, a bundle or a linked Beam Former or Quantum Cube pair included.
-  With Jade, a converter's buffer line is red when its size does not match. Build a converter of the right size.
 * **"A Federation Cable in this domain carries more than its capacity, so this Federation domain has stopped."**
   Every rule reads "over capacity, stopped", and the full cable pulses red. Move a network or device off that
   segment, end it with a Router, or build it as a bundle; see [Network Capacity](mechanics/capacity.md).

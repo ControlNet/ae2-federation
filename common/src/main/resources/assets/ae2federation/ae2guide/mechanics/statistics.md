@@ -9,7 +9,7 @@ navigation:
 # Statistics
 
 The **Statistics** tab, the third on the left of the Federation screen, charts what the domain's networks did over
-time: their ME power, the domain's FE, what they store, what moved between them, their crafting and their channels. It shows the
+time: their ME power, what they store, what moved between them, their crafting and their channels. It shows the
 networks of this domain only.
 
 ![The Statistics tab showing stored items over the last two minutes](../assets/statistics.png)
@@ -30,7 +30,6 @@ networks of this domain only.
 | Card | Large chart | Box below |
 | --- | --- | --- |
 | ME power | Power use in AE/t, per network | Each network's stored power, and the shared pool |
-| Federation power | The domain's FE use per tick, by kind of block, and how full its Beam Converters are | Each Beam Converter, and the use by block |
 | Stored | What each network holds, by item or by network | The items on the chart: search, pick and pin |
 | Moved | What moved between networks, by network or by item | What moved most, and its route |
 | Crafting | Jobs started per minute | Each network's jobs, and the CPUs crafting now |

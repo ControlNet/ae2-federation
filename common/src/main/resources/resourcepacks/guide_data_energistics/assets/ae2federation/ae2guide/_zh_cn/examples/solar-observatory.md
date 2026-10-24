@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 一个天文台网络在夜里用一个太阳能前哨网络的电， 把AE能量变成Data Energistics的耀星流； 你的主网络从天文台的存储里读取耀星流。 能量和产物朝相反方向流动， 各走自己的规则。 这一页出现， 是因为安装了Data Energistics。
 
-**需要**： 一个前哨网络， 带六块<ItemLink id="data_energistics:me_solar_panel" />和一个能源元件； 一个天文台网络， 带一台<ItemLink id="data_energistics:astronomical_observatory" />和一个装着<ItemLink id="data_energistics:digital_storage_cell_1k" />的<ItemLink id="ae2:drive" />； 你的主网络， 带一个合成终端； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 Data Energistics的指南里有[太阳能板](data_energistics:items-blocks-machines/6.1_me_solar_panel.md)和[天文观测台](data_energistics:items-blocks-machines/6.12_astronomical_observatories.md)的说明； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
+**需要**： 一个前哨网络， 带六块<ItemLink id="data_energistics:me_solar_panel" />和一个能源元件； 一个天文台网络， 带一台<ItemLink id="data_energistics:astronomical_observatory" />和一个装着<ItemLink id="data_energistics:digital_storage_cell_1k" />的<ItemLink id="ae2:drive" />； 你的主网络， 带一个合成终端； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 Data Energistics的指南里有[太阳能板](data_energistics:items-blocks-machines/6.1_me_solar_panel.md)和[天文观测台](data_energistics:items-blocks-machines/6.12_astronomical_observatories.md)的说明。
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/solar_observatory.snbt" />
@@ -25,9 +25,6 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 1" max="4 1 2">
     一个交换机： 每个面加入它接触的网络
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="3 1 1" max="4 3 2">
-    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

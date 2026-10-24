@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 下界里的前哨网络使用你在主世界基地的存储， 并靠基地的电源运行。 量子网络桥在两个维度之间承载一对联邦P2P通道， 前哨仍是独立的网络， 保留自己的频道。 之后前哨还能订购一个用联邦桥连到基地的工厂所做的东西， 自己和工厂之间不需要任何规则、线缆或联邦桥。
 
-**需要**： 一个带存储和电源的基地网络； 一个带合成终端和合成CPU的前哨网络； 每个网络一个<ItemLink id="ae2federation:switch" />； 一座量子网络桥， 即每端八个<ItemLink id="ae2:quantum_ring" />和一个<ItemLink id="ae2:quantum_link" />， 外加一对<ItemLink id="ae2:quantum_entangled_singularity" />； 两个<ItemLink id="ae2:me_p2p_tunnel" />； 一张<ItemLink id="ae2:memory_card" />； 一个<ItemLink id="ae2:quartz_fiber" />； ME线缆和<ItemLink id="ae2federation:cable" />。 工厂部分还需要： 一个用<ItemLink id="ae2:pattern_provider" />和<ItemLink id="ae2:molecular_assembler" />把原木做成木板的网络， 以及一个<ItemLink id="ae2federation:bridge" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
+**需要**： 一个带存储和电源的基地网络； 一个带合成终端和合成CPU的前哨网络； 每个网络一个<ItemLink id="ae2federation:switch" />； 一座量子网络桥， 即每端八个<ItemLink id="ae2:quantum_ring" />和一个<ItemLink id="ae2:quantum_link" />， 外加一对<ItemLink id="ae2:quantum_entangled_singularity" />； 两个<ItemLink id="ae2:me_p2p_tunnel" />； 一张<ItemLink id="ae2:memory_card" />； 一个<ItemLink id="ae2:quartz_fiber" />； ME线缆和<ItemLink id="ae2federation:cable" />。 工厂部分还需要： 一个用<ItemLink id="ae2:pattern_provider" />和<ItemLink id="ae2:molecular_assembler" />把原木做成木板的网络， 以及一个<ItemLink id="ae2federation:bridge" />。
 
 主世界这一端：
 
@@ -36,9 +36,6 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="4.75 1.375 0.375" max="5 1.625 0.625">
     石英纤维： 把基地的电力传给承载网络， 但不把两个网络连成一个
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="4 3 0" max="5 5 1">
-    光束转换器： 它的FE驱动整个联邦域， 包括前哨的交换机
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

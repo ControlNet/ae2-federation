@@ -10,24 +10,21 @@ navigation:
 
 **目标**： 几个基地通过一个市场网络交易。 每个基地只和市场之间有规则， 市场把它的供应方能做的东西转发出去。 再给市场接一个供应方， 每个基地都能向它下单， 不用自己再加规则。
 
-**需要**： 带合成CPU、合成终端、存储和电源的基地网络； 带存储的市场网络； 一个供应方网络， 这里是锯木厂， 它的<ItemLink id="ae2:pattern_provider" />和<ItemLink id="ae2:molecular_assembler" />把原木做成木板； 它们共同接触的一个<ItemLink id="ae2federation:switch" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
+**需要**： 带合成CPU、合成终端、存储和电源的基地网络； 带存储的市场网络； 一个供应方网络， 这里是锯木厂， 它的<ItemLink id="ae2:pattern_provider" />和<ItemLink id="ae2:molecular_assembler" />把原木做成木板； 它们共同接触的一个<ItemLink id="ae2federation:switch" />。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/market_hub.snbt" />
-  <BoxAnnotation color="#915dcd" min="4 0 2" max="7 2 3">
+  <BoxAnnotation color="#915dcd" min="4 0 0" max="7 2 1">
     基地： 合成终端、合成CPU、存储， 以及给三个网络供电的能源元件
   </BoxAnnotation>
-  <BoxAnnotation color="#5CA7CD" min="2 2 2" max="5 3 3">
+  <BoxAnnotation color="#5CA7CD" min="2 2 0" max="5 3 1">
     市场： 只有存储， 没有CPU也没有样板
   </BoxAnnotation>
-  <BoxAnnotation color="#5ccd78" min="0 0 2" max="3 2 3">
+  <BoxAnnotation color="#5ccd78" min="0 0 0" max="3 2 1">
     锯木厂： 样板供应器， 旁边是分子装配室
   </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="3 0 2" max="4 1 3">
+  <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
     一个交换机： 每个面加入它接触的网络
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 2">
-    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
