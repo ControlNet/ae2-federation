@@ -74,6 +74,13 @@ final class PlaythroughEnergizingAdapter implements PlaythroughMachineAdapter {
         site.blocking();
     }
 
+    /** The orb and its Nitro Energizing Rod; the creative cell beside the rod is the site's power. */
+    @Override public List<ItemStack> equipment(GameTestHelper helper, BlockPos machine, Recipe recipe) {
+        var result = new ArrayList<>(PlaythroughMachineAdapter.super.equipment(helper, machine, recipe));
+        result.add(new ItemStack(helper.getBlockState(machine.north()).getBlock().asItem()));
+        return result;
+    }
+
     public String leftovers(GameTestHelper helper, BlockPos position, Recipe recipe) {
         var orb = helper.getBlockEntity(position);
         var inventory = (IItemHandler) call(orb, "getInventory");

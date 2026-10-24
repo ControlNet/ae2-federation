@@ -34,6 +34,13 @@ final class PlaythroughAccounting {
         if (stock.get(key) == 0) stock.remove(key);
     }
 
+    /** {@code after - before}, key by key, without zero entries. */
+    static Map<String, Long> difference(Map<String, Long> before, Map<String, Long> after) {
+        var result = new TreeMap<String, Long>(after);
+        before.forEach((key, amount) -> add(result, key, -amount));
+        return result;
+    }
+
     static Signature signature(IPatternDetails details, ServerLevel level) {
         var outputs = new TreeMap<String, Long>();
         var remainders = new TreeMap<String, Long>();

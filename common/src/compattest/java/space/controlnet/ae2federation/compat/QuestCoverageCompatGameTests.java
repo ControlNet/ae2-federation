@@ -75,9 +75,15 @@ public final class QuestCoverageCompatGameTests {
         return value;
     }
 
-    // Normalize FTB's optional commas and empty keys before vanilla parses the values.
     private static CompoundTag read(Path path) throws Exception {
-        var source = Files.readString(path);
+        return parse(Files.readString(path));
+    }
+
+    /**
+     * Normalize FTB's optional commas and empty keys before vanilla parses the values. Task SNBT that the probe
+     * records keeps empty compound keys, such as {@code {"":"BOOLEAN"}}, so later phases parse it here as well.
+     */
+    static CompoundTag parse(String source) throws Exception {
         var emptyKey = "__ae2f_empty_key__";
         while (source.contains(emptyKey)) emptyKey += "_";
         var matcher = TOKENS.matcher(source);

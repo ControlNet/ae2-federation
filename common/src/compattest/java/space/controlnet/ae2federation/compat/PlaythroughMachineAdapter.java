@@ -63,6 +63,23 @@ interface PlaythroughMachineAdapter {
     /** Placement receives tracked block/part operations and a powered subnet, shared by every machine path. */
     void place(PlaythroughMachines.Site site, Recipe recipe);
 
+    /**
+     * What a player must own before this recipe's machine runs, read after {@link #place}: by default the block at
+     * {@code machine}, the AE2 upgrade cards installed in it and the recipe's fixed catalysts, such as presses. Phase 4
+     * takes these out of the base's own storage, or orders them, before the machine may run. Power sources and the
+     * site's AE2 plumbing (provider, interface, buses, cables, hoppers) are fixture infrastructure, not equipment.
+     * Override to add parts that {@link #place} sets outside the machine block.
+     */
+    default List<ItemStack> equipment(GameTestHelper helper, BlockPos machine, Recipe recipe) {
+        var result = new java.util.ArrayList<ItemStack>();
+        var item = helper.getBlockState(machine).getBlock().asItem();
+        if (item != net.minecraft.world.item.Items.AIR) result.add(new ItemStack(item));
+        if (helper.getLevel().getBlockEntity(helper.absolutePos(machine)) instanceof appeng.api.upgrades.IUpgradeableObject upgradeable)
+            for (var card : upgradeable.getUpgrades()) if (!card.isEmpty()) result.add(card.copy());
+        recipe.catalysts().values().forEach(stack -> result.add(stack.copy()));
+        return result;
+    }
+
     /** Empty means idle, with no consumable inputs or output; installed catalysts are checked separately. */
     String leftovers(GameTestHelper helper, BlockPos machine, Recipe recipe);
 

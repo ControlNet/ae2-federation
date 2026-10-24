@@ -56,6 +56,11 @@ final class PlaythroughRecipes {
     private final boolean frontier;
     private final Map<String, Proof> cache = new java.util.HashMap<>();
     private final Set<String> supported = new HashSet<>();
+    private final Map<String, String> adapterOf = new java.util.HashMap<>();
+    /** Phase 4: adapters whose machines the base owns; null allows every enabled adapter. */
+    private Set<String> available;
+    /** Phase 4: machine recipes whose parts the base cannot obtain now. */
+    private Set<String> excluded = Set.of();
     private final Map<String, QuestCoverageCompatGameTests.Recipe> machineProofs = new TreeMap<>();
     final Map<String, String> machineRejections = new TreeMap<>();
     private int attempts;
@@ -78,10 +83,29 @@ final class PlaythroughRecipes {
                         ingredient -> PlaythroughMachineDiscovery.concrete(ingredient, provided));
                 PlaythroughMachineDiscovery.validate(helper, adapter, machine, provided);
                 supported.add(recipe.id());
+                adapterOf.put(recipe.id(), adapter.id());
                 if (!recipe.ingredientsReadable()) machineProofs.put(recipe.id(), new QuestCoverageCompatGameTests.Recipe(
                         recipe.id(), recipe.type(), recipe.recipeClass(), recipe.output(), PlaythroughMachineDiscovery.ingredients(machine), true));
             } catch (RuntimeException exception) { machineRejections.put(recipe.id(), exception.toString()); }
         });
+    }
+
+    /**
+     * A proof whose machine recipes use only the {@code availableAdapters} and none of the {@code excludedRecipes};
+     * every other machine product is a stand-in, as an unsupported recipe class is. Eligibility
+     * ({@link #hasCraftingRecipe}) still counts every enabled adapter.
+     */
+    Proof target(String item, Set<String> availableAdapters, Set<String> excludedRecipes) {
+        available = Set.copyOf(availableAdapters); excluded = Set.copyOf(excludedRecipes);
+        try {
+            return target(item);
+        } finally {
+            available = null; excluded = Set.of();
+        }
+    }
+
+    private boolean usable(String recipe) {
+        return supported.contains(recipe) && (available == null || available.contains(adapterOf.get(recipe))) && !excluded.contains(recipe);
     }
 
     Proof target(String item) {
@@ -134,12 +158,12 @@ final class PlaythroughRecipes {
         visiting.add(item);
         var reasons = new ArrayList<String>();
         try {
-            for (var recipe : recipes.stream().filter(r -> r.recipeClass().equals("crafting") || supported.contains(r.id()))
+            for (var recipe : recipes.stream().filter(r -> r.recipeClass().equals("crafting") || usable(r.id()))
                     .sorted(java.util.Comparator.<QuestCoverageCompatGameTests.Recipe>comparingInt(r ->
                             r.id().equals(reachable.get(item).id()) ? 0 : 1)
                             .thenComparing(QuestCoverageCompatGameTests.Recipe::id)).toList()) {
                 try {
-                    var result = supported.contains(recipe.id()) ? encodeMachine(recipe, visiting) : encode(recipe, visiting);
+                    var result = usable(recipe.id()) ? encodeMachine(recipe, visiting) : encode(recipe, visiting);
                     if (result.supplies().contains(key(item))) {
                         reasons.add(recipe.id() + ": conversion needs a supplied seed of " + item);
                         continue;
@@ -250,7 +274,7 @@ final class PlaythroughRecipes {
 
     private Set<String> executableClasses() {
         var classes = new HashSet<String>(); classes.add("crafting");
-        probe.producers().values().stream().flatMap(List::stream).filter(r -> supported.contains(r.id()))
+        probe.producers().values().stream().flatMap(List::stream).filter(r -> usable(r.id()))
                 .map(QuestCoverageCompatGameTests.Recipe::recipeClass).forEach(classes::add);
         return classes;
     }
@@ -258,7 +282,7 @@ final class PlaythroughRecipes {
     private Map<String, List<QuestCoverageCompatGameTests.Recipe>> executableProducers() {
         var result = new TreeMap<String, List<QuestCoverageCompatGameTests.Recipe>>();
         probe.producers().forEach((item, recipes) -> result.put(item, recipes.stream()
-                .filter(r -> r.recipeClass().equals("crafting") || supported.contains(r.id()))
+                .filter(r -> r.recipeClass().equals("crafting") || usable(r.id()))
                 .map(r -> machineProofs.getOrDefault(r.id(), r)).toList()));
         return result;
     }
@@ -309,7 +333,7 @@ final class PlaythroughRecipes {
     private boolean machineLeaf(String item) {
         var recipes = probe.producers().getOrDefault(item, List.of());
         return frontier && recipes.stream().anyMatch(r -> !r.recipeClass().equals("crafting"))
-                && recipes.stream().noneMatch(r -> supported.contains(r.id()));
+                && recipes.stream().noneMatch(r -> usable(r.id()));
     }
 
     private Proof standIn(String item) {

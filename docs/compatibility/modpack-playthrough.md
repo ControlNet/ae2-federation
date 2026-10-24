@@ -395,3 +395,81 @@ remains.
 
 Machines that return many items per run can finish their job before the hopper drains them, so a finished target
 waits up to `drainTicks()` (40 plus 8 ticks per output item of the largest run) until every machine is empty.
+
+## Phase 4: quest progression
+
+`playthroughProgression` walks a quest chapter in dependency order with two bases that last the whole run: a plain
+AE2 network and a federated layout (`PlaythroughTopology.base(seed)`: four networks, Router + Switch, projection,
+seed 0 by default). Both sit in one GameTest, at test-relative x = 48 and x = 96, and take each order in turn
+against the stock their earlier orders left. Each item task is ordered at its quest count. A task with
+`consume_items` is then taken out of the requester's cells; other products stay in storage and later plans reuse
+them. Phase 0 provided resources stay unlimited.
+
+```bash
+./gradlew :neoforge-1.21.1:jar :neoforge-1.21.1:compatTestJar --dependency-verification=strict --console=plain -q
+python3 tools/compat_playthrough_progression.py --accept-eula --no-build --run-suffix ae2 --chapter 031C3CFAFBBF4A6D
+python3 tools/compat_playthrough_progression.py --accept-eula --no-build --run-suffix ae2 --resume
+# Repeat a run from one of its checkpoints in a new directory, for example to confirm a finding:
+python3 tools/compat_playthrough_progression.py --accept-eula --no-build --run-suffix ae2-confirm \
+  --from-checkpoint neoforge-1.21.1/build/compat/runs/nast-progression-ae2-checkpoints/segment-2 --segments 1
+```
+
+`--chapter` takes Phase 1's chapter filter; a chapter ID selects exactly one chapter (`ae2` also matches
+`ae2存储元件`). Reports go to `build/playthrough/progression-<suffix>/`: `playthrough-progression.json` and `.md` per
+target and order (class, machines available, stock reused, machines and equipment obtained for it), a summary per
+chapter, the machine timeline (`machineTimeline`, `waitedBy`), blocked machine recipes and owned equipment. Each
+segment's report and console log, and `segments.json`, sit beside them.
+
+**Segments.** A run is a chain of server processes over one saved world, not a replay. A process stops at the first
+order boundary after `--segment-seconds` (900; at least one order or target per process) and saves both bases
+(`BaseState`) beside the world in `playthrough-progression-state.json`. The next process re-attaches to them and first
+checks `restartChecks`: the same total stock key by key, idle CPUs, no ledger debt or transit, and the saved
+Federation rules still enabled. Before each segment the tool copies the world and state to
+`runs/nast-progression-<suffix>-checkpoints/segment-<k>`. If the 1400-second process deadline cuts an order, the
+saved world holds a half-finished order. The tool then restores the checkpoint and repeats the segment, stopping
+after the orders the cut process finished, or marks the order `deferred` if it alone outlasts a process. Replaying
+from the start each time would make a chapter's run time grow with the square of its orders.
+
+**Machines are earned.** A target's proof may use every enabled adapter. Each machine in it that the bases do not
+own yet is earned first. Its equipment (`PlaythroughMachineAdapter.equipment`: by default the machine block, its AE2
+upgrade cards and the recipe's fixed catalysts such as presses; Energizing adds its rod) is surveyed once from a
+scratch site. Then it is taken out of both bases' storage, supplied when Phase 0 provides it, or ordered through the
+factory with the machines already owned. An equipment order earns its own sites' parts first. Owned equipment
+leaves ME storage and never returns. An equipment item that cannot be made blocks the recipes that need it until the
+bases own another machine, so those products stay stand-ins. A target with no proof only because of blocked recipes
+is `machine-unobtainable`. The default `equipment` keeps adapters written without it compiling and working.
+
+**Checks after every order, in each base:** the Phase 1 invariants, with the stock balance replacing the source
+check. Afterwards the cells hold the stock before, plus the plan's outputs, remainders and inputs, minus what it used
+from stock. Stock reused is what the plan used minus what the source supplied, between 0 and the stock before.
+Across bases, source extractions and total stock must match key by key. Logged exceptions (ERROR or with a
+throwable) fail the order. Results use Phase 1's four classes, plus `not-bootstrappable`, `nondeterministic`,
+`machine-unobtainable`, `unobtainable` (equipment), `deferred` and `craft-limit`. If the bases are left unsettled
+or with different stock, the run stops with `stopReason`, since later orders would no longer compare like for like.
+
+Properties use prefix `ae2federation.playthrough.progression.`: `seed` (layout, 0), `bankCells` (requester cells in
+one ME Drive, 8, at most 10), `maxTargets`, `stopAfterSeconds`, `maxCrafts` (60000; a larger plan is recorded as
+`craft-limit` and not started; `appflux:core_256m` plans 56,115 crafts and takes about 21 minutes in both bases),
+`exclude` (comma-separated items, listed under `excludedTargets`), and `disturbances` (any of `cable`, `router`,
+`STORAGE`, `CRAFTING`, `ME_POWER`; off by default) with `disturbanceEvery` (4) and `disturbanceSeed`. A disturbance
+runs on the federated base while its job pushes across networks. One that finds no such push is recorded in
+`perturbationExecuted`, not failed. Phase 1's `chapter`, `items`, `targetTicks` and `sprint`, and Phase 3's
+`machineCopies` (1 here), also apply.
+
+Results on NAST 2.2.1 (projection, seed 0):
+
+| Chapter | Quest tasks | Both pass | Machine-unobtainable | Both fail | Other | Equipment orders | Processes |
+|---|---:|---:|---:|---:|---:|---|---:|
+| 应用能源2 | 130 | 130 | 0 | 0 | 0 | 21 pass, 5 unobtainable | 5 |
+| AE2闪电科技 | 86 | 37 | 43 | 5 | 1 not-bootstrappable | 14 pass, 7 unobtainable | 2 |
+
+No target was baseline-only or federated-only. In AE2 the bases earned the Seed Reprocessor, Blast Furnace,
+Reaction Chamber, Inscriber, Furnace, Crystal Aggregator and Crystal Assembler. 96 of 151 passing orders reused
+stock (733 items). Lightning Tech crafted and consumed 10,000 `minecraft:cooked_cod`. Its Lightning Simulation Room
+comes only from `lightning_transform`, a world lightning strike with no adapter. The Assembly Chamber is made in the
+Simulation Room and the Overload Processing Factory in the Chamber, so none of the three can be earned; 43 tasks,
+`ae2lt:overload_tnt` among them, need one of them. The five both-fail tasks fail identically in both bases: two
+targets with item components, `ae2:creative_energy_cell` (its inputs need component-bearing
+`extendedae_plus:basic_core`), and `ae2lt:tianshu_overload_main_core` (two tasks, no finite proof). A 25-target
+AE2 run with a disturbance on every order executed all 34 disturbances (cable 9, router 8, CRAFTING 8, ME_POWER 6,
+STORAGE 3), all both-pass.
