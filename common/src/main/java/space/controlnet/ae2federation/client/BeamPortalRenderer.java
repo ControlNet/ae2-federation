@@ -16,22 +16,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.RegisterRenderBuffersEvent;
 import org.joml.Matrix4f;
 
-/** Fullbright vanilla beacon shading, with the depth disc submitted before additive light. */
+/** Fullbright vanilla beacon shading in one additive pass. */
 public final class BeamPortalRenderer {
     private static final BeamPortalSceneQueue SCENE = new BeamPortalSceneQueue();
     private static final ResourceLocation WHITE = ResourceLocation.withDefaultNamespace("textures/misc/white.png");
     // Entity translucent emissive still calls minecraft_mix_light and dims optical carriers.
     // Beacon's shader uses unlit vertex color, with world fog and normal scene depth testing.
-    private static final RenderType DISC = RenderType.create("ae2federation_portal_disc",
-            DefaultVertexFormat.BLOCK, VertexFormat.Mode.QUADS, 1536, false, true,
-            RenderType.CompositeState.builder()
-                    .setShaderState(RenderStateShard.RENDERTYPE_BEACON_BEAM_SHADER)
-                    .setTextureState(new RenderStateShard.TextureStateShard(WHITE, false, false))
-                    .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
-                    .setCullState(RenderStateShard.NO_CULL)
-                    .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
-                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
-                    .createCompositeState(false));
     private static final RenderType GLOW = RenderType.create("ae2federation_portal_glow",
             DefaultVertexFormat.BLOCK, VertexFormat.Mode.QUADS, 1536, false, false,
             RenderType.CompositeState.builder()
@@ -55,7 +45,6 @@ public final class BeamPortalRenderer {
     private BeamPortalRenderer() {}
 
     public static void registerBuffers(RegisterRenderBuffersEvent event) {
-        event.registerRenderBuffer(DISC, new ByteBufferBuilder(1 << 18));
         event.registerRenderBuffer(GLOW, new ByteBufferBuilder(1 << 20));
     }
 
@@ -68,7 +57,6 @@ public final class BeamPortalRenderer {
     }
 
     static void flush(MultiBufferSource.BufferSource buffers) {
-        buffers.endBatch(DISC);
         buffers.endBatch(GLOW);
         frustum = null;
     }
@@ -87,7 +75,6 @@ public final class BeamPortalRenderer {
             var stack = new PoseStack();
             stack.last().pose().set(entry.pose());
             draw(stack, buffers, entry.facing(), entry.side(), 0, entry.tick(), entry.partialTick(), entry.style());
-            buffers.endBatch(DISC);
             buffers.endBatch(GLOW);
         });
     }
@@ -95,15 +82,9 @@ public final class BeamPortalRenderer {
     static void draw(PoseStack stack, MultiBufferSource buffers, Direction facing, int side, int detail, long tick,
             float partialTick, CableBeamStyle style) {
         var matrix = BeamPortalMesh.transform(stack.last().pose(), facing, side, TRANSFORM);
-        pass(matrix, buffers, side, detail, tick, partialTick, style, false);
-        pass(matrix, buffers, side, detail, tick, partialTick, style, true);
-    }
-
-    private static void pass(Matrix4f matrix, MultiBufferSource buffers, int side, int detail, long tick,
-            float partialTick, CableBeamStyle style, boolean glow) {
-        var out = buffers.getBuffer(glow ? GLOW : DISC);
+        var out = buffers.getBuffer(GLOW);
         BeamPortalMesh.Sink sink = (x, y, z, r, g, b, alpha) -> out.addVertex(matrix, x, y, z)
                 .setColor(r, g, b, alpha).setUv(0, 0).setUv2(240, 240).setNormal(0, 1, 0);
-        BeamPortalMesh.emit(true, side, detail, tick, partialTick, style, glow, sink);
+        BeamPortalMesh.emit(true, side, detail, tick, partialTick, style, sink);
     }
 }

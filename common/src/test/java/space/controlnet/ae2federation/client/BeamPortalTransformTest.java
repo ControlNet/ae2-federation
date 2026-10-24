@@ -31,11 +31,9 @@ class BeamPortalTransformTest {
                         var matrix = BeamPortalMesh.transform(pose, facing, side, new Matrix4f());
                         var oldSink = sink(oldBuilder, pose);
                         var newSink = sink(newBuilder, matrix);
-                        for (boolean glow : new boolean[] {false, true}) {
-                            BeamPortalMesh.emit(true, side, detail, phase, .3f, style, glow, (x, y, z, r, g, b, a) ->
-                                    BeamPortalMesh.oriented(facing, size, oldSink, x, y, z, r, g, b, a));
-                            BeamPortalMesh.emit(true, side, detail, phase, .3f, style, glow, newSink);
-                        }
+                        BeamPortalMesh.emit(true, side, detail, phase, .3f, style, (x, y, z, r, g, b, a) ->
+                                BeamPortalMesh.oriented(facing, size, oldSink, x, y, z, r, g, b, a));
+                        BeamPortalMesh.emit(true, side, detail, phase, .3f, style, newSink);
                         try (var oldMesh = oldBuilder.buildOrThrow(); var newMesh = newBuilder.buildOrThrow()) {
                             ByteBuffer a = oldMesh.vertexBuffer(), b = newMesh.vertexBuffer();
                             assertEquals(a.remaining(), b.remaining());
@@ -65,8 +63,7 @@ class BeamPortalTransformTest {
             BeamPortalMesh.Sink check = (x, y, z, r, g, b, a) -> assertTrue(
                     bounds.contains(origin.getX() + x, origin.getY() + y, origin.getZ() + z));
             for (int detail = 0; detail < 3; detail++) for (int phase = 0; phase < 64; phase++) {
-                for (boolean glow : new boolean[] {false, true}) BeamPortalMesh.emit(true, side, detail, phase, .3f,
-                        CableBeamStyle.fromLoad(.5, false), glow,
+                BeamPortalMesh.emit(true, side, detail, phase, .3f, CableBeamStyle.fromLoad(.5, false),
                         (x, y, z, r, g, b, a) -> BeamPortalMesh.oriented(facing, size, check, x, y, z, r, g, b, a));
             }
         }

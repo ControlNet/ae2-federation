@@ -65,7 +65,7 @@ public final class BeamPortalMesh {
         var cores = CORES[side - 2];
         double centre = side / 2.0;
         double radius = (float) (cores[cores.length - 1][1] + SPILL[0][SPILL[0].length - 1][3]) / 16;
-        double near = 14.01f / 16, far = 19f / 16;
+        double near = 14.02f / 16, far = 19f / 16;
         double low = facing.getAxisDirection() == Direction.AxisDirection.POSITIVE ? near : 1 - far;
         double high = facing.getAxisDirection() == Direction.AxisDirection.POSITIVE ? far : 1 - near;
         var axis = facing.getAxis();
@@ -97,23 +97,18 @@ public final class BeamPortalMesh {
     }
 
     public static void emit(boolean linked, int side, int detail, long tick, float partialTick,
-            CableBeamStyle style, boolean glow, Sink sink) {
+            CableBeamStyle style, Sink sink) {
         if (!linked || !drawn(side)) return;
         var cores = CORES[side - 2];
-        // The disc and streaks cover the emitter's centre plate, which grows with the body.
+        // The streaks cross the emitter's centre plate, which grows with the body.
         double scale = side / 2.0;
         double phase = phase(tick, partialTick);
         float strength = (float) ((.82 + .12 * Math.min(style.load(), 1)) * (1 + .04 * Math.sin(Math.TAU * phase)));
         boolean red = style.overloaded();
         float r = red ? 1 : .14f, g = red ? .045f : .85f, b = red ? .015f : 1;
         var circle = CIRCLE[detail];
-        // The dark disc and faint spill show no facets at 48 segments, even up close.
+        // The faint spill shows no facets at 48 segments, even up close.
         var soft = CIRCLE[Math.max(detail, 1)];
-        if (!glow) {
-            band(soft, 0, soft.length, 0, (float) (4.8 * scale), 14.01f / 16, 0,
-                    red ? .028f : .008f, red ? .006f : .018f, red ? .004f : .028f, .68f, sink);
-            return;
-        }
         for (var core : cores) for (var band : SPILL[detail]) {
             band(soft, 0, soft.length, radius(core, band, 0), radius(core, band, 2), 18.999f / 16, 0,
                     r, g, b, (float) band[4] * strength, sink);

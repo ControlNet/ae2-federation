@@ -8,14 +8,13 @@ calls it before its positive-facing-only beam guard.
 - **Where.** Each linked body's lowest block already holds a `BeamLook` on both ends (`syncLook`), so both
   ends draw one portal each with no new sync; other members have no look. Sides 2 and 3 draw (`BeamPortalMesh.drawn`).
 - **Geometry.** Local coordinates centred on the square; main bands at 19/16 from the back,
-  spill 18.999/16, disc 14.01/16, streaks 14.02/16. The study's thin turning line (8.94-9.06) and 16 dashes
+  spill 18.999/16, streaks 14.02/16 (the disc at 14.01/16 is gone, see below). The study's thin turning line (8.94-9.06) and 16 dashes
   (9.35-9.5) were removed on 2026-10-24 at the artist's request: only the thick ring stays. The pair's render box already covers the ring.
 - **Render types.** Vanilla beacon shader (unlit vertex colour), white texture, no cull, LEQUAL depth test,
-  colour-only writes. Disc alpha-blended and flushed first, then the SRC_ALPHA/ONE glow.
-- **LOD.** `CableBeamMesh.detail`: 3288 / 1752 / 696 vertices per end (96/48/24 segments, 6/3/1 spill bands);
-  disc and spill cap at 48 segments (`soft`). Cut-off 256 blocks. Animation left: the streaks and a 4% pulse.
-- **Alarm.** Glow uses the beam's red; the disc stays dark red (.028, .006, .004) instead of the study's red tint
-  (no red J2 render was ever shown, and a bright red disc read as a solid blob in game).
+  colour-only writes, SRC_ALPHA/ONE glow only (one pass, one buffer since the disc went).
+- **LOD.** `CableBeamMesh.detail`: 3096 / 1560 / 600 vertices per 2x2 end, 6168 / 3096 / 1176 per 3x3 end
+  (96/48/24 segments, 6/3/1 spill bands); spill caps at 48 segments (`soft`). Cut-off 256 blocks. Animation left: the streaks and a 4% pulse.
+- **Alarm.** Glow uses the beam's red.
 
 ## GuideME scenes (the non-obvious part)
 
@@ -107,3 +106,11 @@ Vertices per 3x3 end: 6360 / 3288 / 1272.
 In-game check: `build/beam-portal-check/tools/closeup3.sh <worktree> <label> <topic>`, one 3x3 pair at x 20-22,
 z 14 and 24; the beam fills the 3x3 square in front of the face, so cameras stay above or beside it (a camera
 inside the beam sees only white haze). Images `build/beam-former-3x3-check/`.
+
+## No dark disc (2026-10-24)
+
+The owner saw the emitter's centre turn black whenever a pair linked: the study's dark plate disc (alpha .68,
+r 4.8 on a 2x2, 7.2 on a 3x3, at 14.01/16) covered the artist's cyan centre plate. Linked vs unlinked shots:
+`build/beam-portal-centre-check/`. The owner does not want the disc, so it went with its render type and buffer:
+`emit` lost its `glow` flag, the portal is one additive GLOW pass, one draw call per frame, and `bounds` starts
+at the streaks' 14.02/16. Earlier sections keep their history; their DISC mentions describe the old two-pass setup.

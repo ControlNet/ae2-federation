@@ -48,18 +48,19 @@ and shade brightness 1.0F to keep the open frame and inset joins from shading as
   (`BeamFormerRenderer`): a 1x1 pair with the cable's own beam (R / LITE), a 2x2 or 3x3 pair with the 2x2 bundle's plasma beam
   (`BundleBeamMesh`, Blender study R; owner, 2026-10-18), its two-block box scaled to the square; load, over-capacity
   red and unpowered red follow the cable's rules. Each anchor syncs a `BeamLook` (partner, side, count, limit, unpowered) every 10 ticks. Linked 2x2 fronts also draw one floating portal ring at each end
-  (Blender study J2; owner's choice, 2026-10-23), with a dark plate disc and inward drifting streaks. Only the
+  (Blender study J2; owner's choice, 2026-10-23), with inward drifting streaks. Only the
   thick ring and its soft glow remain of the study's rings: the thin turning line and dashed ring outside it were
   dropped at the artist's request (2026-10-24). Linked 3x3 fronts draw two such rings, their bright cores at
   11.5-12 and 15.5-16 pixels from the face centre, over the artist's inner blocks and octagonal ring (owner,
-  2026-10-24); each keeps the 2x2's shoulders and spill about its own core, and the disc and streaks scale by 1.5.
-  A 2x2 end costs 3,288 vertices within 24 blocks, 1,752 through 48 blocks, and 696 beyond that, a 3x3 end 6,360,
-  3,288 and 1,272, with fewer angular segments and spill bands (the dark disc and faint spill never use more than
+  2026-10-24); each keeps the 2x2's shoulders and spill about its own core, and the streaks scale by 1.5. The study's
+  dark plate disc behind the beam's exit was dropped (owner, 2026-10-24): it blackened the emitter's centre
+  whenever the pair linked. The portal is light only.
+  A 2x2 end costs 3,096 vertices within 24 blocks, 1,560 through 48 blocks, and 600 beyond that, a 3x3 end 6,168,
+  3,096 and 1,176, with fewer angular segments and spill bands (the faint spill never uses more than
   48 segments); the portal stops at the beam's 256-block view distance.
-  Each world end is frustum-culled independently. All visible portals share two fixed buffers, flushed disc
-  then glow after block entities and before the beam and translucent terrain, for two portal draw calls per frame.
+  Each world end is frustum-culled independently. All visible portals share one fixed buffer, flushed after block
+  entities and before the beam and translucent terrain, for one portal draw call per frame.
   Both anchors reuse their existing synced look; 1x1 and unlinked bodies draw no portal.
-  The disc stays dark during over-capacity and unpowered alarms (RGB .028, .006, .004; alpha .68).
   GuideME scenes queue the portals (copied pose and inputs) and draw them at the end of the scene's
   terrain, after flushing the solid and cutout quads its translucent pass queues a second time, while the
   scene camera is still set (`GuidebookLevelRendererMixin`). Scenes use full detail with no distance
