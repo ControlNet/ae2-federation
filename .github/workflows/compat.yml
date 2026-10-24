@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       groups:
-        description: 'Profile groups, space-separated (addons, modpacks); empty runs none'
+        description: 'Profile groups, space-separated (addons, modpacks), or none'
         default: 'addons modpacks'
       latest:
         description: 'Also run each modpack on its newest CurseForge release'
@@ -57,10 +57,16 @@ jobs:
           groups="addons"
           if [ "$EVENT" = schedule ]; then groups="addons modpacks"; fi
           case "$REF" in release/*|hotfix/*) groups="addons modpacks" ;; esac
+          # GitHub replaces an empty dispatch input with its default, so "none" asks for no pinned profile.
           if [ "$EVENT" = workflow_dispatch ]; then groups="$REQUESTED"; fi
-          args=""
-          for group in $groups; do args="$args --group $group"; done
-          echo "profiles=$(python3 tools/compat_run.py --list --json $args)" >> "$GITHUB_OUTPUT"
+          if [ "$groups" = none ]; then groups=""; fi
+          profiles="[]"
+          if [ -n "$groups" ]; then
+            args=""
+            for group in $groups; do args="$args --group $group"; done
+            profiles="$(python3 tools/compat_run.py --list --json $args)"
+          fi
+          echo "profiles=$profiles" >> "$GITHUB_OUTPUT"
           latest="[]"
           if [ "$EVENT" = schedule ] || [ "$LATEST" = true ]; then
             latest="$(python3 tools/compat_run.py --list --json --group modpacks)"

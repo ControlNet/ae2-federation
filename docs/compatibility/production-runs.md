@@ -304,5 +304,5 @@ also runs each modpack on its newest release. That job caches nothing, frees run
 pack to download, and leaves the pins as they are. To run only the newest releases:
 
 ```bash
-gh workflow run compat.yml --ref dev -f groups= -f latest=true
+gh workflow run compat.yml --ref dev -f groups=none -f latest=true
 ```
