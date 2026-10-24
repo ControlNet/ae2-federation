@@ -35,7 +35,10 @@ final class PlaythroughProgression {
     private static final BlockPos SURVEY = new BlockPos(0, 0, 64);
     static final List<String> DISTURBANCES = List.of("cable", "router", "STORAGE", "CRAFTING", "ME_POWER");
     private static final List<String> CLASSES = List.of("both-pass", "baseline-only", "both-fail", "federated-only",
-            "not-bootstrappable", "nondeterministic", "machine-unobtainable", "unobtainable", "deferred", "craft-limit");
+            "not-bootstrappable", "nondeterministic", "machine-unobtainable", "unobtainable", "deferred", "craft-limit",
+            "fixture-limit", "harness-error", "diverged");
+    /** A base that is not ready this many ticks after the process started never re-attached or built. */
+    private static final int ATTACH_TICKS = 1200;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     record Target(String chapter, String chapterId, String quest, String questId, String taskId, String item, long count,
@@ -44,14 +47,16 @@ final class PlaythroughProgression {
     /** Settings a resumed process must share with the process that started the run. */
     record Settings(String chapter, List<String> items, int maxTargets, long seed, int bankCells, int machineCopies,
                     int targetTicks, String machinePath, List<String> disturbances, long disturbanceSeed, int disturbanceEvery,
-                    List<String> adapters, long maxCrafts, List<String> exclude) { }
+                    int disturbanceTicks, List<String> adapters, long maxCrafts, List<String> exclude) { }
 
     /** Everything a checkpoint saves beside the world. Rows are kept as JSON. */
     static final class State {
-        int schemaVersion = 1;
+        int schemaVersion = 2;
         String checkpointId = "";
         Settings settings;
         PlaythroughTopology.Layout layout;
+        /** The selected quest task IDs, in order; a resumed process must select the same. */
+        List<String> targetIds = new ArrayList<>();
         int nextTarget;
         int orders;
         List<JsonObject> rows = new ArrayList<>();
@@ -77,10 +82,15 @@ final class PlaythroughProgression {
         /** Equipment orders and takes since the last quest order. */
         List<String> obtained = new ArrayList<>();
         Map<String, Long> taken = new TreeMap<>();
+        /** Where owned equipment came from, by item key: "stock", "crafted" (an equipment order) or "provided". */
+        Map<String, Map<String, Long>> sources = new TreeMap<>();
+        /** Equipment that passing equipment orders put into stock and that no take has used yet. */
+        Map<String, Long> crafted = new TreeMap<>();
         PlaythroughFactory.BaseState baseline;
         PlaythroughFactory.BaseState federated;
-        Map<String, Long> baselineStock = Map.of();
-        Map<String, Long> federatedStock = Map.of();
+        /** Stock per member at the checkpoint (see {@link PlaythroughFactory#members}). */
+        Map<String, Map<String, Long>> baselineStock = Map.of();
+        Map<String, Map<String, Long>> federatedStock = Map.of();
         List<JsonObject> processes = new ArrayList<>();
         boolean completed;
         String stopReason = "";
@@ -104,7 +114,13 @@ final class PlaythroughProgression {
     private PlaythroughFactory baseline;
     private PlaythroughFactory federated;
     private GameTestHelper scratch;
+    private GameTestHelper baselineSite;
+    private GameTestHelper federatedSite;
+    private boolean ticketsHeld;
     private PlaythroughLogWatch log;
+    /** Log events before this mark belong to an order that has ended, or to the bases' attach. */
+    private int logMark;
+    private int attachTicks;
     private Order order;
     private boolean ready;
     private int ordersThisProcess;
@@ -121,7 +137,8 @@ final class PlaythroughProgression {
         String purpose; String perturbation = "none"; List<String> waited = List.of(); List<String> unobtained = List.of(); String adapter;
         int phase; boolean begun; int mark;
         PlaythroughFactory.Result baseline; PlaythroughFactory.Result federated;
-        List<String> baselineLog = List.of(); List<String> federatedLog = List.of();
+        /** Disturbances that ended inside the order and were restored by {@code endOrder}. */
+        List<String> restoredAtEnd = new ArrayList<>();
     }
 
     void start() throws Exception {
@@ -134,23 +151,38 @@ final class PlaythroughProgression {
         recipes = new PlaythroughRecipes(helper, probe, true);
         select(settings);
         scratch = new PlaythroughOffsetHelper(helper, SURVEY);
+        var targetIds = targets.stream().map(Target::taskId).toList();
         if (resume) {
             state = GSON.fromJson(Files.readString(directory.resolve(STATE)), State.class);
             if (!state.settings.equals(settings)) throw new IllegalStateException("Resumed settings differ: saved " + state.settings + ", now " + settings);
             if (state.completed || !state.stopReason.isEmpty()) throw new IllegalStateException("The saved progression already ended: " + state.stopReason);
-            baseline = PlaythroughFactory.attach(PlaythroughOffsetHelper.at(helper, BlockPos.of(state.baseline.origin())), state.baseline, settings.machineCopies());
-            federated = PlaythroughFactory.attach(PlaythroughOffsetHelper.at(helper, BlockPos.of(state.federated.origin())), state.federated, settings.machineCopies());
+            // The quest book or a mod could select other tasks now; the next target must be the one the run stopped before.
+            if (!state.targetIds.equals(targetIds)) throw new IllegalStateException("Selected targets changed across processes: saved "
+                    + state.targetIds.size() + " (next " + (state.nextTarget < state.targetIds.size() ? state.targetIds.get(state.nextTarget) : "none")
+                    + "), now " + targetIds.size() + " (next " + (state.nextTarget < targetIds.size() ? targetIds.get(state.nextTarget) : "none") + ")");
+            baselineSite = PlaythroughOffsetHelper.at(helper, BlockPos.of(state.baseline.origin()));
+            federatedSite = PlaythroughOffsetHelper.at(helper, BlockPos.of(state.federated.origin()));
+            // The saved tickets come back with the world; forcing again also covers a world whose run had ended.
+            tickets(true);
+            baseline = PlaythroughFactory.attach(baselineSite, state.baseline, settings.machineCopies());
+            federated = PlaythroughFactory.attach(federatedSite, state.federated, settings.machineCopies());
         } else {
             if (Files.exists(directory.resolve(STATE))) throw new IllegalStateException("A saved progression exists; resume it or use a new run directory");
             state = new State();
             state.settings = settings;
+            state.targetIds = targetIds;
             state.layout = PlaythroughTopology.base(settings.seed());
             for (var adapter : PlaythroughMachineAdapters.ENABLED) if (adapter.assembler()) state.available.add(adapter.id());
-            var plain = new PlaythroughOffsetHelper(helper, BASELINE);
-            var linked = new PlaythroughOffsetHelper(helper, FEDERATED);
-            tickets(plain, true); tickets(linked, true);
-            baseline = PlaythroughFactory.base(plain, null, settings.bankCells(), settings.machineCopies());
-            federated = PlaythroughFactory.base(linked, state.layout, settings.bankCells(), settings.machineCopies());
+            baselineSite = new PlaythroughOffsetHelper(helper, BASELINE);
+            federatedSite = new PlaythroughOffsetHelper(helper, FEDERATED);
+            tickets(true);
+            try {
+                baseline = PlaythroughFactory.base(baselineSite, null, settings.bankCells(), settings.machineCopies());
+                federated = PlaythroughFactory.base(federatedSite, state.layout, settings.bankCells(), settings.machineCopies());
+            } catch (RuntimeException exception) {
+                tickets(false);
+                throw exception;
+            }
         }
         process.addProperty("index", state.processes.size());
         process.addProperty("resumed", resume);
@@ -178,13 +210,13 @@ final class PlaythroughProgression {
                 Integer.getInteger(PREFIX + "maxTargets", 0), seed, Integer.getInteger(PREFIX + "bankCells", 8),
                 PlaythroughMachines.requestedCopies(1), Integer.getInteger("ae2federation.playthrough.targetTicks", 1200),
                 PlaythroughMachines.PATH, disturbances, Long.getLong(PREFIX + "disturbanceSeed", seed),
-                Integer.getInteger(PREFIX + "disturbanceEvery", 4),
+                Integer.getInteger(PREFIX + "disturbanceEvery", 4), Integer.getInteger(PREFIX + "disturbanceTicks", 40),
                 PlaythroughMachineAdapters.ENABLED.stream().map(PlaythroughMachineAdapter::id).toList(),
                 // About what one 1400-second process finishes in both bases (appflux:core_256m plans 56,115 crafts).
                 Long.getLong(PREFIX + "maxCrafts", 60_000),
                 java.util.Arrays.stream(System.getProperty(PREFIX + "exclude", "").split(",")).map(String::trim)
                         .filter(item -> !item.isEmpty()).sorted().toList());
-        if (settings.maxTargets() < 0 || settings.bankCells() < 0 || settings.bankCells() > 10 || settings.targetTicks() < 1 || settings.disturbanceEvery() < 1 || settings.maxCrafts() < 0)
+        if (settings.maxTargets() < 0 || settings.bankCells() < 0 || settings.bankCells() > 10 || settings.targetTicks() < 1 || settings.disturbanceEvery() < 1 || settings.disturbanceTicks() < 1 || settings.maxCrafts() < 0)
             throw new IllegalArgumentException("Invalid progression settings: " + settings);
         return settings;
     }
@@ -226,22 +258,45 @@ final class PlaythroughProgression {
         if (targets.isEmpty()) throw new IllegalStateException("Chapter filter selected no targets: " + chapter);
     }
 
-    private static void tickets(GameTestHelper base, boolean add) {
-        var origin = base.absolutePos(BlockPos.ZERO);
-        var low = new ChunkPos(origin.offset(-16, 0, -16));
-        var high = new ChunkPos(origin.offset(48, 0, 48));
-        var chunks = new ArrayList<ChunkPos>();
-        for (int x = low.x; x <= high.x; x++) for (int z = low.z; z <= high.z; z++) chunks.add(new ChunkPos(x, z));
-        space.controlnet.ae2federation.test.world.RestartChunkTickets.force(base.getLevel(), origin, chunks, add);
+    /**
+     * Forces or releases both bases' chunks. The tickets save with the world, so they stay through a checkpoint for the
+     * next process, and are released on every exit that ends the run.
+     */
+    private void tickets(boolean add) {
+        if (add == ticketsHeld) return;
+        for (var base : List.of(baselineSite, federatedSite)) {
+            var origin = base.absolutePos(BlockPos.ZERO);
+            var low = new ChunkPos(origin.offset(-16, 0, -16));
+            var high = new ChunkPos(origin.offset(48, 0, 48));
+            var chunks = new ArrayList<ChunkPos>();
+            for (int x = low.x; x <= high.x; x++) for (int z = low.z; z <= high.z; z++) chunks.add(new ChunkPos(x, z));
+            space.controlnet.ae2federation.test.world.RestartChunkTickets.force(base.getLevel(), origin, chunks, add);
+        }
+        ticketsHeld = add;
     }
 
     private void tick() {
         if (finished) return;
         try {
             if (!ready) {
-                baseline.tick(); federated.tick();
-                if (!baseline.ready() || !federated.ready()) { helper.runAfterDelay(1, this::tick); return; }
+                String failure = "";
+                try {
+                    var built = baseline.tick();
+                    var linked = federated.tick();
+                    if (built != null || linked != null) failure = "a base returned a result instead of becoming idle";
+                } catch (Exception exception) {
+                    failure = exception.toString();
+                }
+                if (!baseline.ready() || !federated.ready()) {
+                    if (failure.isEmpty() && deadlineReached()) failure = "the process deadline arrived";
+                    if (failure.isEmpty() && ++attachTicks > ATTACH_TICKS) failure = "not ready after " + ATTACH_TICKS + " ticks";
+                    if (!failure.isEmpty()) { attachFailed(failure); return; }
+                    helper.runAfterDelay(1, this::tick); return;
+                }
                 ready = true;
+                // Errors while the bases attach belong to no order; they stay visible in this process's entry.
+                process.add("loggedWhileAttaching", GSON.toJsonTree(log.since(logMark)));
+                logMark = log.mark();
                 if (resume) verifyRestart();
                 if (!state.stopReason.isEmpty()) { stop(true); return; }
             }
@@ -258,14 +313,36 @@ final class PlaythroughProgression {
                 next();
             }
             helper.runAfterDelay(1, this::tick);
+        } catch (net.minecraft.gametest.framework.GameTestAssertException failure) {
+            // A failure stop has already written its report.
+            throw failure;
         } catch (Exception exception) {
             harnessError = exception.toString();
             com.mojang.logging.LogUtils.getLogger().error("AE2F_PROGRESSION_HARNESS", exception);
             restoreTicks();
+            try { tickets(false); } catch (Exception releasing) { exception.addSuppressed(releasing); }
             try { writeReport(false, null); } catch (Exception writing) { exception.addSuppressed(writing); }
+            if (log != null) log.close();
             finished = true;
             throw new IllegalStateException("Playthrough progression failed at target " + state.nextTarget, exception);
         }
+    }
+
+    /**
+     * A base that never became idle: a resumed base that did not re-attach, or a new one that did not build. That is a
+     * failure of the run, not an order to defer; the saved state stays as the last checkpoint wrote it.
+     */
+    private void attachFailed(String failure) throws Exception {
+        state.stopReason = (resume ? "Bases did not re-attach: " : "Bases did not build: ") + failure
+                + "; baseline " + baseline.readiness() + ", federated " + federated.readiness();
+        process.addProperty("attachFailure", state.stopReason);
+        process.add("loggedWhileAttaching", GSON.toJsonTree(log.since(logMark)));
+        restoreTicks();
+        tickets(false);
+        writeReport(false, null);
+        log.close();
+        finished = true;
+        helper.fail("Playthrough progression stopped: " + state.stopReason);
     }
 
     /** Every process completes at least one order or target before its time limit may stop it. */
@@ -273,14 +350,14 @@ final class PlaythroughProgression {
         return ordersThisProcess > 0 || state.nextTarget > process.get("startTarget").getAsInt();
     }
 
-    /** A resumed base must come back with exactly the stock, idle CPUs and settled ledger it was saved with. */
+    /** A resumed base must come back with exactly the stock per member, idle CPUs and settled ledger it was saved with. */
     private void verifyRestart() {
         var checks = new JsonObject();
         for (var entry : List.of(Map.entry("baseline", baseline), Map.entry("federated", federated))) {
             var saved = entry.getKey().equals("baseline") ? state.baselineStock : state.federatedStock;
-            var now = entry.getValue().stock();
+            String changed = memberDifference(saved, entry.getValue().members());
             String unsettled = entry.getValue().unsettled();
-            String result = !now.equals(saved) ? "Stock changed across the restart: " + PlaythroughAccounting.difference(saved, now)
+            String result = !changed.isEmpty() ? "Stock changed across the restart: " + changed
                     : !unsettled.isEmpty() ? "Unsettled after the restart: " + unsettled : "PASS";
             checks.addProperty(entry.getKey(), result);
             if (!result.equals("PASS") && state.stopReason.isEmpty()) state.stopReason = entry.getKey() + " base after restart: " + result;
@@ -331,6 +408,10 @@ final class PlaythroughProgression {
             entry.addProperty("beforeItem", target.item());
             entry.addProperty("chapter", target.chapter());
             entry.add("equipment", GSON.toJsonTree(equipment(recipe)));
+            // Where each block and part came from when the machine became available: stock, crafted, or provided.
+            var sources = new TreeMap<String, Map<String, Long>>();
+            for (var name : equipment(recipe).keySet()) sources.put(name, state.sources.getOrDefault(name, Map.of()));
+            entry.add("equipmentSources", GSON.toJsonTree(sources));
             state.timeline.put(adapter, entry);
         }
         int copies = siteCopies(proof);
@@ -447,6 +528,12 @@ final class PlaythroughProgression {
                     throw new IllegalStateException("Equipment take of " + name + " differs: " + takenBaseline + "/" + takenFederated + " of " + fromStock);
                 state.pool.merge(name, missing, Math::addExact);
                 state.taken.merge(name + (fromStock < missing ? " (provided)" : ""), missing, Math::addExact);
+                // Stock that an equipment order made counts as crafted; the rest of the take was stock already.
+                long crafted = Math.min(fromStock, state.crafted.getOrDefault(name, 0L));
+                if (crafted > 0) PlaythroughAccounting.add(state.crafted, name, -crafted);
+                var sources = state.sources.computeIfAbsent(name, ignored -> new TreeMap<>());
+                for (var source : List.of(Map.entry("stock", fromStock - crafted), Map.entry("crafted", crafted), Map.entry("provided", missing - fromStock)))
+                    if (source.getValue() > 0) sources.merge(source.getKey(), source.getValue(), Math::addExact);
                 continue;
             }
             if (state.failedEquipment.getOrDefault(name, -1) == state.available.size()) return name;
@@ -490,26 +577,54 @@ final class PlaythroughProgression {
         if (deferNext) {
             // A fresh process could not finish this order before its deadline; record it and move on.
             deferNext = false;
-            var failure = PlaythroughFactory.Result.unexecuted("deferred", "The order did not finish within one server process");
-            var row = row(pending.kind, targets.get(state.nextTarget), pending.item, pending.amount, pending, failure, failure, "deferred");
-            if (pending.kind.equals("quest")) finishTarget(row);
-            else {
-                state.rows.add(row);
-                state.failedEquipment.put(PlaythroughAccounting.name(pending.key, helper.getLevel()), state.available.size());
-                state.obtained.add("deferred " + pending.item + " (" + pending.purpose + ")");
-            }
-            writeReport(false, null);
+            skip(pending, "deferred", "The order did not finish within one server process");
             return;
         }
+        String channels = channelLimit(pending.proof);
+        if (!channels.isEmpty()) { skip(pending, "fixture-limit", channels); return; }
         var settings = state.settings;
         if (!settings.disturbances().isEmpty()) {
             var random = new Random(settings.disturbanceSeed() * 1_000_003L + state.orders);
             if (random.nextInt(settings.disturbanceEvery()) == 0)
                 pending.perturbation = settings.disturbances().get(random.nextInt(settings.disturbances().size()));
         }
+        // The order's log window starts where the previous order's ended, so the steps between orders count too.
+        pending.mark = logMark;
         order = pending;
         com.mojang.logging.LogUtils.getLogger().info("AE2F_PROGRESSION_ORDER order={} target={}/{} kind={} item={} amount={} perturbation={}",
                 state.orders + 1, state.nextTarget + 1, targets.size(), pending.kind, pending.item, pending.amount, pending.perturbation);
+    }
+
+    /** Records an order that does not run in either base, as {@code classification}. */
+    private void skip(Order pending, String classification, String reason) throws Exception {
+        var failure = PlaythroughFactory.Result.unexecuted(classification, reason);
+        var row = row(pending.kind, targets.get(state.nextTarget), pending.item, pending.amount, pending, failure, failure, classification);
+        if (pending.kind.equals("quest")) finishTarget(row);
+        else {
+            state.rows.add(row);
+            state.failedEquipment.put(PlaythroughAccounting.name(pending.key, helper.getLevel()), state.available.size());
+            state.obtained.add(classification + " " + pending.item + " (" + pending.purpose + ")");
+        }
+        writeReport(false, null);
+    }
+
+    /**
+     * Why the output cell ME Chests this proof adds would take a base's requester past its channels, or empty. A
+     * requester without a controller is ad-hoc: one channel too many takes every device on it offline. Checked for
+     * both bases before either runs, so neither order starts.
+     */
+    private String channelLimit(PlaythroughRecipes.Proof proof) {
+        if (proof == null) return "";
+        var problems = new ArrayList<String>();
+        for (var entry : List.of(Map.entry("baseline", baseline), Map.entry("federated", federated))) {
+            var added = new TreeSet<>(PlaythroughMachines.storageCells(proof));
+            added.removeAll(entry.getValue().outputCellTypes());
+            int[] channels = entry.getValue().requesterChannels();
+            if (!added.isEmpty() && channels[1] > 0 && channels[0] + added.size() > channels[1])
+                problems.add(entry.getKey() + " requester has no controller and uses " + channels[0] + " of " + channels[1]
+                        + " channels; output cells " + added + " need " + added.size() + " more");
+        }
+        return problems.isEmpty() ? "" : "Fixture limit: " + String.join("; ", problems);
     }
 
     /** Runs the active order on the baseline, then on the federated base, then lets both settle. */
@@ -517,73 +632,125 @@ final class PlaythroughProgression {
         var current = order;
         var base = current.phase == 0 ? baseline : federated;
         if (current.phase < 2) {
+            PlaythroughFactory.Result result = null;
             if (!current.begun) {
-                current.mark = log.mark();
                 try {
                     base.order(current.proof, current.key, current.amount, current.phase == 0 ? "none" : current.perturbation,
-                            state.settings.targetTicks(), state.settings.maxCrafts());
+                            state.settings.disturbanceTicks(), state.settings.targetTicks(), state.settings.maxCrafts());
+                    current.begun = true;
                 } catch (IllegalArgumentException exception) {
-                    var failure = PlaythroughFactory.Result.unexecuted("pattern-encoding", exception.getMessage());
-                    current.baseline = failure; current.federated = failure; current.phase = 2; settleTicks = 0;
-                    base.endOrder();
-                    return;
+                    result = PlaythroughFactory.Result.unexecuted("pattern-encoding", exception.getMessage());
+                } catch (Exception exception) {
+                    result = harnessFailure(current, exception);
                 }
-                current.begun = true;
             }
-            PlaythroughFactory.Result result;
-            try {
-                result = base.tick();
-            } catch (IllegalStateException exception) {
-                // A fixture limit, such as a plan larger than the CPU template, fails this order only; the settle
-                // check below decides whether the bases are still comparable.
-                com.mojang.logging.LogUtils.getLogger().warn("AE2F_PROGRESSION_FIXTURE_LIMIT item={}", current.item, exception);
-                result = PlaythroughFactory.Result.unexecuted("fixture-limit", exception.getMessage());
+            if (result == null) {
+                try {
+                    result = base.tick();
+                } catch (Exception exception) {
+                    result = harnessFailure(current, exception);
+                }
             }
             if (result == null) return;
-            var events = log.since(current.mark);
-            if (!events.isEmpty() && result.pass()) result = result.failure("exception-logged", events.size() + " events: " + events.getFirst());
-            base.endOrder();
-            if (current.phase == 0) { current.baseline = result; current.baselineLog = events; }
-            else { current.federated = result; current.federatedLog = events; }
+            String restored = base.endOrder();
+            if (!restored.isEmpty()) current.restoredAtEnd.add(restored);
+            if (current.phase == 0) current.baseline = result;
+            else current.federated = result;
             current.phase++; current.begun = false; settleTicks = 0;
-            // The bases hold the same stock, so the federated plan would exceed the craft limit as well.
-            if (current.phase == 1 && result.invariant().equals("craft-limit")) { current.federated = result; current.phase = 2; }
+            // The bases hold the same stock and providers, so the federated base would refuse this plan as well.
+            if (current.phase == 1 && (result.invariant().equals("craft-limit") || result.invariant().equals("pattern-encoding"))) {
+                current.federated = result; current.phase = 2;
+            }
             return;
         }
-        // Return state of a cancelled job settles through the normal 20-tick sweep; wait for it, then compare.
+        // Return state, also of a cancelled job, settles through the normal 20-tick sweep; wait for it, then compare.
         if (++settleTicks < 25) return;
-        boolean failed = !current.baseline.pass() || !current.federated.pass();
-        if (failed && settleTicks < 400 && !(baseline.unsettled().isEmpty() && federated.unsettled().isEmpty())) return;
+        if (settleTicks < 400 && !(baseline.unsettled().isEmpty() && federated.unsettled().isEmpty())) return;
         complete(current);
+    }
+
+    /**
+     * An exception inside one base's order fails that order only. An IllegalStateException is a fixture limit, such as
+     * a plan larger than the CPU template; anything else is a harness failure. Neither blames a base: the order is
+     * classified {@code fixture-limit} or {@code harness-error}, and the settle check decides whether the bases are
+     * still comparable.
+     */
+    private PlaythroughFactory.Result harnessFailure(Order current, Exception exception) {
+        boolean limit = exception instanceof IllegalStateException;
+        com.mojang.logging.LogUtils.getLogger().warn("AE2F_PROGRESSION_{} item={} base={}", limit ? "FIXTURE_LIMIT" : "HARNESS_EXCEPTION",
+                current.item, current.phase == 0 ? "baseline" : "federated", exception);
+        return PlaythroughFactory.Result.unexecuted(limit ? "fixture-limit" : "harness-exception", exception.toString());
+    }
+
+    private static PlaythroughFactory.Result failed(PlaythroughFactory.Result result, String invariant, String reason) {
+        return result.pass() ? result.failure(invariant, reason) : result;
+    }
+
+    private static List<String> texts(List<PlaythroughLogWatch.Event> events, String source) {
+        return events.stream().filter(event -> event.source().equals(source)).map(PlaythroughLogWatch.Event::text).toList();
+    }
+
+    /**
+     * Stock per member compared key by key; a member one side lacks counts as empty, so the federated base's extra
+     * member must hold nothing. Empty when equal.
+     */
+    static String memberDifference(Map<String, Map<String, Long>> baseline, Map<String, Map<String, Long>> federated) {
+        var names = new TreeSet<>(baseline.keySet()); names.addAll(federated.keySet());
+        var problems = new ArrayList<String>();
+        for (var name : names) {
+            Map<String, Long> first = baseline.getOrDefault(name, Map.of()), second = federated.getOrDefault(name, Map.of());
+            if (!first.equals(second)) problems.add(name + " " + PlaythroughAccounting.difference(first, second));
+        }
+        return String.join("; ", problems);
     }
 
     private void complete(Order current) throws Exception {
         var base = current.baseline;
         var fed = current.federated;
+        // Every event since the previous order ended: both runs, the settle window with the federated return sweep,
+        // endOrder, retire, and the equipment steps before this order.
+        var events = log.since(current.mark);
+        var federatedEvents = texts(events, PlaythroughLogWatch.FEDERATED);
+        var unattributed = texts(events, PlaythroughLogWatch.UNATTRIBUTED);
+        if (!unattributed.isEmpty()) {
+            String reason = "unattributed, " + unattributed.size() + " events: " + unattributed.getFirst();
+            base = failed(base, "exception-logged", reason);
+            fed = failed(fed, "exception-logged", reason);
+        }
+        if (!federatedEvents.isEmpty()) fed = failed(fed, "exception-logged", federatedEvents.size() + " events: " + federatedEvents.getFirst());
+        // The bases stay comparable only while both are settled and hold the same stock in each member.
+        String baselineUnsettled = baseline.unsettled();
+        String federatedUnsettled = federated.unsettled();
+        var baselineMembers = baseline.members();
+        var federatedMembers = federated.members();
+        String divergence = !baselineUnsettled.isEmpty() || !federatedUnsettled.isEmpty()
+                ? "unsettled" + (baselineUnsettled.isEmpty() ? "" : " baseline: " + baselineUnsettled) + (federatedUnsettled.isEmpty() ? "" : " federated: " + federatedUnsettled)
+                : memberDifference(baselineMembers, federatedMembers);
         if (base.pass() && fed.pass()) {
             if (!base.extracted().equals(fed.extracted()))
                 fed = fed.failure("cross-base-extractions", "Source extractions differ: baseline " + base.extracted() + ", federated " + fed.extracted());
-            else if (!base.inventories().equals(fed.inventories()))
-                fed = fed.failure("cross-base-stock", "Total stock differs from the baseline: " + PlaythroughAccounting.difference(
-                        base.inventories().get("total"), fed.inventories().get("total")));
+            else if (!PlaythroughTopology.inventoriesEqual(base, fed))
+                fed = fed.failure("cross-base-stock", "Stock per member differs from the baseline: " + memberDifference(base.inventories(), fed.inventories()));
         }
         var comparison = PlaythroughTopology.compare(base, fed, false);
-        String classification = base.invariant().equals("craft-limit") ? "craft-limit" : comparison.classification();
+        String classification = base.invariant().equals("craft-limit") ? "craft-limit"
+                : base.invariant().equals("harness-exception") || fed.invariant().equals("harness-exception") ? "harness-error"
+                : base.invariant().equals("fixture-limit") || fed.invariant().equals("fixture-limit") ? "fixture-limit"
+                : comparison.classification();
+        // A divergence found while settling outranks what the two runs reported.
+        if (!divergence.isEmpty()) classification = "diverged";
         var row = row(current.kind, current.target == null ? targets.get(state.nextTarget) : current.target, current.item, current.amount,
                 current, base, comparison.federated(), classification);
-        row.add("loggedExceptions", GSON.toJsonTree(Map.of("baseline", current.baselineLog, "federated", current.federatedLog)));
-        // The bases stay comparable only while both are settled and hold the same stock.
-        var baselineStock = baseline.stock();
-        var federatedStock = federated.stock();
-        String unsettled = baseline.unsettled() + (federated.unsettled().isEmpty() ? "" : " / federated: " + federated.unsettled());
-        if (!unsettled.isEmpty() || !baselineStock.equals(federatedStock)) {
-            state.stopReason = "Bases diverged after order " + (state.orders + 1) + " (" + current.item + ", " + classification + "): "
-                    + (!unsettled.isEmpty() ? "unsettled " + unsettled : "stock " + PlaythroughAccounting.difference(baselineStock, federatedStock));
+        row.add("loggedExceptions", GSON.toJsonTree(Map.of("federated", federatedEvents, "unattributed", unattributed,
+                "harness", texts(events, PlaythroughLogWatch.HARNESS))));
+        if (!current.restoredAtEnd.isEmpty()) row.add("disturbanceRestoredAtOrderEnd", GSON.toJsonTree(current.restoredAtEnd));
+        if (!divergence.isEmpty()) {
+            state.stopReason = "Bases diverged after order " + (state.orders + 1) + " (" + current.item + "): " + divergence;
             row.addProperty("divergence", state.stopReason);
             row.add("stockByCell", GSON.toJsonTree(Map.of("baseline", baseline.stockByCell(), "federated", federated.stockByCell())));
         }
-        boolean passed = comparison.classification().equals("both-pass");
-        order = null; ordersThisProcess++;
+        boolean passed = classification.equals("both-pass");
+        order = null; ordersThisProcess++; logMark = log.mark();
         if (current.kind.equals("quest")) {
             if (passed && current.target.consume() && state.stopReason.isEmpty()) {
                 // A quest submission takes the items out of the requester.
@@ -597,7 +764,8 @@ final class PlaythroughProgression {
         } else {
             state.rows.add(row);
             state.obtained.add((passed ? "ordered " : "failed ") + current.amount + " " + current.item + " (" + current.purpose + ")");
-            if (!passed) state.failedEquipment.put(PlaythroughAccounting.name(current.key, helper.getLevel()), state.available.size());
+            if (passed) state.crafted.merge(PlaythroughAccounting.name(current.key, helper.getLevel()), current.amount, Math::addExact);
+            else state.failedEquipment.put(PlaythroughAccounting.name(current.key, helper.getLevel()), state.available.size());
             state.orders++;
             writeReport(false, null);
         }
@@ -685,28 +853,35 @@ final class PlaythroughProgression {
         incomplete.addProperty("phase", order.phase == 0 ? "baseline" : order.phase == 1 ? "federated" : "settling");
         incomplete.addProperty("ordersThisProcess", ordersThisProcess);
         restoreTicks();
+        // The runner restores the checkpoint, whose world keeps the chunk tickets for the repeat.
         writeReport(false, incomplete);
+        log.close();
         finished = true;
         helper.succeed();
     }
 
-    /** Ends this process at an order boundary: saves the bases' state beside the world the server saves on stop. */
+    /**
+     * Ends this process at an order boundary: saves the bases' state beside the world the server saves on stop. A
+     * stop for a divergence, an unsettled base or failed restart checks fails the GameTest after writing its report.
+     */
     private void stop(boolean boundary) throws Exception {
         state.baseline = baseline.state(); state.federated = federated.state();
-        state.baselineStock = baseline.stock(); state.federatedStock = federated.stock();
+        state.baselineStock = baseline.members(); state.federatedStock = federated.members();
         process.addProperty("endOrder", state.orders);
         process.addProperty("endTarget", state.nextTarget);
         process.addProperty("ordersThisProcess", ordersThisProcess);
         process.addProperty("seconds", (System.nanoTime() - started) / 1_000_000_000.0);
+        // Errors after the last order of this process belong to no order; they stay visible here.
+        process.add("loggedAfterLastOrder", GSON.toJsonTree(log.since(logMark)));
         state.processes.add(process);
         state.checkpointId = java.util.UUID.randomUUID().toString();
-        if (state.completed) { tickets(PlaythroughOffsetHelper.at(helper, BlockPos.of(state.baseline.origin())), false);
-            tickets(PlaythroughOffsetHelper.at(helper, BlockPos.of(state.federated.origin())), false); }
+        if (state.completed || !state.stopReason.isEmpty()) tickets(false);
         PlaythroughCheckpoint.write(directory.resolve(STATE), GSON.toJson(state));
         restoreTicks();
         writeReport(boundary, null);
         log.close();
         finished = true;
+        if (!state.stopReason.isEmpty()) helper.fail("Playthrough progression stopped: " + state.stopReason);
         helper.succeed();
     }
 
@@ -716,7 +891,7 @@ final class PlaythroughProgression {
 
     private void writeReport(boolean boundary, JsonObject incomplete) throws Exception {
         var report = new JsonObject();
-        report.addProperty("schemaVersion", 1);
+        report.addProperty("schemaVersion", 2);
         report.addProperty("checkpointId", boundary ? state.checkpointId : "");
         report.addProperty("cleanBoundary", boundary);
         report.addProperty("completed", state.completed);
@@ -737,6 +912,7 @@ final class PlaythroughProgression {
         report.add("waitedBy", GSON.toJsonTree(state.waitedBy));
         report.add("blockedMachineRecipes", GSON.toJsonTree(state.blockedReasons));
         report.add("ownedEquipment", GSON.toJsonTree(state.pool));
+        report.add("equipmentSources", GSON.toJsonTree(state.sources));
         report.add("availableMachines", GSON.toJsonTree(state.available));
         var processes = new ArrayList<>(state.processes);
         if (!boundary) processes.add(process);

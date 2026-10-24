@@ -140,6 +140,8 @@ final class PlaythroughFactory implements AutoCloseable {
     private int budget;
     private int baseBudget;
     private final int ticksPerCraft = Integer.getInteger("ae2federation.playthrough.ticksPerCraft", 20);
+    /** Ticks a disturbance lasts before it is restored. */
+    private int restoreTicks = 40;
     private int copies;
     private int patternGroups;
     private long totalCrafts;
@@ -179,6 +181,7 @@ final class PlaythroughFactory implements AutoCloseable {
     private boolean rulesConfigured;
     private int bankCells;
     private Map<String, Long> stockBefore = Map.of();
+    private Map<String, Long> requesterBefore = Map.of();
     /** Phase 4: a plan with more crafts than this is not started; 0 means no limit. */
     private long craftLimit;
 
@@ -389,21 +392,25 @@ final class PlaythroughFactory implements AutoCloseable {
                 }
                 if (interruptedRules.isEmpty()) throw new IllegalStateException("No rule selected for perturbation");
             }
-        } else if (!restored && ticks - perturbedAt >= 40) {
+        } else if (!restored && ticks - perturbedAt >= restoreTicks) {
             perturbationEvidence.put("during", PlaythroughAccounting.ledger(helper.getLevel(), networks));
-            if (perturbation.equals("bridge") || perturbation.equals("bridge-part")) {
-                if (perturbation.equals("bridge")) routers.nativePorts().placeCable(center().relative(factoryFace(), 4));
-                factoryBridge = new space.controlnet.ae2federation.test.bridge.BridgeFixtures(helper).placeBridge(center().relative(factoryFace(), 4), factoryFace());
-            } else if (perturbation.equals("restart")) setBlock(center(), RouterRegistration.ROUTER.get().defaultBlockState());
-            else if (perturbation.equals("cable") || perturbation.equals("router")) {
-                // Native cable is a multipart host; place it the way the fixture built it.
-                if (cutState.is(AEBlocks.CABLE_BUS.block())) routers.nativePorts().placeCable(cut);
-                else helper.setBlock(cut, cutState);
-                perturbationEvidence.put("restoredBlock", net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(helper.getBlockState(cut).getBlock()).toString());
-            } else interruptedRules.forEach(this::editRule);
-            restored = true;
-            perturbationEvidence.put("restoredTick", ticks);
+            restore();
         }
+    }
+
+    private void restore() {
+        if (perturbation.equals("bridge") || perturbation.equals("bridge-part")) {
+            if (perturbation.equals("bridge")) routers.nativePorts().placeCable(center().relative(factoryFace(), 4));
+            factoryBridge = new space.controlnet.ae2federation.test.bridge.BridgeFixtures(helper).placeBridge(center().relative(factoryFace(), 4), factoryFace());
+        } else if (perturbation.equals("restart")) setBlock(center(), RouterRegistration.ROUTER.get().defaultBlockState());
+        else if (perturbation.equals("cable") || perturbation.equals("router")) {
+            // Native cable is a multipart host; place it the way the fixture built it.
+            if (cutState.is(AEBlocks.CABLE_BUS.block())) routers.nativePorts().placeCable(cut);
+            else helper.setBlock(cut, cutState);
+            perturbationEvidence.put("restoredBlock", net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(helper.getBlockState(cut).getBlock()).toString());
+        } else interruptedRules.forEach(this::editRule);
+        restored = true;
+        perturbationEvidence.put("restoredTick", ticks);
     }
 
     /**
@@ -658,6 +665,15 @@ final class PlaythroughFactory implements AutoCloseable {
                     if (demand.get().units() != expected) return null;
                     if (ticks < 80) return null;
                 }
+                if (persistent) {
+                    // Output cells added for this order's machines must not take the requester past its channels.
+                    String offline = requesterWithoutChannel();
+                    if (offline == null) return null;
+                    if (!offline.isEmpty()) {
+                        if (ticks > 100) throw new IllegalStateException("Fixture limit: requester devices without a channel: " + offline);
+                        return null;
+                    }
+                }
                 if (faces().stream().anyMatch(face -> !grid(face).getEnergyService().isNetworkPowered())
                         || grid(requesterFace()).getCraftingService().getCpus().isEmpty()) return null;
                 for (var pos : providers) {
@@ -800,7 +816,9 @@ final class PlaythroughFactory implements AutoCloseable {
                     ? "PASS" : "No observed first push while CPU busy, or restoration incomplete");
         }
         var after = persistent ? stock() : Map.<String, Long>of();
-        long arrived = persistent ? after.getOrDefault(keyName(target), 0L) - stockBefore.getOrDefault(keyName(target), 0L)
+        var members = persistent ? members() : Map.<String, Map<String, Long>>of();
+        // A base's product arrives in the requester's own cells, whatever stock other members hold.
+        long arrived = persistent ? members.get("requester").getOrDefault(keyName(target), 0L) - requesterBefore.getOrDefault(keyName(target), 0L)
                 : held(storage(requesterFace()), target);
         checks.put("target-crafted-plan", plan == null && resumed == null ? "NOT_CHECKED: plan unavailable" : craftsTarget()
                 ? "PASS" : "The plan does not execute a pattern producing the target");
@@ -838,15 +856,18 @@ final class PlaythroughFactory implements AutoCloseable {
         if (persistent) stockChecks(checks, used, extracted, after);
         else checks.put("source-extractions", plan == null && resumed == null ? "NOT_CHECKED: plan unavailable" : (resumed != null ? used.equals(extracted) : expected.equals(source.extracted))
                 ? "PASS" : "Extraction counts differ from ICraftingPlan.usedItems()");
+        if (persistent) refreshNetworks();
         var ledger = PlaythroughAccounting.ledger(helper.getLevel(), networks);
         checks.put("return-ledger", ledger.get("owed").isEmpty() ? "PASS" : ledger.get("owed").toString());
         checks.put("return-transit", ledger.get("transit").isEmpty() ? "PASS" : ledger.get("transit").toString());
         var inventories = new TreeMap<String, Map<String, Long>>();
         var expectedInventories = new TreeMap<String, Map<String, Long>>();
         if (persistent) {
-            // Bases compare their total stock; where a key sits among the cells is AE2's priority choice.
-            inventories.put("total", after);
-            expectedInventories.put("total", expectedStock);
+            // The requester's cells take priority, so every key of the stock balance belongs there and the other
+            // members' chests stay empty, as in Phase 1.
+            inventories.putAll(members);
+            members.keySet().forEach(member -> expectedInventories.put(member, Map.of()));
+            expectedInventories.put("requester", expectedStock);
         } else {
             inventories.put("materials", PlaythroughAccounting.contents(storage(materialFace()), helper.getLevel()));
             inventories.put("factory", PlaythroughAccounting.contents(storage(factoryFace()), helper.getLevel()));
@@ -858,8 +879,8 @@ final class PlaythroughFactory implements AutoCloseable {
             }
         }
         checks.put("cell-inventories", plan == null && resumed == null ? "NOT_CHECKED: plan unavailable" : expectedInventories.equals(inventories)
-                ? "PASS" : persistent ? "Stock differs from the plan's balance: " + PlaythroughAccounting.difference(expectedStock, after)
-                : "Expected " + expectedInventories + ", actual " + inventories);
+                ? "PASS" : persistent ? "Stock differs from the plan's balance (requester): " + PlaythroughAccounting.difference(expectedStock, members.get("requester"))
+                + "; other members: " + otherMembers(members) : "Expected " + expectedInventories + ", actual " + inventories);
         String mismatch = checkSignatures();
         checks.put("recipe-signature", mismatch.isEmpty() ? "PASS" : mismatch);
         if (!mismatch.isEmpty()) { pass = false; invariant = "recipe-signature"; reason = mismatch; }
@@ -912,12 +933,18 @@ final class PlaythroughFactory implements AutoCloseable {
      * Starts one order on an idle base: installs this proof's patterns into the existing providers, builds its machine
      * sites and mounts a fresh source of its supplies. Stock from earlier orders stays where it is.
      */
-    void order(PlaythroughRecipes.Proof proof, AEItemKey target, long amount, String perturbation, int budget, long craftLimit) {
+    void order(PlaythroughRecipes.Proof proof, AEItemKey target, long amount, String perturbation, int restoreTicks, int budget, long craftLimit) {
         if (!ready()) throw new IllegalStateException("Base is not idle");
+        // The previous order's disturbance must be gone: its block back in place and its rules enabled again.
+        String leftover = disturbanceLeft();
+        if (!leftover.isEmpty()) throw new IllegalStateException("A disturbance outlived its order: " + leftover);
+        String previous = perturbedAt > 0 ? this.perturbation + (cut != null ? " block " + cut + " in place" : " rules (" + interruptedRules.size() + ") enabled") : "";
         int groups = Math.max(1, (proof.craftingPatterns().size() + 8) / 9);
         if (groups > providers.size()) throw new IllegalArgumentException("Base has " + providers.size() + " providers, needs " + groups);
+        if (restoreTicks < 1) throw new IllegalArgumentException("A disturbance lasts at least one tick");
         this.proof = proof; originalProof = proof; this.target = target; this.amount = amount;
         this.budget = budget; baseBudget = budget; this.perturbation = perturbation; this.craftLimit = craftLimit;
+        this.restoreTicks = restoreTicks;
         patternGroups = groups;
         copies = Math.min(Integer.getInteger("ae2federation.playthrough.assemblerCopies", 28), providers.size() / groups);
         ticks = 0; readyTick = 0; idleSince = 0; drainedSince = 0; cpuChangedTick = 0;
@@ -925,7 +952,9 @@ final class PlaythroughFactory implements AutoCloseable {
         plan = null; future = null; patternsInstalled = false;
         perturbedAt = 0; restored = false; cut = null; cutState = null;
         perturbationEvidence.clear(); interruptedRules.clear(); signatures.clear(); cleanup.clear();
+        if (!previous.isEmpty()) perturbationEvidence.put("previousDisturbanceAtStart", previous);
         stockBefore = stock();
+        requesterBefore = members().get("requester");
         if (source != null) source.close();
         source = new PlaythroughSource(helper.getLevel(), absolute(chestPos(materialFace())),
                 chest(materialFace()).getMainNode().getNode(), proof.supplies());
@@ -933,23 +962,54 @@ final class PlaythroughFactory implements AutoCloseable {
         stage = 2;
     }
 
-    /** Ends an order once its result is read: a job still running is cancelled, and the machine sites are retired. */
-    void endOrder() {
+    /**
+     * Ends an order once its result is read. A disturbance the order ended inside is restored first, as a player
+     * repairs the cut before anything else; then a job still running is cancelled, and the machine sites are retired.
+     * Returns what was restored here, or empty.
+     */
+    String endOrder() {
+        String restoredHere = "";
+        if (perturbedAt > 0 && !restored) {
+            restore();
+            restoredHere = perturbation + (cut != null ? " block " + cut : " rules (" + interruptedRules.size() + ")") + " restored at order end";
+            perturbationEvidence.put("restoredAtOrderEnd", restoredHere);
+        }
         if (future != null && !future.isDone()) future.cancel(true);
         for (var face : faces()) grid(face).getCraftingService().getCpus().forEach(cpu -> { if (cpu.isBusy()) cpu.cancelJob(); });
         machines.retire();
         if (source != null) { source.close(); source = null; }
         result = null; stage = IDLE;
+        return restoredHere;
     }
 
-    /** What still runs or is owed after an order: busy CPUs, return debt or transit, busy providers. Empty when settled. */
+    /** A disturbance still in place: its cut position not holding the block that was cut, or a rule still disabled. */
+    private String disturbanceLeft() {
+        var problems = new ArrayList<String>();
+        if (perturbedAt > 0 && !restored) problems.add(perturbation + " never restored");
+        if (cut != null && helper.getBlockState(cut).getBlock() != cutState.getBlock())
+            problems.add("block " + cut + " is " + net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(helper.getBlockState(cut).getBlock()));
+        var service = PolicyService.get(helper.getLevel());
+        for (var key : policies) if (service.configured(key).filter(record -> record.rule().enabled()).isEmpty()) problems.add("rule " + key + " disabled");
+        return String.join("; ", problems);
+    }
+
+    /** Adds the NetworkIds the base's members carry now; an id that appears after the base was built is watched too. */
+    private void refreshNetworks() {
+        for (var face : faces()) if (grid(face) != null) FederationDomainRegistryAccess.confirmedNetworkId(grid(face)).ifPresent(networks::add);
+    }
+
+    /**
+     * What still runs or is owed after an order: busy CPUs, return debt or transit, watched jobs or unknown-job marks
+     * left in the return ledger, busy providers. Empty when settled.
+     */
     String unsettled() {
+        refreshNetworks();
         var problems = new ArrayList<String>();
         long busy = faces().stream().map(this::grid).distinct().flatMap(grid -> grid.getCraftingService().getCpus().stream()).filter(cpu -> cpu.isBusy()).count();
         if (busy > 0) problems.add(busy + " busy CPUs");
         var ledger = PlaythroughAccounting.ledger(helper.getLevel(), networks);
-        if (!ledger.get("owed").isEmpty()) problems.add("owed " + ledger.get("owed"));
-        if (!ledger.get("transit").isEmpty()) problems.add("transit " + ledger.get("transit"));
+        for (var category : List.of("owed", "transit", "jobs", "unknownJobs"))
+            if (!ledger.get(category).isEmpty()) problems.add(category + " " + ledger.get(category));
         for (var pos : providers) if (logic(pos).isBusy() || !logic(pos).getReturnInv().isEmpty()) problems.add("provider " + pos);
         return String.join("; ", problems);
     }
@@ -977,6 +1037,33 @@ final class PlaythroughFactory implements AutoCloseable {
         return total;
     }
 
+    /** Whether a cell of {@link #cells} belongs to the requester: its chest, bank Drive and output cells. */
+    private static boolean requesterCell(String name) {
+        return name.equals("requester") || name.startsWith("bank") || name.startsWith("output:");
+    }
+
+    /**
+     * Stock per member, key by key: "requester" (its chest, bank and output cells), then "materials", "factory" and
+     * any further member by face. Both bases use the same faces for the first three roles.
+     */
+    Map<String, Map<String, Long>> members() {
+        var result = new TreeMap<String, Map<String, Long>>();
+        cells().forEach((name, storage) -> {
+            String member = requesterCell(name) ? "requester" : name.equals(materialFace().name()) ? "materials"
+                    : name.equals(factoryFace().name()) ? "factory" : name;
+            var stock = result.computeIfAbsent(member, ignored -> new TreeMap<>());
+            PlaythroughAccounting.contents(storage, helper.getLevel()).forEach((key, amount) -> PlaythroughAccounting.add(stock, key, amount));
+        });
+        return result;
+    }
+
+    private static Map<String, Map<String, Long>> otherMembers(Map<String, Map<String, Long>> members) {
+        var others = new TreeMap<>(members);
+        others.remove("requester");
+        others.values().removeIf(Map::isEmpty);
+        return others;
+    }
+
     /** Stock per cell, for evidence. */
     Map<String, Map<String, Long>> stockByCell() {
         var result = new java.util.LinkedHashMap<String, Map<String, Long>>();
@@ -992,8 +1079,7 @@ final class PlaythroughFactory implements AutoCloseable {
     long take(AEKey key, long amount, boolean requesterOnly) {
         long taken = 0;
         for (var entry : cells().entrySet()) {
-            boolean requester = entry.getKey().equals("requester") || entry.getKey().startsWith("bank") || entry.getKey().startsWith("output:");
-            if (requesterOnly && !requester) continue;
+            if (requesterOnly && !requesterCell(entry.getKey())) continue;
             taken += entry.getValue().extract(key, amount - taken, Actionable.MODULATE, IActionSource.empty());
             if (taken == amount) break;
         }
@@ -1120,6 +1206,39 @@ final class PlaythroughFactory implements AutoCloseable {
         return signatures.keySet().equals(proof.signatures().keySet()) ? "" : "Installed signature set incomplete";
     }
 
+    /**
+     * The requester's chest, bank Drive, output cells and CPU that have no channel, or null while its grid boots. A
+     * requester without a controller is ad-hoc: more than its channel limit takes every device offline at once.
+     */
+    private String requesterWithoutChannel() {
+        var pathing = grid(requesterFace()).getPathingService();
+        if (pathing.isNetworkBooting()) return null;
+        var nodes = new java.util.LinkedHashMap<String, appeng.api.networking.IGridNode>();
+        nodes.put("chest", chest(requesterFace()).getMainNode().getNode());
+        for (var pos : bank) nodes.put("bank " + pos, ((appeng.blockentity.storage.DriveBlockEntity) entity(pos)).getMainNode().getNode());
+        for (var pos : machines.outputCells()) nodes.put("output cell " + pos, ((MEChestBlockEntity) entity(pos)).getMainNode().getNode());
+        if (entity(center().relative(requesterFace(), distance() + 1)) instanceof appeng.blockentity.crafting.CraftingBlockEntity cpu)
+            nodes.put("CPU", cpu.getMainNode().getNode());
+        var offline = new ArrayList<String>();
+        nodes.forEach((name, node) -> { if (node == null || !node.meetsChannelRequirements()) offline.add(name); });
+        return offline.isEmpty() ? "" : offline + " (" + pathing.getControllerState() + ", " + pathing.getUsedChannels() + " channels used)";
+    }
+
+    /** Requester channels in use, and the limit when it has no controller (0 with a controller). */
+    int[] requesterChannels() {
+        var pathing = grid(requesterFace()).getPathingService();
+        return new int[] { pathing.getUsedChannels(), pathing.getControllerState() == appeng.api.networking.pathing.ControllerState.NO_CONTROLLER
+                ? pathing.getChannelMode().getAdHocNetworkChannels() : 0 };
+    }
+
+    /** Output cell types the requester already holds. */
+    List<String> outputCellTypes() { return machines.state().outputCellTypes(); }
+
+    /** Where a base that is not ready yet stands, for a failed attach or build. */
+    String readiness() {
+        return "stage " + stage + ", ticks " + ticks + (result == null ? "" : ", " + result.invariant() + ": " + result.reason());
+    }
+
     /** The stage 2 conditions that still hold the layout back. */
     private String layoutWaits() {
         var waits = new ArrayList<String>();
@@ -1130,7 +1249,7 @@ final class PlaythroughFactory implements AutoCloseable {
             waits.add("requester CPU (block " + (block == null ? "missing" : block.getClass().getSimpleName()) + ", cluster "
                     + (block instanceof appeng.blockentity.crafting.CraftingBlockEntity crafting ? crafting.getCluster() : null)
                     + ", on requester grid " + (node == grid(requesterFace())) + ", requester grid nodes " + grid(requesterFace()).size()
-                    + ", bank on requester grid " + bank.stream().filter(pos -> ((MEChestBlockEntity) entity(pos)).getMainNode().getGrid() == grid(requesterFace())).count()
+                    + ", bank on requester grid " + bank.stream().filter(pos -> ((appeng.blockentity.storage.DriveBlockEntity) entity(pos)).getMainNode().getGrid() == grid(requesterFace())).count()
                     + "/" + bank.size() + ")");
         }
         for (var pos : providers) {

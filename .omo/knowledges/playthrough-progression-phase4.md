@@ -16,7 +16,8 @@
   cut an order is restored and repeated with `maxOrders` = orders it finished, or `deferNext` if it finished none.
 - A requester network without a controller is ad-hoc: 8 channels. Nine ME Chests plus the CPU leave the federated
   requester with no CPU (`getCpus()` empty while the CPU block is formed and on the grid). Bank cells live in one ME
-  Drive (one channel, up to 10 cells) above the requester chest.
+  Drive (one channel, up to 10 cells) above the requester chest. Output-cell chests are checked against the ad-hoc
+  limit before an order (`channelLimit`) and for channels while it builds (`requesterWithoutChannel`).
 - Growing a formed CPU by `setBlock` over its blocks throws in AE2 `CraftingBlockEntity.updateSubType`
   ("node has already been initialized") while the old cluster breaks. A persistent base removes its old CPU blocks
   before placing the larger CPU.
@@ -32,10 +33,29 @@
   Simulation Room comes only from `lightning_transform` (a world strike, no adapter); the Assembly Chamber is made in
   the Simulation Room and the Overload Processing Factory in the Chamber, so none of the three can be earned.
 - Per-order stock balance: after = before + plan expected − used + source extractions. Reused stock is used − source,
-  between 0 and the stock before. Cross-base checks: equal source extractions and equal total stock key by key.
-  Any divergence or unsettled base stops the run (`stopReason`), since later orders would no longer be comparable.
-- A fixture exception inside one order (CPU template overflow and similar) fails that order only (`fixture-limit`).
+  between 0 and the stock before. Stock is compared per member (`PlaythroughFactory.members`: requester = chest + bank
+  + output cells, materials, factory, extra faces by name): everything in `requester`, other members empty, and the
+  federated members equal the baseline's (a member the baseline lacks = empty). `arrived` is the requester's delta.
+- Settling waits (≤400 ticks) for no busy CPU/provider and no owed/transit/jobs/unknownJobs in the ledger for every
+  NetworkId seen (`refreshNetworks`). Ledger `jobs` of a consumer vanish on the 20-tick sweep once nothing is owed.
+  A divergence or unsettled base → class `diverged`, `stopReason`, GameTest fails, tool exits 1
+  (`stopped-on-failure`). Failed restart checks and a base not idle within 1200 ticks do the same.
+- A fixture exception inside one order fails that order only: IllegalStateException → `fixture-limit`, anything else →
+  `harness-error`; neither blames a base.
+- `endOrder` restores a disturbance the order ended inside before cancelling the job; `order()` refuses to start while
+  a cut block is missing or a base rule is disabled. `disturbanceTicks` (default 40) lengthens a disturbance; with a
+  long one, a STORAGE or router cut still lets the job finish (forced `baseline-only` rows, stock equal), but a cable
+  cut stalls it, and `retire` then discards the machine's in-flight items, so the debt never settles and the run stops.
+- Log watch: both bases share the server thread, so only Federation loggers / Federation frames / `$ae2federation$`
+  mixin handlers are charged to the federated base; other errors are unattributed → both-fail. Harness packages
+  (`...compat.`, `...test.`) are recorded but do not fail orders. The window spans previous order end → settle.
+- Runner: `--resume` loads the latest checkpoint's `properties.json`; only stopAfterSeconds, wallSeconds and sprint
+  may change. A clean boundary counts only with server status pass and exit 0. Task IDs are pinned in the state.
+- Chunk tickets are released when the run ends (completed, failure stop, harness error, failed attach) and forced again
+  on resume; a boundary keeps them for the next process.
 - Equipment owned by a base is taken out of ME storage and never returned; retired sites discard their drops.
+  `state.sources` / `machineTimeline.*.equipmentSources` split each take into stock, crafted (equipment order output,
+  tracked in `state.crafted`) and provided.
   One site per machine recipe, so a proof with eight Inscriber recipes owns eight Inscribers.
 - `waitedFor` is the final proof's machines that the base did not own when the target was first considered; a first
   proof's machine can be blocked and replaced by another (AE2 processors: Overload Processing, then the Inscriber).

@@ -118,7 +118,7 @@ final class PlaythroughMachines {
         return proof.shelf().isEmpty() ? 0 : Math.min(copies, MAX_SITES / proof.shelf().size());
     }
 
-    private static Set<String> storageCells(PlaythroughRecipes.Proof proof) {
+    static Set<String> storageCells(PlaythroughRecipes.Proof proof) {
         var cells = new java.util.TreeSet<String>();
         proof.shelf().values().forEach(recipe -> cells.addAll(PlaythroughMachineAdapters.byId(recipe.adapter()).storageCells(recipe)));
         return cells;
@@ -230,6 +230,9 @@ final class PlaythroughMachines {
         riser = state.riser(); layout = state.layout().stream().map(BlockPos::of).collect(java.util.stream.Collectors.toSet());
         state.outputCells().forEach(pos -> outputCells.add(BlockPos.of(pos))); outputCellTypes.addAll(state.outputCellTypes());
     }
+
+    /** Positions of the output cell ME Chests above the requester. */
+    List<BlockPos> outputCells() { return List.copyOf(outputCells); }
 
     /** Output cells by type, read as physical requester storage. */
     Map<String, appeng.api.storage.MEStorage> outputStorage() {

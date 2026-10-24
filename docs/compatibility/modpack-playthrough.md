@@ -449,7 +449,9 @@ python3 tools/compat_playthrough_progression.py --accept-eula --no-build --run-s
 ```
 
 `--chapter` takes Phase 1's chapter filter; a chapter ID selects exactly one chapter (`ae2` also matches
-`ae2存储元件`). Reports go to `build/playthrough/progression-<suffix>/`: `playthrough-progression.json` and `.md` per
+`ae2存储元件`). `--resume` and `--from-checkpoint` continue with the properties saved in the latest checkpoint
+(`properties.json`). Only `--segment-seconds`, `wallSeconds` and `sprint` may change there; any other value that
+differs from the saved one is refused. The task IDs are saved too, and a process that selects other targets stops. Reports go to `build/playthrough/progression-<suffix>/`: `playthrough-progression.json` and `.md` per
 target and order (class, machines available, stock reused, machines and equipment obtained for it), a summary per
 chapter, the machine timeline (`machineTimeline`, `waitedBy`), blocked machine recipes and owned equipment. Each
 segment's report and console log, and `segments.json`, sit beside them.
@@ -457,8 +459,10 @@ segment's report and console log, and `segments.json`, sit beside them.
 **Segments.** A run is a chain of server processes over one saved world, not a replay. A process stops at the first
 order boundary after `--segment-seconds` (900; at least one order or target per process) and saves both bases
 (`BaseState`) beside the world in `playthrough-progression-state.json`. The next process re-attaches to them and first
-checks `restartChecks`: the same total stock key by key, idle CPUs, no ledger debt or transit, and the saved
-Federation rules still enabled. Before each segment the tool copies the world and state to
+checks `restartChecks`: the same stock per member key by key, idle CPUs, a settled return ledger, and the saved
+Federation rules still enabled. A base that is not idle within 1200 ticks, or before the process deadline, stops the
+run as a failure. A boundary counts only if the server also exited cleanly (status pass, exit 0); otherwise its world
+may not have been saved, and the segment is repeated from its checkpoint. Before each segment the tool copies the world and state to
 `runs/nast-progression-<suffix>-checkpoints/segment-<k>`. If the 1400-second process deadline cuts an order, the
 saved world holds a half-finished order. The tool then restores the checkpoint and repeats the segment, stopping
 after the orders the cut process finished, or marks the order `deferred` if it alone outlasts a process. Replaying
@@ -472,22 +476,57 @@ factory with the machines already owned. An equipment order earns its own sites'
 leaves ME storage and never returns. An equipment item that cannot be made blocks the recipes that need it until the
 bases own another machine, so those products stay stand-ins. A target with no proof only because of blocked recipes
 is `machine-unobtainable`. The default `equipment` keeps adapters written without it compiling and working.
+`machineTimeline.<machine>.equipmentSources` and the report's `equipmentSources` record where each block, card and
+catalyst came from: `stock` (products of earlier orders), `crafted` (an equipment order) or `provided` (a Phase 0
+supply that neither base made).
 
 **Checks after every order, in each base:** the Phase 1 invariants, with the stock balance replacing the source
 check. Afterwards the cells hold the stock before, plus the plan's outputs, remainders and inputs, minus what it used
 from stock. Stock reused is what the plan used minus what the source supplied, between 0 and the stock before.
-Across bases, source extractions and total stock must match key by key. Logged exceptions (ERROR or with a
-throwable) fail the order. Results use Phase 1's four classes, plus `not-bootstrappable`, `nondeterministic`,
-`machine-unobtainable`, `unobtainable` (equipment), `deferred` and `craft-limit`. If the bases are left unsettled
-or with different stock, the run stops with `stopReason`, since later orders would no longer compare like for like.
+The ordered amount must arrive in the requester's own cells.
+
+**Stock per member.** Each base's cells are grouped by role: `requester` (its ME Chest, bank Drive and output cells),
+`materials`, `factory`, and in the federated base the fourth member by face (`SOUTH`). Both layouts put these roles
+on the same faces, and the requester's cells have priority 1000. The rule, in each base and across bases:
+the whole stock balance is in `requester`, every other member is empty, and per member the federated base holds
+exactly what the baseline holds; a member the baseline lacks counts as empty. So the federated requester holds what
+the plain network holds of every ordered target, and nothing is stranded on the factory or the fourth member.
+Source extractions must also match.
+
+**Settling.** After both runs the order waits up to 400 ticks until each base is settled: no busy CPU or provider,
+and no debt, transit, watched job or unknown-job mark left in the return ledger for any NetworkId the base has
+carried. Then both bases must hold the same stock per member. Otherwise the order is `diverged`, never both-pass,
+and the run stops with `stopReason`. The tool then ends with exit 1 and status `stopped-on-failure`; failed restart
+checks and a base that does not re-attach do the same.
+
+**Logged errors.** The log watch covers the whole order: both runs, the settle window with the federated return
+sweep, `endOrder`, retire, and the equipment steps since the previous order. Both bases tick on the server thread in
+one world, so an error is charged to the federated base only when a Federation logger logged it or a Federation
+frame or mixin handler is in its stack trace. Any other error is unattributed and fails the order in both bases
+(`both-fail`), listed under `loggedExceptions.unattributed`. Errors while the bases attach or after the last order
+of a process are listed in that process's entry.
+
+Results use Phase 1's four classes, plus `not-bootstrappable`, `nondeterministic`, `machine-unobtainable`,
+`unobtainable` (equipment), `deferred`, `craft-limit`, `fixture-limit` (an IllegalStateException inside an order,
+such as a CPU template overflow, or a requester out of channels), `harness-error` (any other exception inside an
+order) and `diverged`. None of the last three blames one base.
+
+**Requester channels.** The federated requester has no controller, so it is ad-hoc: 8 channels for its chest, bank
+Drive, CPU and the output-cell ME Chests that fluid and chemical recipes add. Before an order adds output cells, a
+requester without a controller must have that many channels free; otherwise the order is `fixture-limit` in both
+bases and neither runs. While the order builds, every requester chest, Drive, output cell and the CPU must have a
+channel once the grid has booted, or the order fails as `fixture-limit`. No Phase 4 run so far added an output cell.
 
 Properties use prefix `ae2federation.playthrough.progression.`: `seed` (layout, 0), `bankCells` (requester cells in
 one ME Drive, 8, at most 10), `maxTargets`, `stopAfterSeconds`, `maxCrafts` (60000; a larger plan is recorded as
 `craft-limit` and not started; `appflux:core_256m` plans 56,115 crafts and takes about 21 minutes in both bases),
 `exclude` (comma-separated items, listed under `excludedTargets`), and `disturbances` (any of `cable`, `router`,
-`STORAGE`, `CRAFTING`, `ME_POWER`; off by default) with `disturbanceEvery` (4) and `disturbanceSeed`. A disturbance
-runs on the federated base while its job pushes across networks. One that finds no such push is recorded in
-`perturbationExecuted`, not failed. Phase 1's `chapter`, `items`, `targetTicks` and `sprint`, and Phase 3's
+`STORAGE`, `CRAFTING`, `ME_POWER`; off by default) with `disturbanceEvery` (4), `disturbanceSeed` and
+`disturbanceTicks` (40, how long a disturbance lasts). A disturbance runs on the federated base while its job pushes
+across networks. One that finds no such push is recorded in `perturbationExecuted`, not failed. An order that ends
+inside a disturbance (its budget ran out, or an exception) restores the block or rules in `endOrder`, before the job
+is cancelled, and lists it under `disturbanceRestoredAtOrderEnd`. The next order refuses to start while a cut block is
+missing or a base rule is disabled, and records `previousDisturbanceAtStart`. Phase 1's `chapter`, `items`, `targetTicks` and `sprint`, and Phase 3's
 `machineCopies` (1 here), also apply.
 
 Results on NAST 2.2.1 (projection, seed 0):
@@ -507,3 +546,12 @@ targets with item components, `ae2:creative_energy_cell` (its inputs need compon
 `extendedae_plus:basic_core`), and `ae2lt:tianshu_overload_main_core` (two tasks, no finite proof). A 25-target
 AE2 run with a disturbance on every order executed all 34 disturbances (cable 9, router 8, CRAFTING 8, ME_POWER 6,
 STORAGE 3), all both-pass.
+
+Earned and declared machines: in AE2 every machine block, Acceleration Card and press was earned, either crafted by
+an equipment order or taken from earlier quest products (one Inscriber and the four Inscriber presses). In Lightning
+Tech the four Inscriber presses were provided as Phase 0 supplies; the Reaction Chambers, Crystal Aggregators,
+Inscribers, Furnaces and all cards were crafted. With the per-member checks, the settle wait and the wider log
+window, the first 40 AE2 targets with a disturbance on every order (seed 7; 52 executed: router 13, cable 12,
+CRAFTING 11, STORAGE 8, ME_POWER 8) gave the same 40 both-pass quest results as the undisturbed run. Their 16
+equipment orders were 12 pass and 4 unobtainable; the Mekanism Enrichment Chamber, added to the adapters since, is
+now earned as well.
