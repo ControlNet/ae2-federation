@@ -156,6 +156,23 @@ public final class DataEnergisticsCompatGameTests {
     }
 
     /**
+     * A projected lava job on a Trinity Data Core, merged mid-job: only the Bridge part is removed while the job waits,
+     * so the fluix cable under it joins both networks into one AE2 Grid; the Trinity CPU takes the lava natively
+     * through Data Energistics' own hook on the crafting service, the debt settles, and after the split the provider
+     * keeps its next lava.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "matter_fabrication_well", timeoutTicks = 1200)
+    public static void trinityDataCoreMergedFluidReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(), AddonCraftingScene.lavaMachine());
+        var trinity = new TrinityDataCore(helper);
+        scene.consumerCpuStructure(test -> trinity.place(), () -> trinity.ready(scene.consumerGrid()))
+                .checkingPlan((plan, local) -> helper.assertTrue(plan.getClass().getName().equals(TrinityDataCore.PLAN),
+                        "The Trinity planner must make the consumer's plan, not " + TrinityDataCore.describe(plan)))
+                .craftingOnly().outputStoredOnConsumer().mergingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
      * A Trinity Data Core facing north in the {@code matter_fabrication_well} template, east and south of the networks
      * of {@link AddonCraftingScene}. Its main structure and its CPU and crafting child structures are placed block by
      * block from the guide structures Data Energistics ships, the children sharing the main structure's controller. The

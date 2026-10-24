@@ -86,3 +86,22 @@ python3 tools/dev_gametests.py projectionmergedbridgereturn projectionmergedcabl
 python3 tools/dev_gametests.py projectionmergedbridgereturn projectionmergedcablereturn projectionmergedbridgefluidreturn projectionmergedmixeddemandreturn
 python3 tools/compat_run.py --accept-eula neoecoae advanced-ae ae2-lightning-tech
 ```
+
+## Trinity merged test (2026-10-24)
+- `DataEnergisticsCompatGameTests.trinityDataCoreMergedFluidReturn` (group `data-energistics`) supersedes the "Not
+  built" above. It reuses `trinityPlanning`'s `TrinityDataCore` (guide snbt main + CPU + crafting children, depot,
+  `matter_fabrication_well` template, no `@RunsAlone`) with `AddonCraftingScene.lavaMachine()` and
+  `consumerCpuStructure(...).craftingOnly().outputStoredOnConsumer().mergingAfterPush()`; it asserts the plan is a
+  `TrinityCraftingPlan`. No graph-revision gate was needed: `ready()` plus the scene's `isCraftable` wait sufficed.
+- Trinity has no `CraftingCpuLifecycle` adapter, so its wait reaches `CraftingProjectionService.waiting` only through
+  DE's `@WrapMethod` on `getRequestedAmount` (adds every Trinity runtime's wait to `original.call`, so Neo ECO's
+  cancellable inject inside the body cannot cut it short; NAST with DE 3.3.5 passes). Its job is watched as unknown
+  (`jobs` stays empty).
+- Fault checks: receipt mixin disabled -> fails (owed 2000, after the split held 1000 on the provider);
+  `waiting` = lifecycle count only -> fails the same way; `waiting` = public total only -> passes (Trinity does not
+  depend on the per-CPU count). The AE2 control `nativeCpuMergedFluidReturn` fails only with the mixin disabled.
+
+```sh
+python3 tools/compat_run.py --accept-eula data-energistics
+python3 tools/compat_run.py --accept-eula --tests trinitydatacoremergedfluidreturn nast
+```
