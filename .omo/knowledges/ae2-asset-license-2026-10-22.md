@@ -102,6 +102,8 @@ AE2 `pattern_provider_alternate` / `generics/top`, strips as in `spatial_pylon/b
 **C. Our placeholder recolours of A/B, `tools/visual/build_converter_placeholder.py` (13) -> CC BY-NC-SA 3.0**
 `block/beam_converter/*` (3), `block/creative_beam_converter/*` (3), `block/beam_former/*` (3) from the Pattern
 Provider faces; `block/quantum_cube/quantum_cube{,_corner,_side_hor,_side_ver}` from the Router's.
+Update 2026-10-24: the three `block/beam_former/*` placeholders were deleted with the artist's 3x3 model (PR #7,
+e908a082 + 86c0ae0e), so this group is now 10 files; the Beam Former uses only the artist's `block/beam_emitter/*`.
 
 **D. Original, no AE2 pixel source found (23) -> All Rights Reserved**
 `block/armor`, `block/collar`, `block/glass`, `block/stream_u`, `block/stream_v`, `block/large_cable/large_cable`,
