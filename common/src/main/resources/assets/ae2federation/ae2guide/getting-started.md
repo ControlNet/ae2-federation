@@ -33,15 +33,16 @@ cores.
 
 ## 2. Connect the two networks
 
-Networks that touch need only a Bridge. Networks further apart are joined by Switches and Federation Cable.
-Both ways open the same Federation screen.
+Networks that touch need only a Bridge. Networks further apart are joined by Switches and Federation Cable, which run
+on FE from a Beam Converter. Both ways open the same Federation screen.
 
 ### Side by side: a Bridge
 
 <RecipeFor id="ae2federation:bridge" />
 
 Place the <ItemLink id="ae2federation:bridge" /> on a cable of the first network, with its outer side touching a
-cable or device of the second. The two stay separate networks, joined for Federation through the Bridge.
+cable or device of the second. The two stay separate networks, joined for Federation through the Bridge. A Bridge
+uses no FE.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/bridge.snbt" />
@@ -57,16 +58,22 @@ cable or device of the second. The two stay separate networks, joined for Federa
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
-### Further apart: Switches and Federation Cable
+### Further apart: Switches, Federation Cable and a Beam Converter
 
 <Row>
   <RecipeFor id="ae2federation:switch" />
   <RecipeFor id="ae2federation:cable" />
+  <RecipeFor id="ae2federation:beam_converter" />
 </Row>
 
 Give each network a <ItemLink id="ae2federation:switch" /> that one of its ME cables touches, and join the Switches
 with <ItemLink id="ae2federation:cable" />. A Switch has a face for each network, up to six, so networks next to one
 Switch can share it.
+
+Switches and Federation Cable use a little FE every tick. Stand two
+<ItemLink id="ae2federation:beam_converter" /> blocks in a line with one end on the cable, and pipe FE into them from
+another mod's generator; AE2 itself makes no FE. Until the converter has FE, the networks stay unconnected. See
+[Power](mechanics/power.md).
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/switch_cable.snbt" />
@@ -78,6 +85,9 @@ Switch can share it.
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0.3 0.3" max="5 0.7 0.7">
     Federation Cable between the two Switches
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="4 1 0" max="5 3 1">
+    Beam Converter, two blocks: its lower end on the cable, FE in through any other face
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
     Switch: one face on network B's cable, another on the Federation Cable

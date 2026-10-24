@@ -15,7 +15,7 @@ installed.
 **You need:** a tank farm network with an energy cell, a drive with
 <ItemLink id="appmek:chemical_storage_cell_1k" />s, a Dynamic Tank (<ItemLink id="mekanism:dynamic_tank" /> and a
 <ItemLink id="mekanism:dynamic_valve" />) and an <ItemLink id="ae2:storage_bus" />; a workshop network with a terminal;
-a <ItemLink id="ae2federation:switch" /> both touch.
+a <ItemLink id="ae2federation:switch" /> both touch; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/chemical_tank_farm.snbt" />
@@ -30,6 +30,9 @@ a <ItemLink id="ae2federation:switch" /> both touch.
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="0 0 1" max="3 3 4">
     The smallest Dynamic Tank, 3 by 3 by 3, with the Storage Bus on the Dynamic Valve in the middle of its front
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="5 1 0" max="6 3 1">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

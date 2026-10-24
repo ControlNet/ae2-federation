@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import net.minecraft.core.BlockPos;
 import org.junit.jupiter.api.Test;
 import space.controlnet.ae2federation.beam.BeamLinkRule;
@@ -22,19 +21,14 @@ import space.controlnet.ae2federation.quantum.QuantumLinkService;
 
 /** Each Federation block costs FE every tick, scaled by one server multiplier. */
 final class OperatingPowerCostsTest {
-    // This release ships without the Beam Converter and leaves the rule off; the costs are tested with it on.
-    @BeforeEach
-    void requirePower() {
+    @AfterEach
+    void restoreTheDefaultRule() {
         OperatingPowerRule.set(true, OperatingPowerRule.DEFAULT_MULTIPLIER);
     }
 
-    @AfterEach
-    void restoreTheDefaultRule() {
-        OperatingPowerRule.set(false, OperatingPowerRule.DEFAULT_MULTIPLIER);
-    }
-
     @Test
-    void theDefaultMultiplierGivesTheConfirmedCosts() {
+    void theDefaultIsRequiredAtTheConfirmedCosts() {
+        assertTrue(OperatingPowerRule.required());
         assertEquals(1.0, OperatingPowerRule.multiplier());
         assertEquals(0.5, OperatingPowerCosts.perTick(FederationDomainNodeKind.CABLE));
         assertEquals(2.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.ROUTER));

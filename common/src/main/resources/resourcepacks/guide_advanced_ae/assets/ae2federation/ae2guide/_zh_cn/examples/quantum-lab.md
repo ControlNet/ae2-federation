@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 一个实验室网络唯一的CPU是Advanced AE的量子计算机， 它同时向两个工坊网络下单： 锯木厂把原木做成木板， 细木坊把木板做成木棍。 一份订单要依次用到两个工坊， 第二份订单同时在同一台量子计算机上运行。 这一页出现， 是因为安装了Advanced AE。
 
-**需要**： 一个实验室网络， 带一台以<ItemLink id="advanced_ae:quantum_core" />为核心、已成型的量子计算机， 以及合成终端、存储和能源元件； 两个工坊网络， 每个都有一个样板供应器和一台分子装配室； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 量子计算机怎么搭见[Advanced AE的指南](advanced_ae:aae_intro/quantum_computer.md)。
+**需要**： 一个实验室网络， 带一台以<ItemLink id="advanced_ae:quantum_core" />为核心、已成型的量子计算机， 以及合成终端、存储和能源元件； 两个工坊网络， 每个都有一个样板供应器和一台分子装配室； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 量子计算机怎么搭见[Advanced AE的指南](advanced_ae:aae_intro/quantum_computer.md)； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
 <GameScene zoom="1.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/quantum_lab.snbt" />
@@ -25,6 +25,9 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="4 0 0" max="5 1 1">
     一个交换机： 每个面加入它接触的网络
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="4 1 0" max="5 3 1">
+    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

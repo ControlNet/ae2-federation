@@ -18,7 +18,7 @@ item_ids:
 
 The Bridge joins two networks that sit side by side, with no Switch needed. Place it on a cable of one network, so
 that its outer side touches a cable or device of the other network. The two sides stay separate networks; the Bridge
-uses no channel and no idle power.
+uses no channel, no idle power and no FE, so a Bridge's domain needs no Beam Converter.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/bridge.snbt" />

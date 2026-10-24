@@ -43,7 +43,9 @@ final class SurvivalRecipeContractTest {
                 "bridge", "ae2federation:bridge x1", "router", "ae2federation:router x1", "switch", "ae2federation:switch x1",
                 "cable", "ae2federation:cable x8", "pattern_provider", "ae2federation:pattern_provider x1"));
         expected.put("processing_endpoint", "ae2federation:processing_endpoint x1");
+        expected.put("beam_converter", "ae2federation:beam_converter x1");
         expected.put("beam_former", "ae2federation:beam_former x1");
+        expected.put("quantum_cube", "ae2federation:quantum_cube x8");
         assertEquals(expected, results);
     }
 
@@ -136,6 +138,17 @@ final class SurvivalRecipeContractTest {
                 + "\"F\":{\"tag\":\"c:gems/fluix\"},\"L\":" + CORE + "}"), recipe);
     }
 
+    // Like the Router, around AE2's own FE input, the Energy Acceptor; the creative converter has no recipe.
+    @Test
+    void beamConverterHasEnergyAcceptorsAroundANexusCore() throws IOException {
+        var recipe = recipes().get("beam_converter");
+        assertTrue(recipe.contains("\"type\":\"minecraft:crafting_shaped\""));
+        assertTrue(recipe.contains("\"pattern\":[\"CEC\",\"ELE\",\"CEC\"]"), recipe);
+        assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},"
+                + "\"E\":{\"item\":\"ae2:energy_acceptor\"},\"L\":" + CORE + "}"), recipe);
+        assertFalse(recipes().containsKey("creative_beam_converter"));
+    }
+
     // After ME Beam Former's block: cable down both sides, a fluix pearl over AE2's wireless receiver, a Nexus Core below.
     @Test
     void beamFormerStacksAPearlAndAWirelessReceiverOnANexusCore() throws IOException {
@@ -144,6 +157,17 @@ final class SurvivalRecipeContractTest {
         assertTrue(recipe.contains("\"pattern\":[\"CPC\",\"CWC\",\"CLC\"]"), recipe);
         assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},\"L\":" + CORE
                 + ",\"P\":{\"item\":\"ae2:fluix_pearl\"},\"W\":{\"item\":\"ae2:wireless_receiver\"}}"), recipe);
+    }
+
+    // On AE2's quantum bridge: ME Quantum Rings around an ME Quantum Link Chamber, a Nexus Core below, eight at a time
+    // since a cube takes 27 to 125 blocks.
+    @Test
+    void quantumCubeRingsALinkChamberOverANexusCore() throws IOException {
+        var recipe = recipes().get("quantum_cube");
+        assertTrue(recipe.contains("\"type\":\"minecraft:crafting_shaped\""));
+        assertTrue(recipe.contains("\"pattern\":[\"CRC\",\"RQR\",\"CLC\"]"), recipe);
+        assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},\"L\":" + CORE
+                + ",\"Q\":{\"item\":\"ae2:quantum_link\"},\"R\":{\"item\":\"ae2:quantum_ring\"}}"), recipe);
     }
 
     @Test

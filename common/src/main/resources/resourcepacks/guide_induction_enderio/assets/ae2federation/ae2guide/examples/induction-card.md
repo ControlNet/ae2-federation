@@ -17,7 +17,7 @@ cell. This page appears because Applied Flux and Ender IO are installed.
 <ItemLink id="appflux:induction_card" />; a <ItemLink id="ae2federation:processing_endpoint" />;
 <ItemLink id="ae2federation:cable" />; a <ItemLink id="enderio:sag_mill" /> with a
 <ItemLink id="enderio:basic_capacitor" />; a <ItemLink id="ae2:storage_bus" />. How FE gets into the cells is in
-[Applied Flux's guide](appflux:appflux/flux_cells.md).
+[Applied Flux's guide](appflux:appflux/flux_cells.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/induction_sag_mill.snbt" />
@@ -37,6 +37,9 @@ cell. This page appears because Applied Flux and Ender IO are installed.
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="1.7 1.125 0.125" max="2 1.875 0.875">
     Storage Bus on the SAG Mill's side
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

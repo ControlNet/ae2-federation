@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 在主网络上请求沙砾， 由供应器的端点上的一台Create石磨研磨圆石。 一台电动机用主网络存储里的FE带动它； 没有别的动力源， 端点的子网络也没有能源元件。 这一页出现， 是因为安装了Applied Flux和Create Crafts & Additions。
 
-**需要**： 带合成CPU、合成终端、存有圆石， 并且ME驱动器里装着<ItemLink id="appflux:fe_1k_cell" />的主网络； 一个装有<ItemLink id="appflux:induction_card" />的<ItemLink id="ae2federation:pattern_provider" />； 一个<ItemLink id="ae2federation:processing_endpoint" />； <ItemLink id="ae2federation:cable" />； 一台<ItemLink id="createaddition:electric_motor" />； 一根<ItemLink id="create:shaft" />、一个<ItemLink id="create:cogwheel" />、一个<ItemLink id="create:chute" />和一台<ItemLink id="create:millstone" />； 一个<ItemLink id="ae2:storage_bus" />。 FE怎样存进元件见[Applied Flux的指南](appflux:appflux/flux_cells.md)。
+**需要**： 带合成CPU、合成终端、存有圆石， 并且ME驱动器里装着<ItemLink id="appflux:fe_1k_cell" />的主网络； 一个装有<ItemLink id="appflux:induction_card" />的<ItemLink id="ae2federation:pattern_provider" />； 一个<ItemLink id="ae2federation:processing_endpoint" />； <ItemLink id="ae2federation:cable" />； 一台<ItemLink id="createaddition:electric_motor" />； 一根<ItemLink id="create:shaft" />、一个<ItemLink id="create:cogwheel" />、一个<ItemLink id="create:chute" />和一台<ItemLink id="create:millstone" />； 一个<ItemLink id="ae2:storage_bus" />。 FE怎样存进元件见[Applied Flux的指南](appflux:appflux/flux_cells.md)； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
 <GameScene zoom="4.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/induction_motor.snbt" />
@@ -34,6 +34,9 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="1.7 2.125 0.125" max="2 2.875 0.875">
     石磨侧面的存储总线
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
+    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

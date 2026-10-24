@@ -25,6 +25,12 @@ import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.power.BeamConverterBlock;
+import space.controlnet.ae2federation.power.CableCrossSection;
+import space.controlnet.ae2federation.power.OperatingPowerCosts;
+import space.controlnet.ae2federation.power.OperatingPowerRule;
+import space.controlnet.ae2federation.power.OperatingPowerService;
+import space.controlnet.ae2federation.power.PowerRegistration;
 import space.controlnet.ae2federation.router.RouterBlock;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
@@ -336,6 +342,61 @@ public final class BeamFormerGameTests {
                     BeamLinkService.Status.Kind.WRONG_SIZE, "a 1x1 facing a 2x2");
             RouterEvidence.write("beamformerpairsthenearestofitssize", 4, Map.of("nearer", "linked",
                     "farther", "unlinked", "fartherStatus", "no partner", "otherSize", "wrong size"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * With operating power required, a linked 3x3 pair counts as 3x3 cable (D6): a 1x1x2 converter at a plain cable
+     * matches its domain until the beam links, and then no longer does. The domain pays the beam once:
+     * 9 x 5^1.05 AE for five blocks between the fronts.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void beamFormerPairNeedsItsSizeOfConverter(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        OperatingPowerRule.set(true, OperatingPowerRule.DEFAULT_MULTIPLIER);
+        box(new BlockPos(2, 2, 8), 1, 3, 3).forEach(cell -> place(helper, cell, Direction.EAST));
+        box(new BlockPos(8, 2, 8), 1, 3, 3).forEach(cell -> place(helper, cell, Direction.WEST));
+        var cable = new BlockPos(1, 2, 8);
+        fixtures.placeFederationCable(cable);
+        fixtures.placeFederationCable(new BlockPos(9, 2, 8));
+        for (var z = 6; z <= 7; z++) {
+            helper.setBlock(new BlockPos(1, 2, z), PowerRegistration.BEAM_CONVERTER.get().defaultBlockState()
+                    .setValue(BeamConverterBlock.FACING, Direction.SOUTH));
+        }
+        var stone = new BlockPos(5, 3, 9);
+        helper.setBlock(stone, Blocks.STONE);
+        var level = helper.getLevel();
+        var cableNode = FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(cable));
+        var farCable = FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(new BlockPos(9, 2, 8)));
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            var registry = FederationDomainRegistryAccess.get(level);
+            var domain = registry.federationDomainOf(cableNode)
+                    .orElseThrow(() -> new GameTestAssertException("Waiting for the cable's domain"));
+            var reading = OperatingPowerService.reading(level.getServer(), domain.federationDomainId())
+                    .orElseThrow(() -> new GameTestAssertException("Waiting for a power reading"));
+            if (phase[0] == 0) {
+                helper.assertTrue(!reading.converters().isEmpty(), "Waiting for the converter to join");
+                helper.assertValueEqual(reading.section(), CableCrossSection.ONE_BY_ONE, "unlinked, plain cable");
+                helper.assertTrue(reading.converters().stream().allMatch(OperatingPowerService.ConverterReading::matches),
+                        "a 1x1x2 converter matches plain cable");
+                helper.assertTrue(!reading.use().byGroup().containsKey(OperatingPowerCosts.Group.BEAMS),
+                        "no beam, no beam cost");
+                helper.setBlock(stone, Blocks.AIR);
+                phase[0] = 1;
+                throw new GameTestAssertException("Waiting for the beam to link");
+            }
+            helper.assertTrue(linked(helper, cable, farCable), "Waiting for the beam to link");
+            helper.assertValueEqual(reading.section(), CableCrossSection.THREE_BY_THREE, "the pair counts as 3x3");
+            helper.assertTrue(reading.converters().stream().noneMatch(OperatingPowerService.ConverterReading::matches),
+                    "the 1x1x2 converter no longer matches");
+            var beam = reading.use().byGroup().getOrDefault(OperatingPowerCosts.Group.BEAMS, 0.0);
+            helper.assertTrue(Math.abs(beam - 9 * Math.pow(5, 1.05) * 2) < 1e-9, "one 3x3 beam of 5 blocks, not " + beam);
+            RouterEvidence.write("beamformerpairneedsitssizeofconverter", 4, Map.of("unlinked", "1x1 matches",
+                    "linked", "3x3", "converter", "no longer matches", "beamCost", String.valueOf(beam)));
+            OperatingPowerRule.set(false, OperatingPowerRule.DEFAULT_MULTIPLIER);
             fixtures.close();
         });
     }

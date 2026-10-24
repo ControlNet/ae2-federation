@@ -16,7 +16,7 @@ item_ids:
   <ImportStructure src="../assets/bridge_part.snbt" />
 </GameScene>
 
-联邦桥直接连接两个紧挨着的网络， 不需要交换机。 把它装在一个网络的线缆上， 让它的外侧接触另一个网络的线缆或设备。 两侧仍是各自独立的网络； 联邦桥不占用频道， 没有待机耗电。
+联邦桥直接连接两个紧挨着的网络， 不需要交换机。 把它装在一个网络的线缆上， 让它的外侧接触另一个网络的线缆或设备。 两侧仍是各自独立的网络； 联邦桥不占用频道， 没有待机耗电， 也不消耗FE， 所以联邦桥的联邦域不需要光束转换器。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/bridge.snbt" />

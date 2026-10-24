@@ -134,8 +134,6 @@ public final class FederationStatisticsView {
         refreshRanges();
         var metrics = element("stats_metrics", UIElement.class);
         for (var candidate : Metric.values()) {
-            // This release ships without the Beam Converter, so no domain runs on Federation power.
-            if (candidate == Metric.FEDPOWER) continue;
             var card = new Card(candidate);
             card.addClass("stats-card");
             card.addEventListener(UIEvents.MOUSE_DOWN, event -> {

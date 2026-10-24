@@ -1,7 +1,9 @@
 {
     DataVersion: 3955,
-    size: [7, 4, 10],
+    size: [7, 5, 10],
     data: [
+        {pos: [3, 3, 1], state: "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
+        {pos: [3, 4, 1], state: "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
         {pos: [0, 0, 4], state: "molecularmanipulator:matter_fabrication_casing{facing:north}"},
         {pos: [1, 0, 4], state: "molecularmanipulator:matter_fabrication_casing{facing:north}"},
         {pos: [2, 0, 4], state: "molecularmanipulator:matter_fabrication_casing{facing:north}"},
@@ -125,6 +127,8 @@
     ],
     entities: [],
     palette: [
+        "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}",
+        "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}",
         "molecularmanipulator:matter_fabrication_casing{facing:north}",
         "ae2:energy_cell{fullness:4}",
         "ae2:drive{facing:north,spin:0}",

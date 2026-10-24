@@ -12,7 +12,9 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.beam.BeamRegistration;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.power.PowerRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
+import space.controlnet.ae2federation.quantum.QuantumRegistration;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
@@ -33,7 +35,8 @@ public final class CableLinkParityGameTests {
 
     /**
      * A Router and a Switch link on all six faces; a Provider and an Endpoint on their front; a 1x1 Beam Former on its
-     * back. A cable on each probed face reaches the device with an arm exactly when it joins its domain.
+     * back; a formed Beam Converter, creative too, on its front; a 3x3x3 Quantum Cube inside each face's centre and
+     * not on its border. A cable on each probed face reaches the device with an arm exactly when it joins its domain.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
             timeoutTicks = 300, required = true, manualOnly = true)
@@ -55,6 +58,23 @@ public final class CableLinkParityGameTests {
         helper.setBlock(new BlockPos(28, 4, 4), facing(BeamRegistration.BEAM_FORMER.get().defaultBlockState(),
                 Direction.EAST));
         probes.add(new Probe("beam former", new BlockPos(28, 4, 4), all, 1));
+
+        // A 1x1x2 converter facing west: its west block's front links; its east face is the rest of the body.
+        var converterFaces = List.of(Direction.WEST, Direction.NORTH, Direction.SOUTH, Direction.UP, Direction.DOWN);
+        for (var converter : List.of(PowerRegistration.BEAM_CONVERTER.get(), PowerRegistration.CREATIVE_BEAM_CONVERTER.get())) {
+            var front = new BlockPos(converter == PowerRegistration.BEAM_CONVERTER.get() ? 4 : 10, 4, 12);
+            for (var cell : List.of(front, front.east())) {
+                helper.setBlock(cell, facing(converter.defaultBlockState(), Direction.WEST));
+            }
+            probes.add(new Probe(converter.getDescriptionId(), front, converterFaces, 1));
+        }
+
+        // A 3x3x3 cube: the middle of its west face links, a corner links on none of its outer faces.
+        BlockPos.betweenClosed(new BlockPos(16, 4, 12), new BlockPos(18, 6, 14)).forEach(cell ->
+                helper.setBlock(cell, QuantumRegistration.QUANTUM_CUBE.get().defaultBlockState()));
+        probes.add(new Probe("quantum cube middle", new BlockPos(16, 5, 13), List.of(Direction.WEST), 1));
+        probes.add(new Probe("quantum cube corner", new BlockPos(16, 4, 12),
+                List.of(Direction.WEST, Direction.NORTH, Direction.DOWN), 0));
 
         for (var probe : probes) {
             for (var face : probe.faces()) fixtures.placeFederationCable(probe.cell().relative(face));
