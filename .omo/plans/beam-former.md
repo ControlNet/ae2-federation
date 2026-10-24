@@ -1,0 +1,133 @@
+# ME Federation Beam Former: implementation plan
+
+Date: 2026-10-17. Status: every decision answered by the owner (2026-10-17). Phase 1 in progress.
+Design source: [line-of-sight-beam-links.md](../../docs/archive/ideas/line-of-sight-beam-links.md) (decisions of 2026-10-17)
+and the former row of the cost table in [federation-operating-power.md](../../docs/archive/ideas/federation-operating-power.md).
+
+Settled before this plan and not reopened here: a solid N x N x 1 body, 1x1, 2x2 or 3x3 only (owner, 2026-10-17:
+bundles are to keep square sections only later on); the back takes a bundle of the
+same section (1x1: ordinary cable); two formers of one section, on one axis and facing each other, link with no
+tool; the span is cable of that section (3x3 unlimited); the whole M x N volume must be clear; glass passes; entities
+never block; nearest partner only; no relay device; same dimension; range is a server
+setting, 256 by default, at most 1024; an amortized scan with air sections skipped; unloaded chunks in the middle
+keep the last result; about one second of debounce each way; cost M·N × max(2, L)^1.05 × 2 FE/t.
+
+## Decisions this plan still needs
+
+| # | Question | Proposal |
+|---|---|---|
+| D1 | Name and ID (owner, 2026-10-17) | `ae2federation:beam_former`, "ME Federation Beam Former", 「ME联邦光束成型器」: the genre's name (NAE2's Beam Former, ME Beam Former, Data Energistics). |
+| D2 | Back to back (owner, 2026-10-17) | Not implemented for now. Blocks merge whatever their facing, as converters do; two bodies back to back are one M x N x 2 candidate and do not form. Placement sets the front toward where the player looks. |
+| D3 | Wrench (owner OK) | A body faces along the axis on which it is one block thick. 2x2 and 3x3 have one such axis: the wrench flips the body front for back. A 1x1 has three: the wrench turns it to the clicked face. Forming picks the members' majority facing among the allowed axes. |
+| D4 | What blocks the beam | A block whose collision shape is not empty, except glass (`c:glass_blocks`, `c:glass_panes`, AE2 quartz glass) and a datapack tag `ae2federation:beam_passes`. Fluids, grass, flowers, torches and snow layers without collision pass. |
+| D5 | What the back accepts | What a Router face accepts: a bundle of the same section covering it, or ordinary cable on any cell. The capacity is then that of whatever touches it. |
+| D6 | Converter size match | A linked pair's section counts with the cables', so a 3x3 pair among 1x1 cables needs a 3x3 converter. |
+| D7 | Energy details | Charged once per linked pair, not per end. L is the number of blocks between the two fronts. Former blocks themselves cost 0, linked or not. |
+| D8 | Fronts touching (L = 0) | Allowed; `max(2, L)` already covers it. |
+| D9 | Player feedback | One Jade line: "Beam: linked, L blocks", "Beam: blocked at x, y, z", "Beam: no partner within R", or "Beam: wrong size" (a facing partner of another section). No screen. |
+| D10 | Recipe (owner OK) | Modelled on ME Beam Former's block (`DAD/DBD/DCD`: dense smart cable, fluix pearl, its former part of wireless receiver + logic processor + glass cable, energy acceptor). Proposal: `CPC / CWC / CLC`: C Federation Cable, P `ae2:fluix_pearl`, W `ae2:wireless_receiver`, L Nexus Core; no energy acceptor, since the converter supplies power. |
+| D11 | Textures before the artist delivers | Temporary: the converter's textures recoloured; listed as temporary in the commit and the art hand-off note. |
+| D12 | Scan budget and debounce lengths (owner OK) | Measured 2026-10-17 (`perfbeamscan`): 1.2 ns per block in all-air sections, 16.6 in air among other blocks, 32.4 through glass; a whole 3x3 x 1024 volume 11 µs / 153 µs / 299 µs. A link change re-judges the domain, about 0.25 ms on a 901-node domain (`perftopologyplane` toggle vs. idle tick). Proposal: 1024 blocks per beam per tick (worst about 33 µs; a 3x3 x 1024 beam swept in 9 ticks, 3x3 x 256 in 3), at most 16384 per tick across all beams (about 0.5 ms), 20 ticks of debounce each way so a flickering obstruction changes the topology at most once a second. |
+
+## Architecture
+
+- **Package `beam/`.** `BeamFormerBlock` (a `FormableDevice` with `FACING`, `FORMED`, `CONNECTED`, the ticker
+  reusing `RouterBlockEntity.serverTick` as the converter does), `BeamFormerBlockEntity`, `BeamFormerShape`
+  (N x N x 1 with N 1 to 3 and the thin axis along `FACING`, section from `CableCrossSection.of`).
+- **Forming (D2, D3).** As the converter: members are blocks of the type whatever their facing; `judge` accepts only
+  `BeamFormerShape.of(min, max)`; `forming` sets one facing on an allowed axis (majority, then the end with a
+  cable, then the positive end).
+- **Ports.** As on the converter: a block exposes a Federation port on its back face and on faces toward the rest of
+  the body; the front exposes none (the beam is not a port). Bundle contact needs no new rule, since
+  `BundleContacts.contact` already counts a formed device body covering the end face.
+- **Evidence.** Every body block is its own node of a new kind `BEAM_FORMER` with `capacityFactor` = its section's
+  factor (0 for 3x3), through the four-argument `FederationDomainNodeEvidence`. The body's min-corner block (the
+  anchor) adds the remote link as a mirrored port pair, as `FederationP2PTunnelPart.publish` does with `"tunnel:"`:
+  A names `"beam:" + B` → `(B, "beam:" + A)` and B the reverse. Both ends republish in the same pass (a `TickTask`
+  drain as in P2P), so the registry never sees a one-sided edge.
+- **Link service, per level, server thread.** `BeamLinkService`:
+  - an index of formed front rectangles keyed by axis and perpendicular bounds; the nearest opposite-facing body on
+    the same line within range is the candidate; any body in between, of any section, is an obstruction;
+  - per candidate pair, a cursor over the M x N x L volume, a fixed number of blocks per tick; chunk sections with
+    `hasOnlyAir()` are skipped whole; a position in an unloaded chunk is never read (checked with
+    `getChunkSource().getChunkNow`) and keeps its last result, checked again when the chunk loads;
+  - debounce: a pair links after the whole volume has stayed clear for the clear delay, and unlinks after a blocking
+    position has stayed blocked for the blocked delay;
+  - public NeoForge `BlockEvent`s (place, break, neighbour notify) inside a known volume move that position to the
+    front of the scan; no mixin.
+  Runs in `onServerTickBindings` before `OperatingPowerService.tick`, so a link change lands in the same tick's plan.
+  An end whose chunk unloads withdraws its nodes as every block entity does, so the link breaks when either end
+  unloads; only the middle may be unloaded. This follows the settled rule and is not a bug.
+- **Capacity.** `CableCapacityCounter.passable` and the demand assignment include `BEAM_FORMER`, so a pair and its
+  span are one region and are judged against their section's limit. `CableCapacity.demand(level, nodeId)` already
+  serves a Jade line.
+- **Power.** `OperatingPowerCosts.perTick(BEAM_FORMER) = 0`; `OperatingPowerService.plan` adds each linked pair once
+  (ordered by node id): M·N × max(2, L)^1.05 × 2 × multiplier, with L from the two anchors' positions, which node ids
+  carry, so no new evidence field. `largest` takes linked formers' factors as well as cables' (D6). The
+  statistics stack gets a "Beam links" group.
+- **Client.** A `BlockEntityRenderer` on the anchor of the lower node id draws the beam from front to front with
+  `CableFlowRenderer`'s CORE and GLOW render types and `CableBeamStyle` (width by section, load colour, red when over
+  capacity or unpowered). The update tag carries the partner anchor, load and unpowered state. The render bounding box
+  spans the beam; the view distance stays 256, so a longer beam is drawn only within 256 blocks of the viewer.
+- **Config.** `FederationServerConfig` `push("beam")`: `maxRange` 256 (1 to 1024).
+
+## Phases
+
+Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are written first in each phase.
+
+### 1. Pure logic (done 2026-10-17)
+
+- `beam/BeamFormerShape`, `BeamVolume` (the positions between two fronts, layer by layer), `BeamDebounce`,
+  `BeamPartnerIndex`, with `BeamFormerShapeTest`, `BeamVolumeTest`, `BeamDebounceTest`, `BeamPartnerIndexTest`.
+- `BeamObstruction` (the D4 predicate) needs block states, so it moves to phase 3 and is covered by GameTests there.
+- Debounce detail: a new pair whose first finished sweep is clear links at once, so a server start or a pair just
+  built does not wait the delay; only a link that was blocked waits to return.
+
+### 2. Block and body (done 2026-10-17)
+
+- Block, block entity, item, forming with facing membership (D2), wrench (D3), ports, registration, creative tab,
+  lang, recipe, loot table, pickaxe tag, temporary textures (D11), connected-face model.
+- GameTests: forming 1x1, 2x2 and 3x3; a 1x2 does not form; mixed facings form; a 2x2 back takes a 2x2 bundle;
+  wrench flips a 2x2 and turns a 1x1.
+
+### 3. Link (done 2026-10-17)
+
+- `BeamLinkService`, the mirrored beam ports, kind `BEAM_FORMER` in the counter, Jade line (D9).
+- GameTests: a pair links and joins two networks' domain; a stone block breaks it after the delay and removing it
+  restores it; glass and water pass; nearest only; a third former in between; different sections do not link;
+  a pair over capacity stops the domain; middle chunk unloaded keeps the link.
+- Done: GameTests cover linking, the 20-tick debounce both ways, the Jade status (linked, blocked at the stone,
+  no partner, another size), glass, panes, water and quartz glass passing, nearest only. The counter unit test
+  covers a pair carrying its region's demand. Not covered by a GameTest: range (the rule is server-wide and GameTests
+  run in parallel; `BeamPartnerIndexTest` covers it) and an unloaded middle chunk (the scan keeps the last blocker
+  and never loads chunks).
+
+### 4. Benchmark (done 2026-10-17)
+
+- `BeamScanBenchmarkGameTests.perfBeamScan` (added 2026-10-17 with a test-only D4 predicate) measured the read cost
+  for D12. Rerun it against the real `BeamObstruction` and the service's tick cost once phase 3 lands.
+- Done: rerun with the real `BeamObstruction`: glass 35.2 ns/block, so the 16384-block tick cap is at most about
+  0.58 ms; numbers in `.omo/knowledges/beam-scan-cost-2026-10-17.md`.
+
+### 5. Power (done 2026-10-17)
+
+- Link cost, section match, statistics group. Tests: `OperatingPowerCostsTest` for the formula; GameTest that a 3x3
+  pair needs a 3x3 converter.
+- Done: `OperatingPowerCosts.beam` reads a link from the lower anchor's `beam:` port (L from the anchors'
+  positions), `beamLink` prices it, group `BEAMS` ("Beam Former links") on the statistics page; the plan's `largest`
+  takes linked formers. GameTest `beamFormerPairNeedsItsSizeOfConverter`.
+
+### 6. Client (done 2026-10-17)
+
+- Beam renderer and its previews; in-game before/after images under `build/beam-former-check/`.
+- Done: `BeamFormerRenderer` on the positive-facing anchor draws the cable's light one block at a time along the
+  beam, stretched across the square (a volume tube above 1x1); the anchor syncs a `BeamLook` (partner, side, count,
+  limit, unpowered) every 10 ticks. In-game: before (linked, nothing drawn), after unpowered (thin red), after with
+  the power requirement off (cyan), `build/beam-former-check/compare.png`. Guide previews move to phase 7.
+
+### 7. Docs (done 2026-10-17)
+
+- `docs/features/beam-former.md`; the guide item page with a hand-written scene, en and zh; the idea page's
+  status; the operating power and capacity pages; a knowledge note.
+- Done: feature doc, guide page en/zh with a hand-written scene (the beam draws in it), index entries, converter
+  and capacity pages, idea page status, `.omo/knowledges/beam-former-2026-10-17.md`.

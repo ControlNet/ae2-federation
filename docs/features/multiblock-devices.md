@@ -9,6 +9,8 @@ same day (`1dd81c1d`). The former idea is preserved as an
 - **Forming.** Same-type blocks that share a face are judged together, by AE2's crafting-CPU rules. They form one
   device when they fill a solid box with every edge at most 8 blocks (`DeviceStructure.MAX_EDGE`); 1x1x1 is a device
   too. Blocks that meet only at an edge or a corner stay separate, and a Router and a Switch never form one device.
+  ME Federation Beam Converters form by the same rules plus an exact size and one facing
+  ([operating power](operating-power.md)).
 - **Invalid groups.** A hollow, L- or T-shaped, protruding or oversized group, or a finished box with one more block
   of its type against it, forms nothing: all its faces disconnect and its networks leave the domain. No smaller part
   forms on its own. Rules, processing ownership and configuration are untouched.
@@ -17,8 +19,9 @@ same day (`1dd81c1d`). The former idea is preserved as an
   face links Federation ports only. Faces between members link the members through Federation.
 - **Capacity.** A formed Router counts as one Router, so it ends each cable segment once (see
   [cable capacity](cable-capacity.md)). A Switch of any size does not end a segment.
-- **Feedback.** Right-clicking a formed member opens the domain screen; right-clicking an unformed member shows the
-  reason on the action bar (`ae2federation.structure.*`). Jade shows "Structure: WxHxD" or the reason it is not
+- **Feedback.** Right-clicking a formed member opens the domain screen; right-clicking an unformed member with an empty
+  hand shows the reason on the action bar (`ae2federation.structure.*`); with anything in hand the click passes to the
+  item (`SKIP_DEFAULT_BLOCK_INTERACTION`), so a held block is placed on it. Jade shows "Structure: WxHxD" or the reason it is not
   formed.
 - **Unloaded chunks.** A body across unloaded chunks keeps its last validated state and is checked again when its
   chunks load; chunks are never force-loaded.

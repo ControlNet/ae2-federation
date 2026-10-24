@@ -12,6 +12,7 @@
     "compat.StorageServiceMountLedgerMixin",
     "compat.CraftingServiceProvidersAccess",
     "compat.CraftingGlobalProviderLifecycleMixin",
+    "compat.CraftingServiceReceiptMixin",
     "compat.NetworkStorageAccess",
     "compat.NetworkCraftingProvidersAccess",
     "compat.CraftingProviderStateAccess",
@@ -21,7 +22,10 @@
     "compat.LDLibTextThreadMixin",
     "compat.GuideTooltipThreadMixin",
     "client.MouseHandlerAccess",
-    "client.GuideBuilderMixin"
+    "client.GuideBuilderMixin",
+    "client.GuideNavBarMixin",
+    "client.GuideNavBarRowMixin",
+    "client.GuidebookLevelRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

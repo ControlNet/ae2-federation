@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: 天枢城区和铸造厂
   icon: ae2lt:tianshu_supercomputer_controller
-  position: 72
+  position: 572
 ---
 
 # 天枢城区和铸造厂
@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 一个城区网络， 带一台已成型的天枢超算（<ItemLink id="ae2lt:tianshu_supercomputer_controller" />）、合成终端、存储和能源元件； 一个铸造厂网络， 带一台已成型的天枢物质扭曲矩阵（<ItemLink id="ae2lt:matter_warping_matrix_controller" />）和一个从两块木板到四根木棍的合成样板； 两个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 怎么搭见AE2 Lightning Tech的指南： [天枢超算](ae2lt:tianshu/construction.md)和[物质扭曲矩阵](ae2lt:matrix/construction.md)。
 
-<GameScene zoom="2" interactive={true} background="transparent">
+<GameScene zoom="1.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/tianshu_foundry.snbt" />
   <BoxAnnotation color="#915dcd" min="9 0 0" max="17 8 7">
     城区： 天枢超算、合成终端、驱动器， 以及给两个网络供电的能源元件
@@ -45,7 +45,7 @@ navigation:
 
 ## 任务怎样运行
 
-天枢超算像任何合成CPU一样计划并执行任务。 它把木板送到矩阵， 矩阵自己合成木棍， 不需要分子装配室， 再把木棍放进铸造厂的网络。 木棍一到， 联邦就把它直接交回城区。 铸造厂自己不需要CPU、 存储和能源。
+天枢超算像任何合成CPU一样计划并执行任务。 它把木板送到矩阵， 矩阵自己合成木棍， 不需要分子装配室， 再把木棍放进铸造厂的网络。 木棍一到， 联邦就把它直接交回城区。 铸造厂自己不需要CPU、存储和能源。
 
 ## 试一试
 

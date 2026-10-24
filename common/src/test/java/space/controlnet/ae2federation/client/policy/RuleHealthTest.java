@@ -13,7 +13,8 @@ class RuleHealthTest {
     @Test
     void anEnabledRuleThatCannotWorkIsAnError() {
         assertEquals(RuleHealth.ERROR, RuleHealth.of(true, "operation_missing", "", ""));
-        for (var backend : new String[] {"energy_connection_missing", "domain_reference_missing",
+        for (var backend : new String[] {"energy_connection_missing", "domain_over_capacity", "domain_unpowered",
+                "domain_reference_missing",
                 "storage_access_none", "storage_compile_budget"}) {
             assertEquals(RuleHealth.ERROR, RuleHealth.of(true, "unobserved", backend, ""), backend);
         }

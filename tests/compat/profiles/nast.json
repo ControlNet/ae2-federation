@@ -1,0 +1,36 @@
+{
+  "name": "nast",
+  "group": "modpacks",
+  "description": "New Age Science and Technology 2.2.1: AE2-centred tech pack with ExtendedAE, Advanced AE, MEGA Cells, AE2 Lightning Tech, Data Energistics, Neo ECO, Applied Flux, Mekanism and KubeJS",
+  "neoforge": "21.1.251",
+  "curseforge": {
+    "project": 1582045
+  },
+  "pack": {
+    "name": "nast server 2.2.1",
+    "file": "nast server 2.2.1.zip",
+    "url": "https://mediafilez.forgecdn.net/files/9286/724/nast%20server%202.2.1.zip",
+    "sha512": "238f7cca5c1b2218286dcfb60b9679e4000fded9896a93fd26d11b8a14ebf3fc8b3633967400ba9f19df7b27fa348939daf5853701c7f438ca2c02022ba1afaa"
+  },
+  "memory": "8G",
+  "timeout": 1800,
+  "tests": [
+    "core",
+    "extendedae",
+    "extendedae-plus",
+    "advanced-ae",
+    "megacells",
+    "ae2-lightning-tech",
+    "data-energistics",
+    "neoecoae",
+    "appmek",
+    "mekanism",
+    "sophisticated-storage",
+    "functional-storage",
+    "appflux",
+    "appflux-mekanism",
+    "appflux-enderio",
+    "appflux-industrialforegoing",
+    "appliedenhancements"
+  ]
+}

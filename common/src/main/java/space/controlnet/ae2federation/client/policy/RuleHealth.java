@@ -10,7 +10,7 @@ public enum RuleHealth {
     OFF, ACTIVE, WAITING, ERROR;
 
     private static final Set<String> BLOCKING_BACKENDS = Set.of("energy_connection_missing", "domain_over_capacity",
-            "domain_reference_missing", "storage_access_none", "storage_compile_budget");
+            "domain_unpowered", "domain_reference_missing", "storage_access_none", "storage_compile_budget");
 
     /** {@code storage} is the storage source diagnostic; only an unsettled source network clears by waiting. */
     public static RuleHealth of(boolean enabled, String code, String backend, String storage) {

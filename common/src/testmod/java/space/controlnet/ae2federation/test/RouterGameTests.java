@@ -334,6 +334,67 @@ public final class RouterGameTests {
     }
 
     /**
+     * AE2 asks a node host for its node on no side (a null direction) when it wants every node of a block, as
+     * {@code /ae2 grids export} does. Router and Switch have nodes on their faces only, so they answer null.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void routerNullSideNode(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var left = CENTER.west(2);
+        var switchBlock = fixtures.placeSwitch(left);
+        fixtures.placeNativeDevice(left, Direction.WEST);
+        fixtures.placeFederationCable(CENTER.west());
+        fixtures.placeRouter(CENTER);
+        helper.succeedWhen(() -> {
+            helper.assertValueEqual(switchBlock.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                    "The Switch must attach the ME network on its western face");
+            var switchHost = GridHelper.getNodeHost(helper.getLevel(), helper.absolutePos(left));
+            var routerHost = GridHelper.getNodeHost(helper.getLevel(), helper.absolutePos(CENTER));
+            helper.assertTrue(switchHost != null && routerHost != null, "Router and Switch must be AE2 node hosts");
+            helper.assertTrue(switchHost.getGridNode(Direction.WEST) != null,
+                    "The Switch must still expose its node on an attached face");
+            helper.assertTrue(switchHost.getGridNode(null) == null, "The Switch has no node on no side");
+            helper.assertTrue(routerHost.getGridNode(null) == null, "The Router has no node on no side");
+            RouterEvidence.write("routernullsidenode", 5, Map.of(
+                    "switchNullSide", "null", "routerNullSide", "null", "switchFaceNode", "present"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A domain of one ME network still shows it: the Switch's screen lists the network for the topology, though
+     * there is no pair for rules yet.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void aDomainOfOneNetworkShowsItsNetwork(GameTestHelper helper) {
+        BlockPos.betweenClosed(CENTER.offset(-3, -1, -1), CENTER.offset(3, 2, 1))
+                .forEach(position -> helper.setBlock(position, net.minecraft.world.level.block.Blocks.AIR));
+        var fixtures = new RouterFixtures(helper);
+        var switchEntity = fixtures.placeSwitch(CENTER);
+        fixtures.placeNativeDevice(CENTER, Direction.WEST);
+        fixtures.placeFederationCable(CENTER.east());
+        var player = space.controlnet.ae2federation.test.world.MockServerPlayers.inLevel(helper);
+        var at = helper.absolutePos(CENTER);
+        player.moveTo(at.getX() + 0.5, at.getY() + 1, at.getZ() + 0.5);
+        helper.succeedWhen(() -> {
+            var network = network(helper, switchEntity, Direction.WEST);
+            var session = space.controlnet.ae2federation.client.policy.FederationDomainPolicySession
+                    .forRouter(player, at);
+            var root = com.google.gson.JsonParser.parseString(session.workspaceChoices()).getAsJsonObject();
+            var networks = root.getAsJsonArray("networks");
+            helper.assertTrue(networks != null && networks.size() == 1,
+                    "The workspace lists the domain's one network, got " + networks);
+            helper.assertValueEqual(networks.get(0).getAsJsonObject().get("id").getAsString(),
+                    network.value().toString(), "The listed network is the Switch's");
+            helper.assertValueEqual(session.statusCode(), "ready", "A domain of one network is not pending");
+            RouterEvidence.write("adomainofonenetworkshowsitsnetwork", 3, Map.of("network", network.toString()));
+            fixtures.close();
+        });
+    }
+
+    /**
      * The device models have gaps, so their neighbours must keep the faces seen through them: all six around the
      * Router, the one in front of a Provider or Endpoint. Behind those two the model is closed and still hides it.
      */

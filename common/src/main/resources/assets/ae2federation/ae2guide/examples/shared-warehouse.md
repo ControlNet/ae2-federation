@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A Shared Warehouse
   icon: ae2:drive
-  position: 10
+  position: 510
 ---
 
 # A Shared Warehouse

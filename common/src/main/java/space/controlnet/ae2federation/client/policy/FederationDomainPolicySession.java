@@ -78,6 +78,10 @@ public final class FederationDomainPolicySession {
     /** Networks of other domains that share a member with this one, from the last choices build; read-only here. */
     private java.util.Set<space.controlnet.ae2federation.identity.NetworkId> relatedNetworks = java.util.Set.of();
     private long overviewTick;
+    private List<NetworkId> pendingMerges = List.of();
+    /** The game time a Keep was accepted at, until the screen has followed the domain it rebuilt; -1 otherwise. */
+    private long keptAt = -1;
+    private long pendingMergesTick = Long.MIN_VALUE / 2;
     private List<NetworkId> overviewMembers = List.of();
     private @org.jetbrains.annotations.Nullable space.controlnet.ae2federation.processing.provider.ProviderMappingController.ReleaseConfirmation pendingRelease;
 
@@ -93,8 +97,10 @@ public final class FederationDomainPolicySession {
         observation = context == null ? null : new FederationDomainPolicyObservation(this, player, context);
         var members = federationDomain.map(snapshot -> List.copyOf(snapshot.memberships().keySet())).orElse(List.of());
         selection = members.size() >= 2 ? PolicyEditorSelection.initial(members) : null;
-        var initialState = selection == null ? emptyState : PolicyEditorSessionState.Status.READY;
-        state = new PolicyEditorSessionState(initialState, selection != null && entrance.enabled());
+        // A domain of one network is confirmed too: nothing to pair, but its network is shown and can be renamed.
+        boolean ready = !members.isEmpty();
+        var initialState = ready ? PolicyEditorSessionState.Status.READY : emptyState;
+        state = new PolicyEditorSessionState(initialState, ready && entrance.enabled());
         // Mapping needs no rule pair: a domain may hold one ME network and its Endpoints.
         mappingAllowed = context != null && entrance.enabled();
         refreshExpectedRevision();
@@ -348,12 +354,13 @@ public final class FederationDomainPolicySession {
         for (var group : new String[] {"consumer", "provider", "capability", "mapping_provider", "slot", "target", "endpoint"}) {
             root.add(group, new com.google.gson.JsonArray());
         }
-        if (selection == null || currentFederationDomain().isEmpty()) return root.toString();
+        if (currentFederationDomain().isEmpty()) return root.toString();
+        var members = members();
         space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values().stream()
                 .filter(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::isInstance)
                 .map(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::cast)
-                .filter(record -> selection.members().contains(record.key().consumerNetworkId())
-                        && selection.members().contains(record.key().providerNetworkId())
+                .filter(record -> members.contains(record.key().consumerNetworkId())
+                        && members.contains(record.key().providerNetworkId())
                         && !record.key().consumerNetworkId().equals(record.key().providerNetworkId()))
                 .sorted(java.util.Comparator.comparing(record -> record.key().toString()))
                 .forEach(record -> {
@@ -372,8 +379,8 @@ public final class FederationDomainPolicySession {
         root.add("revisions", revisions);
         space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values().stream()
                 .filter(space.controlnet.ae2federation.policy.PolicyRecord.Deleted.class::isInstance)
-                .filter(record -> selection.members().contains(record.key().consumerNetworkId())
-                        && selection.members().contains(record.key().providerNetworkId()))
+                .filter(record -> members.contains(record.key().consumerNetworkId())
+                        && members.contains(record.key().providerNetworkId()))
                 .sorted(java.util.Comparator.comparing(record -> record.key().toString()))
                 .forEach(record -> {
                     var row = new com.google.gson.JsonObject();
@@ -389,7 +396,9 @@ public final class FederationDomainPolicySession {
                 .confirmedNetworkId(entry.provider().getGrid()).orElse(null)).toList();
         var endpointNetworks = currentEndpoints().stream().map(binding -> FederationDomainRegistryAccess
                 .confirmedNetworkId(binding.subnetNode().getGrid()).orElse(null)).toList();
-        for (var member : selection.members()) {
+        var shownNetworks = new java.util.ArrayList<>(members);
+        shownNetworks.addAll(pendingMerges());
+        for (var member : shownNetworks) {
             var network = new com.google.gson.JsonObject();
             network.addProperty("id", member.value().toString());
             network.addProperty("member", space.controlnet.ae2federation.observability.id.MemberId
@@ -402,15 +411,17 @@ public final class FederationDomainPolicySession {
         }
         addRelated(root);
         currentFederationDomain().ifPresent(domain -> root.add("via", viaJson(domain)));
-        for (var member : selection.members()) {
-            var id = member.value().toString();
-            addChoice(root, "consumer", id, shortId(id));
-            addChoice(root, "provider", id, shortId(id));
+        if (selection != null) {
+            for (var member : members) {
+                var id = member.value().toString();
+                addChoice(root, "consumer", id, shortId(id));
+                addChoice(root, "provider", id, shortId(id));
+            }
+            selected.addProperty("consumer", selection.key().consumerNetworkId().value().toString());
+            selected.addProperty("provider", selection.key().providerNetworkId().value().toString());
+            for (var capability : PolicyCapability.values()) addChoice(root, "capability", capability.name(), capability.name());
+            selected.addProperty("capability", selection.key().capability().name());
         }
-        selected.addProperty("consumer", selection.key().consumerNetworkId().value().toString());
-        selected.addProperty("provider", selection.key().providerNetworkId().value().toString());
-        for (var capability : PolicyCapability.values()) addChoice(root, "capability", capability.name(), capability.name());
-        selected.addProperty("capability", selection.key().capability().name());
         for (var provider : currentProviders()) {
             var id = FederationDomainGraphProjection.providerId(context, provider);
             var choice = addChoice(root, "mapping_provider", id, shortId(id));
@@ -439,7 +450,7 @@ public final class FederationDomainPolicySession {
             }
             selected.addProperty("slot", Integer.toString(mappingSlotIndex));
             var endpoints = mappingEndpoints();
-            for (var endpoint : endpoints) targetChoice(root, entry, endpoint, selection.members());
+            for (var endpoint : endpoints) targetChoice(root, entry, endpoint, members);
             if (!endpoints.isEmpty()) selected.addProperty("target", endpointChoiceId(selectedMappingEndpoint(endpoints)));
         });
         var endpoints = currentEndpoints();
@@ -971,9 +982,10 @@ public final class FederationDomainPolicySession {
      * instead of on every binding poll.
      */
     public String networkOverviewText() {
-        if (selection == null || context == null) return "";
+        if (context == null || members().isEmpty() && pendingMerges().isEmpty()) return "";
         var now = level.getGameTime();
-        var described = new java.util.ArrayList<>(selection.members());
+        var described = new java.util.ArrayList<>(members());
+        described.addAll(pendingMerges());
         relatedNetworks.stream().sorted(java.util.Comparator.comparing(network -> network.value().toString()))
                 .forEach(described::add);
         if (overviewText.isEmpty() || now - overviewTick >= OVERVIEW_INTERVAL_TICKS || now < overviewTick
@@ -986,6 +998,18 @@ public final class FederationDomainPolicySession {
     }
 
     /**
+     * The opened domain's operating power for the topology's corner gauge, as "percent:state" (see
+     * {@link space.controlnet.ae2federation.power.OperatingPowerService.Reading#gauge()}). Empty while power is not
+     * required, so no gauge is drawn.
+     */
+    public String powerGauge() {
+        if (context == null || !space.controlnet.ae2federation.power.OperatingPowerRule.required()) return "";
+        return space.controlnet.ae2federation.power.OperatingPowerService.reading(level.getServer(),
+                context.federationDomainId()).map(space.controlnet.ae2federation.power.OperatingPowerService.Reading::gauge)
+                .orElse("");
+    }
+
+    /**
      * Networks and rules of every other domain connected to this one through shared networks, however far (a domain
      * that shares a network with a connected domain is connected too). The workspace shows them read-only: editing
      * stays with the Router or Bridge of the domain that owns the pair. At most {@link #MAX_RELATED_NETWORKS} networks
@@ -993,14 +1017,14 @@ public final class FederationDomainPolicySession {
      */
     private void addRelated(com.google.gson.JsonObject root) {
         var registry = FederationDomainRegistryAccess.get(level);
-        var members = new java.util.HashSet<>(selection.members());
+        var members = new java.util.HashSet<>(members());
         var networksOut = new com.google.gson.JsonArray();
         var rulesOut = new com.google.gson.JsonArray();
         root.add("relatedNetworks", networksOut);
         root.add("relatedRules", rulesOut);
         java.util.Comparator<space.controlnet.ae2federation.identity.NetworkId> byId =
                 java.util.Comparator.comparing(network -> network.value().toString());
-        var reach = ConnectedDomains.reach(selection.members(), context.federationDomainId(),
+        var reach = ConnectedDomains.reach(members(), context.federationDomainId(),
                 network -> registry.federationdomainsFor(network).stream().sorted().toList(),
                 domainId -> registry.federationDomain(domainId).map(domain -> domain.memberships().keySet().stream()
                         .sorted(byId).toList()).orElse(List.of()));
@@ -1011,6 +1035,11 @@ public final class FederationDomainPolicySession {
         var overCapacity = new com.google.gson.JsonArray();
         domains.stream().filter(registry::overCapacity).forEach(domainId -> overCapacity.add(domainId.value()));
         root.add("overCapacityDomains", overCapacity);
+        // An unpowered domain has stopped too: the canvas tints it the same, with no caption.
+        root.addProperty("openedUnpowered", registry.unpowered(context.federationDomainId()));
+        var unpowered = new com.google.gson.JsonArray();
+        domains.stream().filter(registry::unpowered).forEach(domainId -> unpowered.add(domainId.value()));
+        root.add("unpoweredDomains", unpowered);
         var seen = new java.util.LinkedHashSet<space.controlnet.ae2federation.identity.NetworkId>();
         var ruleKeys = new java.util.HashSet<space.controlnet.ae2federation.policy.PolicyKey>();
         var names = space.controlnet.ae2federation.persistence.NetworkNames.get(level);
@@ -1157,12 +1186,19 @@ public final class FederationDomainPolicySession {
                 for (var entry : statistics.stock(member)) catalog.merge(entry.getKey(), entry.getLongValue(), Long::sum);
             }
         }
+        var domain = context.federationDomainId().value();
+        var converters = statistics.converters(domain).stream().map(body ->
+                new space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Converter(body.dimension(),
+                        body.origin().getX(), body.origin().getY(), body.origin().getZ(), body.size(), body.input(),
+                        body.matches())).toList();
+        var power = new space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Power(domain,
+                space.controlnet.ae2federation.power.OperatingPowerRule.required(), converters);
         return space.controlnet.ae2federation.observability.statistics.StatisticsPayload.encode(statistics.book(), members,
                 request, statistics.finishedSecond(),
                 shared.contains(space.controlnet.ae2federation.policy.PolicyCapability.STORAGE),
                 shared.contains(space.controlnet.ae2federation.policy.PolicyCapability.CRAFTING),
                 new space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Extras<>(cpus, catalog, pinned,
-                        state.editingAllowed()),
+                        state.editingAllowed(), power),
                 key -> key.toTagGeneric(registries), key -> key.getType().getId().toString());
     }
 
@@ -1203,14 +1239,67 @@ public final class FederationDomainPolicySession {
     /** Renames a member network whose identity is settled; an empty name clears it. */
     public boolean renameNetwork(String encoded) {
         var target = NetworkRenameTarget.parse(encoded).orElse(null);
-        if (target == null || selection == null || !state.editingAllowed()
-                || !selection.members().contains(target.network())) return false;
+        if (target == null || !state.editingAllowed() || !members().contains(target.network())) return false;
         var grids = NetworkOverview.gridsByNetwork(level).getOrDefault(target.network(), List.of());
         var settlements = grids.stream().map(grid -> grid.getService(
                 space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement()).toList();
         if (!NetworkIdentityState.of(target.network(), settlements).renamable()) return false;
         space.controlnet.ae2federation.persistence.NetworkNames.get(level).rename(target.network(), target.name());
         return true;
+    }
+
+    /**
+     * Settles a pending merge shown in this domain on {@code encoded}, one of its network ids: the other ids' names and
+     * rules are deleted. False when the network is not shown here or its Grid is no pending merge.
+     */
+    public boolean keepNetwork(String encoded) {
+        NetworkId network;
+        try {
+            network = NetworkId.parse(encoded);
+        } catch (IllegalArgumentException malformed) {
+            return false;
+        }
+        if (!pendingMerges().contains(network) && !members().contains(network)) return false;
+        for (var grid : NetworkOverview.gridsByNetwork(level).getOrDefault(network, List.of())) {
+            if (grid.getService(space.controlnet.ae2federation.identity.NetworkIdentityService.class).keep(network)) {
+                pendingMergesTick = Long.MIN_VALUE / 2;
+                overviewText = "";
+                keptAt = level.getGameTime();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether a Keep has rebuilt the domain this screen shows: the opened domain is gone and the entrance now sits in
+     * one with a member, so the screen should open again there. True once; gives up after five seconds.
+     */
+    public boolean takeReopen() {
+        if (keptAt < 0) return false;
+        var entranceNode = FederationDomainRegistryAccess.nodeId(level, entrance.position());
+        var rebuilt = !contextCurrent() && FederationDomainRegistryAccess.get(level).federationDomains().stream()
+                .anyMatch(domain -> domain.nodes().contains(entranceNode) && !domain.memberships().isEmpty());
+        if (rebuilt || level.getGameTime() - keptAt > 100) keptAt = -1;
+        return rebuilt;
+    }
+
+    /** Whether this screen was opened from a Router or Switch. */
+    public boolean openedFromRouter() {
+        return entrance instanceof RouterPolicyEntrance;
+    }
+
+    /** Whether this screen was opened from a Provider or Endpoint. */
+    public boolean openedFromDevice() {
+        return entrance instanceof DevicePolicyEntrance;
+    }
+
+    public BlockPos entrancePosition() {
+        return entrance.position();
+    }
+
+    public ServerPlayer player() {
+        return player;
     }
 
     /** Session, distance and domain authority without the selected rule's revision; switches carry their own. */
@@ -1437,20 +1526,62 @@ public final class FederationDomainPolicySession {
         return mappingAcknowledgment;
     }
 
+    /**
+     * The domain's networks in the rule editor's order: the pair's members, or, in a domain of one network, that
+     * network, which has no pair to edit but is still shown.
+     */
+    private List<NetworkId> members() {
+        if (selection != null) return selection.members();
+        return currentFederationDomain().map(domain -> domain.memberships().keySet().stream()
+                .sorted(java.util.Comparator.comparing(NetworkId::toString)).toList()).orElse(List.of());
+    }
+
+    /**
+     * The ids of each pending merge beside one of this domain's Switch faces, members excluded. A Grid holding several
+     * ids settles on none, so it is no member and would otherwise vanish from the topology; its ids are drawn read-only,
+     * each card telling what it was merged with. Looked up at most once a second: it walks the live identity claims.
+     */
+    private List<NetworkId> pendingMerges() {
+        var now = level.getGameTime();
+        if (now - pendingMergesTick < OVERVIEW_INTERVAL_TICKS && now >= pendingMergesTick) return pendingMerges;
+        pendingMergesTick = now;
+        var domain = currentFederationDomain().orElse(null);
+        if (domain == null) return pendingMerges = List.of();
+        var found = new java.util.TreeSet<NetworkId>(java.util.Comparator.comparing(NetworkId::toString));
+        space.controlnet.ae2federation.identity.NetworkIdentityRegistry.get(level).liveClaims().forEach((grid, lineages) -> {
+            if (lineages.stream().map(space.controlnet.ae2federation.identity.NodeLineage::networkId).distinct().count() < 2
+                    || grid.getService(space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement()
+                            .status() != space.controlnet.ae2federation.identity.IdentityStatus.AMBIGUOUS_MERGE) {
+                return;
+            }
+            for (var node : grid.getNodes()) {
+                if (node.getOwner() instanceof space.controlnet.ae2federation.domain.port.RouterFacePort face
+                        && domain.nodes().contains(FederationDomainRegistryAccess.nodeId(node.getLevel(), face.routerPosition()))) {
+                    lineages.forEach(lineage -> found.add(lineage.networkId()));
+                    return;
+                }
+            }
+        });
+        found.removeAll(domain.memberships().keySet());
+        return pendingMerges = List.copyOf(found);
+    }
+
     public Component membersText() {
         if (context == null && deviceDomainAvailability != null) return Component.translatable("ae2federation.ui.workspace.local_scope");
-        if (selection == null) {
+        var members = members();
+        if (members.isEmpty()) {
             return Component.translatable("ae2federation.ui.domain.members.pending");
         }
         var links = space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values().stream()
                 .filter(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::isInstance)
                 .map(record -> record.key())
-                .filter(key -> selection.members().contains(key.consumerNetworkId())
-                        && selection.members().contains(key.providerNetworkId())
+                .filter(key -> members.contains(key.consumerNetworkId())
+                        && members.contains(key.providerNetworkId())
                         && !key.consumerNetworkId().equals(key.providerNetworkId()))
                 .map(key -> java.util.Set.of(key.consumerNetworkId(), key.providerNetworkId()))
                 .distinct().count();
-        return Component.translatable("ae2federation.ui.domain.members", selection.members().size()).append(" · ")
+        return Component.translatable(members.size() == 1 ? "ae2federation.ui.domain.members.one"
+                        : "ae2federation.ui.domain.members", members.size()).append(" · ")
                 .append(Component.translatable(links == 1 ? "ae2federation.ui.domain.links.one" : "ae2federation.ui.domain.links", links));
     }
 

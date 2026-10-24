@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: 靠供应器FE运行的半自磨机
   icon: appflux:induction_card
-  position: 46
+  position: 546
 ---
 
 # 靠供应器FE运行的半自磨机

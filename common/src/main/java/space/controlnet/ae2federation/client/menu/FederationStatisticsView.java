@@ -32,6 +32,7 @@ import space.controlnet.ae2federation.client.policy.SearchText;
 import space.controlnet.ae2federation.observability.statistics.StatisticsNames;
 import space.controlnet.ae2federation.observability.statistics.StatisticsPayload;
 import space.controlnet.ae2federation.observability.statistics.StatisticsRange;
+import space.controlnet.ae2federation.power.OperatingPowerCosts;
 
 /**
  * The domain's statistics page: a card per metric on the left with its sparkline, the chosen metric large on the right,
@@ -55,6 +56,10 @@ public final class FederationStatisticsView {
     private static final int OTHER = 0xff6a6478;
     /** Items the stock chart draws when the player has not picked any. */
     private static final int TOP_PICK = 6;
+    /** Federation power's groups on the charts, in {@link OperatingPowerCosts.Group} order, and its converters' input. */
+    private static final int[] GROUP_COLORS = {0xffe5c07b, 0xff98c379, 0xff56b6c2, 0xffb5a7ff, 0xfff4a6c6,
+            0xff61afef, 0xffc678dd};
+    private static final int INPUT = FederationTheme.DARK_TITLE;
 
     /** Which items the stock chart draws: the most held, the pinned ones, none, or the ones the player ticked. */
     enum Pick {
@@ -62,7 +67,7 @@ public final class FederationStatisticsView {
     }
 
     enum Metric {
-        POWER, STORED, MOVED, CRAFTING, CPUS, CHANNELS;
+        POWER, FEDPOWER, STORED, MOVED, CRAFTING, CPUS, CHANNELS;
 
         String key() {
             return name().toLowerCase(Locale.ROOT);
@@ -89,6 +94,8 @@ public final class FederationStatisticsView {
     private final List<String> kinds = new ArrayList<>(List.of(ITEMS, FLUIDS));
     private final Chart chart = new Chart(() -> figure(this.metric, true));
     private final Chart storedPower = new Chart(this::storedPowerFigure);
+    /** Federation power's buffer, in the lower box's left half; its converters and use are in the right half. */
+    private final Chart fedStored = new Chart(this::fedStoredFigure, true);
     private final Lower lower = new Lower();
     private @Nullable StatisticsPayload.Snapshot<AEKey> snapshot;
     private StatisticsRange range = StatisticsRange.FIVE_SECONDS;
@@ -127,9 +134,12 @@ public final class FederationStatisticsView {
         refreshRanges();
         var metrics = element("stats_metrics", UIElement.class);
         for (var candidate : Metric.values()) {
+            // This release ships without the Beam Converter, so no domain runs on Federation power.
+            if (candidate == Metric.FEDPOWER) continue;
             var card = new Card(candidate);
             card.addClass("stats-card");
             card.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+                if (metricDisabled(candidate)) return;
                 metric = candidate;
                 ask();
                 refreshKinds();
@@ -152,6 +162,8 @@ public final class FederationStatisticsView {
         lowerBox.addChild(lower);
         storedPower.addClass("stats-layer");
         lowerBox.addChild(storedPower);
+        fedStored.addClass("stats-layer");
+        lowerBox.addChild(fedStored);
         lowerBox.addChild(filter);
         var searchField = element("stats_search", TextField.class);
         searchField.textFieldStyle(style -> style.placeholder(tr("stock.search")
@@ -199,7 +211,7 @@ public final class FederationStatisticsView {
             var id = json.get("id").getAsString();
             var name = json.has("name") ? json.get("name").getAsString() : "";
             networks.add(new Net(id, FederationTheme.networkAccent(index++), FederationTopologyView.displayName(id, name),
-                    name.isEmpty() ? id.substring(0, 4).toUpperCase(Locale.ROOT) : name));
+                    name.isEmpty() ? space.controlnet.ae2federation.identity.NetworkId.tag(id) : name));
         }
         if (network != null && networks.stream().noneMatch(net -> net.id().equals(network))) network = null;
         refreshChips();
@@ -210,6 +222,11 @@ public final class FederationStatisticsView {
         shownNetworks = snapshot == null ? 0 : snapshot.networks().size();
         shownRequest = snapshot == null ? "" : snapshot.metric() + ";" + snapshot.kind() + ";" + snapshot.catalog().size();
         if (snapshot == null) return;
+        if (metricDisabled(metric)) {
+            metric = Metric.POWER;
+            ask();
+            refreshKinds();
+        }
         var present = new LinkedHashSet<>(List.of(ITEMS, FLUIDS));
         snapshot.networks().values().forEach(series -> series.keySet().stream()
                 .filter(name -> name.startsWith(StatisticsNames.STORED + "/"))
@@ -313,13 +330,20 @@ public final class FederationStatisticsView {
     /** Shows the lower box's parts for the chosen metric, and marks the quick pick in force. */
     private void refreshLower() {
         storedPower.setDisplay(metric == Metric.POWER);
+        fedStored.setDisplay(metric == Metric.FEDPOWER);
         lower.setDisplay(metric != Metric.POWER);
+        refreshChipStates();
         element("stats_filter", UIElement.class).setDisplay(metric == Metric.STORED && stockByItem);
         for (var candidate : List.of(Pick.TOP, Pick.PINNED, Pick.NONE)) {
             var button = element("stats_pick_" + candidate.name().toLowerCase(Locale.ROOT), Button.class);
             button.removeClass("selected");
             if (candidate == pick) button.addClass("selected");
         }
+    }
+
+    /** Federation power's card is shown but cannot be opened while the server does not require power. */
+    private boolean metricDisabled(Metric candidate) {
+        return candidate == Metric.FEDPOWER && snapshot != null && !snapshot.powerRequired();
     }
 
     /** TEST-ONLY: how many networks the last figures from the server covered; 0 before any arrived. */
@@ -365,9 +389,18 @@ public final class FederationStatisticsView {
                         .append(Component.literal("■ ").withStyle(Style.EMPTY.withColor(net.color() & 0xffffff))).append(net.name())));
             }
         }
-        for (var child : row.getChildren()) {
+        refreshChipStates();
+    }
+
+    /** Marks the chosen chip; Federation power belongs to the whole domain, so its network filter is greyed out. */
+    private void refreshChipStates() {
+        boolean domainWide = metric == Metric.FEDPOWER;
+        for (var child : element("stats_networks", UIElement.class).getChildren()) {
             child.removeClass("selected");
             if (java.util.Objects.equals(child.getId(), chipId(network))) child.addClass("selected");
+            child.setActive(!domainWide);
+            if (domainWide) child.addClass("dim");
+            else child.removeClass("dim");
         }
     }
 
@@ -496,7 +529,7 @@ public final class FederationStatisticsView {
         var shownNets = networks.stream().filter(net -> data.networks().containsKey(net.id())).toList();
         boolean all = network == null;
         for (var net : shownNets) {
-            if (!all && !net.id().equals(network)) continue;
+            if (shown == Metric.FEDPOWER || !all && !net.id().equals(network)) continue;
             var cpus = series(net, StatisticsNames.CPUS);
             for (int index = 0; index < n; index++) {
                 if (observed[index] == 0 || cpus != null && !Float.isNaN(cpus[index])) continue;
@@ -508,6 +541,7 @@ public final class FederationStatisticsView {
         }
         switch (shown) {
             case POWER -> usage(figure, shownNets, n);
+            case FEDPOWER -> fedpower(figure, data, n);
             case STORED -> {
                 if (large && stockByItem) stockByItem(figure, shownNets, n);
                 else stored(figure, shownNets, n, large);
@@ -534,6 +568,104 @@ public final class FederationStatisticsView {
         power(figure, networks.stream().filter(net -> data.networks().containsKey(net.id())).toList(),
                 data.range().buckets());
         return figure;
+    }
+
+    /** Federation power's buffer, beside its converters under the use chart; its tooltip gives their input too. */
+    private Figure fedStoredFigure() {
+        var figure = new Figure();
+        figure.title = tr("title.fedpower_stored");
+        figure.unit = tr("unit.power");
+        var data = snapshot;
+        if (data == null) {
+            figure.empty = tr("waiting");
+            return figure;
+        }
+        int n = data.range().buckets();
+        figure.max = 100;
+        figure.top = "100%";
+        figure.bottom = "0";
+        var stored = scaled(data.domain().get(StatisticsNames.FEDPOWER_STORED), 1, n);
+        var capacity = data.domain().get(StatisticsNames.FEDPOWER_CAPACITY);
+        var input = scaled(data.domain().get(StatisticsNames.FEDPOWER_INPUT), 1, n);
+        var stopped = data.domain().get(StatisticsNames.FEDPOWER_STOPPED);
+        stoppedSpans(figure, stopped, n);
+        figure.layers.add(new Line(stored, FederationTheme.QUARTZ, 1.5f, 1, 1));
+        figure.tip = index -> {
+            boolean halted = stopped != null && stopped[index] > 0;
+            var in = new TipRow(INPUT, tr("tip.converters_in", fmt(input[index]) + " FE/t"), FederationTheme.DARK_TITLE);
+            if (Float.isNaN(stored[index])) {
+                return List.of(new TipRow(FederationTheme.QUARTZ, tr("tip.no_buffer"), FederationTheme.DARK_MUTED), in);
+            }
+            float size = capacity == null ? Float.NaN : capacity[index];
+            return List.of(new TipRow(FederationTheme.QUARTZ, tr("tip.fedpower_stored", Math.round(stored[index]) + "%",
+                    fmt(size) + " FE"), halted ? FederationTheme.ERROR : FederationTheme.DARK_TEXT), in);
+        };
+        return figure;
+    }
+
+    /** Where the domain was stopped for want of power, a red hatch behind the figure. */
+    private static void stoppedSpans(Figure figure, float @Nullable [] stopped, int n) {
+        if (stopped == null) return;
+        for (int index = 0; index < n; index++) {
+            if (!(stopped[index] > 0)) continue;
+            int end = index;
+            while (end + 1 < n && stopped[end + 1] > 0) end++;
+            figure.missing.add(new int[] {index, end, FederationTheme.ERROR});
+            index = end;
+        }
+    }
+
+    /**
+     * The domain's Federation power use, stacked by group; red where the domain was stopped. Groups that used nothing
+     * over the range are left out. The converters' input is with the buffer below, not here.
+     */
+    private void fedpower(Figure figure, StatisticsPayload.Snapshot<AEKey> data, int n) {
+        figure.title = tr("title.fedpower");
+        figure.unit = tr("unit.fedpower");
+        if (!data.powerRequired() || data.domain().isEmpty()) {
+            figure.empty = tr("waiting");
+            return;
+        }
+        var groups = new ArrayList<Integer>();
+        var lo = new float[n];
+        var counted = new boolean[n];
+        var groupValues = new ArrayList<float[]>();
+        for (var group : OperatingPowerCosts.Group.values()) {
+            var values = scaled(data.domain().get(StatisticsNames.FEDPOWER_USE + "/" + group.key()), 1, n);
+            if (!(peak(values) > 0)) continue;
+            var hi = new float[n];
+            var base = lo.clone();
+            for (int index = 0; index < n; index++) {
+                hi[index] = Float.isNaN(values[index]) ? lo[index] : lo[index] + values[index];
+                if (Float.isNaN(values[index])) base[index] = Float.NaN;
+                else counted[index] = true;
+            }
+            figure.layers.add(new Area(base, mask(hi, base), GROUP_COLORS[group.ordinal()], 0.45f, 1));
+            groups.add(group.ordinal());
+            groupValues.add(values);
+            lo = hi;
+        }
+        var use = lo.clone();
+        for (int index = 0; index < n; index++) if (!counted[index]) use[index] = Float.NaN;
+        var stopped = data.domain().get(StatisticsNames.FEDPOWER_STOPPED);
+        stoppedSpans(figure, stopped, n);
+        figure.max = niceMax(Math.max(1, peak(use)) * 1.15);
+        figure.top = fmt(figure.max);
+        figure.bottom = "0";
+        figure.value = Component.literal(fmt(last(use)) + " FE/t");
+        figure.valueColor = last(stopped) > 0 ? FederationTheme.ERROR : FederationTheme.DARK_TEXT;
+        figure.tip = index -> {
+            boolean halted = stopped != null && stopped[index] > 0;
+            var rows = new ArrayList<TipRow>();
+            for (int at = groups.size() - 1; at >= 0; at--) {
+                var group = OperatingPowerCosts.Group.values()[groups.get(at)];
+                rows.add(new TipRow(GROUP_COLORS[group.ordinal()], tr("fedpower.group." + group.key())
+                        .append(" " + fmt(groupValues.get(at)[index]) + " FE/t"), FederationTheme.DARK_TEXT));
+            }
+            rows.add(new TipRow(0, tr(halted ? "tip.use_stopped" : "tip.use", fmt(use[index]) + " FE/t"),
+                    halted ? FederationTheme.ERROR : FederationTheme.DARK_TITLE));
+            return rows;
+        };
     }
 
     private float @Nullable [] series(Net net, String name) {
@@ -1314,6 +1446,10 @@ public final class FederationStatisticsView {
             float height = getSizeHeight();
             boolean selected = shown == metric;
             frame(context, x, y, width, height, selected ? CARD_SELECTED : CARD, selected ? FederationTheme.SELECT : CARD_EDGE);
+            if (metricDisabled(shown)) {
+                text(context, tr("metric." + shown.key()), x + 5, y + 4, alpha(FederationTheme.DARK_MUTED, 0.6f));
+                return;
+            }
             var figure = figure(shown, false);
             Component name = shown == Metric.STORED ? storedName() : tr("metric." + shown.key());
             var value = snapshot == null ? Component.literal("–") : figure.value;
@@ -1342,8 +1478,16 @@ public final class FederationStatisticsView {
         private float pointerX = Float.NaN;
         private float pointerY = Float.NaN;
 
+        /** Whether the chart takes only the left half of its box, beside a list. */
+        private final boolean half;
+
         Chart(Supplier<Figure> source) {
+            this(source, false);
+        }
+
+        Chart(Supplier<Figure> source, boolean half) {
             this.source = source;
+            this.half = half;
             addEventListener(UIEvents.MOUSE_MOVE, event -> {
                 pointerX = event.x;
                 pointerY = event.y;
@@ -1356,7 +1500,7 @@ public final class FederationStatisticsView {
             super.drawBackgroundAdditional(context);
             float x = getPositionX();
             float y = getPositionY();
-            float width = getSizeWidth();
+            float width = half ? getSizeWidth() / 2 - 2 : getSizeWidth();
             float height = getSizeHeight();
             frame(context, x, y, width, height, FederationTheme.CANVAS, CARD_EDGE);
             var figure = source.get();
@@ -1458,6 +1602,11 @@ public final class FederationStatisticsView {
             float y = getPositionY();
             float width = getSizeWidth();
             float height = getSizeHeight();
+            if (metric == Metric.FEDPOWER) {
+                // The right half: the buffer's chart takes the left.
+                x += width / 2 + 2;
+                width = width / 2 - 2;
+            }
             frame(context, x, y, width, height, FederationTheme.CANVAS, CARD_EDGE);
             var data = snapshot;
             switch (metric) {
@@ -1469,8 +1618,57 @@ public final class FederationStatisticsView {
                 case CRAFTING -> crafting(context, data, x, y, width, height);
                 case CPUS -> cpus(context, data, x, y, width, height);
                 case CHANNELS -> networkTable(context, data, x, y, width, height, StatisticsNames.CHANNELS, "channels");
+                case FEDPOWER -> fedpower(context, data, x, y, width, height);
                 case POWER -> {
                 }
+            }
+        }
+
+        // ---- Federation power ----
+
+        /** The domain's converter bodies and what each takes in now, then its use by group now. */
+        private void fedpower(GUIContext context, StatisticsPayload.@Nullable Snapshot<AEKey> data, float x, float y,
+                float width, float height) {
+            heading(context, tr("fedpower.title"), Component.empty(), x, y, width);
+            if (data == null) return;
+            float left = x + 5;
+            float rowWidth = width - 10;
+            float bottom = y + height - 3;
+            float rowY = y + 16;
+            text(context, tr("fedpower.converters"), left, rowY, FederationTheme.DARK_MUTED);
+            rowY += 11;
+            if (data.converters().isEmpty()) {
+                text(context, tr("fedpower.no_converters"), left, rowY, FederationTheme.DARK_MUTED);
+                rowY += 12;
+            }
+            for (var converter : data.converters()) {
+                if (rowY + 22 > bottom) break;
+                rect(context, left, rowY, rowWidth, 22, FederationTheme.WELL);
+                var input = Component.literal(fmt(converter.input()) + " FE/t");
+                int inputWidth = font().width(input);
+                text(context, input, left + rowWidth - 4 - inputWidth, rowY + 7,
+                        converter.matches() && converter.input() > 0 ? FederationTheme.DARK_TITLE : FederationTheme.ERROR);
+                var name = tr("fedpower.converter", converter.size().replace('x', '×')).getString();
+                text(context, Component.literal(font().plainSubstrByWidth(name, (int) Math.max(0, rowWidth - 12 - inputWidth))),
+                        left + 4, rowY + 2, FederationTheme.DARK_TEXT);
+                var where = DevicePlace.dimensionName(converter.dimension())
+                        .append(" " + converter.x() + ", " + converter.y() + ", " + converter.z());
+                text(context, where, left + 4, rowY + 12, FederationTheme.DARK_MUTED);
+                rowY += 24;
+            }
+            rowY += 2;
+            if (rowY + 11 > bottom) return;
+            text(context, tr("fedpower.use_by_block"), left, rowY, FederationTheme.DARK_MUTED);
+            rowY += 11;
+            for (var group : OperatingPowerCosts.Group.values()) {
+                float now = last(data.domain().get(StatisticsNames.FEDPOWER_USE + "/" + group.key()));
+                if (!(now > 0)) continue;
+                if (rowY + 10 > bottom) break;
+                rect(context, left, rowY + 3, 4, 4, GROUP_COLORS[group.ordinal()]);
+                text(context, tr("fedpower.group." + group.key()), left + 8, rowY, FederationTheme.DARK_TEXT);
+                var value = fmt(now) + " FE/t";
+                text(context, Component.literal(value), left + rowWidth - 4 - font().width(value), rowY, FederationTheme.DARK_TITLE);
+                rowY += 12;
             }
         }
 

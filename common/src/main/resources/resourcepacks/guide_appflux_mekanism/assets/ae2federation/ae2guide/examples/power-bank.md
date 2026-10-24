@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A Shared Power Bank
   icon: appflux:flux_accessor
-  position: 45
+  position: 545
 ---
 
 # A Shared Power Bank

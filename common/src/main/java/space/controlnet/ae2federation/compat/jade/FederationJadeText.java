@@ -9,6 +9,8 @@ final class FederationJadeText {
     private static final String PREFIX = "ae2federation.jade.";
     /** The topology's error colour, which also marks a domain over capacity there. */
     private static final int OVER = 0xff6a75;
+    /** The topology's colour for a running network or domain. */
+    private static final int RUNNING = 0x55ff8a;
 
     private FederationJadeText() {
     }
@@ -34,6 +36,33 @@ final class FederationJadeText {
         var count = Component.literal(limit.isPresent() ? units + "/" + limit.getAsInt() : String.valueOf(units));
         if (limit.isPresent() && units > limit.getAsInt()) count.withStyle(style -> style.withColor(OVER));
         return Component.translatable(PREFIX + "cable_capacity." + (domain ? "domain" : "subdomain"), count);
+    }
+
+    /**
+     * A Beam Former's beam: linked and how long, blocked and where, checking its path, no partner within range, or a
+     * former of another size facing it. {@code kind} is the lower-case name of a beam status.
+     */
+    static Component beam(String kind, int value, int x, int y, int z) {
+        return switch (kind) {
+            case "linked" -> Component.translatable(PREFIX + "beam.linked", value);
+            case "blocked" -> Component.translatable(PREFIX + "beam.blocked", x, y, z)
+                    .withStyle(style -> style.withColor(OVER));
+            case "no_partner" -> Component.translatable(PREFIX + "beam.no_partner", value);
+            default -> Component.translatable(PREFIX + "beam." + kind);
+        };
+    }
+
+    /**
+     * A Quantum Cube's link: linked and to where, not bound, its partner not loaded (and where it was bound), a partner
+     * of another size, or more than two cubes of one binding. {@code kind} is the lower-case name of a link status.
+     */
+    static Component quantumLink(String kind, String dimension, @org.jetbrains.annotations.Nullable
+            net.minecraft.core.BlockPos at) {
+        if (at != null && (kind.equals("linked") || kind.equals("partner_not_loaded"))) {
+            return Component.translatable(PREFIX + "quantum." + kind + ".at", at.getX(), at.getY(), at.getZ(), dimension);
+        }
+        var line = Component.translatable(PREFIX + "quantum." + kind);
+        return kind.equals("linked") ? line : line.withStyle(style -> style.withColor(OVER));
     }
 
     static Component bundleTitle() {
@@ -65,6 +94,19 @@ final class FederationJadeText {
     static Component bundlePartial(int x, int y, int z, int covered, int cells) {
         return Component.translatable(PREFIX + "bundle.partial", x, y, z, covered, cells)
                 .withStyle(style -> style.withColor(OVER));
+    }
+
+    /**
+     * A Beam Converter's buffer and the FE it took in on the last tick, green when its body matches its domain's largest
+     * cable cross-section and red when it does not. Outside a domain that needs power nothing draws on it, so there is
+     * no input figure and no colour.
+     */
+    static Component converter(int stored, int capacity, java.util.OptionalInt input, Optional<Boolean> matches) {
+        var line = input.isPresent()
+                ? Component.translatable(PREFIX + "converter", stored, capacity, input.getAsInt())
+                : Component.translatable(PREFIX + "converter.idle", stored, capacity);
+        matches.ifPresent(match -> line.withStyle(style -> style.withColor(match ? RUNNING : OVER)));
+        return line;
     }
 
     static Component networks(int count) {

@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A Millstone on the Provider's FE
   icon: appflux:induction_card
-  position: 46
+  position: 546
 ---
 
 # A Millstone on the Provider's FE
@@ -20,7 +20,7 @@ cell on the Endpoint's subnet. This page appears because Applied Flux and Create
 <ItemLink id="create:millstone" />; a <ItemLink id="ae2:storage_bus" />. How FE gets into the cells is in
 [Applied Flux's guide](appflux:appflux/flux_cells.md).
 
-<GameScene zoom="5" interactive={true} background="transparent">
+<GameScene zoom="4.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/induction_motor.snbt" />
   <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
     Your main network: the energy cell, a crafting terminal, a crafting CPU, and ME Drives with item cells and ME FE

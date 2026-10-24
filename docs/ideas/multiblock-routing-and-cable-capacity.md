@@ -181,6 +181,10 @@ older illustrative sizes/counts as the current balancing candidate; C and final 
 | 2x3 | 9C | 72 |
 | 3x3 | Unlimited | Unlimited |
 
+On 2026-10-17 the user set a Federation P2P tunnel pair's own capacity to one ordinary cable (C), because larger
+cross-sections are meant to travel through the [wireless cube](remote-federation-connections.md) and
+[beam transceivers](../archive/ideas/line-of-sight-beam-links.md). Implemented the same day: tunnels count as cable in their region.
+
 Bundles are formed explicitly ([Confirmed bundled cables](#confirmed-bundled-cables-2026-10-13)); spatially separate
 routes never add capacity. The finite bundled tiers yield
 1.5C per constituent block, except 1x3 at 4/3 C; 3x3 deliberately ends capacity progression. Larger visual sizes
@@ -222,11 +226,11 @@ have independent switches, both enabled by default. Base cable capacity applies 
 enabled; its numerical default remains open. Keeping construction features available without restrictions
 is an assistant recommendation.
 
-The [operating-power idea](federation-operating-power.md) supplies the working Beam Charger concept. Its role as
+The [operating-power idea](../archive/ideas/federation-operating-power.md) supplies the energy-input device, now named the ME Federation Beam Converter (2026-10-17). Its role as
 an allocation/pathfinding origin is set aside. Its configuration-optional power
 requirement does not automatically establish whether capacity restrictions are optional too.
 
-The [remote connections](remote-federation-connections.md), [beam links](line-of-sight-beam-links.md), and
+The [remote connections](remote-federation-connections.md), [beam links](../archive/ideas/line-of-sight-beam-links.md), and
 [implemented P2P mode](../features/federation-p2p.md) would need explicit capacity boundary decisions if this
 proposal proceeds. No changes to their existing contracts are selected by this brainstorm.
 

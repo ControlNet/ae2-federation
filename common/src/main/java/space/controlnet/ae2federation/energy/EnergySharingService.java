@@ -349,11 +349,11 @@ public final class EnergySharingService implements AutoCloseable {
         return edges;
     }
 
-    /** Whether the Endpoint's domain is over cable capacity: a stopped domain powers no Endpoint either. */
+    /** Whether the Endpoint's domain has stopped, over capacity or unpowered: a stopped domain powers no Endpoint either. */
     private static boolean stopped(EndpointTargetBinding binding) {
         var registry = FederationDomainRegistryAccess.get(binding.level());
         return registry.federationDomainOf(FederationDomainRegistryAccess.nodeId(binding.level(), binding.runtime().position()))
-                .filter(domain -> registry.overCapacity(domain.federationDomainId())).isPresent();
+                .filter(domain -> registry.stopped(domain.federationDomainId())).isPresent();
     }
 
     private static boolean eligible(PolicyService policies, PolicyKey key) {

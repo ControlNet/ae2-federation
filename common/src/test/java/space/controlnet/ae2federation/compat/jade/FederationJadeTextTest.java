@@ -54,6 +54,19 @@ final class FederationJadeTextTest {
     }
 
     @Test
+    void aConverterShowsItsBufferAndInputColouredByWhetherItMatches() {
+        var matching = FederationJadeText.converter(13_120, 16_000, java.util.OptionalInt.of(22), Optional.of(true));
+        assertLine("ae2federation.jade.converter", new Object[] {13_120, 16_000, 22}, matching);
+        assertEquals(0x55ff8a, matching.getStyle().getColor().getValue());
+        var other = FederationJadeText.converter(0, 16_000, java.util.OptionalInt.of(0), Optional.of(false));
+        assertEquals(0xff6a75, other.getStyle().getColor().getValue());
+        // Outside a domain that needs power nothing draws on it: no input figure and no colour.
+        var idle = FederationJadeText.converter(500, 16_000, java.util.OptionalInt.empty(), Optional.empty());
+        assertLine("ae2federation.jade.converter.idle", new Object[] {500, 16_000}, idle);
+        assertEquals(null, idle.getStyle().getColor());
+    }
+
+    @Test
     void aCableShowsItsCountAgainstTheLimitAndRedOnceOver() {
         var fits = FederationJadeText.capacity(4, java.util.OptionalInt.of(4), false);
         assertEquals("ae2federation.jade.cable_capacity.subdomain", contents(fits).getKey());
@@ -75,7 +88,7 @@ final class FederationJadeTextTest {
     void everyLineAndConfigNameIsTranslatedInBothLanguages() throws IOException {
         var keys = List.of("structure.size", "structure.not_solid", "structure.touching", "structure.too_large",
                 "structure.unloaded", "switch_networks", "endpoint.local", "endpoint.claimed", "endpoint.unclaimed",
-                "pattern_provider");
+                "pattern_provider", "structure.wrong_shape", "converter", "converter.idle");
         for (var language : List.of("en_us", "zh_cn")) {
             JsonObject lang = JsonParser.parseString(Files.readString(LANG.resolve(language + ".json"))).getAsJsonObject();
             keys.forEach(key -> assertTrue(lang.has("ae2federation.jade." + key), language + " lacks " + key));

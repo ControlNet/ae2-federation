@@ -62,7 +62,8 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
         bake(event, RouterRegistration.SWITCH.get(), Device.SWITCH);
     }
 
-    private static void bake(ModelEvent.ModifyBakingResult event, RouterBlock block, Device device) {
+    private static void bake(ModelEvent.ModifyBakingResult event, net.minecraft.world.level.block.Block block,
+            Device device) {
         var id = BuiltInRegistries.BLOCK.getKey(block);
         Shapes shapes;
         try {

@@ -22,9 +22,8 @@ import space.controlnet.ae2federation.client.DeviceStructureGeometry.Quad;
 import space.controlnet.ae2federation.client.DeviceStructureGeometry.Side;
 
 /**
- * The Minecraft geometry must equal the accepted offline prototype for every connection set of both devices, each
- * composed from its connected-face tiles. The
- * fixture comes from {@code tools/multiblock/export_runtime_parity.py}; on a mismatch, dump the prototype's lines
+ * The Minecraft geometry must equal the accepted offline prototype for every connection set of both artist devices,
+ * each composed from its connected-face tiles. The fixture comes from {@code tools/multiblock/export_runtime_parity.py}; on a mismatch, dump the prototype's lines
  * with its {@code --dump} option and compare them with the lines this test prints.
  */
 final class DeviceStructureGeometryTest {
@@ -81,7 +80,7 @@ final class DeviceStructureGeometryTest {
         for (var side : Side.values()) {
             assertEquals(side.name().toLowerCase(java.util.Locale.ROOT), order.get(side.ordinal()).getAsString());
         }
-        for (var device : Device.values()) {
+        for (var device : List.of(Device.ROUTER, Device.SWITCH)) {
             var geometry = geometry(device);
             var expected = fixture.getAsJsonObject("devices").getAsJsonArray(device.name().toLowerCase(java.util.Locale.ROOT));
             assertEquals(64, expected.size());
@@ -103,7 +102,7 @@ final class DeviceStructureGeometryTest {
     /** Minecraft draws only a quad's front, so every quad must be a flat, non-degenerate rectangle. */
     @Test
     void everyQuadIsAnAxisAlignedRectangleWithAnArea() throws Exception {
-        for (var device : Device.values()) {
+        for (var device : List.of(Device.ROUTER, Device.SWITCH)) {
             var geometry = geometry(device);
             for (int mask = 0; mask < 64; mask++) {
                 for (var quad : geometry.build(sides(mask))) {
@@ -127,7 +126,7 @@ final class DeviceStructureGeometryTest {
     /** A member surrounded by its body on all six sides is hidden inside it and draws nothing. */
     @Test
     void anInteriorMemberHasNoQuads() throws Exception {
-        for (var device : Device.values()) {
+        for (var device : List.of(Device.ROUTER, Device.SWITCH)) {
             assertEquals(List.of(), geometry(device).build(sides(63)));
         }
     }

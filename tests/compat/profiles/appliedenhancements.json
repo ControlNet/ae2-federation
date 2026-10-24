@@ -1,0 +1,16 @@
+{
+  "name": "appliedenhancements",
+  "group": "addons",
+  "description": "Applied Enhancements: the Aelis planner, cycle planning and long-safety mixins into AE2's crafting calculation",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "appliedenhancements@1.1.0"
+  ],
+  "tests": [
+    "core",
+    "appliedenhancements"
+  ]
+}

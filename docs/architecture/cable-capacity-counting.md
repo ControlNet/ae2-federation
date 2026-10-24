@@ -19,8 +19,9 @@ part that publishes it. Links count only when both sides name each other, exactl
   and a P2P tunnel pair joins the regions at its ends. Router, Provider and Endpoint nodes are outside every region.
 
 A region's routers are the bodies linked to any of its nodes; its units are its Switches' networks plus the Endpoints
-and Providers linked to it. A region with at most one router, together with those units, is a **subdomain**: every cable in it counts
-the subdomain's units (`SUBDOMAIN`). With two or more routers every cable counts the Federation domain's (`DOMAIN`). An Endpoint, Provider or Switch linked straight to a Router belongs to the domain's count but to no region.
+and Providers linked to it. A region with at most one router, together with those units, is a **subdomain**: every cable and P2P tunnel in it
+counts the subdomain's units (`SUBDOMAIN`). With two or more routers each counts the Federation domain's (`DOMAIN`). A
+tunnel's capacity factor is 1, so a pair is limited as one ordinary cable, even where no cable shares its region. An Endpoint, Provider or Switch linked straight to a Router belongs to the domain's count but to no region.
 
 ## Server and display
 
@@ -34,7 +35,8 @@ Jade is an optional compile-time dependency, in its own `jadeApi` configuration 
 classpath. `compat/jade/FederationJadePlugin` is found by Jade's `@WailaPlugin` scan
 and is the only class that refers to Jade, so the mod runs without it. Its server data provider writes the demand of the
 cable being looked at; the client line reads `Capacity count: N (subdomain)` or `(Federation domain)` (zh: 子域 / 联邦域). Both sides need Jade for
-the line to appear. The GameTest `capacity.cable-regions` checks the counts in a real level. The guide page `network-capacity.md`
+the line to appear. A P2P tunnel is an AE2 part, so its line goes through AE2's `PartTooltips` instead
+(`compat/jade/P2PCapacityTooltip`, which does not refer to Jade). The GameTest `capacity.cable-regions` checks the counts in a real level. The guide page `network-capacity.md`
 explains the rules to players.
 
 ## Limit

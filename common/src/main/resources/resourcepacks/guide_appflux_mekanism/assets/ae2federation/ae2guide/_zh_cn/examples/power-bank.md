@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: 共享的电力库
   icon: appflux:flux_accessor
-  position: 45
+  position: 545
 ---
 
 # 共享的电力库

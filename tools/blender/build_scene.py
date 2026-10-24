@@ -160,8 +160,12 @@ def build(args):
     states={}
     for file in sorted((assets.root/'ae2federation/blockstates').glob('*.json')):
         raw=assets.json(f'assets/ae2federation/blockstates/{file.name}')
-        if 'multipart' in raw: raise ValueError(f'Multipart blockstate requires explicit support: {file}')
-        states[file.stem]=raw['variants']
+        if 'multipart' in raw:
+            # A formable device's blockstate is one unconditional part; its formed look comes from a baked model.
+            pieces=raw['multipart']
+            if len(pieces)!=1 or 'when' in pieces[0]: raise ValueError(f'Multipart blockstate requires explicit support: {file}')
+            states[file.stem]={'':pieces[0]['apply']}
+        else: states[file.stem]=raw['variants']
     for i,(name,variants) in enumerate(states.items()):
         origin=((i-(len(states)-1)/2)*2.5,3,0)
         if name=='cable': cable('Cable / isolated',0,origin)
@@ -247,7 +251,7 @@ def build(args):
             'omitted_occluded_faces':assets.omitted_internal_faces,
             'scenes':[s.name for s in (showcase,inspection,lab,study,state_scene)],
             'limitations':['Blender transparency, lighting and emission are not Minecraft shader validation.',
-                           'Weighted blockstate lists select their first model; multipart and uvlock fail explicitly.',
+                           'Weighted blockstate lists select their first model; a one-part multipart shows that part; other multipart and uvlock fail explicitly.',
                            'Generated item silhouettes use the first animation frame.',
                            'Vanilla geometry-free root display transforms are omitted for world presentation.']}
     (output/'manifest.json').write_text(json.dumps(report,indent=2)+'\n')

@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: Nexus Core
   icon: ae2federation:nexus_core
-  position: 100
+  position: 405
 categories:
 - misc ingredients blocks
 item_ids:
@@ -59,6 +59,10 @@ Formation Core. Another mod's Ender Pearl dust works as well.
 
 <RecipeFor id="ae2federation:nexus_core" />
 
-Used in: <ItemLink id="ae2federation:bridge" />, <ItemLink id="ae2federation:cable" />,
-<ItemLink id="ae2federation:router" />, <ItemLink id="ae2federation:switch" />, <ItemLink id="ae2federation:pattern_provider" /> and
+Used in: <ItemLink id="ae2federation:switch" />,
+<ItemLink id="ae2federation:router" />,
+<ItemLink id="ae2federation:bridge" />,
+<ItemLink id="ae2federation:cable" />,
+<ItemLink id="ae2federation:beam_former" />,
+<ItemLink id="ae2federation:pattern_provider" /> and
 <ItemLink id="ae2federation:processing_endpoint" />.

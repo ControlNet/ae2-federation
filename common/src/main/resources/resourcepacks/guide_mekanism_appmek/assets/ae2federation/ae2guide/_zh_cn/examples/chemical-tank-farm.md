@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: 化学品储罐区
   icon: mekanism:dynamic_tank
-  position: 50
+  position: 550
 ---
 
 # 化学品储罐区
@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 一个储罐区网络， 带能源元件、装着<ItemLink id="appmek:chemical_storage_cell_1k" />的驱动器、一个动态储罐（<ItemLink id="mekanism:dynamic_tank" />和一个<ItemLink id="mekanism:dynamic_valve" />）和一个<ItemLink id="ae2:storage_bus" />； 一个带终端的工坊网络； 一个两者都接触的<ItemLink id="ae2federation:switch" />。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/chemical_tank_farm.snbt" />
   <BoxAnnotation color="#915dcd" min="6 0 0" max="7 1 1">
     工坊： 一个终端， 靠储罐区的电源运行

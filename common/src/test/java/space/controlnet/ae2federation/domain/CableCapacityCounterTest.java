@@ -35,7 +35,7 @@ final class CableCapacityCounterTest {
         assertEquals(new Demand(Scope.SUBDOMAIN, 3), demand.get(first));
         assertEquals(new Demand(Scope.SUBDOMAIN, 3), demand.get(second));
         assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(away));
-        assertFalse(demand.containsKey(sw), "only cables have a demand");
+        assertFalse(demand.containsKey(sw), "only cables and P2P tunnels have a demand");
     }
 
     @Test
@@ -89,6 +89,7 @@ final class CableCapacityCounterTest {
         assertEquals(new Demand(Scope.DOMAIN, 2), demand.get(right));
     }
 
+    /** A pair joins the cable on both sides into one region and carries that region's demand itself. */
     @Test
     void aP2pTunnelPairCountsAsCable() {
         var graph = new Graph();
@@ -103,6 +104,45 @@ final class CableCapacityCounterTest {
         var demand = graph.count();
         assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(near));
         assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(far));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(input), "the tunnels carry the region's demand");
+        assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(output));
+    }
+
+    /** A Beam Former pair and its beam join the regions at both ends as cable joined directly. */
+    @Test
+    void aBeamFormerPairCountsAsCable() {
+        var graph = new Graph();
+        var near = graph.node(FederationDomainNodeKind.CABLE);
+        var far = graph.node(FederationDomainNodeKind.CABLE);
+        var west = graph.node(FederationDomainNodeKind.BEAM_FORMER);
+        var east = graph.node(FederationDomainNodeKind.BEAM_FORMER);
+        graph.link(near, west).link(west, east).link(east, far);
+        graph.link(near, graph.node(FederationDomainNodeKind.SWITCH, A));
+        graph.link(far, graph.node(FederationDomainNodeKind.SWITCH, B));
+
+        var demand = graph.count();
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(near), "both ends' networks count in one region");
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(west), "the formers carry the region's demand");
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(east));
+    }
+
+    /** A Quantum Cube pair joins the regions at both ends as cable joined directly, wherever the cubes are. */
+    @Test
+    void aQuantumCubePairCountsAsCable() {
+        var graph = new Graph();
+        var near = graph.node(FederationDomainNodeKind.CABLE);
+        var far = graph.node(FederationDomainNodeKind.CABLE);
+        var here = graph.node(FederationDomainNodeKind.QUANTUM_CUBE);
+        var inside = graph.node(FederationDomainNodeKind.QUANTUM_CUBE);
+        var there = graph.node(FederationDomainNodeKind.QUANTUM_CUBE);
+        graph.link(near, here).link(here, inside).link(inside, there).link(there, far);
+        graph.link(near, graph.node(FederationDomainNodeKind.SWITCH, A));
+        graph.link(far, graph.node(FederationDomainNodeKind.SWITCH, B));
+
+        var demand = graph.count();
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(near), "both ends' networks count in one region");
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(here), "the cubes carry the region's demand");
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(there));
     }
 
     @Test

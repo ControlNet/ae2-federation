@@ -23,9 +23,11 @@ file reader. Saved network Policy settings and artifact-proof JVM flags are sepa
 | Require Federation operating power | Enabled by default; independently disableable | Operating power |
 | Enforce Federation cable capacity | Enabled by default; independently disableable | Multiblock and cable capacity |
 | Base capacity of one cable | Used only while cable capacity enforcement is enabled; 8 by default (owner, 2026-10-13; first 4), `capacity.cableCapacity` | Multiblock and cable capacity |
-| Operating energy costs | Used only while operating-power requirements are enabled; values undecided | Operating power |
+| Operating energy costs | Used only while operating-power requirements are enabled; one multiplier (default 1) over the per-block costs confirmed 2026-10-17 | Operating power |
+| Enforce the automation computing limit | Enabled by default; off means unlimited automation (user, 2026-10-17) | [Rule-based automation](rule-based-automation.md) |
 
-Disabled parent rules make their numerical settings inactive; they do not require removing those settings
+Turning the power requirement off means unlimited energy (user, 2026-10-17); a Creative ME Federation Beam Converter is wanted as
+well. Disabled parent rules make their numerical settings inactive; they do not require removing those settings
 from the file. File format, option IDs, numerical defaults, cost granularity, and reload behavior remain
 implementation/design choices. Separate per-cross-section overrides are not confirmed requirements.
 
@@ -52,8 +54,8 @@ Recipes and progression adjustments can be considered separately from runtime ru
 ## Related ideas
 
 - [Multiblock routers, switches, and cable capacity](multiblock-routing-and-cable-capacity.md)
-- [Optional operating power](federation-operating-power.md)
-- [Line-of-sight beam links](line-of-sight-beam-links.md)
+- [Optional operating power](../archive/ideas/federation-operating-power.md)
+- [Line-of-sight beam links](../archive/ideas/line-of-sight-beam-links.md)
 - [Remote connections](remote-federation-connections.md)
 
 This idea does not introduce configuration files, option IDs, runtime behavior, or implementation commitments.

@@ -1,0 +1,21 @@
+{
+ "data": [
+  {
+   "id": 9286724,
+   "fileName": "nast server 2.2.1.zip",
+   "displayName": "nast server 2.2.1.zip",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.21.1",
+    "NeoForge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": false,
+   "additionalFilesCount": 0,
+   "additionalServerPackFilesCount": 0,
+   "parentProjectFileId": 9286722,
+   "fileLength": 383116922,
+   "dateCreated": "2026-10-22T12:07:01.49Z"
+  }
+ ]
+}

@@ -17,6 +17,7 @@ public final class NeoForgeClientEntrypoint {
         modBus.addListener(space.controlnet.ae2federation.client.CableBakedModel::bake);
         modBus.addListener(space.controlnet.ae2federation.client.DeviceStructureBakedModel::bake);
         modBus.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::register);
+        modBus.addListener(space.controlnet.ae2federation.client.BeamFormerRenderer::register);
         modBus.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::registerBuffers);
         modBus.addListener(NeoForgeClientEntrypoint::onLoadBuiltinResource);
         modBus.addListener(NeoForgeClientEntrypoint::onAddPackFinders);

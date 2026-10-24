@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Bridge
   icon: ae2federation:bridge
-  position: 130
+  position: 435
 categories:
 - network infrastructure
 item_ids:
@@ -44,8 +44,8 @@ uses network B's storage, and both run on network A's energy cell through ME pow
   <Energy first="a" second="b" />
 </FederationTopology>
 
-A Bridge forms a small [Federation domain](../mechanics.md) with just those two networks. It does not connect to
-Federation Cable, so Pattern Providers and Endpoints cannot reach other networks through it.
+A Bridge forms a small [Federation domain](../mechanics/index.md) with just those two networks. It joins no Federation
+Cable; Pattern Providers and Endpoints reach other networks through Switches and cable.
 
 Right-click it to open the Federation screen for the two networks. If it is not connected correctly, right-clicking
 shows what is wrong instead; see [Troubleshooting](../troubleshooting.md). Like other AE2 cable parts, sneak and

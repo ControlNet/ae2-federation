@@ -12,7 +12,9 @@ import snownee.jade.api.config.IPluginConfig;
 import space.controlnet.ae2federation.router.DeviceStructure;
 import space.controlnet.ae2federation.router.DeviceSummary;
 
-/** A Router or Switch: its body's size or why it does not form, and the networks a Switch body attaches. */
+/**
+ * A Router, Switch or Beam Converter: its body's size or why it does not form, and the networks a Switch body attaches.
+ */
 enum DeviceProvider implements IBlockComponentProvider, IServerDataProvider<BlockAccessor> {
     INSTANCE;
 

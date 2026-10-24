@@ -8,18 +8,23 @@ balancing questions stay in the [multiblock and cable capacity idea](../ideas/mu
 ## Behavior
 
 - **Counting.** Every Federation Cable counts the ME networks on Switches, Processing Endpoints and Federation Pattern
-  Providers around it. Cable joined to cable, through Switches and Federation P2P tunnel pairs, forms one segment;
+  Providers around it. Cable joined to cable, through Switches, Federation P2P tunnel pairs and linked
+  [Beam Former](beam-former.md) pairs and linked [Quantum Cube](quantum-cube.md) pairs, forms one segment;
   only a Router (a formed body counts once) ends one. A segment touching at most one Router counts its own
   **subdomain**; a segment touching two or more counts the whole Federation domain.
-- **Limit.** One cable carries 8 by default (`capacity.cableCapacity` in `config/ae2federation-server.toml`, 1 to
+- **Limit.** One cable, and one Federation P2P frequency or 1x1 Beam Former pair or 3x3x3 Quantum Cube pair, carries 8 by default (`capacity.cableCapacity` in `config/ae2federation-server.toml`, 1 to
   1024; enforcement is `capacity.enforceCableCapacity`, on by default). When any cable is over, the whole domain
   stops sharing until the count fits again; the world is not changed.
 - **Display.** The beam inside each cable grows with its load and turns red only while it is over an enforced limit
-  ([the M renderer](../art/cable-m-renderer.md)). The topology screen turns the stopped domain dark red. With Jade on
-  both sides, a cable reads "Capacity count: N/C (subdomain)" or "(Federation domain)", N red when over.
-- **Bundled cables.** A wrench turns a box of ordinary cables (cross-section 1x2 up to 3x3, length up to 64) into one
-  bundled cable with one shell and one beam per cell. Its limit is a multiple of one cable's: 1x2 3C, 1x3 4C, 2x2 6C,
-  2x3 9C, 3x3 unlimited. A bundle connects only to a Router or Switch face covering its end or the full width of its
+  ([the M renderer](../art/cable-m-renderer.md)); a domain stopped for lack of power draws red at the thinnest width
+  ([operating power](operating-power.md)). The topology screen turns the stopped domain dark red. With Jade on
+  both sides, a cable or Federation P2P tunnel reads "Capacity count: N/C (subdomain)" or "(Federation domain)", N red
+  when over.
+- **Bundled cables.** A wrench turns a box of ordinary cables (cross-section 2x2 or 3x3, length up to 64) into one
+  bundled cable with one shell and one beam per cell. Its limit is a multiple of one cable's: 2x2 6C, 3x3 unlimited.
+  Since 2026-10-17 players build square cross-sections only (`CableCrossSection.BUILDABLE`; the wrench reports
+  `NOT_BUILDABLE`). The 1x2 (3C), 1x3 (4C) and 2x3 (9C) bundles stay supported in the code, including their
+  rendering, branching and saved bundles, so adding them back to that set restores them. A bundle connects only to a Router or Switch face covering its end or the full width of its
   side, never to ordinary cable. It is extended, branched and turned with cables, and split by breaking a block.
 
 ## Evidence

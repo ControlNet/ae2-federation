@@ -37,6 +37,31 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                     if (!reload.isDone()) context.repeat("English resource reload");
                     else reload.join();
                 });
+        // The creative tab names the mod in Chinese: 「AE2 联邦组网」.
+        scenario.server("creative mode for the tab", context -> {
+                    context.put("previousGameMode", context.player().gameMode.getGameModeForPlayer().getName());
+                    context.player().setGameMode(net.minecraft.world.level.GameType.CREATIVE);
+                })
+                .waitUntil("creative mode reaches the client", context -> context.mc().gameMode.hasInfiniteItems())
+                .step("open the mod's creative tab", context -> {
+                    try {
+                        var selected = net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen.class
+                                .getDeclaredField("selectedTab");
+                        selected.setAccessible(true);
+                        selected.set(null, space.controlnet.ae2federation.FederationCreativeTab.MAIN.get());
+                    } catch (ReflectiveOperationException e) {
+                        throw new IllegalStateException(e);
+                    }
+                    var player = context.mc().player;
+                    context.mc().setScreen(new net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen(
+                            player, player.connection.enabledFeatures(), false));
+                })
+                .frames(5).screenshot("ui-chinese-creative-tab")
+                .check("creative tab is named 「AE2 联邦组网」", context -> space.controlnet.ae2federation.FederationCreativeTab
+                        .MAIN.get().getDisplayName().getString().equals("AE2 联邦组网"))
+                .step("close the creative tab", context -> context.mc().setScreen(null))
+                .server("restore the game mode", context -> context.player().setGameMode(
+                        net.minecraft.world.level.GameType.byName(context.get("previousGameMode"))));
         TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
                 .waitForText("#domain_title", "ME 联邦域")
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)

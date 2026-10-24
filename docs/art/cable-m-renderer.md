@@ -1,5 +1,9 @@
 # M optical cable renderer
 
+> Historical. Since 2026-10-18 ordinary cables draw R / LITE (`BundleBeamMesh.emitCell`), and M's carrier, shoulders,
+> fog and their tests have been removed from the code. The visual input, alarm and distance tiers below still apply
+> (`CableBeamStyle`, `CableBeamMesh.detail`); the geometry and budget sections record M as it shipped.
+
 The approved M design is a continuous pale cyan carrier, moving axial pulse envelopes and soft cyan shoulders.
 It replaces the previous `CableFlowRenderer` interior without changing cable shells, textures, items, connectivity,
 capacity accounting or network packets. It is always enabled in world rendering. Inventory items retain their
@@ -73,7 +77,7 @@ not simulated packet routing or a claim about actual transfer direction.
 
 At distances above 24 blocks, sampling falls from 64 to 24 segments per full block, and fog from four to two
 segments per arm; above 48 blocks, four segments retain the carrier plus the two outer fog volumes, unanimated, so
-distant cables still glow. `CableFlowGeometry` remains as a legacy reference for existing export/test tooling.
+distant cables still glow. `CableFlowGeometry` now lives only in `tools/blender/java` for the older Blender studies.
 
 ### Cost per frame
 

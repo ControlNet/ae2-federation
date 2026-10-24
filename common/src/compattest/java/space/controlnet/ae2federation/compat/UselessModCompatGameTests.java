@@ -60,6 +60,36 @@ public final class UselessModCompatGameTests {
     }
 
     /**
+     * UselessMod's Smart Doubling merges a plan's runs of one pattern into a few larger pushes, but only for providers
+     * that declare they take them, as the Advanced Alloy Furnace does. The furnace's projection on the consumer must
+     * declare it too: the consumer's plan for eight crafts must be doubled as the provider network's own plan is, the
+     * furnace must take the larger push and the job must finish exactly.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void alloyFurnaceSmartDoubling(GameTestHelper helper) {
+        var furnace = AddonCraftingScene.block(FURNACE);
+        var scene = AddonCraftingScene.structure(helper, FURNACE,
+                List.of("ae2:1k_crafting_storage"),
+                place -> place.setBlock(AddonCraftingScene.PROVIDER, furnace), AddonCraftingScene.PROVIDER,
+                entity -> entity != null && entity.getBlockState().is(furnace))
+                .requesting(8)
+                .checkingPlan((plan, local) -> {
+                    helper.assertTrue(doubled(local), "The provider network's own plan must be doubled: "
+                            + local.patternTimes());
+                    helper.assertTrue(doubled(plan), "The consumer's plan must be doubled as the provider network's "
+                            + "is: " + plan.patternTimes());
+                });
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** Whether Smart Doubling rewrote {@code plan}: its patterns are UselessMod's scaled copies. */
+    private static boolean doubled(appeng.api.networking.crafting.ICraftingPlan plan) {
+        return plan.patternTimes().keySet().stream()
+                .anyMatch(pattern -> pattern.getClass().getName().startsWith("com.sorrowmist.useless.")
+                        && pattern.getClass().getSimpleName().startsWith("Scaled"));
+    }
+
+    /**
      * The guide's example: network B is the furnace alone, with no storage and no power of its own, and network A
      * orders from it. Taking the pattern out of the furnace takes the recipe away from A; putting it back brings it
      * back, and A orders again.

@@ -17,6 +17,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationBindingRefresh;
@@ -30,32 +31,64 @@ import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 
-public final class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHost {
+/**
+ * A Router's or Switch's block: one node of the domain, linking through each face. A Beam Converter, Beam Former or
+ * Quantum Cube is one too, linking the fewer faces its block names ({@link CableLinkedBlock}).
+ */
+public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHost {
     private final Map<Direction, FederationPort> federationDomainPorts = new EnumMap<>(Direction.class);
     private final Map<Direction, RouterFacePort> facePorts = new EnumMap<>(Direction.class);
     private boolean initialized;
     private boolean federationDomainDirty = true;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
     private @Nullable FederationDomainNodeEvidence publishedEvidence;
+    /** Set when the chunk unloads, so the removal that follows is not taken for a broken block. */
+    private boolean unloading;
 
     public RouterBlockEntity(BlockPos position, BlockState state) {
-        super(RouterBlock.blockEntityType(state), position, state);
-        var attachesNetworks = RouterBlock.attachesNetworks(state);
+        this(RouterBlock.blockEntityType(state), position, state, RouterBlock.attachesNetworks(state));
+    }
+
+    protected RouterBlockEntity(BlockEntityType<?> type, BlockPos position, BlockState state, boolean attachesNetworks) {
+        super(type, position, state);
         for (var face : Direction.values()) {
             var federationDomainPort = new FederationPort(position, face);
             federationDomainPorts.put(face, federationDomainPort);
             facePorts.put(face, new RouterFacePort(position, face, federationDomainPort, attachesNetworks,
-                    () -> RouterBlock.formed(getBlockState())));
+                    () -> links(face)));
         }
     }
 
-    /** The body formed or broke: the faces link again, or stop linking, from the next tick. */
+    /** Whether {@code face} links now, as the block says ({@link CableLinkedBlock}). */
+    protected final boolean links(Direction face) {
+        var state = getBlockState();
+        return state.getBlock() instanceof CableLinkedBlock linked && linked.linksCable(state, face);
+    }
+
+    /** What the block publishes itself as. */
+    protected FederationDomainNodeKind kind() {
+        return getType() == RouterRegistration.SWITCH_BLOCK_ENTITY.get() ? FederationDomainNodeKind.SWITCH
+                : FederationDomainNodeKind.ROUTER;
+    }
+
+    /** Links to nodes that are not beside this block, named on both ends, such as a Beam Former's beam. */
+    protected Map<String, FederationDomainPortEvidence> remotePorts() {
+        return Map.of();
+    }
+
+    /** How many cables' capacity this node carries: one, unless the block's shape says otherwise. */
+    protected int capacityFactor() {
+        return 1;
+    }
+
+    /** The body formed, broke or reshaped: the faces link again, or stop linking, from the next tick. */
     @Override
     public void setBlockState(BlockState state) {
         var previous = getBlockState();
         var wasFormed = RouterBlock.formed(previous);
         super.setBlockState(state);
-        if (wasFormed != RouterBlock.formed(state) && level instanceof ServerLevel) {
+        if ((wasFormed != RouterBlock.formed(state) || RouterBlock.connections(previous) != RouterBlock.connections(state)
+                || turned(previous, state)) && level instanceof ServerLevel) {
             facePorts.values().forEach(RouterFacePort::markDirty);
             federationDomainDirty = true;
         }
@@ -67,9 +100,16 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         }
     }
 
+    /** A Beam Converter turned end for end: its front, the face it links through, moved. */
+    private static boolean turned(BlockState previous, BlockState state) {
+        var facing = net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING;
+        return previous.hasProperty(facing) && state.hasProperty(facing) && previous.getValue(facing) != state.getValue(facing);
+    }
+
     @Override
     public void clearRemoved() {
         super.clearRemoved();
+        unloading = false;
         GridHelper.onFirstTick(this, RouterBlockEntity::initialize);
     }
 
@@ -119,10 +159,11 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         return facePorts.get(face).node();
     }
 
+    /** AE2 asks with a null side for a node not tied to a face; the nodes here all sit on faces. */
     @Nullable
     @Override
-    public IGridNode getGridNode(Direction face) {
-        return boundaryNode(face);
+    public IGridNode getGridNode(@Nullable Direction face) {
+        return face == null ? null : boundaryNode(face);
     }
 
     public Map<Direction, RouterPortBinding> bindings() {
@@ -168,6 +209,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
 
     @Override
     public void onChunkUnloaded() {
+        unloading = true;
         destroyPorts();
         super.onChunkUnloaded();
     }
@@ -180,7 +222,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
 
     private void destroyPorts() {
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
+            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId, !unloading);
             FederationBindingRefresh.request(serverLevel);
         }
         initialized = false;
@@ -196,7 +238,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         }
     }
 
-    private void publishFederationDomainTopology() {
+    protected void publishFederationDomainTopology() {
         if (!(level instanceof ServerLevel serverLevel) || federationDomainNodeId == null) {
             return;
         }
@@ -220,8 +262,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
                         new FederationDomainPortId(remoteNode, federationBinding.port().outwardFace().getSerializedName())));
             }
         }
-        var kind = getType() == RouterRegistration.SWITCH_BLOCK_ENTITY.get() ? FederationDomainNodeKind.SWITCH
-                : FederationDomainNodeKind.ROUTER;
-        return new FederationDomainNodeEvidence(federationDomainNodeId, kind, evidence);
+        evidence.putAll(remotePorts());
+        return new FederationDomainNodeEvidence(federationDomainNodeId, kind(), evidence, capacityFactor());
     }
 }

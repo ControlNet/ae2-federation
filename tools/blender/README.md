@@ -84,7 +84,9 @@ This is explicit on-demand reload, not a background filesystem watcher.
 - Read `.png.mcmeta` frame sequences, per-frame durations, frame dimensions, and RGB
   interpolation. Minecraft keeps the current frame's alpha during interpolation.
 - Resolve AE2 parent models and textures from the exact `ae2_version` in
-  `gradle.properties`, using its local Gradle cache. If absent, supply a resource jar:
+  `gradle.properties`, and vanilla ones such as `minecraft:block/cube` from the Minecraft client jar of its
+  `minecraft_version` that NeoForm caches (`~/.gradle/caches/neoformruntime/artifacts/minecraft_<version>_client.jar`),
+  both found in the local Gradle cache after a build. If absent, supply a resource jar:
 
 ```sh
 blender --background --factory-startup --python-exit-code 1 \
@@ -105,8 +107,11 @@ replacement texture or production asset edit is made.
 
 ## Cable source of truth
 
-`export_cable.py` compiles current production `FederationCableBuilder`, `CableCoreFaces`,
-`CableFlowGeometry`, and the pure connection methods from `CableVisualConnections`.
+`export_cable.py` compiles current production `FederationCableBuilder`, `CableCoreFaces`
+and the pure connection methods from `CableVisualConnections`. The interior flow ribbons come from
+`java/CableFlowGeometry.java`: the cable's first beam, which the mod no longer ships (it draws R / PLASMA), kept
+here only for the older beam studies built on it. Its texture, `entity/cable_flow.png`, is kept here too, in
+`resources/`, which `Assets` reads after the mod's own resources.
 It removes world-query methods and redirects the rendering types to the functional
 `CaptureBackend.java` quad recorder. This is an offline rendering backend, not dummy
 Minecraft classes or a second handwritten cable design. Production files are unchanged.
@@ -115,8 +120,10 @@ The generated copies retain their upstream licensing comments.
 The recorder implements the subset of AE2 19.2.17 `CubeBuilder` used by the production
 builder: face selection, per-face textures, standard/custom UVs and UV quarter turns.
 Its face/UV conventions follow AE2's CubeBuilder and Fabric QuadEmitter; see its LGPL
-notice. New unsupported backend calls fail compilation so the adapter must be extended
-explicitly. No OpenGL context, game world, or Minecraft startup is needed.
+notice. The artist's collars are baked as vanilla `FaceBakery` bakes an unrotated element
+under a block model rotation without UV lock (`FaceInfo` corner order, `BlockFaceUV`
+rotation, `rotateYXZ(-y, -x, 0)` about the block centre). New unsupported backend calls
+fail compilation so the adapter must be extended explicitly. No OpenGL context, game world, or Minecraft startup is needed.
 
 Every export evaluates all 4096 two-bit connection combinations. It writes 72 useful
 shell states (64 cable masks plus dense/covered examples), the inventory shell, all 64
@@ -162,8 +169,9 @@ The flow material discards texture alpha below 0.1 before multiplying vertex alp
 matching Minecraft 1.21.1's `rendertype_entity_translucent_emissive.fsh`; alpha above
 the cutoff remains fractional, rather than being converted to an opaque cutout.
 
-Weighted model variants currently select the first entry. Multipart blockstates and
-`uvlock` explicitly fail because current project blockstates do not need them. Tint
+Weighted model variants currently select the first entry. A multipart blockstate of one
+unconditional part (the formable devices, whose formed look is a baked model) shows that
+part's model, unformed; any other multipart blockstate and `uvlock` explicitly fail. Tint
 providers, item GUI transforms, and renderer-only AE2 status overlays are not emulated.
 Generated items use a pixel-edge extrusion of their first animation frame; animated
 colors update, but silhouette changes across frames require a dedicated importer.
@@ -178,7 +186,7 @@ not overwritten. These are actual renderer-compatible resource candidates, not i
 
 | Profile | Design |
 | --- | --- |
-| A / CURRENT | Current 16x32 production flow texture |
+| A / CURRENT | The 16x32 flow texture the first beam used |
 | B / FOCUSED CORE | Pale cyan continuous core with a narrow halo and a short pulse tail |
 | C / TWIN CHANNELS | Two thin channels per ribbon, with staggered pulses; crossed ribbons can show multiple strands |
 | D / SPARSE PULSES | Dim continuous guide with sparse, short bright packets |
@@ -186,7 +194,8 @@ not overwritten. These are actual renderer-compatible resource candidates, not i
 Candidates use a 64x128 two-tile PNG with the same UV layout as the current texture.
 They retain the existing static BEND/HUB UV behavior; this comparison does not implement
 new turn-through animation. Each candidate directory is also a Minecraft 1.21.1 folder
-resource pack, changing only `assets/ae2federation/textures/entity/cable_flow.png`.
+resource pack, changing only `assets/ae2federation/textures/entity/cable_flow.png`; the mod no longer draws
+that texture, so the packs matter only to these studies.
 
 ```sh
 blender --background tools/blender/build/federation.blend --python-exit-code 1 \
@@ -387,3 +396,74 @@ The last command requires the earlier `build/load-beams` study. It checks matchi
 shell digests, placements, static frame and animation length before composing the
 two styles at 100% and 125% into `m-vs-helix.png` and `m-vs-helix.mp4`.
 M-only contact sheets and MP4/GIF are under ignored `build/m-load-beams/`.
+
+## 2x2 bundle middle-beam concepts
+
+`bundle_beams.py` (stdlib) builds concepts for the one beam in the middle of a 2x2 bundled cable, and the shell and
+rings they are judged in. The shell is a straight 6-layer run whose voxels take their texels from
+`textures/part/cable/dense/core.png` by `BundleShellLayout`'s rule (rails, frame corners, glass at 6,6 with its real
+alpha). The rings are the artist's `large_cable_straight.bbmodel` on `textures/block/large_cable/large_cable.png`,
+face UV rotations included, on every second layer boundary as in game. BASE is the shipped volume tube; Q to V are
+new. Glow layers render additively, as the game's glow pass does; layers that write depth in game must fit the ring
+bore, which the ring's 1-voxel flanges narrow to 10/32 voxels (radius .3125).
+
+```sh
+python3 -m unittest test_bundle_beams    # from tools/blender
+blender -b --factory-startup --python tools/blender/render_bundle_beams.py -- --soft --animate
+python3 tools/blender/compose_bundle_beams.py
+```
+
+Expected: 7 tests pass, `BUNDLE_BEAMS_OK: 7 concepts rendered; assets unchanged`, `BUNDLE_MEDIA_OK`. Renders, the
+labelled sheets (`sheet-<view>-<load>.png`: iso and eye level at 0/60/100%, an end-on cutaway at 60% with the ring
+bore in orange) and `bundle-beams.blend` go to the repo's ignored `build/bundle-beam-check/`. `--views` limits the stills.
+`--animate` adds one 64-tick loop (32 frames, 3.2 s) per concept at 60% load, seen at eye level: `<key>-loop.gif`, `all-concepts.mp4` (and `-x4`, looped) and
+`all-concepts.gif`. Loads are preview inputs; these are Blender prototypes, not a port.
+
+Without `--soft` each glow layer is a shell of even light, as the game draws it: seen through, the light steps up at
+every shell's outline, so the nested shells show as hard bands, worst at full load where the steps are largest.
+`--soft` fades each layer as (1 - facing)^2, twice as bright face-on, so the layers blend into one soft volume. In game
+that needs view-dependent alpha (per-frame vertex alpha from the camera, or camera-facing gradient strips).
+
+## R / PLASMA at game precision
+
+The user chose R for the 2x2 middle beam. `plasma_beam.py` (stdlib) draws it as the game could: `ship_soft` uses 16
+sides and 16 samples per block (4096 quads per 2x2 layer against 4 x 1700 for four ordinary cells), `ship_six` six
+thinner hard-edged shells at 12 sides (no view-dependent alpha), `approved` the 24-side, 48-sample concept. Lobes
+repeat every 2 blocks, as the game's beam clock wraps. Branch and turn paths follow `CableBeamMesh.build` (straight
+arms through the joint; a rounded elbow of 3/16 of the 2x2x2 joint with the pulse phase faded across); the artist's
+corner rings sit in each joint, whose own shell is left out.
+
+```sh
+python3 -m unittest test_plasma_beam    # from tools/blender
+blender -b --factory-startup --python tools/blender/render_plasma_beam.py -- --animate
+python3 tools/blender/compose_plasma_beam.py
+```
+
+Expected: 8 tests pass, `PLASMA_BEAM_OK: 9 stills, 3 loops; assets unchanged`, `PLASMA_MEDIA_OK`. Output in the repo's
+ignored `build/bundle-beam-check/plasma/`: `sheet-approved-vs-shippable.png`, `sheet-shippable-loads.png` (0, 60, 100,
+125%), `sheet-junctions.png`, and a GIF and 4x MP4 loop of the run, the branch and the turn.
+
+## 1x1 cable beam concepts
+
+Whether ordinary cables take R too is open. `cable_beams.py` (stdlib) draws four concepts in the production 1x1
+shells (core, arms and the artist's collars, through `export_cable.py`), on the inspection scene's run with its south
+branch: `m_current`, the shipped M as tubes with a faint fog filling the glass (a stand-in for CableBeamMesh's crossed
+ribbons and fog volumes); `r_scaled`, the bundle's R at the same share of the glass (3/16 block from the axis against
+11/16 in a 2x2); `r_fill`, R scaled until its halo, breathing out under an alarm, meets the glass; `r_lite`, `r_fill`
+with two sheaths of 8 sides. Light outside the glass would fall behind the rails, so every concept stays within it.
+
+```sh
+python3 -m unittest test_cable_beams    # from tools/blender
+python3 tools/blender/export_cable.py --output tools/blender/build/cable-r/cable.json
+blender --background --factory-startup --python-exit-code 1 --python tools/blender/build_scene.py -- \
+  --output tools/blender/build/cable-r
+blender --background tools/blender/build/cable-r/federation.blend --python-exit-code 1 \
+  --python tools/blender/render_cable_beams.py -- --animate
+python3 tools/blender/compose_cable_beams.py
+```
+
+The cached vanilla client jar supplies `minecraft:block/cube` and the like, which some block models now inherit.
+Expected: 5 tests pass, `FEDERATION_IMPORT_OK`,
+`CABLE_BEAMS_OK: 32 stills, 4 loops; assets unchanged`, `CABLE_BEAM_MEDIA_OK`. Output in the repo's ignored
+`build/cable-beam-concepts/`: `sheet-concepts-{medium,overload}-{level,close}.png`, `sheet-<concept>-loads.png` (0,
+60, 100, 125%), a GIF loop of each concept and `all-concepts-loop.gif` / `-x4.mp4` with all four at once.

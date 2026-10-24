@@ -17,7 +17,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
     public void configure(ScenarioOptions options) {
         TaskThirtyThreeScenarioSupport.configure(options, 3);
         // The statistics showcase waits through most of two minutes of traffic on top of the other pages.
-        options.scenarioTimeoutMs(300_000);
+        options.scenarioTimeoutMs(360_000);
     }
 
     @Override
@@ -497,6 +497,10 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitUntil("showcase: power figures arrive", context -> statisticsFor("power;"))
                 .hover("#stats_chart").frames(5)
                 .screenshot("ui-showcase-statistics-power")
+                .click("#stats_card_fedpower")
+                .waitUntil("showcase: Federation power figures arrive", context -> statisticsFor("fedpower;"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-fedpower")
                 .click("#stats_card_crafting")
                 .waitUntil("showcase: crafting figures arrive", context -> statisticsFor("crafting;"))
                 .hover("#domain_title").frames(5)
@@ -566,6 +570,49 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .hover("#provider_title").frames(5)
                 .screenshot("ui-showcase-provider-other")
                 .closeScreen();
+        // The guide's Statistics page shows this screen in each language.
+        guideStatisticsShot(scenario, "guide-statistics-en_us");
+        TaskThirtyThreeScenarioSupport.selectLanguage(scenario, "zh_cn")
+                .teardown("restore English after the Chinese guide shot", TaskThirtyThreeScenarioSupport::restoreEnglish);
+        guideStatisticsShot(scenario, "guide-statistics-zh_cn");
+        TaskThirtyThreeScenarioSupport.selectLanguage(scenario, "en_us");
+        // This release has no Federation power: the topology draws no gauge and Statistics has no Federation power card.
+        scenario.server("showcase: open the Router workspace without Federation power", TaskThirtyThreeWorldFixture::openRouter)
+                .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
+                .awaitModularUI().awaitElement("#domain_graph")
+                .waitUntil("showcase: no corner gauge", context -> !context.el("#graph_power").isVisible())
+                .click("#tab_statistics").frames(2)
+                .check("showcase: no Federation power card", context -> context.all("#stats_card_fedpower").isEmpty())
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-statistics-power-off")
+                .closeScreen();
+    }
+
+    /**
+     * The statistics page as the guide shows it: stored items by item over the last two minutes, the chart hovered.
+     * GuideME draws an image at a quarter of its pixels per GUI pixel, without smoothing, so the shot is taken in a
+     * window twice as large: the screen keeps its layout at four pixels per GUI pixel, and the guide shows it at about
+     * its in-game size. The run's Xvfb screen must hold 3196x1916; 3200x1920 would give scale 5.
+     */
+    private static void guideStatisticsShot(ScenarioBuilder scenario, String label) {
+        scenario.step("guide: a window twice as large", context -> windowSize(context, 3196, 1916)).frames(5)
+                .server("guide: open the Router workspace", TaskThirtyThreeWorldFixture::openRouter)
+                .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
+                .awaitModularUI().awaitElement("#domain_graph")
+                .click("#tab_statistics").frames(2)
+                .click("#stats_range_SECONDS")
+                .click("#stats_card_stored").frames(2)
+                .click("#stats_by_item")
+                .waitUntil("guide: stock by item for all eight networks", context -> statisticsFor("stock;ae2:i")
+                        && space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownNetworks() == 8)
+                .hover("#stats_chart").frames(5)
+                .screenshot(label)
+                .closeScreen()
+                .step("guide: the usual window again", context -> windowSize(context, 1600, 960)).frames(5);
+    }
+
+    private static void windowSize(com.lowdragmc.lowdraglib2.uitest.TestContext context, int width, int height) {
+        org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), width, height);
     }
 
     /** The Provider screen's Endpoint cards counted by claim, as {@code claim-count} in claim order. */

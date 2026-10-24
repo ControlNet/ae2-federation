@@ -3,6 +3,9 @@
   "group": "modpacks",
   "description": "Create Ultimate Selection 2 12.4.0: Create-centred pack with AE2, ExtendedAE, Applied Mekanistics, Create addons, quests and KubeJS",
   "neoforge": "21.1.243",
+  "curseforge": {
+    "project": 1324409
+  },
   "pack": {
     "name": "Create Ultimate Selection 2 Serverpack MC 1.21.1-12.4.0",
     "file": "Create Ultimate Selection 2 Serverpack MC 1.21.1-12.4.0.zip",

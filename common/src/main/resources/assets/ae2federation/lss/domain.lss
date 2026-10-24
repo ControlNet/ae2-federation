@@ -47,6 +47,12 @@
 .domain-panel .graph-throughput { position: absolute; left: 4; top: 5; width: 150; height: 10; text-color: #ffaaa4b2; }
 .graph-search-empty { position: absolute; left: 4; top: 16; width: 150; height: 10; display: none; text-color: #ffffd65a; }
 .domain-panel .graph-legend { position: absolute; left: 6; bottom: 6; max-width: 96%; adaptive-width: true; adaptive-height: true; text-wrap: wrap; padding-all: 3; padding-horizontal: 5; text-color: #ffaaa4b2; background: #eb17141e; }
+// The Federation power gauge in the other corner: the converters' buffer fill, coloured by FederationTopologyView.
+.domain-panel .graph-power { position: absolute; right: 4; bottom: 3; width: 112; height: 16; background: #eb17141e; }
+.domain-panel .graph-power-name { position: absolute; left: 5; top: 3; width: 31; height: 10; text-color: #ffaaa4b2; text-wrap: hide; }
+.graph-power-track { position: absolute; left: 38; top: 7; width: 40; height: 2; background: #ff2c2935; }
+.graph-power-fill { position: absolute; left: 0; top: 0; width: 0; height: 2; background: #ff55ff8a; }
+.domain-panel .graph-power-value { position: absolute; right: 4; top: 3; width: 26; height: 10; horizontal-align: right; text-wrap: hide; }
 
 .topology-aside { width: 30%; min-width: 176; max-width: 320; flex-shrink: 0; height: 100%; scroller-view-mode: vertical; }
 .topology-aside .__scroller_view_view-port__ { padding-all: 0; background: #00000000; }
@@ -180,7 +186,7 @@
 
 // Narrow viewports keep controls reachable; the aside scrolls independently.
 .domain-shell.compact .members-caption { display: none; }
-.domain-shell.compact .graph-legend, .domain-panel .graph-legend.folded { display: none; }
+.domain-shell.compact .graph-legend, .domain-panel .graph-legend.folded, .domain-shell.compact .graph-power { display: none; }
 .domain-shell.compact #graph_search { width: 72; }
 .domain-shell.compact .domain-tab { display: none; }
 .domain-shell.compact .domain-panel .stat-row .stat-name { width: 44; }
@@ -196,6 +202,7 @@
 .domain-panel .network-chip { height: 13; flex-shrink: 0; padding-all: 0; padding-bottom: 1; base-background: built-in(federation:NETWORK_CHIP); hover-background: built-in(federation:NETWORK_CHIP_HOVER); pressed-background: built-in(federation:NETWORK_CHIP_HOVER); }
 .domain-panel .network-chip.selected { base-background: built-in(federation:NETWORK_CHIP_SELECTED); hover-background: built-in(federation:NETWORK_CHIP_SELECTED); }
 .domain-panel .network-chip.selected .__button_text__ { text-color: #ffefeaf8; }
+.domain-panel .network-chip.dim .__button_text__ { text-color: #ffa4a6b4; }
 .stats-body { flex: 1; min-height: 0; width: 100%; flex-direction: row; gap-all: 6; }
 .stats-metrics { width: 26%; min-width: 112; max-width: 220; height: 100%; flex-shrink: 0; gap-all: 3; }
 .stats-card { width: 100%; flex: 1; min-height: 18; }

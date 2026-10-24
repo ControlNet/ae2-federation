@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: 外包熔炉
   icon: ae2federation:processing_endpoint
-  position: 30
+  position: 530
 ---
 
 # 外包熔炉
@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 带合成CPU、合成终端并存有圆石的主网络； 一个<ItemLink id="ae2federation:pattern_provider" />； 每座熔炉一个<ItemLink id="ae2federation:processing_endpoint" />、一座熔炉、一个漏斗和一个<ItemLink id="ae2:storage_bus" />； <ItemLink id="ae2federation:cable" />。
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/endpoint_furnaces.snbt" />
   <BoxAnnotation color="#915dcd" min="10 0 0" max="12 2 1">
     主网络： 合成终端、合成CPU和存储
@@ -41,7 +41,7 @@ navigation:
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
-联邦界面里会显示主网络， 以及连到它上面、 由它的供应器映射的两个端点。 输入沿着连线送出， 结果沿着它回来， 两个子网络用的都是你网络的电：
+联邦界面里会显示主网络， 以及连到它上面、由它的供应器映射的两个端点。 输入沿着连线送出， 结果沿着它回来， 两个子网络用的都是你网络的电：
 
 <FederationTopology>
   <Network key="main" label="主网络" color="#915dcd" column="0" row="0" details="合成CPU、终端|联邦样板供应器" />

@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A SAG Mill on the Provider's FE
   icon: appflux:induction_card
-  position: 46
+  position: 546
 ---
 
 # A SAG Mill on the Provider's FE

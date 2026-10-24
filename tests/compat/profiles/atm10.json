@@ -3,6 +3,9 @@
   "group": "modpacks",
   "description": "All the Mods 10 8.2: kitchen-sink pack with AE2, ExtendedAE, Advanced AE, MEGA Cells, Applied Mekanistics, Create and KubeJS recipe changes",
   "neoforge": "21.1.251",
+  "curseforge": {
+    "project": 925200
+  },
   "pack": {
     "name": "ServerFiles-8.2",
     "file": "ServerFiles-8.2.zip",

@@ -55,6 +55,8 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     private @Nullable CableFacePort federationPort;
     private boolean federationDomainDirty = true;
     private boolean providerNodePending;
+    /** Set when the chunk unloads, so the removal that follows is not taken for a broken block. */
+    private boolean unloading;
 
     public EndpointBlockEntity(BlockPos position, BlockState state) {
         super(space.controlnet.ae2federation.processing.ProcessingRegistration.ENDPOINT_BLOCK_ENTITY.get(),
@@ -231,7 +233,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
             federationPort = null;
         }
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
+            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId, !unloading);
             FederationBindingRefresh.request(serverLevel);
         }
         federationDomainDirty = true;
@@ -349,9 +351,16 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
 
     @Override
     public void onChunkUnloaded() {
+        unloading = true;
         closeBinding();
         closeFederationPort();
         super.onChunkUnloaded();
+    }
+
+    @Override
+    public void clearRemoved() {
+        super.clearRemoved();
+        unloading = false;
     }
 
     @Override

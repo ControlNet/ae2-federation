@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: Federation P2P Tunnel
   icon: ae2federation:federation_p2p_tunnel
-  position: 135
+  position: 440
 categories:
 - network infrastructure
 item_ids:
@@ -18,7 +18,7 @@ item_ids:
 
 A Federation P2P tunnel carries <ItemLink id="ae2federation:cable" /> over an ME network. Tunnels on one frequency act as
 if Federation Cable ran between their fronts, so the Switches, Routers, Pattern Providers and Endpoints in front of them share
-one [Federation domain](../mechanics.md). It is a [P2P tunnel](ae2:items-blocks-machines/p2p_tunnels.md) like AE2's
+one [Federation domain](../mechanics/index.md). It is a [P2P tunnel](ae2:items-blocks-machines/p2p_tunnels.md) like AE2's
 own: it crosses a base without a cable run, and goes into another dimension through a Quantum Network Bridge, as in
 [An Outpost in the Nether](../examples/nether-outpost.md).
 
@@ -33,7 +33,7 @@ Pair them as you pair AE2's tunnels: sneak and right-click the input with a <Ite
 right-click each output with it. One input can have many outputs. The link works both ways, and the outputs reach each
 other too, as long as the input works.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/federation_p2p_tunnel.snbt" />
   <BoxAnnotation color="#915dcd" min="10 0 0" max="12 2 1">
     Network A: its energy cell powers network B too

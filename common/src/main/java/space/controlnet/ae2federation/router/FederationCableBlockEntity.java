@@ -16,7 +16,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.bundle.BundleBeam;
 import space.controlnet.ae2federation.bundle.BundleContacts;
+import space.controlnet.ae2federation.bundle.BundleLook;
 import space.controlnet.ae2federation.bundle.BundleSegment;
 import space.controlnet.ae2federation.bundle.BundleSet;
 import space.controlnet.ae2federation.bundle.BundledCables;
@@ -39,6 +41,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private static final String CAPACITY_UNITS = "CapacityUnits";
     private static final String CAPACITY = "Capacity";
     private static final String CAPACITY_ENFORCED = "CapacityEnforced";
+    private static final String UNPOWERED = "Unpowered";
     private static final String BUNDLE_MIN = "BundleMin";
     private static final String BUNDLE_MAX = "BundleMax";
     private static final String BUNDLE_AXIS = "BundleAxis";
@@ -47,8 +50,11 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private boolean initialized;
     private boolean federationDomainDirty = true;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
-    /** Client only: the flow renderer's neighbour mask and its game tick. */
+    /** Set when the chunk unloads, so the removal that follows is not taken for a broken block. */
+    private boolean unloading;
+    /** Client only: the flow renderer's neighbour mask, a 2x2 bundle's middle beam, and their game tick. */
     private int flowMask;
+    private @Nullable BundleBeam bundleBeam;
     private long flowMaskTick = Long.MIN_VALUE;
     /**
      * The capacity count the flow renderer draws: computed on the server, sent to clients when it changes. Derived, so
@@ -60,6 +66,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
     /** Server only: the evidence revision last counted, and the earliest tick to count again. */
     private long capacityRevision = Long.MIN_VALUE;
     private long nextCapacityCheck;
+    /** Whether this cable's domain is unpowered, as the server last checked it; its beam then shows red and thin. */
+    private boolean unpowered;
+    private long nextPowerCheck;
     /**
      * The bundle segment holding this cable, null for an ordinary cable: on the server, as its registry last said; on a
      * client, as the server sent it. The model, outline and beam read it through {@link BundleView}.
@@ -80,6 +89,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
     @Override
     public void clearRemoved() {
         super.clearRemoved();
+        unloading = false;
         GridHelper.onFirstTick(this, FederationCableBlockEntity::initialize);
     }
 
@@ -88,7 +98,23 @@ public final class FederationCableBlockEntity extends BlockEntity {
         if (changed || cable.federationDomainDirty) {
             cable.publishFederationDomainTopology();
         }
-        if (level instanceof ServerLevel serverLevel) cable.syncCapacity(serverLevel);
+        if (level instanceof ServerLevel serverLevel) {
+            cable.syncCapacity(serverLevel);
+            cable.syncPower(serverLevel);
+        }
+    }
+
+    /** Looks again whether the cable's domain is unpowered, as often as the count, and tells clients of a change. */
+    private void syncPower(ServerLevel serverLevel) {
+        long now = serverLevel.getGameTime();
+        if (now < nextPowerCheck || federationDomainNodeId == null) return;
+        nextPowerCheck = now + CAPACITY_CHECK_TICKS;
+        var registry = FederationDomainRegistryAccess.get(serverLevel);
+        boolean stopped = registry.federationDomainOf(federationDomainNodeId)
+                .filter(domain -> registry.unpowered(domain.federationDomainId())).isPresent();
+        if (stopped == unpowered) return;
+        unpowered = stopped;
+        serverLevel.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
 
     /** Counts this cable again once its domain or the limit changed, and tells clients when the count differs. */
@@ -149,6 +175,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
 
     @Override
     public void onChunkUnloaded() {
+        unloading = true;
         destroyPorts();
         super.onChunkUnloaded();
     }
@@ -196,7 +223,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
 
     private void destroyPorts() {
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
+            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId, !unloading);
             FederationBindingRefresh.request(serverLevel);
         }
         initialized = false;
@@ -210,6 +237,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
         tag.putInt(CAPACITY_UNITS, capacityUnits);
         tag.putInt(CAPACITY, capacity);
         tag.putBoolean(CAPACITY_ENFORCED, capacityEnforced);
+        tag.putBoolean(UNPOWERED, unpowered);
         if (level instanceof ServerLevel serverLevel) {
             BundledCables.get(serverLevel).at(worldPosition).ifPresent(membership -> {
                 tag.putLong(BUNDLE_MIN, membership.segment().min().asLong());
@@ -232,6 +260,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
         capacityUnits = tag.getInt(CAPACITY_UNITS);
         capacity = tag.getInt(CAPACITY);
         capacityEnforced = tag.getBoolean(CAPACITY_ENFORCED);
+        unpowered = tag.getBoolean(UNPOWERED);
         var axis = Direction.Axis.byName(tag.getString(BUNDLE_AXIS));
         var previous = bundleSegment;
         bundleSegment = tag.contains(BUNDLE_MIN) && axis != null
@@ -249,16 +278,21 @@ public final class FederationCableBlockEntity extends BlockEntity {
     }
 
     /** The load of this cable's capacity count, as {@link CableBeamStyle#loadOf} reads it. */
+    /** Whether the cable's domain is unpowered, as the server last sent it. */
+    public boolean unpowered() {
+        return unpowered;
+    }
+
     public double capacityLoad() {
         return CableBeamStyle.loadOf(capacityUnits, capacity, capacityEnforced);
     }
 
-    /** Client only: eases the drawn load towards {@code target}, frame-rate independent. */
+    /** Client only: eases the drawn load towards {@code target}, frame-rate independent, in drawn steps. */
     public double beamLoad(double target, long nanos) {
         beamLoad = Double.isNaN(beamLoad) ? target
                 : CableBeamStyle.smooth(beamLoad, target, Math.max(0, nanos - beamNanos) / 1e9);
         beamNanos = nanos;
-        return beamLoad;
+        return CableBeamStyle.drawn(beamLoad, target);
     }
 
     /**
@@ -266,11 +300,33 @@ public final class FederationCableBlockEntity extends BlockEntity {
      * every frame, and six block lookups per cable per frame add up across a base.
      */
     public int flowMask() {
-        var gameTime = level == null ? Long.MIN_VALUE : level.getGameTime();
-        if (level != null && flowMaskTick != gameTime) {
-            flowMask = CableVisualConnections.mask(level, worldPosition);
-            flowMaskTick = gameTime;
-        }
+        refreshFlow();
         return flowMask;
+    }
+
+    /** Where this cell draws its 2x2 or 3x3 bundle's middle beam, or null when it draws its own; read like {@link #flowMask}. */
+    public @Nullable BundleBeam bundleBeam() {
+        refreshFlow();
+        return bundleBeam;
+    }
+
+    private void refreshFlow() {
+        var gameTime = level == null ? Long.MIN_VALUE : level.getGameTime();
+        if (level == null || flowMaskTick == gameTime) return;
+        flowMaskTick = gameTime;
+        // Most cells of a 2x2 or 3x3 bundle draw no beam, which their own segment tells: no need to read the
+        // neighbours every tick for that. A bundled cell's mask is never drawn.
+        var own = bundleSegment == null ? null : BundleBeam.offCorner(worldPosition, bundleSegment);
+        if (own != null) {
+            flowMask = 0;
+            bundleBeam = own;
+            return;
+        }
+        var look = BundleLook.of(level, worldPosition);
+        flowMask = look.isPresent() ? look.get().flowMask()
+                : CableVisualConnections.maskOf(CableVisualConnections.connections(level, worldPosition));
+        var segment = bundleSegment;
+        bundleBeam = look.isEmpty() || segment == null ? null : BundleBeam.of(worldPosition, segment, look.get(),
+                layers -> BundleLook.of(level, worldPosition.relative(segment.axis(), layers))).orElse(null);
     }
 }

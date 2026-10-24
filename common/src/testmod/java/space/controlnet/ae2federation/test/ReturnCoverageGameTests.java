@@ -3,7 +3,9 @@ package space.controlnet.ae2federation.test;
 import appeng.api.config.Actionable;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.security.IActionSource;
+import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.storage.IStorageProvider;
 import java.util.List;
@@ -13,9 +15,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger;
+import space.controlnet.ae2federation.crafting.projection.HeldReturnTransfer;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.*;
 import space.controlnet.ae2federation.test.crafting.PatternProjectionFixture;
@@ -26,6 +30,337 @@ import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 /** Native planning and topology; hand-operated processing and explicitly injected storage capacity faults. */
 @PrefixGameTestTemplate(false)
 public final class ReturnCoverageGameTests {
+    /** The existing hand-operated processor returns one of three stones before cancellation, then the other two. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void projectionPartialCancelledReturnPromptly(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper);
+        var stone = PatternProjectionFixture.stone();
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(fixture.ready(), "Waiting for native networks"))
+                .thenExecute(() -> {
+                    fixture.setRule(fixture.crafting(), RuleMode.ENABLED);
+                    fixture.putInConsumer(PatternProjectionFixture.cobblestone(), 3);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.consumerService().isCraftable(stone), "Waiting for projection"))
+                .thenExecute(() -> fixture.begin(stone, 3))
+                .thenWaitUntil(() -> helper.assertTrue(fixture.planReady(), "Waiting for plan"))
+                .thenExecute(() -> helper.assertTrue(fixture.submit(), "Native CPU accepts the job"))
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.inMachine(Items.COBBLESTONE), 3L, "Three inputs dispatched"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.runMachine(1), 1L, "Processor returns its first stone");
+                    helper.assertValueEqual(fixture.owed(stone), 2L, "Partial delivery leaves two owed");
+                    fixture.cancelConsumerJob();
+                    helper.assertValueEqual(fixture.owed(stone), 2L, "Cancellation preserves undelivered output");
+                    helper.assertValueEqual(fixture.runMachine(2), 2L, "Processor releases its remaining two stones");
+                })
+                .thenIdle(25)
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone), 3L,
+                            "All output returns within one sweep after cancellation: " + fixture.returns(stone));
+                    helper.assertValueEqual(fixture.onProviderNetwork(stone), 0L, "Factory keeps no output");
+                    helper.assertValueEqual(fixture.owed(stone), 0L, "Delivery settles debt");
+                    helper.assertValueEqual(fixture.watchedJobs(), 0, "Cancelled job retires");
+                    helper.assertTrue(fixture.consumerCpuEmpty(), "Cancelled CPU is empty");
+                    PolicyEvidence.write("projectionpartialcancelledreturnpromptly", 12,
+                            Map.of("partial", "1", "late", "2", "idleTicks", "25"));
+                    fixture.close();
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * A projected processing pattern whose output is a fluid: the hand-operated processor returns two buckets of lava,
+     * one at a time, into the provider network. Both fluid cells show where each bucket ended.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void projectionFluidReturn(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper).withFluidCells();
+        var lava = AEFluidKey.of(Fluids.LAVA);
+        long bucket = AEFluidKey.AMOUNT_BUCKET;
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(fixture.ready(), "Waiting for native networks"))
+                .thenExecute(() -> {
+                    fixture.installProcessingPattern(PatternDetailsHelper.encodeProcessingPattern(
+                            List.of(new GenericStack(PatternProjectionFixture.cobblestone(), 1)),
+                            List.of(new GenericStack(lava, bucket))));
+                    fixture.setRule(fixture.crafting(), RuleMode.ENABLED);
+                    fixture.putInConsumer(PatternProjectionFixture.cobblestone(), 2);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.consumerService().isCraftable(lava), "Waiting for projection"))
+                .thenExecute(() -> fixture.begin(lava, 2 * bucket))
+                .thenWaitUntil(() -> helper.assertTrue(fixture.planReady(), "Waiting for plan"))
+                .thenExecute(() -> helper.assertTrue(fixture.submit(), "Native CPU accepts the job"))
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.inMachine(Items.COBBLESTONE), 2L, "Two inputs dispatched"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.owed(lava), 2 * bucket, "Two pushes owe two buckets");
+                    helper.assertValueEqual(fixture.runMachine(lava, bucket), bucket, "Processor returns its first bucket");
+                    helper.assertValueEqual(fixture.owed(lava), bucket, "The waiting CPU takes the first bucket");
+                    helper.assertValueEqual(fixture.heldForConsumer(lava), 0L, "Nothing is held while the CPU waits");
+                    helper.assertValueEqual(fixture.runMachine(lava, bucket), bucket, "Processor returns its second bucket");
+                })
+                .thenIdle(25)
+                .thenExecute(() -> {
+                    assertFluidSettled(helper, fixture, lava, 2 * bucket);
+                    PolicyEvidence.write("projectionfluidreturn", 16, Map.of("output", "lava", "buckets", "2"));
+                    fixture.close();
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * One pattern makes flint and a bucket of water. The job ends with its flint while a bucket of water is still out;
+     * that bucket arrives afterwards and, as no job waits for it any more, goes straight into the consumer's storage.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void projectionMixedFluidReturn(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper).withFluidCells();
+        var flint = AEItemKey.of(Items.FLINT);
+        var water = AEFluidKey.of(Fluids.WATER);
+        long bucket = AEFluidKey.AMOUNT_BUCKET;
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(fixture.ready(), "Waiting for native networks"))
+                .thenExecute(() -> {
+                    fixture.installProcessingPattern(PatternDetailsHelper.encodeProcessingPattern(
+                            List.of(new GenericStack(PatternProjectionFixture.cobblestone(), 1)),
+                            List.of(new GenericStack(flint, 1), new GenericStack(water, bucket))));
+                    fixture.setRule(fixture.crafting(), RuleMode.ENABLED);
+                    fixture.putInConsumer(PatternProjectionFixture.cobblestone(), 2);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.consumerService().isCraftable(flint), "Waiting for projection"))
+                .thenExecute(() -> fixture.begin(flint, 2))
+                .thenWaitUntil(() -> helper.assertTrue(fixture.planReady(), "Waiting for plan"))
+                .thenExecute(() -> helper.assertTrue(fixture.submit(), "Native CPU accepts the job"))
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.inMachine(Items.COBBLESTONE), 2L, "Two inputs dispatched"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.owed(flint), 2L, "Two pushes owe two flint");
+                    helper.assertValueEqual(fixture.owed(water), 2 * bucket, "Two pushes owe two buckets");
+                    helper.assertValueEqual(fixture.runMachine(water, bucket), bucket, "Processor returns one bucket");
+                    helper.assertValueEqual(fixture.owed(water), bucket, "The waiting CPU takes the first bucket");
+                    helper.assertValueEqual(fixture.runMachine(flint, 2), 2L, "Processor returns both flint");
+                    helper.assertValueEqual(fixture.busyConsumerCpus(), 0L, "The job ends with its flint");
+                    helper.assertValueEqual(fixture.owed(water), bucket, "The job's end leaves the second bucket owed");
+                    helper.assertValueEqual(fixture.runMachine(water, bucket), bucket, "Processor returns the late bucket");
+                    helper.assertValueEqual(fixture.heldForConsumer(water), 0L,
+                            "The late bucket is not held: the job has ended");
+                    helper.assertValueEqual(fixture.held(fixture.providerFluids(), water), 0L,
+                            "The late bucket goes straight to the consumer, not into the provider's fluid cell");
+                })
+                .thenIdle(25)
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.held(fixture.consumerChest(), flint), 2L, "The flint reaches the consumer");
+                    helper.assertValueEqual(fixture.onProviderNetwork(flint), 0L, "Factory keeps no flint");
+                    helper.assertValueEqual(fixture.owed(flint), 0L, "Flint delivery settles its debt");
+                    assertFluidSettled(helper, fixture, water, 2 * bucket);
+                    PolicyEvidence.write("projectionmixedfluidreturn", 25,
+                            Map.of("outputs", "flint,water", "lateBuckets", "1"));
+                    fixture.close();
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * As {@link #projectionPartialCancelledReturnPromptly}, with lava: one bucket returns before the job is cancelled,
+     * the other two after, and all three reach the consumer.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void projectionFluidCancelledReturn(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper).withFluidCells();
+        var lava = AEFluidKey.of(Fluids.LAVA);
+        long bucket = AEFluidKey.AMOUNT_BUCKET;
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(fixture.ready(), "Waiting for native networks"))
+                .thenExecute(() -> {
+                    fixture.installProcessingPattern(PatternDetailsHelper.encodeProcessingPattern(
+                            List.of(new GenericStack(PatternProjectionFixture.cobblestone(), 1)),
+                            List.of(new GenericStack(lava, bucket))));
+                    fixture.setRule(fixture.crafting(), RuleMode.ENABLED);
+                    fixture.putInConsumer(PatternProjectionFixture.cobblestone(), 3);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.consumerService().isCraftable(lava), "Waiting for projection"))
+                .thenExecute(() -> fixture.begin(lava, 3 * bucket))
+                .thenWaitUntil(() -> helper.assertTrue(fixture.planReady(), "Waiting for plan"))
+                .thenExecute(() -> helper.assertTrue(fixture.submit(), "Native CPU accepts the job"))
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.inMachine(Items.COBBLESTONE), 3L, "Three inputs dispatched"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.runMachine(lava, bucket), bucket, "Processor returns its first bucket");
+                    helper.assertValueEqual(fixture.owed(lava), 2 * bucket, "Partial delivery leaves two buckets owed");
+                    fixture.cancelConsumerJob();
+                    helper.assertValueEqual(fixture.owed(lava), 2 * bucket, "Cancellation preserves undelivered output");
+                    helper.assertValueEqual(fixture.runMachine(lava, 2 * bucket), 2 * bucket,
+                            "Processor releases its remaining two buckets");
+                    helper.assertValueEqual(fixture.heldForConsumer(lava), 0L,
+                            "The late buckets go straight to the cancelled consumer's storage, not held");
+                })
+                .thenIdle(25)
+                .thenExecute(() -> {
+                    assertFluidSettled(helper, fixture, lava, 3 * bucket);
+                    PolicyEvidence.write("projectionfluidcancelledreturn", 17,
+                            Map.of("output", "lava", "partial", "1", "late", "2", "idleTicks", "25"));
+                    fixture.close();
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * Removing the Bridge after the push: two buckets of lava that arrive while the networks are apart stay in the
+     * provider's fluid cell, held for the consumer, whose job keeps waiting; once the Bridge is back the job gets them.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1200)
+    public static void projectionFluidDisconnectedReturn(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper).withFluidCells();
+        var lava = AEFluidKey.of(Fluids.LAVA);
+        long bucket = AEFluidKey.AMOUNT_BUCKET;
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(fixture.ready(), "Waiting for native networks"))
+                .thenExecute(() -> {
+                    fixture.installProcessingPattern(PatternDetailsHelper.encodeProcessingPattern(
+                            List.of(new GenericStack(PatternProjectionFixture.cobblestone(), 1)),
+                            List.of(new GenericStack(lava, bucket))));
+                    fixture.setRule(fixture.crafting(), RuleMode.ENABLED);
+                    fixture.putInConsumer(PatternProjectionFixture.cobblestone(), 2);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.consumerService().isCraftable(lava), "Waiting for projection"))
+                .thenExecute(() -> fixture.begin(lava, 2 * bucket))
+                .thenWaitUntil(() -> helper.assertTrue(fixture.planReady(), "Waiting for plan"))
+                .thenExecute(() -> helper.assertTrue(fixture.submit(), "Native CPU accepts the job"))
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.inMachine(Items.COBBLESTONE), 2L, "Two inputs dispatched"))
+                .thenExecute(fixture::disconnect)
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.projections(), 0, "Waiting for the patterns to be withdrawn"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.runMachine(lava, 2 * bucket), 2 * bucket,
+                            "The provider network takes both buckets");
+                    helper.assertValueEqual(fixture.held(fixture.providerFluids(), lava), 2 * bucket,
+                            "The lava stays in the provider's fluid cell");
+                    helper.assertValueEqual(fixture.held(fixture.consumerFluids(), lava), 0L,
+                            "Nothing crosses the removed Bridge");
+                    helper.assertValueEqual(fixture.heldForConsumer(lava), 2 * bucket, "The lava is held for the consumer");
+                    helper.assertValueEqual(fixture.owed(lava), 2 * bucket, "The debt stays while the consumer still waits");
+                    helper.assertValueEqual(fixture.busyConsumerCpus(), 1L, "The consumer's job keeps waiting");
+                    fixture.reconnect();
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.connected(), "Waiting for the Bridge to link again"))
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.busyConsumerCpus(), 0L,
+                        "Waiting for the held lava to reach the job: " + fixture.returns(lava)))
+                .thenIdle(25)
+                .thenExecute(() -> {
+                    assertFluidSettled(helper, fixture, lava, 2 * bucket);
+                    PolicyEvidence.write("projectionfluiddisconnectedreturn", 17,
+                            Map.of("output", "lava", "heldWhileApart", "2", "handedBackAfterReconnect", "2"));
+                    fixture.close();
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * A restart with fluid debt outstanding: two buckets of lava arrive while the Bridge is removed and are held for
+     * the consumer, and one of them is moved into transit (the provider's fluid cell taken out, the bucket in an
+     * extract-only test storage, handed to a test target that takes nothing). The crafting service restarts with its
+     * ledger read back from the saved form, and both networks reload: owed, held and transit come back for the fluid
+     * key. Once the cell and the Bridge are back, the reloaded job gets both buckets.
+     *
+     * <p>Simulated restart, as in {@code projectionCpuLateAfterRestart}: the service is closed as the server's stop
+     * closes it, the ledger goes through {@code save}/{@code load}, and the block entities of both networks reload in
+     * one tick. The server itself keeps running.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1400)
+    public static void projectionFluidRestartReturn(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper).withFluidCells();
+        var lava = AEFluidKey.of(Fluids.LAVA);
+        long bucket = AEFluidKey.AMOUNT_BUCKET;
+        var extractOnly = FaultStorage.extractOnly();
+        var unmount = new Runnable[1];
+        var cell = new net.minecraft.world.item.ItemStack[1];
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(fixture.ready(), "Waiting for native networks"))
+                .thenExecute(() -> {
+                    fixture.installProcessingPattern(PatternDetailsHelper.encodeProcessingPattern(
+                            List.of(new GenericStack(PatternProjectionFixture.cobblestone(), 1)),
+                            List.of(new GenericStack(lava, bucket))));
+                    fixture.setRule(fixture.crafting(), RuleMode.ENABLED);
+                    fixture.putInConsumer(PatternProjectionFixture.cobblestone(), 2);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.consumerService().isCraftable(lava), "Waiting for projection"))
+                .thenExecute(() -> fixture.begin(lava, 2 * bucket))
+                .thenWaitUntil(() -> helper.assertTrue(fixture.planReady(), "Waiting for plan"))
+                .thenExecute(() -> helper.assertTrue(fixture.submit(), "Native CPU accepts the job"))
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.inMachine(Items.COBBLESTONE), 2L, "Two inputs dispatched"))
+                .thenExecute(fixture::disconnect)
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.projections(), 0, "Waiting for the patterns to be withdrawn"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.runMachine(lava, 2 * bucket), 2 * bucket,
+                            "The provider network takes both buckets");
+                    helper.assertValueEqual(fixture.heldForConsumer(lava), 2 * bucket,
+                            "The lava is held for the consumer");
+                    helper.assertValueEqual(fixture.providerFluids().extract(lava, bucket, Actionable.MODULATE,
+                            IActionSource.empty()), bucket, "One bucket moves out of the provider's fluid cell");
+                    extractOnly.put(lava, bucket);
+                    unmount[0] = fixture.mountOnProvider(extractOnly, -1);
+                    cell[0] = fixture.takeProviderFluidCell();
+                })
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.onProviderNetwork(lava), bucket,
+                        "Waiting for the provider network to list the extract-only storage"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(HeldReturnTransfer.handBack(CraftingReturnLedger.get(helper.getLevel()),
+                            fixture.providerNetwork(), fixture.providerGrid(), fixture.consumerNetwork(), lava, bucket,
+                            new FaultStorage(Long.MAX_VALUE, 0)), 0L, "A target that takes nothing gets nothing");
+                    helper.assertValueEqual(extractOnly.held(lava), 0L, "The extract-only storage gave its bucket");
+                    helper.assertValueEqual(fixture.transit(lava), bucket, "The bucket nobody took stays in transit");
+                    unmount[0].run();
+                    // A service restart: the ledger goes through its saved form, the service starts anew, and both
+                    // networks reload from their saved block entities.
+                    var level = helper.getLevel();
+                    var server = level.getServer();
+                    CraftingProjectionService.closeServer(server);
+                    var registries = level.registryAccess();
+                    var saved = CraftingReturnLedger.get(level).save(new net.minecraft.nbt.CompoundTag(), registries);
+                    var reloaded = CraftingReturnLedger.load(saved, registries);
+                    server.overworld().getDataStorage().set(CraftingReturnLedger.DATA_NAME, reloaded);
+                    helper.assertTrue(CraftingReturnLedger.get(level) == reloaded,
+                            "The reloaded ledger is the world's");
+                    fixture.reloadAll();
+                    helper.assertValueEqual(fixture.owed(lava), 2 * bucket, "The fluid debt survives the restart");
+                    helper.assertValueEqual(fixture.heldForConsumer(lava), 2 * bucket,
+                            "The held lava survives the restart");
+                    helper.assertValueEqual(fixture.transit(lava), bucket, "The transit lava survives the restart");
+                    helper.assertValueEqual(fixture.watchedJobs(), 1, "The job is watched again");
+                    fixture.restoreProviderFluidCell(cell[0]);
+                    fixture.reconnect();
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.connected(), "Waiting for the Bridge to link again"))
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.busyConsumerCpus(), 0L,
+                        "Waiting for the held and transit lava to reach the reloaded job: " + fixture.returns(lava)))
+                .thenIdle(25)
+                .thenExecute(() -> {
+                    assertFluidSettled(helper, fixture, lava, 2 * bucket);
+                    helper.assertValueEqual(extractOnly.held(lava), 0L, "The test storage keeps none");
+                    PolicyEvidence.write("projectionfluidrestartreturn", 29, Map.of("output", "lava",
+                            "heldAcrossRestart", "2", "transitAcrossRestart", "1",
+                            "restart", "SavedData round trip and block entity reload"));
+                    fixture.close();
+                })
+                .thenSucceed();
+    }
+
+    /** Where a projected fluid ended: all of it in the consumer's fluid cell, nothing at the factory or in the ledger. */
+    private static void assertFluidSettled(GameTestHelper helper, PatternProjectionFixture fixture, AEKey fluid,
+            long made) {
+        helper.assertValueEqual(fixture.held(fixture.consumerFluids(), fluid), made,
+                "The fluid reaches the consumer's storage: " + fixture.returns(fluid));
+        helper.assertValueEqual(fixture.held(fixture.providerFluids(), fluid), 0L, "The provider's fluid cell keeps none");
+        helper.assertValueEqual(fixture.onProviderNetwork(fluid), 0L, "Factory keeps no fluid");
+        helper.assertValueEqual(fixture.owed(fluid), 0L, "Delivery settles the fluid debt");
+        helper.assertValueEqual(fixture.heldForConsumer(fluid), 0L, "Nothing is held afterwards");
+        helper.assertValueEqual(fixture.transit(fluid), 0L, "No fluid is in transit");
+        helper.assertValueEqual(fixture.watchedJobs(), 0, "The job retires");
+        helper.assertTrue(fixture.consumerCpuEmpty(), "The consumer's CPU is idle and empty");
+    }
+
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
             required = true, timeoutTicks = 1400)
     public static void projectionMixedJobResponsibilities(GameTestHelper helper) {

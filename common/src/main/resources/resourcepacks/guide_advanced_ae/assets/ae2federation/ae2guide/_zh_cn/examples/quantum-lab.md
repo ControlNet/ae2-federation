@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: 量子实验室
   icon: advanced_ae:quantum_core
-  position: 76
+  position: 576
 ---
 
 # 量子实验室
@@ -12,7 +12,7 @@ navigation:
 
 **需要**： 一个实验室网络， 带一台以<ItemLink id="advanced_ae:quantum_core" />为核心、已成型的量子计算机， 以及合成终端、存储和能源元件； 两个工坊网络， 每个都有一个样板供应器和一台分子装配室； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 量子计算机怎么搭见[Advanced AE的指南](advanced_ae:aae_intro/quantum_computer.md)。
 
-<GameScene zoom="3" interactive={true} background="transparent">
+<GameScene zoom="1.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/quantum_lab.snbt" />
   <BoxAnnotation color="#915dcd" min="1 0 1" max="8 7 9">
     实验室： 量子计算机、合成终端， 以及给三个网络供电的能源元件

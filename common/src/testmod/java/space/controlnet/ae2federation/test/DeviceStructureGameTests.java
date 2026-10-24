@@ -17,6 +17,7 @@ import space.controlnet.ae2federation.router.RouterBlock;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
+import space.controlnet.ae2federation.test.world.MockServerPlayers;
 
 /**
  * Router and Switch bodies form only as solid cuboids: each block's connection properties name exactly its
@@ -168,6 +169,47 @@ public final class DeviceStructureGameTests {
                             "line", "1x1x4", "plate", "1x3x3", "hollow", "unformed", "l", "unformed",
                             "diagonal", "separate", "shortened", "1x1x3", "filled", "3x3x3"));
                 });
+    }
+
+    /**
+     * Building on an unformed body: right-clicking an unformed Router or Switch with a block in hand
+     * places the block, as on any other block. Only an empty hand asks why the body has not formed.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void deviceStructurePlacesOnUnformed(GameTestHelper helper) {
+        var routerL = List.of(BASE.offset(0, 0, 6), BASE.offset(1, 0, 6), BASE.offset(0, 1, 6));
+        var switchL = List.of(BASE.offset(4, 0, 6), BASE.offset(5, 0, 6), BASE.offset(4, 1, 6));
+        place(helper, routerL, RouterRegistration.ROUTER.get());
+        place(helper, switchL, RouterRegistration.SWITCH.get());
+        var player = MockServerPlayers.inLevel(helper);
+        var done = new boolean[1];
+        helper.succeedWhen(() -> {
+            if (!done[0]) {
+                assertUnformed(helper, routerL, "Router L");
+                assertUnformed(helper, switchL, "Switch L");
+                use(helper, player, routerL.get(1), RouterRegistration.ROUTER_ITEM.get().getDefaultInstance());
+                use(helper, player, switchL.get(1), RouterRegistration.SWITCH_ITEM.get().getDefaultInstance());
+                done[0] = true;
+            }
+            helper.assertTrue(helper.getBlockState(routerL.get(1).above()).is(RouterRegistration.ROUTER.get()),
+                    "a Router placed on an unformed Router");
+            helper.assertTrue(helper.getBlockState(switchL.get(1).above()).is(RouterRegistration.SWITCH.get()),
+                    "a Switch placed on an unformed Switch");
+            RouterEvidence.write("devicestructureplacesonunformed", 2, Map.of(
+                    "router", "placed", "switch", "placed"));
+        });
+    }
+
+    /** Right-clicks the top of {@code relative} holding {@code stack}, as a player does. */
+    private static void use(GameTestHelper helper, net.minecraft.server.level.ServerPlayer player, BlockPos relative,
+            net.minecraft.world.item.ItemStack stack) {
+        player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack);
+        var absolute = helper.absolutePos(relative);
+        var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(absolute)
+                .relative(Direction.UP, 0.5), Direction.UP, absolute, false);
+        player.gameMode.useItemOn(player, helper.getLevel(), player.getMainHandItem(),
+                net.minecraft.world.InteractionHand.MAIN_HAND, hit);
     }
 
     /**

@@ -100,6 +100,8 @@ public final class FederationStatistics {
     /** Our own index of native sources: reading storage must not change the one storage mounts rely on. */
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
     private final SecondClock clock = new SecondClock();
+    /** Each Federation domain's converter bodies as of the last second, by domain id, for the page's list. */
+    private Map<String, List<space.controlnet.ae2federation.power.OperatingPowerService.ConverterBody>> converters = Map.of();
     private long finishedSecond = Long.MIN_VALUE;
 
     /**
@@ -257,7 +259,38 @@ public final class FederationStatistics {
         return members;
     }
 
+    /** {@code domain}'s converter bodies as of the last finished second; none while power is not required. */
+    public List<space.controlnet.ae2federation.power.OperatingPowerService.ConverterBody> converters(String domain) {
+        return converters.getOrDefault(domain, List.of());
+    }
+
+    /** Each domain's Federation power over the second, while power is required. */
+    private void sampleFederationPower(long second) {
+        var server = level.getServer();
+        var drained = server == null ? Map.<space.controlnet.ae2federation.domain.FederationDomainId,
+                space.controlnet.ae2federation.power.OperatingPowerService.Second>of()
+                : space.controlnet.ae2federation.power.OperatingPowerService.drainSecond(server);
+        var bodies = new HashMap<String, List<space.controlnet.ae2federation.power.OperatingPowerService.ConverterBody>>();
+        drained.forEach((id, power) -> {
+            var prefix = StatisticsNames.fedpower(id.value());
+            for (var group : space.controlnet.ae2federation.power.OperatingPowerCosts.Group.values()) {
+                book.gauge(prefix + StatisticsNames.FEDPOWER_USE + "/" + group.key(), second,
+                        power.use().byGroup().getOrDefault(group, 0.0));
+            }
+            book.gauge(prefix + StatisticsNames.FEDPOWER_INPUT, second, power.input());
+            // A domain without a matching converter has no buffer: a gap, not an empty one.
+            if (power.capacity() > 0) {
+                book.gauge(prefix + StatisticsNames.FEDPOWER_STORED, second, 100 * power.stored() / power.capacity());
+            }
+            book.gauge(prefix + StatisticsNames.FEDPOWER_CAPACITY, second, power.capacity());
+            book.gauge(prefix + StatisticsNames.FEDPOWER_STOPPED, second, power.running() ? 0 : 1);
+            bodies.put(id.value(), power.bodies());
+        });
+        converters = Map.copyOf(bodies);
+    }
+
     private void sample(long second) {
+        sampleFederationPower(second);
         var members = members();
         var grids = new HashMap<NetworkId, IGrid>();
         if (!members.isEmpty()) {

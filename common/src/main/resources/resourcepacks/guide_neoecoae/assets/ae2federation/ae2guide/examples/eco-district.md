@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A Neo ECO District
   icon: neoecoae:computation_system_l4
-  position: 80
+  position: 580
 ---
 
 # A Neo ECO District

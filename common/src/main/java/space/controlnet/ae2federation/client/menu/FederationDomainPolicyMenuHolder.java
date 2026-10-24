@@ -131,6 +131,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 target -> send(FederationDomainPolicyAction.RENAME_NETWORK, target), workspace::openObject);
         currentTopology = graphState;
         graphState.onEndpointEnergy(target -> send(FederationDomainPolicyAction.SET_ENDPOINT_ENERGY, target));
+        graphState.onKeepNetwork(target -> send(FederationDomainPolicyAction.KEEP_NETWORK, target));
         workspace.bindGraph(graphState);
         var choices = new BindableValue<String>("");
         choices.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : choicesText.get(session::workspaceChoices))
@@ -141,6 +142,11 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 }).build());
         choices.addClass("state-sync");
         ui.rootElement.addChild(choices);
+        var power = new BindableValue<String>("");
+        power.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : session.powerGauge())
+                .initialValue("").remoteSetter(graphState::acceptPower).build());
+        power.addClass("state-sync");
+        ui.rootElement.addChild(power);
 
         var state = new BindableValue<String>("");
         state.bind(DataBindingBuilder.stringS2C(this::statusCode)
@@ -252,6 +258,16 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             accepted();
             return FederationDomainPolicyActionResult.ACCEPTED;
         }
+        if (request.action() == FederationDomainPolicyAction.KEEP_NETWORK) {
+            // Not a rule edit either: a merge beside a domain with no confirmed network can still be settled.
+            if (!session.matchesMappingContext(player, request.context())) {
+                return session.rejectStaleContext(player) ? FederationDomainPolicyActionResult.STALE_CONTEXT
+                        : FederationDomainPolicyActionResult.WRONG_MENU;
+            }
+            if (!session.keepNetwork(request.target())) return FederationDomainPolicyActionResult.INVALID_TARGET;
+            accepted();
+            return FederationDomainPolicyActionResult.ACCEPTED;
+        }
         if (mappingAction(request.action())) {
             // Provider mapping is not a rule edit: a domain with one ME network still maps its Endpoints.
             if (!session.matchesMappingContext(player, request.context())) {
@@ -273,7 +289,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         switch (request.action()) {
             case PREPARE_RELEASE -> session.releaseEndpoint();
             case CANCEL_RELEASE -> session.cancelRelease();
-            case SET_POLICY, RENAME_NETWORK -> throw new IllegalStateException("Dispatched before selection authority");
+            case SET_POLICY, RENAME_NETWORK, KEEP_NETWORK -> throw new IllegalStateException("Dispatched before selection authority");
             case SELECT_TARGET -> {
                 if (!session.selectTarget(request.target())) {
                     return FederationDomainPolicyActionResult.INVALID_TARGET;
@@ -315,7 +331,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             case PREPARE_RELEASE, CANCEL_RELEASE, SELECT_TARGET, NEXT_MAPPING_PROVIDER, NEXT_MAPPING_SLOT,
                     NEXT_MAPPING_LANE, TOGGLE_MAPPING, SET_MAPPING, NEXT_ENDPOINT, RELEASE_ENDPOINT,
                     SET_ENDPOINT_ENERGY -> true;
-            case SET_POLICY, RENAME_NETWORK, NEXT_CONSUMER, NEXT_PROVIDER, NEXT_CAPABILITY, TOGGLE_POLICY -> false;
+            case SET_POLICY, RENAME_NETWORK, KEEP_NETWORK, NEXT_CONSUMER, NEXT_PROVIDER, NEXT_CAPABILITY, TOGGLE_POLICY -> false;
         };
     }
 
@@ -439,7 +455,19 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     }
 
     private String statusCode() {
+        if (session != null && session.takeReopen()) reopen(session);
         return session == null ? "pending" : session.statusCode();
+    }
+
+    /** A Keep rebuilt the domain around the kept network: the same entrance opens again on it. */
+    private static void reopen(FederationDomainPolicySession session) {
+        var player = session.player();
+        var position = session.entrancePosition();
+        if (session.openedFromRouter()) {
+            player.server.execute(() -> FederationDomainPolicyMenu.openRouter(player, position));
+        } else if (session.openedFromDevice()) {
+            player.server.execute(() -> FederationDomainPolicyMenu.openDevice(player, position));
+        }
     }
 
     private static boolean applyState(String code, UI ui) {

@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME联邦交换机
   icon: ae2federation:switch
-  position: 115
+  position: 420
 categories:
 - network infrastructure
 item_ids:
@@ -14,12 +14,12 @@ item_ids:
 
 <BlockImage id="ae2federation:switch" scale="6" />
 
-交换机把ME网络接入一个[联邦域](../mechanics.md)。 它的六个面各自独立工作：
+交换机把ME网络接入一个[联邦域](../mechanics/index.md)。 它的六个面各自独立工作：
 
 * 接触ME线缆或设备时， 这个面加入那个网络， 不占用频道， 也没有待机耗电；
 * 接触<ItemLink id="ae2federation:cable" />、<ItemLink id="ae2federation:router" />、另一个交换机、联邦样板供应器前面或处理端点前面时， 这个面把联邦域继续向外连接。
 
-一个交换机方块上最多可以汇集六个不同的网络， 它的各个面不会把这些网络合成一个。 两个面接同一个网络也可以， 只算一次。
+一个交换机方块上最多可以汇集六个不同的网络， 它们仍是各自独立的网络。 两个面接同一个网络也可以， 只算一次。
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/switch_hub.snbt" />
@@ -73,8 +73,8 @@ item_ids:
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
-不是实心长方体的一组方块不会成形， 它的面都不连接： 在你补全长方体或拿走多余的方块之前， 接在上面的网络都离开联邦域。 右键其中一个方块， 动作栏会说明原因。
+不是实心长方体的一组方块不会成形， 它的面都不连接： 在你补全长方体或拿走多余的方块之前， 接在上面的网络都离开联邦域。 空手右键其中一个方块， 动作栏会说明原因。
 
-交换机再大也不会给线缆分段： 它各个面上的线缆算作同一段（见[网络容量](../network-capacity.md)）。 只有路由器会分段。
+交换机再大也不会给线缆分段： 它各个面上的线缆算作同一段（见[网络容量](../mechanics/capacity.md)）。 只有路由器会分段。
 
 <RecipeFor id="ae2federation:switch" />

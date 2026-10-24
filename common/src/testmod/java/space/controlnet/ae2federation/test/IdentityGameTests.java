@@ -264,17 +264,17 @@ public final class IdentityGameTests {
                         AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT));
                 phase[0] = 3;
             }
-            // Joining two established multi-node Grids is still a real merge and fails closed.
+            // Joining two established Grids is a real merge; neither id carries settings, so it settles on one of them.
             var otherNode = relativeNode(helper, otherChest);
             helper.assertTrue(otherNode.getGrid() == chestNode.getGrid(), "Link cable must merge both Grids");
-            helper.assertValueEqual(service(chestNode).settlement().status(), IdentityStatus.AMBIGUOUS_MERGE,
-                    "Merging two established Grids must stay ambiguous");
-            helper.assertTrue(!service(chestNode).settlement().canInheritPolicy(),
-                    "An ambiguous merge must not inherit Policy");
+            helper.assertValueEqual(service(chestNode).settlement().status(), IdentityStatus.SETTLED,
+                    "A merge of two ids without settings settles");
+            var merged = service(chestNode).settlement().networkId().orElseThrow().toString();
+            helper.assertTrue(merged.equals(ids[0]) || merged.equals(ids[1]), "The merge keeps one of the two ids");
             writeEvidence("identitypartonsettledcable", 12, ids[0], "part-adopts-grid", Map.of(
                     "otherNetworkId", ids[1],
-                    "mergedStatus", IdentityStatus.AMBIGUOUS_MERGE.name(),
-                    "mergedCanInherit", "false"));
+                    "mergedStatus", IdentityStatus.SETTLED.name(),
+                    "mergedNetworkId", merged));
         });
     }
 
@@ -369,6 +369,242 @@ public final class IdentityGameTests {
                     .configured(policyKey[0]).orElseThrow(), policyRecord[0], "Merge retains but cannot inherit old Policy");
             writeEvidence("identitysingleestablishedmerge", 9, lineage[0].networkId().toString(), "ambiguous-merge");
         });
+    }
+
+    /**
+     * Three established Grids joined by two cables: none carries a name or rule, so the merge settles on the id held by
+     * the most nodes, the middle piece's, and every node takes it.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void identityUnconfiguredMerge(GameTestHelper helper) {
+        var left = new BlockPos(1, 1, 1);
+        var middle = new BlockPos(3, 1, 1);
+        var right = new BlockPos(5, 1, 1);
+        mergePiece(helper, left, 1);
+        mergePiece(helper, middle, 4);
+        mergePiece(helper, right, 1);
+        var phase = new int[1];
+        var ids = new space.controlnet.ae2federation.identity.NetworkId[3];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                var pieces = new BlockPos[] { left, middle, right };
+                for (var index = 0; index < 3; index++) {
+                    var node = relativeNode(helper, pieces[index]);
+                    helper.assertValueEqual(service(node).settlement().status(), IdentityStatus.SETTLED,
+                            "Each piece settles on its own first");
+                    ids[index] = service(node).lineage(node).networkId();
+                }
+                helper.assertTrue(java.util.Set.of(ids).size() == 3, "The pieces carry three ids");
+                linkCable(helper, left.east());
+                linkCable(helper, middle.east());
+                phase[0] = 1;
+            }
+            var node = relativeNode(helper, middle);
+            helper.assertTrue(relativeNode(helper, left).getGrid() == node.getGrid()
+                    && relativeNode(helper, right).getGrid() == node.getGrid(), "The cables join all three pieces");
+            helper.assertValueEqual(service(node).settlement().status(), IdentityStatus.SETTLED,
+                    "A merge of ids without settings settles");
+            helper.assertValueEqual(service(node).settlement().networkId().orElseThrow(), ids[1],
+                    "The id held by the most nodes survives");
+            for (var other : node.getGrid().getNodes()) {
+                helper.assertValueEqual(service(node).lineage(other).networkId(), ids[1], "Every node takes it");
+            }
+            writeEvidence("identityunconfiguredmerge", 6, ids[1].toString(), "settled");
+        });
+    }
+
+    /** A named piece survives a merge with a larger unnamed one, and keeps its name. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void identityConfiguredMergeWins(GameTestHelper helper) {
+        var named = new BlockPos(1, 1, 1);
+        var unnamed = new BlockPos(3, 1, 1);
+        mergePiece(helper, named, 1);
+        mergePiece(helper, unnamed, 4);
+        var names = space.controlnet.ae2federation.persistence.NetworkNames.get(helper.getLevel());
+        var phase = new int[1];
+        var id = new space.controlnet.ae2federation.identity.NetworkId[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                var node = relativeNode(helper, named);
+                helper.assertValueEqual(service(node).settlement().status(), IdentityStatus.SETTLED,
+                        "The named piece settles first");
+                id[0] = service(node).lineage(node).networkId();
+                names.rename(id[0], "Merge Keeper");
+                linkCable(helper, named.east());
+                phase[0] = 1;
+            }
+            var node = relativeNode(helper, unnamed);
+            helper.assertTrue(relativeNode(helper, named).getGrid() == node.getGrid(), "The cable joins both pieces");
+            helper.assertValueEqual(service(node).settlement().networkId(), java.util.Optional.of(id[0]),
+                    "The named id survives although fewer nodes hold it");
+            helper.assertValueEqual(names.name(id[0]).orElse(""), "Merge Keeper", "It keeps its name");
+            names.rename(id[0], "");
+            writeEvidence("identityconfiguredmergewins", 3, id[0].toString(), "settled");
+        });
+    }
+
+    /**
+     * Two named pieces stay a pending merge: neither name is dropped on its own. Clearing one name lets the merge
+     * settle on the other within the recheck interval.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void identityConfiguredMergeStaysPending(GameTestHelper helper) {
+        var first = new BlockPos(1, 1, 1);
+        var second = new BlockPos(3, 1, 1);
+        mergePiece(helper, first, 1);
+        mergePiece(helper, second, 4);
+        var names = space.controlnet.ae2federation.persistence.NetworkNames.get(helper.getLevel());
+        var phase = new int[1];
+        var linkedAt = new long[1];
+        var ids = new space.controlnet.ae2federation.identity.NetworkId[2];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                var firstNode = relativeNode(helper, first);
+                var secondNode = relativeNode(helper, second);
+                helper.assertValueEqual(service(firstNode).settlement().status(), IdentityStatus.SETTLED, "First settles");
+                helper.assertValueEqual(service(secondNode).settlement().status(), IdentityStatus.SETTLED, "Second settles");
+                ids[0] = service(firstNode).lineage(firstNode).networkId();
+                ids[1] = service(secondNode).lineage(secondNode).networkId();
+                names.rename(ids[0], "Merge First");
+                names.rename(ids[1], "Merge Second");
+                linkCable(helper, first.east());
+                linkedAt[0] = helper.getTick();
+                phase[0] = 1;
+            }
+            var node = relativeNode(helper, first);
+            if (phase[0] == 1) {
+                helper.assertTrue(helper.getTick() >= linkedAt[0] + 40, "Waiting past two rechecks");
+                helper.assertValueEqual(service(node).settlement().status(), IdentityStatus.AMBIGUOUS_MERGE,
+                        "Two named ids stay pending");
+                helper.assertValueEqual(names.name(ids[0]).orElse(""), "Merge First", "No name is dropped");
+                names.rename(ids[1], "");
+                phase[0] = 2;
+            }
+            helper.assertValueEqual(service(node).settlement().networkId(), java.util.Optional.of(ids[0]),
+                    "With one name cleared the merge settles on the named id");
+            names.rename(ids[0], "");
+            writeEvidence("identityconfiguredmergestayspending", 6, ids[0].toString(), "settled");
+        });
+    }
+
+    /**
+     * Two pieces with the same name and the same rule to a third network merge like pieces without settings: the
+     * larger piece's id survives, keeping the name and the rule, and the smaller one's copies are dropped.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void identityIdenticalSettingsMerge(GameTestHelper helper) {
+        var small = new BlockPos(1, 1, 1);
+        var large = new BlockPos(3, 1, 1);
+        var other = new BlockPos(1, 1, 4);
+        mergePiece(helper, small, 1);
+        mergePiece(helper, large, 4);
+        mergePiece(helper, other, 1);
+        var names = space.controlnet.ae2federation.persistence.NetworkNames.get(helper.getLevel());
+        var policies = space.controlnet.ae2federation.policy.PolicyService.get(helper.getLevel());
+        var phase = new int[1];
+        var ids = new space.controlnet.ae2federation.identity.NetworkId[3];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                var pieces = new BlockPos[] { small, large, other };
+                for (var index = 0; index < 3; index++) {
+                    var node = relativeNode(helper, pieces[index]);
+                    helper.assertValueEqual(service(node).settlement().status(), IdentityStatus.SETTLED,
+                            "Each piece settles on its own first");
+                    ids[index] = service(node).lineage(node).networkId();
+                }
+                for (var index = 0; index < 2; index++) {
+                    names.rename(ids[index], "Merge Twin");
+                    var key = storageRule(ids[index], ids[2]);
+                    helper.assertTrue(policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(key,
+                            policies.revision(key), space.controlnet.ae2federation.policy.PolicyRule.storageDefaults()))
+                            instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
+                            "Both pieces get the same rule to the third network");
+                }
+                linkCable(helper, small.east());
+                phase[0] = 1;
+            }
+            var node = relativeNode(helper, large);
+            helper.assertTrue(relativeNode(helper, small).getGrid() == node.getGrid(), "The cable joins both pieces");
+            helper.assertValueEqual(service(node).settlement().networkId(), java.util.Optional.of(ids[1]),
+                    "Ids with the same settings settle on the larger piece's");
+            helper.assertValueEqual(names.name(ids[1]).orElse(""), "Merge Twin", "The survivor keeps the name");
+            helper.assertTrue(names.name(ids[0]).isEmpty(), "The folded id's copy of the name is dropped");
+            helper.assertTrue(policies.configured(storageRule(ids[1], ids[2])).isPresent(), "The survivor keeps the rule");
+            helper.assertTrue(policies.configured(storageRule(ids[0], ids[2])).isEmpty(),
+                    "The folded id's copy of the rule is dropped");
+            var kept = storageRule(ids[1], ids[2]);
+            policies.delete(new space.controlnet.ae2federation.policy.PolicyDelete(kept, policies.revision(kept)));
+            names.rename(ids[1], "");
+            writeEvidence("identityidenticalsettingsmerge", 6, ids[1].toString(), "settled");
+        });
+    }
+
+    private static space.controlnet.ae2federation.policy.PolicyKey storageRule(
+            space.controlnet.ae2federation.identity.NetworkId consumer, space.controlnet.ae2federation.identity.NetworkId provider) {
+        return new space.controlnet.ae2federation.policy.PolicyKey(consumer, provider,
+                space.controlnet.ae2federation.policy.PolicyCapability.STORAGE);
+    }
+
+    /**
+     * A player keeps the smaller of two differently named pieces: its id survives with its name, the other's name is
+     * deleted. Keeping an id the Grid does not hold changes nothing.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void identityPlayerKeepsOne(GameTestHelper helper) {
+        var small = new BlockPos(1, 1, 1);
+        var large = new BlockPos(3, 1, 1);
+        mergePiece(helper, small, 1);
+        mergePiece(helper, large, 4);
+        var names = space.controlnet.ae2federation.persistence.NetworkNames.get(helper.getLevel());
+        var phase = new int[1];
+        var ids = new space.controlnet.ae2federation.identity.NetworkId[2];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                var smallNode = relativeNode(helper, small);
+                var largeNode = relativeNode(helper, large);
+                helper.assertValueEqual(service(smallNode).settlement().status(), IdentityStatus.SETTLED, "Small settles");
+                helper.assertValueEqual(service(largeNode).settlement().status(), IdentityStatus.SETTLED, "Large settles");
+                ids[0] = service(smallNode).lineage(smallNode).networkId();
+                ids[1] = service(largeNode).lineage(largeNode).networkId();
+                names.rename(ids[0], "Merge Small");
+                names.rename(ids[1], "Merge Large");
+                linkCable(helper, small.east());
+                phase[0] = 1;
+            }
+            var node = relativeNode(helper, large);
+            if (phase[0] == 1) {
+                helper.assertValueEqual(service(node).settlement().status(), IdentityStatus.AMBIGUOUS_MERGE,
+                        "Two differently named pieces wait for the player");
+                helper.assertTrue(!service(node).keep(new space.controlnet.ae2federation.identity.NetworkId(
+                        java.util.UUID.randomUUID())), "An id the Grid does not hold is refused");
+                helper.assertTrue(service(node).keep(ids[0]), "The smaller piece's id can be kept");
+                phase[0] = 2;
+            }
+            helper.assertValueEqual(service(node).settlement().networkId(), java.util.Optional.of(ids[0]),
+                    "The kept id survives although fewer nodes held it");
+            helper.assertValueEqual(names.name(ids[0]).orElse(""), "Merge Small", "It keeps its name");
+            helper.assertTrue(names.name(ids[1]).isEmpty(), "The other id's name is deleted");
+            names.rename(ids[0], "");
+            writeEvidence("identityplayerkeepsone", 6, ids[0].toString(), "settled");
+        });
+    }
+
+    /** An ME Chest with {@code cells} creative energy cells stacked on it: a piece of 1 + cells nodes. */
+    private static void mergePiece(GameTestHelper helper, BlockPos chest, int cells) {
+        helper.setBlock(chest, AEBlocks.ME_CHEST.block());
+        for (var cell = 1; cell <= cells; cell++) {
+            helper.setBlock(chest.above(cell), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        }
+    }
+
+    private static void linkCable(GameTestHelper helper, BlockPos at) {
+        PartHelper.setPart(helper.getLevel(), helper.absolutePos(at), null, null,
+                AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT));
     }
 
     private static void markLegacyProvisional(net.minecraft.nbt.CompoundTag tag) {

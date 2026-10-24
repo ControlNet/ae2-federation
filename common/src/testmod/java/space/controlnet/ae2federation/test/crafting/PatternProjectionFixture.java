@@ -83,7 +83,17 @@ public final class PatternProjectionFixture implements AutoCloseable {
     private @Nullable NetworkId providerId;
     private final BlockPos processingProviderPos = BASE.east().north(2);
     private final BlockPos machinePos = BASE.east().north(3);
+    /** Free, and beside both the consumer's CPU (south) and the provider's blue cable (east). */
+    private static final BlockPos JOINING_CABLE = BASE.west().north();
+    /** South of the consumer's ME chest and north of the provider's: each touches only its own network. */
+    private static final BlockPos CONSUMER_FLUID_CHEST = BASE.south(2);
+    private static final BlockPos PROVIDER_FLUID_CHEST = BASE.north(3);
+    /** East of the processing provider and north of the assembler's: touches only the provider network. */
+    private static final BlockPos PROVIDER_CPU = BASE.east(2).north(2);
+    private boolean fluidCells;
     private boolean bridgePlaced;
+    /** The Bridge part is removed ({@link #disconnect}) and not placed again yet. */
+    private boolean bridgeRemoved;
     private boolean consumerCpuPlaced;
     private boolean processingPlaced;
     private boolean processingPatternInstalled;
@@ -163,6 +173,48 @@ public final class PatternProjectionFixture implements AutoCloseable {
      * The consumer network's id, read once it is confirmed and kept: while part of a Grid is unloaded its identity
      * may not be confirmed, but the network is the same.
      */
+    /**
+     * Gives each network a second ME chest with a 1k fluid cell, placed in the same tick as the rest of the fixture:
+     * the consumer then stores fluids its jobs make, and the provider holds fluids it cannot return yet.
+     */
+    public PatternProjectionFixture withFluidCells() {
+        for (var position : List.of(CONSUMER_FLUID_CHEST, PROVIDER_FLUID_CHEST)) {
+            helper.setBlock(position, AEBlocks.ME_CHEST.block());
+            helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(position)
+                    .setCell(appeng.core.definitions.AEItems.FLUID_CELL_1K.stack());
+        }
+        fluidCells = true;
+        return this;
+    }
+
+    /** The consumer's fluid cell from {@link #withFluidCells()}. */
+    public MEStorage consumerFluids() {
+        return fluidCell(CONSUMER_FLUID_CHEST);
+    }
+
+    /** The provider's fluid cell from {@link #withFluidCells()}. */
+    public MEStorage providerFluids() {
+        return fluidCell(PROVIDER_FLUID_CHEST);
+    }
+
+    /** Takes the 1k fluid cell out of the provider's fluid chest, which then stores no fluid; the cell is returned. */
+    public ItemStack takeProviderFluidCell() {
+        var chest = helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(PROVIDER_FLUID_CHEST);
+        var cell = chest.getCell().copy();
+        chest.setCell(ItemStack.EMPTY);
+        return cell;
+    }
+
+    public void restoreProviderFluidCell(ItemStack cell) {
+        helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(PROVIDER_FLUID_CHEST).setCell(cell);
+    }
+
+    private MEStorage fluidCell(BlockPos position) {
+        if (!fluidCells) throw new IllegalStateException("This fixture has no fluid cells");
+        return Objects.requireNonNull(helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(position)
+                .getOriginalCellInventory(0));
+    }
+
     public NetworkId consumerNetwork() {
         if (consumerId == null) consumerId = bridge.mainNetwork();
         return consumerId;
@@ -207,15 +259,58 @@ public final class PatternProjectionFixture implements AutoCloseable {
     /** Removes the Bridge, so the two networks no longer share a Federation Domain; both stay loaded. */
     public void disconnect() {
         bridge.removeFirstBridge();
+        bridgeRemoved = true;
     }
 
     /** Places the Bridge again, so the two networks share a Federation Domain once more. */
     public void reconnect() {
         bridge.placeFirstBridge();
+        bridgeRemoved = false;
     }
 
     public boolean connected() {
         return bridge.firstBridgeReady();
+    }
+
+    /**
+     * Dyes the consumer's cable under the Bridge fluix, as a player's cable often is. The Bridge part still covers that
+     * side, so the networks stay apart; removing only the part then joins them into one AE2 Grid.
+     */
+    public void fluixCableUnderBridge() {
+        var host = (appeng.api.parts.IPartHost) helper.getLevel().getBlockEntity(helper.absolutePos(BASE));
+        var cable = (appeng.parts.networking.CablePart) host.getPart(null);
+        helper.assertTrue(cable.changeColor(AEColor.TRANSPARENT, null), "The cable under the Bridge takes fluix");
+    }
+
+    /** Places a fluix cable between the consumer's CPU and the provider's cable, as a player joining them would. */
+    public void placeJoiningCable() {
+        appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(JOINING_CABLE), null, null,
+                AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT));
+    }
+
+    public void removeJoiningCable() {
+        helper.setBlock(JOINING_CABLE, Blocks.AIR);
+    }
+
+    /**
+     * Gives the consumer's ME chest priority, and its fluid chest when it has one, so stock stored anywhere both
+     * networks see lands there first.
+     */
+    public void preferConsumerChest() {
+        bridge.consumerChest().setPriority(1);
+        if (fluidCells) {
+            helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(CONSUMER_FLUID_CHEST).setPriority(1);
+        }
+    }
+
+    /** Whether the two networks are one AE2 Grid now. */
+    public boolean merged() {
+        return consumerGrid() == providerGrid();
+    }
+
+    /** How each side's network identity stands, for failure messages. */
+    public String settlement() {
+        return bridge.settlementDiagnostics();
     }
 
     public int projections() {
@@ -317,6 +412,40 @@ public final class PatternProjectionFixture implements AutoCloseable {
         return consumerService().submitJob(plan, null, null, true, IActionSource.empty()).successful();
     }
 
+    /** Puts a 1k crafting storage on the provider network, so it can run a job of its own. */
+    public void placeProviderCpu() {
+        helper.setBlock(PROVIDER_CPU, AEBlocks.CRAFTING_STORAGE_1K.block());
+        helper.<CraftingBlockEntity>getBlockEntity(PROVIDER_CPU).getMainNode()
+                .loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", providerNetwork()));
+    }
+
+    /** Plans {@code amount} of {@code what} on the provider network's own crafting service, as its terminal does. */
+    public Future<ICraftingPlan> planOnProvider(AEKey what, long amount) {
+        var node = bridge.providerChest().getMainNode().getNode();
+        ICraftingSimulationRequester requester = new ICraftingSimulationRequester() {
+            @Override
+            public IActionSource getActionSource() {
+                return IActionSource.empty();
+            }
+
+            @Override
+            public appeng.api.networking.IGridNode getGridNode() {
+                return node;
+            }
+        };
+        return providerGrid().getCraftingService().beginCraftingCalculation(helper.getLevel(), requester, what, amount,
+                CalculationStrategy.REPORT_MISSING_ITEMS);
+    }
+
+    public boolean submitOnProvider(ICraftingPlan plan) {
+        return providerGrid().getCraftingService().submitJob(plan, null, null, true, IActionSource.empty())
+                .successful();
+    }
+
+    public long busyProviderCpus() {
+        return providerGrid().getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy()).count();
+    }
+
     public long busyConsumerCpus() {
         return consumerService().getCpus().stream().filter(cpu -> cpu.isBusy()).count();
     }
@@ -338,10 +467,37 @@ public final class PatternProjectionFixture implements AutoCloseable {
 
     /** Runs the machine: empties it, and puts {@code outputs} stone into the provider network as its output. */
     public long runMachine(long outputs) {
+        return runMachine(stone(), outputs);
+    }
+
+    /** Runs the machine for another pattern: empties it, and puts {@code amount} of {@code output} into the network. */
+    public long runMachine(AEKey output, long amount) {
         var chest = helper.<ChestBlockEntity>getBlockEntity(machinePos);
         chest.clearContent();
-        return providerGrid().getStorageService().getInventory().insert(stone(), outputs, Actionable.MODULATE,
+        return providerGrid().getStorageService().getInventory().insert(output, amount, Actionable.MODULATE,
                 IActionSource.empty());
+    }
+
+    /**
+     * Runs the machine through the processing provider: empties it, and puts {@code amount} of {@code output} into the
+     * provider's return inventory, as a machine ejecting into the provider does. AE2's provider then hands it to its
+     * network with itself as the source.
+     */
+    public void ejectIntoProvider(AEKey output, long amount) {
+        helper.<ChestBlockEntity>getBlockEntity(machinePos).clearContent();
+        helper.assertValueEqual(processingProvider().getLogic().getReturnInv().insert(output, amount,
+                Actionable.MODULATE, IActionSource.empty()), amount, "The provider's return inventory must take it");
+    }
+
+    /** What the processing provider's return inventory still holds of {@code what}; it cannot be extracted from. */
+    public long inProviderReturns(AEKey what) {
+        var returns = processingProvider().getLogic().getReturnInv();
+        long amount = 0;
+        for (int slot = 0; slot < returns.size(); slot++) {
+            var stack = returns.getStack(slot);
+            if (stack != null && stack.what().equals(what)) amount += stack.amount();
+        }
+        return amount;
     }
 
     public void putInConsumer(AEKey what, long amount) {
@@ -423,11 +579,11 @@ public final class PatternProjectionFixture implements AutoCloseable {
 
     /**
      * Unloads and reloads every block of both networks in one tick, as a server restart does, so AE2 builds both Grids
-     * anew from the saved data, the consumer's running job included.
+     * anew from the saved data, the consumer's running job included. With the Bridge removed there is no part to find.
      */
     public void reloadAll() {
         BlockEntityReload.reload(helper, BASE.offset(site == null ? -1 : -5, -1, -3), BASE.offset(3, 1, 3));
-        bridge.refreshFirstBridgePart();
+        if (!bridgeRemoved) bridge.refreshFirstBridgePart();
     }
 
     /**
@@ -489,6 +645,20 @@ public final class PatternProjectionFixture implements AutoCloseable {
         processing.getPatternInv().addItems(PatternDetailsHelper.encodeProcessingPattern(
                 List.of(new GenericStack(glassBottle(), 1)), List.of(new GenericStack(honeyBottle(), 1))));
         processing.updatePatterns();
+    }
+
+    public void installCakePattern(boolean craftableBuckets) {
+        var crafting = assembler.provider().getLogic();
+        crafting.getPatternInv().addItems(craftingPattern(false, false,
+                new ItemStack(Items.MILK_BUCKET), new ItemStack(Items.MILK_BUCKET), new ItemStack(Items.MILK_BUCKET),
+                new ItemStack(Items.SUGAR), new ItemStack(Items.EGG), new ItemStack(Items.SUGAR),
+                new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT)));
+        if (craftableBuckets) {
+            crafting.getPatternInv().addItems(craftingPattern(false, false,
+                    new ItemStack(Items.IRON_INGOT), ItemStack.EMPTY, new ItemStack(Items.IRON_INGOT),
+                    ItemStack.EMPTY, new ItemStack(Items.IRON_INGOT)));
+        }
+        crafting.updatePatterns();
     }
 
     public ItemStack sugarPattern() {
@@ -636,6 +806,17 @@ public final class PatternProjectionFixture implements AutoCloseable {
     /** Submits the plan to {@code cpu} of the consumer, as a player choosing it in the terminal does. */
     public boolean submitOn(appeng.api.networking.crafting.ICraftingCPU cpu) {
         return consumerService().submitJob(plan, null, cpu, true, IActionSource.empty()).successful();
+    }
+
+    /** Submits the plan to {@code cpu} for {@code requester}, as a machine on the consumer network asking for it does. */
+    public boolean submitOn(appeng.api.networking.crafting.ICraftingCPU cpu,
+            appeng.api.networking.crafting.ICraftingRequester requester) {
+        return consumerService().submitJob(plan, requester, cpu, true, IActionSource.empty()).successful();
+    }
+
+    /** A node of the consumer network: its ME chest's. */
+    public appeng.api.networking.IGridNode consumerNode() {
+        return bridge.consumerChest().getMainNode().getNode();
     }
 
     /** The CPUs the consumer's crafting service lists now. */

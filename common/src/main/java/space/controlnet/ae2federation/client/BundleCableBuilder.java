@@ -12,15 +12,18 @@ import space.controlnet.ae2federation.bundle.BundleLook;
  * A bundled cell's translucent quads: its part of the bundle's one shell ({@link BundleShellLayout}), cut from the
  * artist's core frame, and inside it the ordinary cable's pieces at the cell's own size. A collar rings the cell where
  * its beam runs on into the next cell or into a branch, and a dense arm reaches each device it connects to, so a 2x3
- * bundle shows six beams in one 2x3 shell.
+ * bundle shows six beams in one 2x3 shell. A 2x2 or 3x3 bundle is one thick cable instead: no collars, but the artist's rings
+ * ({@link LargeCableRings}) around the one beam down its middle.
  */
 final class BundleCableBuilder {
     private final FederationCableBuilder cable;
     private final TextureAtlasSprite frame;
+    private final LargeCableRings rings;
 
-    BundleCableBuilder(FederationCableBuilder cable, TextureAtlasSprite frame) {
+    BundleCableBuilder(FederationCableBuilder cable, TextureAtlasSprite frame, LargeCableRings rings) {
         this.cable = cable;
         this.frame = frame;
+        this.rings = rings;
     }
 
     List<BakedQuad> build(BundleLook look) {
@@ -30,9 +33,23 @@ final class BundleCableBuilder {
             for (var tile : BundleShellLayout.tiles(panel)) quads.add(quad(baker, panel, tile));
         }
         for (var side : Direction.values()) {
-            if (look.open(side)) cable.addCollar(side, quads);
-            else if (look.dense(side)) cable.addDenseConnection(side, quads);
+            if (look.open(side)) {
+                if (!look.thick()) cable.addCollar(side, quads);
+            } else if (look.dense(side)) {
+                cable.addDenseConnection(side, quads);
+            }
         }
+        return List.copyOf(quads);
+    }
+
+    /**
+     * A 2x2 or 3x3 cell's share of the artist's rings. They are opaque, so they go in the solid layer: in the translucent one
+     * the shell, drawn first and writing depth, hid whatever of them lay behind it.
+     */
+    List<BakedQuad> solid(BundleLook look) {
+        if (!look.thick()) return List.of();
+        var quads = new ArrayList<BakedQuad>();
+        rings.add(look, quads);
         return List.copyOf(quads);
     }
 

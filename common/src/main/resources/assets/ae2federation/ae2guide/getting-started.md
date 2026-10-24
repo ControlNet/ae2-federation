@@ -3,20 +3,21 @@ navigation:
   parent: index.md
   title: Getting Started
   icon: ae2federation:nexus_core
-  position: 10
+  position: 100
 ---
 
 # Getting Started
 
-You need two separate ME networks, and only one of them needs power: once they are connected, the other can run on
-it. Federation does not replace AE2's own cables or controllers; it only connects networks.
+This page connects two ME networks and lets one of them use the other's storage. Only one of the two needs an energy
+source: once they share ME power, the other runs on it.
 
 ## 1. Make Nexus Cores
 
-Every Federation device needs a <ItemLink id="ae2federation:nexus_core" />. First press an
-<ItemLink id="ae2:engineering_processor_press" /> and a <ItemLink id="ae2:logic_processor_press" /> around an Ender
-Pearl in an <ItemLink id="ae2:inscriber" /> into an <ItemLink id="ae2federation:nexus_processor_press" />. Print an
-Ender Pearl under it, then press the circuit with Redstone Dust and a <ItemLink id="ae2:printed_silicon" /> into a
+Every Federation device is made with a <ItemLink id="ae2federation:nexus_core" />. In an
+<ItemLink id="ae2:inscriber" />, press an <ItemLink id="ae2:engineering_processor_press" /> and a
+<ItemLink id="ae2:logic_processor_press" /> around an Ender Pearl into a
+<ItemLink id="ae2federation:nexus_processor_press" />. That press prints Ender Pearls into circuits, and a circuit
+pressed with Redstone Dust and <ItemLink id="ae2:printed_silicon" /> becomes a
 <ItemLink id="ae2federation:nexus_processor" />.
 
 <Recipe id="ae2federation:nexus_processor_press" />
@@ -32,14 +33,15 @@ cores.
 
 ## 2. Connect the two networks
 
-Choose one of these. Both give you the same Federation screen.
+Networks that touch need only a Bridge. Networks further apart are joined by Switches and Federation Cable.
+Both ways open the same Federation screen.
 
-### Two networks side by side: a Bridge
+### Side by side: a Bridge
 
 <RecipeFor id="ae2federation:bridge" />
 
-Place the <ItemLink id="ae2federation:bridge" /> on a cable of the first network, so that its outer side touches a
-cable or device of the second network. The two networks stay separate; the Bridge only connects them for Federation.
+Place the <ItemLink id="ae2federation:bridge" /> on a cable of the first network, with its outer side touching a
+cable or device of the second. The two stay separate networks, joined for Federation through the Bridge.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/bridge.snbt" />
@@ -55,17 +57,16 @@ cable or device of the second network. The two networks stay separate; the Bridg
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
-### Networks further apart: Switches and Federation Cable
+### Further apart: Switches and Federation Cable
 
 <Row>
-  <RecipeFor id="ae2federation:cable" />
   <RecipeFor id="ae2federation:switch" />
+  <RecipeFor id="ae2federation:cable" />
 </Row>
 
-Touch one face of a <ItemLink id="ae2federation:switch" /> with an ME cable of the first network and another face
-with an ME cable of the second network. One Switch can take up to six networks, one per face. For networks far
-apart, give each its own Switch and join the Switches with <ItemLink id="ae2federation:cable" />. Switches placed
-against each other form one larger [Switch](items/switch.md) with room for more networks.
+Give each network a <ItemLink id="ae2federation:switch" /> that one of its ME cables touches, and join the Switches
+with <ItemLink id="ae2federation:cable" />. A Switch has a face for each network, up to six, so networks next to one
+Switch can share it.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/switch_cable.snbt" />
@@ -73,13 +74,13 @@ against each other form one larger [Switch](items/switch.md) with room for more 
     Network A: its energy cell powers both networks
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="5 0 0" max="6 1 1">
-    Switch: one face on network A's cable, another on Federation Cable
+    Switch: one face on network A's cable, another on the Federation Cable
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0.3 0.3" max="5 0.7 0.7">
     Federation Cable between the two Switches
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
-    Switch: one face on network B's cable, another on Federation Cable
+    Switch: one face on network B's cable, another on the Federation Cable
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 1 1">
     Network B: a drive and no power of its own
@@ -89,23 +90,22 @@ against each other form one larger [Switch](items/switch.md) with room for more 
 
 ## 3. Switch sharing on
 
-Right-click the Switch or the Bridge (stay within eight blocks) to open the Federation screen. It draws the networks
-in this Federation domain as cards. Click the line between two cards, or select one card and then the other network
-in the list on the right. The right side then shows that pair's rules in two groups, "A uses B's" and "B uses A's",
-each rule with a switch, and below them the shared energy switch. A rule works in its direction only.
+Right-click the Switch or the Bridge from within eight blocks to open the Federation screen. It draws each network as
+a card. Click the line between the two cards: the right side lists that pair's rules in two groups, "A uses B's" and
+"B uses A's", with the ME power switch below them.
 
-* Left-click a switch to step it forward (Disabled, Enabled, Enabled with re-export) and right-click to step back.
+* Left-click a rule to step it forward (Disabled, Enabled, Enabled with re-export); right-click steps it back.
 * **Storage** lets one network see, insert and extract the other's items, fluids and other resources.
-* **Crafting** lets one network use the other's pattern providers, paying with the materials it can see. It needs no Storage rule.
-* **ME power** joins both networks' energy into one pool; it has a single switch for the pair.
+* **Crafting** lets one network order from the other's pattern providers.
+* **ME power** joins both networks' AE energy into one pool, in both directions.
 
-In the scenes above only network A has an energy cell, so switch **ME power** on first: network B then runs on A's
-power, and its drive comes online. Then switch on Storage under "A uses B's".
+In the scenes only network A has an energy cell, so switch **ME power** on first: network B then runs on A's power
+and its drive comes online. Then switch on Storage under "A uses B's".
 
 ## 4. Check it works
 
-Open an ME terminal on the network that uses the other's storage: the other network's items are listed there and can
-be taken out. A rule's state shows beside its switch: green when active, yellow while it is not active yet, red when
-something blocks it, with the reason underneath. See [Troubleshooting](troubleshooting.md).
+Open an ME terminal on network A: network B's items are listed with A's own, and can be taken out. A rule's state
+shows beside it, green when active, yellow while it is starting and red when something blocks it, with the reason
+underneath; [Troubleshooting](troubleshooting.md) explains each reason.
 
-Next: [How Federation Works](mechanics.md) and [Remote Crafting](remote-processing.md).
+Next: [How Federation Works](mechanics/index.md) and [Crafting Across Networks](crafting/index.md).

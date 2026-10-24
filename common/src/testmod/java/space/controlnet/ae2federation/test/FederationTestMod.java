@@ -47,6 +47,15 @@ public final class FederationTestMod {
         modBus.addListener(space.controlnet.ae2federation.test.world.OtherDimensionSite::register);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
                 space.controlnet.ae2federation.test.world.OtherDimensionSite::onServerStopped);
+        if (net.neoforged.neoforge.gametest.GameTestHooks.isGametestServer()
+                || !System.getProperty("ldlib2.uitest.run", "").isEmpty()) {
+            // The GameTests and UI scenarios build domains without Beam Converters; the power tests and the topology
+            // showcase turn the requirement on themselves.
+            // Set once the server configuration has loaded, which would set it back.
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                    (net.neoforged.neoforge.event.server.ServerStartedEvent event) -> space.controlnet.ae2federation.power
+                            .OperatingPowerRule.set(false, space.controlnet.ae2federation.power.OperatingPowerRule.DEFAULT_MULTIPLIER));
+        }
     }
 
     private void registerGameTests(RegisterGameTestsEvent event) {
@@ -67,8 +76,8 @@ public final class FederationTestMod {
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
 					 SharedEnergyGameTests.class,
 					 ObservabilityGameTests.class,
-					   MultipartBridgeGameTests.class, RouterGameTests.class, CableCapacityGameTests.class, BundledCableGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
-					   FederationDomainBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class, RuleLinkGameTests.class, PatternProjectionGameTests.class, StatisticsGameTests.class, SurvivalRecipeGameTests.class,
+					   MultipartBridgeGameTests.class, RouterGameTests.class, CableCapacityGameTests.class, BeamFormerGameTests.class, CableLinkParityGameTests.class, BundledCableGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
+					   FederationDomainBridgeGameTests.class, DomainIdRestartGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class, RuleLinkGameTests.class, PatternProjectionGameTests.class, StatisticsGameTests.class, SurvivalRecipeGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
 						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
 							   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,
@@ -77,7 +86,9 @@ public final class FederationTestMod {
 							   CrossDimensionGameTests.class, FederationP2PGameTests.class, ProjectionContainerGameTests.class,
 							   ProjectionCpuSightGameTests.class,
 							   ProjectionHandBackGameTests.class,
-							   P2PRefreshBenchmarkGameTests.class,
+							   StorelessProviderReturnGameTests.class,
+							   ProjectionMergeGameTests.class,
+							   P2PRefreshBenchmarkGameTests.class, BeamScanBenchmarkGameTests.class,
 							   P2PTopologyGameTests.class,
 							   CrossDimensionCraftingGameTests.class,
 							   CrossDimensionProductionExportGameTests.class));

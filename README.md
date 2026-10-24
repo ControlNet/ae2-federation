@@ -6,6 +6,8 @@
 [![Modrinth](https://img.shields.io/badge/Modrinth-ae2--federation-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/ae2-federation)
 [![CurseForge](https://img.shields.io/badge/CurseForge-ae2--federation-F16436?style=flat-square&logo=curseforge&logoColor=white)](https://www.curseforge.com/minecraft/mc-mods/ae2-federation)
 
+![AE2 Federation](docs/teaser.webp)
+
 Link separate Applied Energistics 2 networks so they can share items, crafting, machines and power.
 
 ## Features
@@ -40,4 +42,5 @@ Link separate Applied Energistics 2 networks so they can share items, crafting, 
 
 ## License
 
-The code is licensed under [AGPL-3.0](LICENSE). The art assets are All Rights Reserved.
+The code is licensed under [AGPL-3.0](LICENSE). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for everything
+else.

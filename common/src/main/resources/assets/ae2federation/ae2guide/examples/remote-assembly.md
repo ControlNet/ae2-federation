@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: Order from an Assembly Workshop
   icon: ae2:molecular_assembler
-  position: 20
+  position: 520
 ---
 
 # Order from an Assembly Workshop

@@ -18,7 +18,8 @@ class Assets:
     def __init__(self, repo, cache, packs=()):
         self.repo, self.cache = Path(repo), Path(cache)
         self.root = self.repo / 'common/src/main/resources/assets'
-        self.packs = [Path(p) for p in packs]
+        # The old flow ribbons' texture, which the mod no longer ships, lives with these tools.
+        self.packs = [self.repo / 'tools/blender/resources', *(Path(p) for p in packs)]
         self.used = {}
         self.models = {}
         self.omitted_internal_faces = []
@@ -96,10 +97,14 @@ class Assets:
 
 
 def dependency_packs(repo):
+    """AE2's jar and Minecraft's client jar, as the Gradle build has cached them; models may inherit from either."""
     properties = (Path(repo) / 'gradle.properties').read_text()
     version = re.search(r'^ae2_version=(.+)$', properties, re.M).group(1).strip()
-    cache = Path.home() / '.gradle/caches/modules-2/files-2.1/org.appliedenergistics/appliedenergistics2' / version
-    return sorted(cache.glob(f'*/appliedenergistics2-{version}.jar'))
+    minecraft = re.search(r'^minecraft_version=(.+)$', properties, re.M).group(1).strip()
+    caches = Path.home() / '.gradle/caches'
+    cache = caches / 'modules-2/files-2.1/org.appliedenergistics/appliedenergistics2' / version
+    client = caches / f'neoformruntime/artifacts/minecraft_{minecraft}_client.jar'
+    return sorted(cache.glob(f'*/appliedenergistics2-{version}.jar')) + ([client] if client.is_file() else [])
 
 
 def face_points(lo, hi):

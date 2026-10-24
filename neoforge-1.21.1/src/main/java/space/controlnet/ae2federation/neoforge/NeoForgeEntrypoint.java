@@ -13,6 +13,8 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
 import org.slf4j.Logger;
 import space.controlnet.ae2federation.CommonStartup;
+import space.controlnet.ae2federation.beam.BeamLinkService;
+import space.controlnet.ae2federation.beam.BeamRegistration;
 import space.controlnet.ae2federation.config.FederationServerConfig;
 import space.controlnet.ae2federation.FederationCreativeTab;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
@@ -22,6 +24,7 @@ import space.controlnet.ae2federation.crafting.projection.CraftingProjectionServ
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
+import space.controlnet.ae2federation.power.OperatingPowerService;
 import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
 import space.controlnet.ae2federation.energy.EnergySharingService;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
@@ -55,6 +58,7 @@ public final class NeoForgeEntrypoint {
         FederationP2PRegistration.register(modBus);
         RouterRegistration.register(modBus);
         ProcessingRegistration.register(modBus);
+        BeamRegistration.register(modBus);
         MaterialRegistration.register(modBus);
         FederationCreativeTab.register(modBus);
         ObservationPayloads.register(modBus);
@@ -76,9 +80,16 @@ public final class NeoForgeEntrypoint {
         LOGGER.info("AE2F_ARTIFACT_SERVER_JOIN player={}", event.getEntity().getGameProfile().getName());
     }
 
-    /** Binding requests from the level ticks and from player actions or GameTests, then each service's tick. */
+    /**
+     * Binding requests from the level ticks and from player actions or GameTests, then the beams and Quantum Cubes,
+     * whose links change the domains, then the domains' operating power, which may stop a domain, then each service's
+     * tick.
+     */
     private static void onServerTickBindings(ServerTickEvent.Post event) {
         FederationBindingRefresh.flushAll();
+        BeamLinkService.tickAll(event.getServer());
+        space.controlnet.ae2federation.quantum.QuantumLinkService.tickAll(event.getServer());
+        OperatingPowerService.tick(event.getServer());
         StorageMountService.tick(event.getServer());
         CraftingProjectionService.tick(event.getServer());
         EnergySharingService.tickAll();
@@ -100,6 +111,8 @@ public final class NeoForgeEntrypoint {
             // needed them end. Each service itself goes when the server stops.
             FederationBindingRefresh.closeLevel(level);
             space.controlnet.ae2federation.router.DeviceStructureUpdater.closeLevel(level);
+            BeamLinkService.closeLevel(level);
+            space.controlnet.ae2federation.quantum.QuantumLinkService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
             CraftingProjectionService.levelClosed(level);
             EnergySharingService.levelClosed(level);
@@ -119,6 +132,8 @@ public final class NeoForgeEntrypoint {
         StorageMountService.closeServer(server);
         CraftingProjectionService.closeServer(server);
         EnergySharingService.closeServer(server);
+        OperatingPowerService.closeServer(server);
+        space.controlnet.ae2federation.quantum.QuantumLinkService.closeServer(server);
         LevelObservabilityService.closeServer(server);
         space.controlnet.ae2federation.policy.PolicyService.closeServer(server);
         FederationDomainRegistryAccess.closeServer(server);

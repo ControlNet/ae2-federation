@@ -103,6 +103,27 @@ final class PolicyActivationTest {
                 BindingDiagnostic.inactiveReason(PolicyActivationState.OVER_CAPACITY));
     }
 
+    @Test
+    void anUnpoweredSharedDomainStopsTheRuleWithItsOwnReason() {
+        var store = new PolicyStore();
+        store.edit(new PolicyEdit(KEY, PolicyRevision.NONE, PolicyRule.storageDefaults()));
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var sw = new FederationDomainNodeId("test:dimension", 1);
+        var switchPorts = new java.util.LinkedHashMap<String, FederationDomainPortEvidence>();
+        var networks = java.util.List.of(CONSUMER, PROVIDER);
+        for (int index = 0; index < networks.size(); index++) {
+            switchPorts.put("native" + index, new FederationDomainPortEvidence.Native(
+                    FederationDomainSourceId.nativePort(new FederationDomainPortId(sw, "native" + index)), networks.get(index)));
+        }
+        registry.upsertNode(new FederationDomainNodeEvidence(sw, FederationDomainNodeKind.SWITCH, switchPorts));
+        registry.setUnpowered(registry.federationDomainOf(sw).orElseThrow().federationDomainId(), true);
+
+        assertEquals(PolicyActivationState.UNPOWERED, PolicyActivation.classify(
+                request(store, registry, settled(CONSUMER), settled(PROVIDER), BackendStatus.READY)));
+        assertEquals(BindingDiagnostic.Reason.DOMAIN_UNPOWERED,
+                BindingDiagnostic.inactiveReason(PolicyActivationState.UNPOWERED));
+    }
+
     private static PolicyActivationRequest request(PolicyStore store, FederationDomainRegistry registry,
             IdentitySettlement consumer, IdentitySettlement provider, BackendStatus backend) {
         return new PolicyActivationRequest(store.configured(KEY), KEY, consumer, provider, registry, backend);

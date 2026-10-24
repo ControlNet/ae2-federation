@@ -32,7 +32,8 @@ public final class DeviceStructure {
         }
     }
 
-    public enum Reason { TOO_LARGE, NOT_SOLID, TOUCHING }
+    /** {@code WRONG_SHAPE}: a cuboid that a device's own rule rejects ({@link FormableDevice#judge}). */
+    public enum Reason { TOO_LARGE, NOT_SOLID, TOUCHING, WRONG_SHAPE }
 
     public record Invalid(Reason reason) implements Result {
     }

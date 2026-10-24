@@ -31,7 +31,23 @@ public final class StatisticsNames {
     public static final String DONE = "done";
     public static final String CANCELLED = "cancelled";
 
+    /**
+     * Gauges per Federation domain, named {@code fedpower/<domain>/<part>}: its use by group ({@code use/<group>}),
+     * its converters' input (FE/t), their buffer as a percentage and its size in FE, and whether it was stopped (1/0).
+     */
+    public static final String FEDPOWER = "fedpower";
+    public static final String FEDPOWER_INPUT = "input";
+    public static final String FEDPOWER_STORED = "stored";
+    public static final String FEDPOWER_CAPACITY = "capacity";
+    public static final String FEDPOWER_STOPPED = "stopped";
+    public static final String FEDPOWER_USE = "use";
+
     private StatisticsNames() {
+    }
+
+    /** The prefix of every Federation power series of {@code domain}, ending in a slash. */
+    public static String fedpower(String domain) {
+        return FEDPOWER + "/" + domain + "/";
     }
 
     public static String network(String series, NetworkId network) {

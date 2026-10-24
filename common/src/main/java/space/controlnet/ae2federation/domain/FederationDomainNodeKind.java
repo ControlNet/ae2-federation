@@ -8,6 +8,12 @@ public enum FederationDomainNodeKind {
     PATTERN_PROVIDER,
     ENDPOINT,
     P2P_TUNNEL,
+    /** A block of an ME Federation Beam Converter, which powers its domain. */
+    CONVERTER,
+    /** A block of an ME Federation Beam Former, which links its domain across a beam. */
+    BEAM_FORMER,
+    /** A block of an ME Federation Quantum Cube, which links its domain to the cube bound to it. */
+    QUANTUM_CUBE,
     /** A node no structural rule treats specially, such as a test's synthetic node. */
     OTHER
 }

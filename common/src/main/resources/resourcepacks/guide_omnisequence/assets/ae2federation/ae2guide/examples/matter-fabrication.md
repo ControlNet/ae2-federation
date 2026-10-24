@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: Order from a Matter Fabrication Well
   icon: molecularmanipulator:matter_fabrication_pattern_assembly
-  position: 90
+  position: 590
 ---
 
 # Order from a Matter Fabrication Well
@@ -17,7 +17,7 @@ Transfinite is installed.
 <ItemLink id="molecularmanipulator:matter_fabrication_pattern_assembly" /> in one of its service positions; your main
 network (network A) with a crafting CPU, a crafting terminal, storage and power; a <ItemLink id="ae2federation:switch" />.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="2.5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/matter_fabrication_well.snbt" />
   <BoxAnnotation color="#915dcd" min="2 1 0" max="5 3 1">
     Network A: crafting terminal, crafting CPU, storage, and the energy cell that powers both networks

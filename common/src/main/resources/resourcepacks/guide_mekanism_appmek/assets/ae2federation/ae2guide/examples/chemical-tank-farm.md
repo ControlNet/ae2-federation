@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A Chemical Tank Farm
   icon: mekanism:dynamic_tank
-  position: 50
+  position: 550
 ---
 
 # A Chemical Tank Farm
@@ -17,7 +17,7 @@ installed.
 <ItemLink id="mekanism:dynamic_valve" />) and an <ItemLink id="ae2:storage_bus" />; a workshop network with a terminal;
 a <ItemLink id="ae2federation:switch" /> both touch.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/chemical_tank_farm.snbt" />
   <BoxAnnotation color="#915dcd" min="6 0 0" max="7 1 1">
     Workshop: a terminal, running on the tank farm's power

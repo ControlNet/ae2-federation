@@ -93,11 +93,21 @@ class CableExportTests(unittest.TestCase):
         for mask in (3,12,48):
             connections=sum(3<<(bit*2) for bit in range(6) if mask&(1<<bit))
             quads=self.data['shells'][str(connections)]
-            self.assertEqual(4,len(quads))
             axis={3:0,12:1,48:2}[mask]
-            for q in quads:
+            sides=[q for q in quads if q['texture']=='ae2federation:part/cable/dense/line']
+            self.assertEqual(4,len(sides))
+            for q in sides:
                 self.assertEqual({0,1},{p[axis] for p in q['positions']})
-                self.assertEqual('ae2federation:part/cable/dense/line',q['texture'])
+            # The rest are the collars round the glass. A collar's ring face lies in the end plane, but nothing there
+            # covers the bore: the run stays open into the next cell.
+            collars=[q for q in quads if q not in sides]
+            self.assertTrue(collars)
+            others=[k for k in range(3) if k!=axis]
+            for q in collars:
+                self.assertEqual('ae2federation:part/cable/dense/collar',q['texture'])
+                if len({p[axis] for p in q['positions']})==1 and q['positions'][0][axis] in (0,1):
+                    covers=all(min(p[k] for p in q['positions'])<.5<max(p[k] for p in q['positions']) for k in others)
+                    self.assertFalse(covers,'an end cap')
 
     def test_captured_uvs_and_bounds_are_finite_for_every_export(self):
         for quads in self.data['shells'].values():

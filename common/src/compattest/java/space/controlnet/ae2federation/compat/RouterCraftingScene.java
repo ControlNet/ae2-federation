@@ -63,6 +63,10 @@ final class RouterCraftingScene implements AutoCloseable {
     private final Set<PolicyKey> configured = new LinkedHashSet<>();
     private int stage;
     private String refused;
+    private java.util.function.BiFunction<ICraftingSimulationRequester, java.util.function.Supplier<Future<ICraftingPlan>>,
+            Future<ICraftingPlan>> planning = (requester, start) -> start.get();
+    private java.util.function.BiConsumer<Future<ICraftingPlan>, ICraftingPlan> checkPlan = (future, plan) -> {
+    };
     private String powering;
     private String[] switchOff;
     private AEItemKey gone;
@@ -105,6 +109,7 @@ final class RouterCraftingScene implements AutoCloseable {
         List<Member> sources = List.of();
         final List<Order> orders = new ArrayList<>();
         boolean storage = true;
+        boolean crafting = true;
 
         Member(String name, Direction face, Placement placement, Predicate<BlockEntity> ready) {
             this.name = name;
@@ -191,6 +196,15 @@ final class RouterCraftingScene implements AutoCloseable {
         return this;
     }
 
+    /** The last network uses the storage of the networks named in {@code sources}, with no Crafting rule. */
+    RouterCraftingScene usingStorageOf(String... sources) {
+        var member = members.getLast();
+        member.crafting = false;
+        member.sources = new ArrayList<>();
+        for (var source : sources) ((ArrayList<Member>) member.sources).add(named(source));
+        return this;
+    }
+
     /** The network {@link #poweredBy} names brings its own power source, so no energy cell is placed. */
     RouterCraftingScene withoutEnergyCell() {
         ownPower = true;
@@ -224,6 +238,18 @@ final class RouterCraftingScene implements AutoCloseable {
     /** The network named {@code name} holds the energy cell instead of the first one. */
     RouterCraftingScene poweredBy(String name) {
         powering = name;
+        return this;
+    }
+
+    /**
+     * Starts every consumer's calculation through {@code planning}, as an addon's crafting screen does around AE2's
+     * call, and checks each finished plan and its calculation with {@code check} before the job goes in.
+     */
+    RouterCraftingScene planningWith(java.util.function.BiFunction<ICraftingSimulationRequester,
+            java.util.function.Supplier<Future<ICraftingPlan>>, Future<ICraftingPlan>> planning,
+            java.util.function.BiConsumer<Future<ICraftingPlan>, ICraftingPlan> check) {
+        this.planning = planning;
+        checkPlan = check;
         return this;
     }
 
@@ -313,12 +339,13 @@ final class RouterCraftingScene implements AutoCloseable {
                                     + describe(grid(helper.getLevel().getBlockEntity(helper.absolutePos(start(member.face)))))
                                     + " and its chest on " + describe(grid(member)));
                 }
+                // Every CPU first: this stage runs again until they all pass, and a pattern must go in only once.
+                for (var member : consumers()) {
+                    helper.assertTrue(!grid(member).getCraftingService().getCpus().isEmpty(),
+                            member.name + " must have a crafting CPU");
+                }
                 for (var member : members) {
-                    if (member.consumer()) {
-                        helper.assertTrue(!grid(member).getCraftingService().getCpus().isEmpty(),
-                                member.name + " must have a crafting CPU");
-                        continue;
-                    }
+                    if (member.consumer()) continue;
                     var entity = helper.getLevel().getBlockEntity(helper.absolutePos(member.patternContainer));
                     for (var pattern : member.patterns) {
                         helper.assertTrue(member.install.test(entity, pattern), member.name + "'s " + entity
@@ -330,6 +357,7 @@ final class RouterCraftingScene implements AutoCloseable {
                     for (var source : member.sources) {
                         rule(new PolicyKey(network(member), network(source), PolicyCapability.STORAGE),
                                 PolicyRule.storageDefaults());
+                        if (!member.crafting) continue;
                         rule(new PolicyKey(network(member), network(source), PolicyCapability.CRAFTING),
                                 PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)));
                     }
@@ -351,9 +379,10 @@ final class RouterCraftingScene implements AutoCloseable {
                                 "The chest must take the inputs");
                     }
                     for (var order : member.orders) {
-                        order.planFuture = grid(member).getCraftingService().beginCraftingCalculation(
-                                helper.getLevel(), requester(member), order.what, order.amount,
-                                CalculationStrategy.REPORT_MISSING_ITEMS);
+                        var requester = requester(member);
+                        order.planFuture = planning.apply(requester, () -> grid(member).getCraftingService()
+                                .beginCraftingCalculation(helper.getLevel(), requester, order.what, order.amount,
+                                        CalculationStrategy.REPORT_MISSING_ITEMS));
                     }
                 }
                 stage = 6;
@@ -365,6 +394,7 @@ final class RouterCraftingScene implements AutoCloseable {
                         helper.assertTrue(planReady(order), "Waiting for " + member.name + "'s plan");
                         helper.assertFalse(order.plan.simulation(), member.name + "'s own inputs must be enough for "
                                 + order.what + ": " + order.plan.missingItems());
+                        checkPlan.accept(order.planFuture, order.plan);
                     }
                 }
                 for (var member : consumers()) {
@@ -580,6 +610,11 @@ final class RouterCraftingScene implements AutoCloseable {
 
     private MEChestBlockEntity chest(Member member) {
         return helper.getBlockEntity(chestPosition(member.face));
+    }
+
+    /** The Grid of the network named {@code name}. */
+    IGrid grid(String name) {
+        return grid(named(name));
     }
 
     private List<IGrid> grids() {

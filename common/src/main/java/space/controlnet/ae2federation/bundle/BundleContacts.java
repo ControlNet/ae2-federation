@@ -8,6 +8,7 @@ import java.util.function.Predicate;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import space.controlnet.ae2federation.router.CableLinkedBlock;
 import space.controlnet.ae2federation.router.RouterBlock;
 
 /**
@@ -59,7 +60,10 @@ public final class BundleContacts {
             var device = cell.relative(face);
             if (level instanceof Level loaded && !loaded.isLoaded(device)) continue;
             var state = level.getBlockState(device);
-            if (!RouterBlock.formed(state) || body != null && state.getBlock() != body) continue;
+            if (!RouterBlock.formed(state) || body != null && state.getBlock() != body
+                    || !(state.getBlock() instanceof CableLinkedBlock linked && linked.linksCable(state, face.getOpposite()))) {
+                continue;
+            }
             if (body == null) {
                 body = state.getBlock();
                 firstDevice = device;

@@ -162,8 +162,8 @@ public final class BundledCableGameTests {
     /**
      * A survival player: nine Federation Cables right-clicked onto a 2x2 bundle's end face add a layer of four, onto its
      * side a branch of four, and the last cable is too few for another branch. Shift+right-click with a wrench
-     * dismantles one cell and reverts its layer. Three wrench clicks sent to the server form a 1x2 bundle, once every
-     * position holds a cable.
+     * dismantles one cell and reverts its layer. Three wrench clicks sent to the server refuse a 1x2 bundle, which
+     * players cannot build today, and form a 2x2 bundle once every position holds a cable.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 200, required = true, manualOnly = true)
@@ -208,21 +208,26 @@ public final class BundledCableGameTests {
         helper.assertTrue(bundled(helper, run.east()), "the rest of the bundle stays");
 
         var lineStart = CENTER.offset(-2, 3, -3);
-        for (var pos : BlockPos.betweenClosed(lineStart, lineStart.offset(1, 0, 1))) {
+        for (var pos : BlockPos.betweenClosed(lineStart, lineStart.offset(1, 1, 1))) {
             fixtures.placeFederationCable(pos.immutable());
         }
         BundleInteraction.form(player, helper.absolutePos(lineStart), helper.absolutePos(lineStart.south()),
-                helper.absolutePos(lineStart.offset(2, 0, 1)), Direction.UP);
-        helper.assertFalse(bundled(helper, lineStart), "a position without a cable refuses the whole box");
-        BundleInteraction.form(player, helper.absolutePos(lineStart), helper.absolutePos(lineStart.south()),
                 helper.absolutePos(lineStart.offset(1, 0, 1)), Direction.UP);
-        var line = bundles.at(helper.absolutePos(lineStart));
-        helper.assertTrue(line.isPresent(), "three valid clicks form the bundle");
-        helper.assertValueEqual(line.get().bundle().shape().toString(), "1x2", "a 1x2 bundle along x");
-        helper.assertValueEqual(line.get().segment().axis(), Direction.Axis.X, "the third click set the axis");
-        RouterEvidence.write("bundleplayerextendsbranchesanddismantles", 7, Map.of("extendUsesFour", "true",
+        helper.assertFalse(bundled(helper, lineStart), "a 1x2 cross-section is not built today");
+        var corner = lineStart.offset(0, 1, 1);
+        BundleInteraction.form(player, helper.absolutePos(lineStart), helper.absolutePos(corner),
+                helper.absolutePos(lineStart.east(2)), Direction.UP);
+        helper.assertFalse(bundled(helper, lineStart), "a position without a cable refuses the whole box");
+        BundleInteraction.form(player, helper.absolutePos(lineStart), helper.absolutePos(corner),
+                helper.absolutePos(lineStart.east()), Direction.UP);
+        var square = bundles.at(helper.absolutePos(lineStart));
+        helper.assertTrue(square.isPresent(), "three valid clicks form the bundle");
+        helper.assertValueEqual(square.get().bundle().shape().toString(), "2x2", "a 2x2 bundle along x");
+        helper.assertValueEqual(square.get().segment().axis(), Direction.Axis.X, "the third click set the axis");
+        RouterEvidence.write("bundleplayerextendsbranchesanddismantles", 8, Map.of("extendUsesFour", "true",
                 "branchUsesFour", "true", "tooFewRefused", "true", "wrenchDismantles", "true",
-                "dismantleRevertsLayer", "true", "missingCableRefuses", "true", "threeClicksForm", "true"));
+                "dismantleRevertsLayer", "true", "lineRefused", "true", "missingCableRefuses", "true",
+                "threeClicksForm", "true"));
         clear(helper);
         fixtures.close();
         helper.succeed();

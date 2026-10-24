@@ -1,8 +1,7 @@
 package space.controlnet.ae2federation.client;
 
-/** M optical design parameters. Load is the cable's capacity count against its limit, not measured traffic. */
-public record CableBeamStyle(double load, boolean overloaded, float coreRadius, float haloRadius,
-        float pulseAmplitude, float pulseDensity, float emission) {
+/** Beam parameters by load. Load is the cable's capacity count against its limit, not measured traffic. */
+public record CableBeamStyle(double load, boolean overloaded, float pulseDensity, float emission) {
     /** A presentation default for previews; world cables use {@link #loadOf} their synced capacity count. */
     public static final double DEFAULT_LOAD = 0.6;
     /**
@@ -33,15 +32,7 @@ public record CableBeamStyle(double load, boolean overloaded, float coreRadius, 
     public static CableBeamStyle fromLoad(double load, boolean overloaded) {
         if (!Double.isFinite(load) || load < 0) throw new IllegalArgumentException("Invalid visual load");
         float u = (float) Math.min(load, 1);
-        // Sized for the shell's 6-voxel glass window (half-width 3/16): visible at play distance, never touching the frame.
-        return new CableBeamStyle(load, overloaded, .018f + .027f * u, .06f + .09f * u,
-                .028f * u, 1 + 2 * u, .45f + 1.55f * u);
-    }
-
-    /** Bounded 64-tick clock, continuous across wrap, including negative coordinates. */
-    public static double phase(int coordinate, float along, long tick, float partialTick) {
-        return (Math.floorMod(coordinate, 2) + along) / 2.0
-                - (Math.floorMod(tick, 64) + partialTick) / 64.0;
+        return new CableBeamStyle(load, overloaded, 1 + 2 * u, .45f + 1.55f * u);
     }
 
     public float wave(double phase) {
@@ -70,10 +61,30 @@ public record CableBeamStyle(double load, boolean overloaded, float coreRadius, 
                 : 1 + .018f * (float) Math.sin(Math.TAU * (Math.floorMod(tick, 64) + partialTick) / 64);
     }
 
-    /** Use for visual interpolation only; never decide gameplay overload from this value. */
+    /** How close an easing load comes to its target before it takes the target itself. */
+    static final double SNAP = 1e-4;
+    /** An easing load is drawn in steps of this much, so cables easing together share one computed beam. */
+    static final double DRAWN_STEP = 1 / 1024.0;
+
+    /**
+     * Use for visual interpolation only; never decide gameplay overload from this value. Within {@link #SNAP} of the
+     * target it returns the target: the exponential alone stalls a few ulps short of it for good, and cables left on
+     * different ulps no longer share a computed beam.
+     */
     public static double smooth(double previous, double target, double seconds) {
         if (!Double.isFinite(previous) || !Double.isFinite(target) || !Double.isFinite(seconds)
                 || previous < 0 || target < 0 || seconds < 0) throw new IllegalArgumentException("Invalid smoothing input");
-        return target + (previous - target) * Math.exp(-seconds / (target > previous ? .25 : .8));
+        double next = target + (previous - target) * Math.exp(-seconds / (target > previous ? .25 : .8));
+        return Math.abs(next - target) < SNAP ? target : next;
+    }
+
+    /**
+     * The load to draw for a cable whose load eases toward {@code target}: the target itself once there, else the
+     * eased value in steps of {@link #DRAWN_STEP}. Each cable eases by its own clock, so unrounded the cables of one
+     * domain would each draw a slightly different load for seconds after a count changes, and each compute its own
+     * beam; a step changes a beam's width by under 1/10000 block.
+     */
+    public static double drawn(double eased, double target) {
+        return eased == target ? target : Math.round(eased / DRAWN_STEP) * DRAWN_STEP;
     }
 }

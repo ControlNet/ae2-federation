@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: Order from an Alloy Furnace
   icon: useless_mod:advanced_alloy_furnace_block
-  position: 71
+  position: 571
 ---
 
 # Order from an Alloy Furnace

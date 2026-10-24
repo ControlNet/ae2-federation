@@ -15,6 +15,7 @@
   "tests": [
     "core",
     "extendedae",
-    "omnisequence"
+    "omnisequence",
+    "appliedenhancements"
   ]
 }

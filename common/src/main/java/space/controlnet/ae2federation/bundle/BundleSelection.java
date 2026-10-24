@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.bundle;
 
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 
@@ -23,7 +24,9 @@ public final class BundleSelection {
         NOT_FLAT,
         NOT_ALONG,
         FACE_ALONG_LINE,
-        TOO_LONG
+        TOO_LONG,
+        /** A cross-section the rule knows but players cannot build today ({@link BundleShape#buildable}). */
+        NOT_BUILDABLE
     }
 
     public sealed interface Result permits Section, Box, Invalid {
@@ -43,8 +46,13 @@ public final class BundleSelection {
     public record Invalid(Problem problem) implements Result {
     }
 
-    /** The cross-section between two corner clicks. */
+    /** The cross-section between two corner clicks, if players can build it today. */
     public static Result crossSection(BlockPos first, BlockPos second) {
+        return crossSection(first, second, BundleShape::buildable);
+    }
+
+    /** The cross-section between two corner clicks, of the cross-sections {@code allowed}. */
+    static Result crossSection(BlockPos first, BlockPos second, Predicate<BundleShape> allowed) {
         var min = BlockPos.min(first, second);
         var max = BlockPos.max(first, second);
         var flat = flatAxes(min, max);
@@ -58,12 +66,19 @@ public final class BundleSelection {
                 ? BundleShape.of(extent(min, max, BundleSegment.across(flat.get(0))[0]),
                         extent(min, max, BundleSegment.across(flat.get(0))[1]))
                 : BundleShape.of(1, longest(min, max));
-        return shape.<Result>map(s -> new Section(min, max, s)).orElseGet(() -> new Invalid(Problem.TOO_WIDE));
+        if (shape.isEmpty()) return new Invalid(Problem.TOO_WIDE);
+        if (!allowed.test(shape.get())) return new Invalid(Problem.NOT_BUILDABLE);
+        return new Section(min, max, shape.get());
     }
 
-    /** The bundle box from both corners, the third click and the face that click hit. */
+    /** The bundle box from both corners, the third click and the face that click hit, if players can build it today. */
     public static Result box(BlockPos first, BlockPos second, BlockPos third, Direction face) {
-        var result = crossSection(first, second);
+        return box(first, second, third, face, BundleShape::buildable);
+    }
+
+    /** The bundle box from both corners, the third click and the face that click hit, of the cross-sections {@code allowed}. */
+    static Result box(BlockPos first, BlockPos second, BlockPos third, Direction face, Predicate<BundleShape> allowed) {
+        var result = crossSection(first, second, allowed);
         if (!(result instanceof Section section)) return result;
         var min = section.min();
         var max = section.max();

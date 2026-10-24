@@ -5,6 +5,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
+import space.controlnet.ae2federation.beam.BeamLinkRule;
 import space.controlnet.ae2federation.domain.CableCapacityLimit;
 
 /**
@@ -16,6 +17,7 @@ public final class FederationServerConfig {
     public static final ModConfigSpec SPEC;
     private static final ModConfigSpec.BooleanValue ENFORCE_CABLE_CAPACITY;
     private static final ModConfigSpec.IntValue CABLE_CAPACITY;
+    private static final ModConfigSpec.IntValue BEAM_RANGE;
 
     static {
         var builder = new ModConfigSpec.Builder();
@@ -31,6 +33,12 @@ public final class FederationServerConfig {
                         "each Federation Pattern Provider counts 1. Used only while enforceCableCapacity is true.")
                 .defineInRange("cableCapacity", CableCapacityLimit.DEFAULT_CAPACITY, 1, CableCapacityLimit.MAX_CAPACITY);
         builder.pop();
+        builder.push("beam");
+        BEAM_RANGE = builder.comment(
+                        "How many blocks may lie between the fronts of two ME Federation Beam Formers that link. Longer",
+                        "beams notice a block put in their way later.")
+                .defineInRange("maxRange", BeamLinkRule.DEFAULT_RANGE, 1, BeamLinkRule.MAX_RANGE);
+        builder.pop();
         SPEC = builder.build();
     }
 
@@ -43,11 +51,15 @@ public final class FederationServerConfig {
         modBus.addListener(ModConfigEvent.Reloading.class, event -> apply(event.getConfig()));
         modBus.addListener(ModConfigEvent.Unloading.class, event -> {
             // The next world starts from the defaults until its own file loads.
-            if (event.getConfig().getSpec() == SPEC) CableCapacityLimit.set(true, CableCapacityLimit.DEFAULT_CAPACITY);
+            if (event.getConfig().getSpec() != SPEC) return;
+            CableCapacityLimit.set(true, CableCapacityLimit.DEFAULT_CAPACITY);
+            BeamLinkRule.set(BeamLinkRule.DEFAULT_RANGE);
         });
     }
 
     private static void apply(ModConfig config) {
-        if (config.getSpec() == SPEC) CableCapacityLimit.set(ENFORCE_CABLE_CAPACITY.get(), CABLE_CAPACITY.get());
+        if (config.getSpec() != SPEC) return;
+        CableCapacityLimit.set(ENFORCE_CABLE_CAPACITY.get(), CABLE_CAPACITY.get());
+        BeamLinkRule.set(BEAM_RANGE.get());
     }
 }

@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: An Ore Doubling Line
   icon: mekanism:enrichment_chamber
-  position: 42
+  position: 542
 ---
 
 # An Ore Doubling Line
@@ -18,7 +18,7 @@ This page appears because Mekanism is installed.
 <ItemLink id="mekanism:energized_smelter" />, each with a charged <ItemLink id="mekanism:basic_energy_cube" />, a
 hopper and a <ItemLink id="ae2:storage_bus" />.
 
-<GameScene zoom="4" interactive={true} background="transparent">
+<GameScene zoom="3.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/ore_line.snbt" />
   <BoxAnnotation color="#915dcd" min="8 0 0" max="10 2 1">
     Your main network: crafting terminal, crafting CPU and storage

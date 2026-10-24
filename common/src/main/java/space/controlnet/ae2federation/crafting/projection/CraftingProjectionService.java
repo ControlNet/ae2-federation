@@ -4,9 +4,12 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.ICraftingLink;
 import appeng.api.networking.crafting.ICraftingProvider;
+import appeng.api.networking.crafting.ICraftingService;
+import appeng.api.networking.security.IActionHost;
+import appeng.api.networking.security.IActionSource;
+import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.crafting.CraftingBlockEntity;
-import appeng.me.cluster.implementations.CraftingCPUCluster;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,6 +30,7 @@ import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.IdentityEpoch;
 import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.identity.NetworkIdentityRegistry;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.BindingDiagnostic;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
@@ -57,13 +61,6 @@ public final class CraftingProjectionService implements AutoCloseable {
     private static final Map<MinecraftServer, CraftingProjectionService> SERVICES = new WeakHashMap<>();
     /** Ticks between looks at each provider's patterns and at what consumers still wait for. */
     static final int REFRESH_TICKS = 20;
-    /**
-     * Ticks after the service starts before the ledger is first looked at, so the first look does not run while the
-     * world is still loading. A debt does not depend on it: one whose consumer's CPU is out of sight is kept however
-     * long that lasts (see {@link #sweepLedger}).
-     */
-    static final int STARTUP_TICKS = 100;
-
     /** The overworld: it names the server for registry, rule and ledger lookups; nothing here is limited to it. */
     private final ServerLevel level;
     private final CraftingFederationDomainObserver federationDomains;
@@ -85,6 +82,8 @@ public final class CraftingProjectionService implements AutoCloseable {
     private long reconciledEpoch = Long.MIN_VALUE;
     private long ticks;
     private long sweeps;
+    /** Counts accepted pushes through projections, to tell which consumer pushed to a provider last. */
+    private long pushes;
     /** The Federation links of the domain topology {@link #linksRegistry} had at {@link #linksTopology}. */
     private FederationLinks links;
     private Object linksRegistry;
@@ -127,7 +126,7 @@ public final class CraftingProjectionService implements AutoCloseable {
      * changes still use coalesced discovery; removal only touches already observed projections by object identity.
      */
     public static synchronized void globalProviderRemoved(MinecraftServer server, IGrid source, ICraftingProvider provider) {
-        if (provider instanceof PatternProjection) return;
+        if (PatternProjection.isProjection(provider)) return;
         var service = SERVICES.get(server);
         if (service == null) return;
         for (var entry : List.copyOf(service.projected.entrySet())) {
@@ -136,13 +135,83 @@ public final class CraftingProjectionService implements AutoCloseable {
             var projection = projected.projections().remove(provider);
             if (projection == null) continue;
             projection.withdraw();
-            projected.consumer().getCraftingService().removeGlobalCraftingProvider(projection);
+            projected.consumer().getCraftingService().removeGlobalCraftingProvider(projection.registered());
             var status = service.statuses.get(entry.getKey().rule());
             if (status != null && status.active()) {
                 int patterns = projected.projections().values().stream()
                         .mapToInt(remaining -> remaining.getAvailablePatterns().size()).sum();
                 service.statuses.put(entry.getKey().rule(), new Status(Optional.empty(), patterns));
             }
+        }
+    }
+
+    /**
+     * How much of {@code what} networks that {@code grid} carries owe other networks it carries. A Grid carries two
+     * networks only while native cable joins them: their identities are a pending merge, so Federation sees neither and
+     * routes nothing, and AE2's own crafting storage hands a machine's output straight to the waiting CPUs. Zero at
+     * once while nothing is owed.
+     */
+    public static synchronized long owedWithin(IGrid grid, AEKey what) {
+        var service = service(grid);
+        return service == null ? 0
+                : service.debtsWithin(grid, what).stream().mapToLong(CraftingReturnLedger.Owed::amount).sum();
+    }
+
+    /**
+     * Called after {@code grid}'s crafting service handed {@code amount} of {@code what} to its CPUs, which together
+     * waited for {@code before} of it and now wait for {@code after} ({@link #waiting}). In one Grid AE2 does not say which job took the
+     * output: what the debts within the Grid ({@link #owedWithin}) cannot explain counts for other waits first, and only
+     * the rest settles those debts, oldest first. Outside a joined Grid nothing is owed within it, so the return router
+     * stays the only path that settles.
+     */
+    public static synchronized void cpusReceived(IGrid grid, AEKey what, long amount, long before, long after) {
+        var service = service(grid);
+        if (service != null) service.received(grid, what, amount, before, after);
+    }
+
+    /**
+     * What the CPUs of {@code crafting} wait for of {@code what}. Its public total is what the addons that run their
+     * own CPUs extend, but one addon's hook can cut the others short: Neo ECO 21.2.9's cancellable return inject on
+     * {@code getRequestedAmount} returns before Advanced AE's and Thunderbolt's run. So the CPUs it lists are counted
+     * too, with the lifecycle adapters' exact amounts, and the larger count is taken; each count can only miss waits.
+     */
+    public static long waiting(ICraftingService crafting, AEKey what) {
+        long listed = 0;
+        for (var cpu : crafting.getCpus()) {
+            long amount = CraftingCpuLifecycle.waiting(cpu, what);
+            if (amount > 0) listed = listed > Long.MAX_VALUE - amount ? Long.MAX_VALUE : listed + amount;
+        }
+        return Math.max(crafting.getRequestedAmount(what), listed);
+    }
+
+    private static @Nullable CraftingProjectionService service(IGrid grid) {
+        var pivot = grid.getPivot();
+        return pivot == null ? null : SERVICES.get(pivot.getLevel().getServer());
+    }
+
+    private List<CraftingReturnLedger.Owed> debtsWithin(IGrid grid, AEKey what) {
+        var ledger = CraftingReturnLedger.get(level);
+        if (!ledger.owesAnything()) return List.of();
+        var claims = NetworkIdentityRegistry.get(level).claimIndex();
+        return ledger.debts(what).stream().filter(debt -> claims.carries(grid, debt.executing())
+                && claims.carries(grid, debt.consumer())).toList();
+    }
+
+    private void received(IGrid grid, AEKey what, long amount, long before, long after) {
+        // A saturated total says nothing about how much was taken.
+        if (before == Long.MAX_VALUE) return;
+        // A job that finishes clears what else it waited for, so the waits can fall by more than was delivered.
+        long taken = Math.min(amount, Math.max(0, before - after));
+        if (taken <= 0) return;
+        var debts = debtsWithin(grid, what);
+        long owed = debts.stream().mapToLong(CraftingReturnLedger.Owed::amount).sum();
+        long left = Math.min(owed, Math.max(0, taken - Math.max(0, before - owed)));
+        var ledger = CraftingReturnLedger.get(level);
+        for (var debt : debts) {
+            if (left <= 0) break;
+            long delivered = Math.min(left, debt.amount());
+            ledger.take(debt.executing(), debt.consumer(), what, delivered, 0);
+            left -= delivered;
         }
     }
 
@@ -215,7 +284,7 @@ public final class CraftingProjectionService implements AutoCloseable {
                 sync(entry.getKey(), entry.getValue().consumer(), entry.getValue().provider(), discoveries);
             }
         }
-        if (ticks % REFRESH_TICKS == 0 && ticks >= STARTUP_TICKS) sweepLedger();
+        if (ticks % REFRESH_TICKS == 0) sweepLedger();
     }
 
     private boolean changed() {
@@ -308,7 +377,7 @@ public final class CraftingProjectionService implements AutoCloseable {
         for (var real : stale) {
             var projection = entry.projections().remove(real);
             projection.withdraw();
-            crafting.removeGlobalCraftingProvider(projection);
+            crafting.removeGlobalCraftingProvider(projection.registered());
         }
         int patterns = 0;
         for (var real : reals) {
@@ -317,6 +386,7 @@ public final class CraftingProjectionService implements AutoCloseable {
                 projection = new PatternProjection(real, (pushed, details, containerItems, inputs) -> {
                     var jobs = observeJobs(consumer);
                     return () -> {
+                        pushed.markPushed(++pushes);
                         owe(pair, provider, details, containerItems, jobs);
                         var statistics = statistics();
                         statistics.pushed(pair.consumer(), pair.executing());
@@ -325,9 +395,9 @@ public final class CraftingProjectionService implements AutoCloseable {
                     };
                 });
                 entry.projections().put(real, projection);
-                crafting.addGlobalCraftingProvider(projection);
+                crafting.addGlobalCraftingProvider(projection.registered());
             } else if (projection.refresh()) {
-                crafting.refreshGlobalCraftingProvider(projection);
+                crafting.refreshGlobalCraftingProvider(projection.registered());
             }
             patterns += projection.getAvailablePatterns().size();
         }
@@ -340,7 +410,7 @@ public final class CraftingProjectionService implements AutoCloseable {
         var crafting = entry.consumer().getCraftingService();
         for (var projection : entry.projections().values()) {
             projection.withdraw();
-            crafting.removeGlobalCraftingProvider(projection);
+            crafting.removeGlobalCraftingProvider(projection.registered());
         }
         entry.projections().clear();
     }
@@ -428,10 +498,40 @@ public final class CraftingProjectionService implements AutoCloseable {
             if (routers.containsKey(grid)) return;
             // An output returns only while the networks are linked; otherwise it is held where it arrived.
             var router = new CraftingReturnRouter(network, grid, ledger, consumer -> linked(network, consumer)
-                    ? federationDomains.grid(consumer).orElse(null) : null, statistics());
+                    ? federationDomains.grid(consumer).orElse(null) : null, consumer -> jobsEnded(ledger, consumer),
+                    source -> pusher(grid, source), statistics());
             routers.put(grid, router);
             grid.getStorageService().addGlobalStorageProvider(router);
         });
+    }
+
+    /** Whether every job of {@code consumer} the ledger watches has ended, and none may still run out of sight. */
+    private boolean jobsEnded(CraftingReturnLedger ledger, NetworkId consumer) {
+        var state = jobs(ledger, consumer);
+        return !state.outOfSight() && state.finished();
+    }
+
+    /**
+     * The consumer whose CPU pushed last, through a projection, to the real provider of {@code executing} that
+     * {@code source} names, as AE2's pattern provider names itself when it hands its returns to its network; null when
+     * {@code source} is not such a provider or no consumer pushed to it.
+     */
+    private @Nullable NetworkId pusher(IGrid executing, IActionSource source) {
+        var node = source.machine().map(IActionHost::getActionableNode).orElse(null);
+        if (node == null || node.getGrid() != executing) return null;
+        var provider = node.getService(ICraftingProvider.class);
+        if (provider == null) return null;
+        NetworkId consumer = null;
+        long latest = 0;
+        for (var entry : projected.entrySet()) {
+            if (entry.getValue().provider() != executing) continue;
+            var projection = entry.getValue().projections().get(provider);
+            if (projection != null && projection.lastPush() > latest) {
+                latest = projection.lastPush();
+                consumer = entry.getKey().consumer();
+            }
+        }
+        return consumer;
     }
 
     /** Whether {@code first} and {@code second} are joined through Federation Domains now. */

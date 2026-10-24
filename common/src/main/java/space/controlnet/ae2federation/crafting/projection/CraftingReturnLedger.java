@@ -118,6 +118,17 @@ public final class CraftingReturnLedger extends SavedData {
         return owed.containsKey(executing);
     }
 
+    boolean owesAnything() {
+        return !owed.isEmpty();
+    }
+
+    /** Whether anything here is kept under {@code network}: debts either way, watched jobs or transit stock. */
+    public boolean references(NetworkId network) {
+        return owed.containsKey(network) || jobs.containsKey(network) || transit.containsKey(network)
+                || unknownJobs.contains(network) || owed.values().stream().anyMatch(keys -> keys.values().stream()
+                        .anyMatch(consumers -> consumers.containsKey(network)));
+    }
+
     /** The consumers owed {@code key} by {@code executing} and how much each, in the order they pushed. */
     Map<NetworkId, Long> consumers(NetworkId executing, AEKey key) {
         var keys = owed.get(executing);
@@ -126,6 +137,17 @@ public final class CraftingReturnLedger extends SavedData {
         var amounts = new LinkedHashMap<NetworkId, Long>();
         consumers.forEach((consumer, debt) -> amounts.put(consumer, debt.owed));
         return amounts;
+    }
+
+    /** Every debt of {@code key}, by executing network in the order it first owed, then by consumer in push order. */
+    List<Owed> debts(AEKey key) {
+        var debts = new java.util.ArrayList<Owed>();
+        owed.forEach((executing, keys) -> {
+            var consumers = keys.get(key);
+            if (consumers != null) consumers.forEach((consumer, debt) ->
+                    debts.add(new Owed(executing, consumer, key, debt.owed, debt.held)));
+        });
+        return debts;
     }
 
     /**

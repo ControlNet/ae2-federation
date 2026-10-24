@@ -69,6 +69,9 @@ public final class ProviderTargetAuthorization {
         if (registry.overCapacity(domain.orElseThrow().federationDomainId())) {
             return paused(ProviderTargetState.FEDERATION_DOMAIN_OVER_CAPACITY);
         }
+        if (registry.unpowered(domain.orElseThrow().federationDomainId())) {
+            return paused(ProviderTargetState.FEDERATION_DOMAIN_UNPOWERED);
+        }
         return new ProviderTargetResolution.Authorized(new AuthorizedNativeTarget(level, position,
                 request.endpointSide(), mode.orElseThrow(), context.provenance()));
     }

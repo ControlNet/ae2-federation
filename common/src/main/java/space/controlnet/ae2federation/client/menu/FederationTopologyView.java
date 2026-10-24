@@ -68,12 +68,15 @@ final class FederationTopologyView {
     private static final float LINK_PICK_PIXELS = 5;
     /** Fitting may zoom out this far, so a narrow canvas still shows every card. */
     private static final float MIN_FIT_SCALE = 0.1f;
+    /** Fitting goes no closer than this, so a domain of one or two cards does not open blown up to the largest zoom. */
+    private static final float MAX_FIT_SCALE = 1f;
 
     private final GraphView graph;
     /** The canvas layer the links are drawn on, whose coordinates a press is measured in to pick a link. */
     private UIElement linkLayer;
     private final Consumer<String> setPolicy;
     private Consumer<String> setEndpointEnergy = target -> { };
+    private Consumer<String> keepNetwork = target -> { };
     private final Consumer<String> rename;
     private final BiConsumer<String, String> openObject;
     private final Label title;
@@ -102,6 +105,11 @@ final class FederationTopologyView {
     private final Label locationNote;
     private final Label locationLegend;
     private final Button highlight;
+    /** Settles a pending merge on the selected network, after the player confirms. */
+    private final Button keep;
+    private final UI ui;
+    /** The other networks of the selected pending merge, by name, for the confirmation. */
+    private List<String> keepOthers = List.of();
     private List<space.controlnet.ae2federation.client.policy.BlockMarks.Mark> highlightBlocks = List.of();
     /** The parts of a network whose identity is in doubt, each outlined in its own colour. */
     private List<space.controlnet.ae2federation.client.WorldHighlight.Group> highlightParts = List.of();
@@ -121,12 +129,20 @@ final class FederationTopologyView {
     /** Accepted deliveries per rule key over the last five seconds, from real transfers only. */
     private final Map<String, JsonObject> flows = new HashMap<>();
     private Label throughput;
+    /** The bar's full width in GUI pixels, as {@code .graph-power-track} draws it. */
+    private static final int POWER_BAR_WIDTH = 40;
+    private UIElement powerGauge;
+    private UIElement powerFill;
+    private Label powerValue;
     /** The domain's Router group or Bridge, as the server reports it. */
     private JsonObject via;
     private boolean showRelated;
-    /** Whether the opened domain is over cable capacity, and which shown related domains are. */
+    /** Whether the opened domain has stopped, over cable capacity or unpowered, and which shown related domains have. */
     private boolean openedStopped;
     private final java.util.Set<String> stoppedDomains = new java.util.HashSet<>();
+    /** The stopped domains whose cause is cable capacity, which their captions name. */
+    private boolean openedOverCapacity;
+    private final java.util.Set<String> overCapacityDomains = new java.util.HashSet<>();
     private int canvasColor = FederationTheme.CANVAS;
     private final Button scopeButton;
     private final Button domainScopeButton;
@@ -195,6 +211,7 @@ final class FederationTopologyView {
         this.setPolicy = setPolicy;
         this.rename = rename;
         this.openObject = openObject;
+        this.ui = ui;
         graph = element(ui, "domain_graph", GraphView.class);
         // GraphView pans and zooms only for a press or a wheel turn that reaches the bare canvas. Cards, link labels and
         // Endpoint nodes cover most of it, so they hand theirs on, in the capture phase before anything under them can
@@ -235,7 +252,10 @@ final class FederationTopologyView {
         });
         element(ui, "graph_zoom_in", Button.class).setOnClick(event -> graph.setScale(graph.getScale() * 1.25f));
         element(ui, "graph_zoom_out", Button.class).setOnClick(event -> graph.setScale(graph.getScale() / 1.25f));
-        element(ui, "graph_fit", Button.class).setOnClick(event -> graph.fitToChildren(12, MIN_FIT_SCALE));
+        element(ui, "graph_fit", Button.class).setOnClick(event -> {
+            graph.fitToChildren(12, MIN_FIT_SCALE);
+            limitFitScale();
+        });
         var legend = element(ui, "graph_legend", Label.class);
         legend.setText(legendText());
         var legendToggle = element(ui, "graph_legend_toggle", Button.class);
@@ -255,6 +275,11 @@ final class FederationTopologyView {
         });
         showLegend.run();
         throughput = element(ui, "graph_throughput", Label.class);
+        powerGauge = element(ui, "graph_power", UIElement.class);
+        powerFill = element(ui, "graph_power_fill", UIElement.class);
+        powerValue = element(ui, "graph_power_value", Label.class);
+        powerGauge.setAllowHitTest(false);
+        powerGauge.setDisplay(false);
         throughput.setAllowHitTest(false);
         var flowToggle = element(ui, "graph_flow_toggle", Button.class);
         FederationIcons.apply(flowToggle, FederationIcons.FLOW);
@@ -320,6 +345,9 @@ final class FederationTopologyView {
         locationNote = element(ui, "network_location_note", Label.class);
         locationLegend = element(ui, "network_location_legend", Label.class);
         highlight = element(ui, "network_highlight", Button.class);
+        keep = element(ui, "network_keep", Button.class);
+        keep.setOnClick(event -> confirmKeep(network(selectedNetwork)));
+        keep.setDisplay(false);
         element(ui, "network_preview", UIElement.class).addChild(preview);
         preview.setModeButtons(element(ui, "network_view_map", Button.class), element(ui, "network_view_3d", Button.class));
         // The button stays pressed while its blocks are outlined; pressing it again ends the outline early.
@@ -370,14 +398,41 @@ final class FederationTopologyView {
         refresh();
     }
 
+    /**
+     * The corner gauge: the domain's buffer fill as a bar and a percentage, green while it runs, yellow while use is
+     * above input, red at 0 % when stopped. Not drawn while operating power is not required ({@code ""}).
+     */
+    void acceptPower(String value) {
+        var parts = value.split(":");
+        powerGauge.setDisplay(parts.length == 2);
+        if (parts.length != 2) return;
+        int percent = Math.max(0, Math.min(100, Integer.parseInt(parts[0])));
+        int color = switch (parts[1]) {
+            case "stopped" -> FederationTheme.ERROR;
+            case "draining" -> FederationTheme.WARN;
+            default -> FederationTheme.OK;
+        };
+        // A stopped domain's bar is drawn full in red, whatever its buffer holds; the figure still gives the fill.
+        var stopped = parts[1].equals("stopped");
+        powerFill.layout(layout -> layout.width(stopped ? POWER_BAR_WIDTH : POWER_BAR_WIDTH * percent / 100f));
+        powerFill.style(style -> style.backgroundTexture(FederationTheme.solid(color)));
+        powerValue.setText(Component.literal(percent + "%").withStyle(Style.EMPTY.withColor(
+                (stopped ? FederationTheme.ERROR : FederationTheme.DARK_TEXT) & 0xffffff)));
+    }
+
     void acceptChoices(JsonObject root) {
         // An unpublished domain sends no members; keep the last view until the server reports the context stale.
         if (!root.has("networks") && !networks.isEmpty()) return;
         scope = root.has("scope") ? root.get("scope").getAsString() : "domain";
         via = root.has("via") ? root.getAsJsonObject("via") : null;
-        openedStopped = root.has("openedOverCapacity") && root.get("openedOverCapacity").getAsBoolean();
-        stoppedDomains.clear();
+        openedOverCapacity = root.has("openedOverCapacity") && root.get("openedOverCapacity").getAsBoolean();
+        openedStopped = openedOverCapacity || root.has("openedUnpowered") && root.get("openedUnpowered").getAsBoolean();
+        overCapacityDomains.clear();
         if (root.has("overCapacityDomains")) root.getAsJsonArray("overCapacityDomains")
+                .forEach(value -> overCapacityDomains.add(value.getAsString()));
+        stoppedDomains.clear();
+        stoppedDomains.addAll(overCapacityDomains);
+        if (root.has("unpoweredDomains")) root.getAsJsonArray("unpoweredDomains")
                 .forEach(value -> stoppedDomains.add(value.getAsString()));
         networks.clear();
         networkDomains.clear();
@@ -534,10 +589,10 @@ final class FederationTopologyView {
         var caption = Component.literal("· ").append(tr(showRelated ? "scope.related" : "scope.domain"));
         boolean truncated = relatedTotal > related.size();
         if (showRelated && truncated) caption.append(" · ").append(tr("scope.truncated", related.size(), relatedTotal));
-        if (openedStopped) caption.append(" · ").append(tr("over_capacity")
+        if (openedOverCapacity) caption.append(" · ").append(tr("over_capacity")
                 .withStyle(Style.EMPTY.withColor(FederationTheme.ERROR & 0xffffff)));
         scopeCaption.setText(caption);
-        scopeCaption.style(style -> style.tooltips(openedStopped
+        scopeCaption.style(style -> style.tooltips(openedOverCapacity
                 ? Component.translatable("ae2federation.ui.domain.runtime.backend.domain_over_capacity") : Component.empty()));
         scopeButton.style(style -> style.tooltips(truncated
                 ? tr("scope.help_truncated", related.size(), relatedTotal) : tr("scope.help", related.size())));
@@ -568,6 +623,50 @@ final class FederationTopologyView {
     /** Where an Endpoint's energy switch sends its {@code EndpointEnergyTarget}. */
     void onEndpointEnergy(Consumer<String> sender) {
         setEndpointEnergy = sender;
+    }
+
+    /** Where Keep sends the id of the network a pending merge settles on. */
+    void onKeepNetwork(Consumer<String> sender) {
+        keepNetwork = sender;
+    }
+
+    /** Asks before a merge is settled: the other networks' names and rules are deleted. */
+    private void confirmKeep(Network network) {
+        if (network == null) return;
+        var name = name(network).getString();
+        var dialog = new com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog().setTitle(tr("keep_title", name).getString())
+                .darkenBackground();
+        dialog.setId("keep_dialog");
+        dialog.overlay.layout(style -> style.width(Math.min(300, ui.rootElement.getContentWidth() - 12)));
+        dialog.overlay.style(style -> style.backgroundTexture(FederationTheme.FRAME));
+        dialog.titleBar.style(style -> style.backgroundTexture(
+                new com.lowdragmc.lowdraglib2.gui.texture.ColorRectTexture(FederationTheme.INSET)));
+        dialog.contentContainer.style(style -> style.backgroundTexture(
+                new com.lowdragmc.lowdraglib2.gui.texture.ColorRectTexture(FederationTheme.PANEL)));
+        dialog.buttonContainer.style(style -> style.backgroundTexture(
+                new com.lowdragmc.lowdraglib2.gui.texture.ColorRectTexture(FederationTheme.PANEL)));
+        var body = new Label();
+        body.setId("keep_consequence");
+        body.setText(tr("keep_consequence", String.join(" · ", keepOthers), name));
+        body.textStyle(style -> style.fontSize(8).textWrap(TextWrap.WRAP).adaptiveHeight(true));
+        body.layout(style -> style.widthPercent(100));
+        dialog.addContent(body);
+        var cancel = new Button();
+        cancel.setId("keep_cancel");
+        cancel.setText(tr("rename_cancel"));
+        cancel.setOnClick(event -> dialog.close());
+        var confirm = new Button();
+        confirm.setId("keep_confirm");
+        confirm.addClass("danger-action");
+        confirm.setText(tr("keep_confirm", name));
+        confirm.setOnClick(event -> {
+            dialog.close();
+            keepNetwork.accept(network.id());
+        });
+        cancel.layout(style -> style.flex(1).height(20));
+        confirm.layout(style -> style.flex(1).height(20));
+        dialog.addButton(cancel).addButton(confirm);
+        dialog.show(ui.rootElement);
     }
 
     void setEditable(boolean value) {
@@ -642,6 +741,17 @@ final class FederationTopologyView {
             if (at == graph.contentRoot) return true;
         }
         return false;
+    }
+
+    /** Zooms a fit that came out closer than {@link #MAX_FIT_SCALE} back out to it, around the same centre. */
+    private void limitFitScale() {
+        float scale = graph.getScale();
+        if (scale <= MAX_FIT_SCALE) return;
+        float centerX = graph.getOffsetX() + graph.getContentWidth() / scale / 2;
+        float centerY = graph.getOffsetY() + graph.getContentHeight() / scale / 2;
+        float halfWidth = graph.getContentWidth() / MAX_FIT_SCALE / 2;
+        float halfHeight = graph.getContentHeight() / MAX_FIT_SCALE / 2;
+        graph.fit(centerX - halfWidth, centerY - halfHeight, centerX + halfWidth, centerY + halfHeight, MIN_FIT_SCALE);
     }
 
     /** GraphView's own wheel zoom, kept on the point under the mouse, for a wheel turn over something on the canvas. */
@@ -1621,6 +1731,7 @@ final class FederationTopologyView {
         pairEditor.setDisplay(pairEnds != null);
         var endpoint = endpointNodes.stream().filter(node -> node.id().equals(selectedEndpoint)).findFirst().orElse(null);
         endpointDetail.setDisplay(pairEnds == null && endpoint != null);
+        keep.setDisplay(false);
         if (pairEnds != null) renderPair(network(pairEnds[0]), network(pairEnds[1]));
         else if (endpoint != null) renderEndpoint(endpoint);
         else renderNetwork(network(selectedNetwork));
@@ -1669,12 +1780,14 @@ final class FederationTopologyView {
             var parts = facts != null && facts.has("identityParts") ? facts.getAsJsonArray("identityParts") : null;
             if (state == NetworkIdentityState.MERGE && parts != null) {
                 var names = new ArrayList<String>();
+                var others = new ArrayList<String>();
                 parts.forEach(part -> {
                     var id = part.getAsJsonObject().has("network") ? part.getAsJsonObject().get("network").getAsString() : "";
                     var known = network(id);
-                    names.add(known != null ? name(known).getString() : id.length() >= 8
-                            ? tr("network_name", id.substring(0, 8).toUpperCase(Locale.ROOT)).getString() : id);
+                    names.add(known != null ? name(known).getString() : displayName(id, "").getString());
+                    if (!id.equals(network.id())) others.add(names.getLast());
                 });
+                keepOthers = List.copyOf(others);
                 explanation.append("\n").append(tr("identity.merge.contains", String.join(" · ", names)));
             } else if (state == NetworkIdentityState.SPLIT && parts != null) {
                 explanation.append("\n").append(tr("identity.split.parts", parts.size()));
@@ -1695,6 +1808,10 @@ final class FederationTopologyView {
         devices.setText(tr("devices", providers(network).size() + endpoints(network).size()));
         devices.style(style -> style.tooltips(tr("devices_help", providers(network).size(), endpoints(network).size())));
         devices.setActive(!providers(network).isEmpty() || !endpoints(network).isEmpty());
+        // A pending merge has no devices of its own; its row offers Keep instead.
+        var merging = !network.foreign() && identityState.equals("merge");
+        keep.setDisplay(merging);
+        devices.setDisplay(!merging);
         // Linked networks first, as the design's "Connections (N)"; the others follow so rules can still be created.
         var others = shown().stream().filter(other -> !other.id().equals(network.id()) && discovers(network, other)).toList();
         var linked = others.stream().filter(other -> !linkSummary(network, other).getString().isEmpty()).toList();
@@ -2332,14 +2449,14 @@ final class FederationTopologyView {
         return FederationWorkspace.tr("capability." + capability.name().toLowerCase(Locale.ROOT));
     }
 
-    /** The network's name, or "Network 082A" by its identity tag while it has none. */
+    /** The network's name, or "Network 082A5C" by its identity tag while it has none. */
     static Component name(Network network) {
         return displayName(network.id(), network.name());
     }
 
     static Component displayName(String id, String name) {
         if (!name.isEmpty()) return Component.literal(name);
-        return tr("network_name", id.substring(0, 4).toUpperCase(Locale.ROOT));
+        return tr("network_name", NetworkId.tag(id));
     }
 
     /**
@@ -2445,6 +2562,7 @@ final class FederationTopologyView {
                 var focus = focusBounds();
                 if (focus == null) graph.fitToChildren(16, MIN_FIT_SCALE);
                 else graph.fit(focus[0] - 16, focus[1] - 16, focus[2] + 16, focus[3] + 16, MIN_FIT_SCALE);
+                limitFitScale();
                 fitted = true;
                 fittedWidth = graph.getContentWidth();
                 fittedHeight = graph.getContentHeight();
@@ -2526,7 +2644,9 @@ final class FederationTopologyView {
                 float left = (float) plate.outline().stream().filter(point -> point[1] <= top + 1)
                         .mapToDouble(point -> point[0]).min().orElse(0);
                 var name = opened ? tr("plate_opened") : domainName(plate.domain());
-                if (stopped) name = name.copy().append(" · ").append(tr("over_capacity"));
+                if (opened ? openedOverCapacity : overCapacityDomains.contains(plate.domain())) {
+                    name = name.copy().append(" · ").append(tr("over_capacity"));
+                }
                 int x = Math.round(left - plate.padding() + 8);
                 int y = Math.round(top - PLATE_NAME_HEIGHT);
                 long spot = (long) x << 32 | (y & 0xffffffffL);

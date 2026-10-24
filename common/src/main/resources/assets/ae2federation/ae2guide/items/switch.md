@@ -1,9 +1,9 @@
 ---
 navigation:
-  parent: index.md
+  parent: items/index.md
   title: ME Federation Switch
   icon: ae2federation:switch
-  position: 115
+  position: 420
 categories:
 - network infrastructure
 item_ids:
@@ -14,14 +14,14 @@ item_ids:
 
 <BlockImage id="ae2federation:switch" scale="6" />
 
-The Switch brings ME networks into a [Federation domain](../mechanics.md). Each of its six faces works on its own:
+The Switch brings ME networks into a [Federation domain](../mechanics/index.md). Each of its six faces works on its own:
 
 * touched by an ME cable or device, the face joins that network, without using a channel or idle power;
 * touched by <ItemLink id="ae2federation:cable" />, a <ItemLink id="ae2federation:router" />, another Switch, a
   Pattern Provider front or an Endpoint front, the face links the domain onwards.
 
-Up to six different networks can meet at one Switch block, and its faces never join them into one network. Two faces
-on the same network are fine and count once.
+Up to six different networks can meet at one Switch block, and they stay separate networks. Two faces on the same
+network are fine and count once.
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/switch_hub.snbt" />
@@ -81,9 +81,9 @@ separate.
 </GameScene>
 
 A group that is not a solid box does not form, and none of its faces connect: its networks leave the domain until you
-complete the box or take the extra blocks away. Right-click one of its blocks to see why on the action bar.
+complete the box or take the extra blocks away. Right-click one of its blocks with an empty hand to see why on the action bar.
 
 However large, a Switch does not end a cable segment: the cable on all its sides counts as one segment (see
-[Network Capacity](../network-capacity.md)). Only a Router ends one.
+[Network Capacity](../mechanics/capacity.md)). Only a Router ends one.
 
 <RecipeFor id="ae2federation:switch" />

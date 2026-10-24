@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.client;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -156,5 +157,110 @@ final class BundleShellLayoutTest {
         // The end cap spans y (u) by z (v); its south edge is at z voxel 14, where the turn's wall carries it on.
         assertEquals(GLASS, texel(end, 8, 13), "the end's edge toward the turn has no rail");
         assertEquals("2,6", texel(end, 2, 13), "the end's outer rail runs straight on into the turn");
+    }
+
+    /**
+     * A 2x2 cube with a one-layer arm toward three sides (local layer, row, column: arms toward row -, column + and
+     * layer +), as a run made of the cube and one arm, with the other two arms as branches. Each cube cell between two
+     * arms has a concave corner on its closed face, where the arms' rails meet; whichever arm the run takes, one of
+     * them lies on the run's end cap. In every orientation and with every run, the rails turn the corner as an L.
+     */
+    @Test
+    void theRailsTurnEveryConcaveCornerOfAThreeArmBendWhicheverArmTheRunTakes() {
+        // Local axes: 0 layer, 1 row, 2 column. Arms and the cube as {min, max} per local axis.
+        int[][] rowArm = {{0, 1}, {0, 0}, {1, 2}};
+        int[][] columnArm = {{0, 1}, {1, 2}, {3, 3}};
+        int[][] layerArm = {{2, 2}, {1, 2}, {1, 2}};
+        int[][][] arms = {layerArm, rowArm, columnArm};
+        int[][] cube = {{0, 1}, {1, 2}, {1, 2}};
+        // Concave cube cells: {layer, row, column}, closed face {axis, sign}, and the two arms' directions.
+        int[][][] corners = {
+                {{0, 1, 2}, {0, -1}, {1, -1}, {2, 1}},
+                {{1, 2, 2}, {1, 1}, {0, 1}, {2, 1}},
+                {{1, 1, 1}, {2, -1}, {0, 1}, {1, -1}}};
+        int[][] permutations = {{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}};
+        for (var permutation : permutations) {
+            for (int signs = 0; signs < 8; signs++) {
+                var frame = new Frame(permutation, signs);
+                for (int run = 0; run < 3; run++) {
+                    var set = new BundleSet();
+                    for (int arm = 0; arm < 3; arm++) {
+                        var box = arms[arm];
+                        if (arm == run) {
+                            box = box.clone();
+                            box[run] = new int[] {Math.min(box[run][0], cube[run][0]),
+                                    Math.max(box[run][1], cube[run][1])};
+                        }
+                        set.form(frame.segment(box, arm));
+                    }
+                    for (var corner : corners) {
+                        var cell = frame.pos(corner[0][0], corner[0][1], corner[0][2]);
+                        var face = frame.direction(corner[1][0], corner[1][1]);
+                        var first = frame.direction(corner[2][0], corner[2][1]);
+                        var second = frame.direction(corner[3][0], corner[3][1]);
+                        var panels = BundleShellLayout.panels(look(set, cell)).stream()
+                                .filter(panel -> panel.normal() == face).toList();
+                        for (int p = -2; p < 3; p++) {
+                            for (int q = -2; q < 3; q++) {
+                                if (p < 0 && q < 0) continue;
+                                // p voxels in from the first arm's wall, q from the second's.
+                                int[] voxel = new int[3];
+                                voxel[first.getAxis().ordinal()] = first.getAxisDirection().getStep() > 0
+                                        ? 13 - p : 2 + p;
+                                voxel[second.getAxis().ordinal()] = second.getAxisDirection().getStep() > 0
+                                        ? 13 - q : 2 + q;
+                                String expected = (2 + Math.max(p, q)) + ",6";
+                                assertEquals(expected, texelAt(panels, voxel), "run along local axis " + run + ", "
+                                        + frame + ", cell " + cell + " face " + face + ", p " + p + " q " + q);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** The texel the one panel covering {@code voxel} (its in-plane coordinates) samples there. */
+    private static String texelAt(List<BundleShellLayout.Panel> panels, int[] voxel) {
+        String found = null;
+        for (var panel : panels) {
+            int a = voxel[panel.uAxis().ordinal()];
+            int b = voxel[panel.vAxis().ordinal()];
+            if (a < panel.u().low() || a >= panel.u().high() || b < panel.v().low() || b >= panel.v().high()) continue;
+            assertTrue(found == null, "two panels over one voxel");
+            found = texel(panel, a, b);
+        }
+        if (found == null) throw new AssertionError("no panel at " + Arrays.toString(voxel));
+        return found;
+    }
+
+    /** Local layer, row and column axes mapped onto world axes, each either way round. */
+    private record Frame(int[] permutation, int signs) {
+        BlockPos pos(int layer, int row, int column) {
+            int[] local = {layer, row, column};
+            int[] world = new int[3];
+            for (int i = 0; i < 3; i++) world[permutation[i]] = sign(i) * local[i];
+            return new BlockPos(world[0], world[1], world[2]);
+        }
+
+        BundleSegment segment(int[][] box, int axis) {
+            var a = pos(box[0][0], box[1][0], box[2][0]);
+            var b = pos(box[0][1], box[1][1], box[2][1]);
+            return new BundleSegment(BlockPos.min(a, b), BlockPos.max(a, b), Direction.Axis.values()[permutation[axis]]);
+        }
+
+        Direction direction(int axis, int sign) {
+            return Direction.fromAxisAndDirection(Direction.Axis.values()[permutation[axis]],
+                    sign * sign(axis) > 0 ? Direction.AxisDirection.POSITIVE : Direction.AxisDirection.NEGATIVE);
+        }
+
+        private int sign(int axis) {
+            return (signs >> axis & 1) == 0 ? 1 : -1;
+        }
+
+        @Override
+        public String toString() {
+            return "axes " + Arrays.toString(permutation) + " signs " + signs;
+        }
     }
 }

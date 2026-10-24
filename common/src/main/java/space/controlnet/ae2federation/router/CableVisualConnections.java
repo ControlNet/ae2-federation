@@ -4,19 +4,16 @@ import appeng.api.parts.IPartHost;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import space.controlnet.ae2federation.bundle.BundleLook;
 import space.controlnet.ae2federation.bundle.BundleView;
 import space.controlnet.ae2federation.p2p.FederationP2PTunnelPart;
-import space.controlnet.ae2federation.processing.endpoint.EndpointBlock;
-import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlock;
 
 /**
  * Read-only projection of the stateless Federation port registrations onto a chunk snapshot.
  *
  * <p>A Federation Cable renders as AE2's dense cable. Another Federation Cable joins it at the core's full width, so
- * cables run on without a step. A Router, and a Provider or Endpoint front, get a dense connection, a narrower arm
- * that marks where the cable meets a machine. AE2 would shrink the connection to a smart machine such as its Pattern
+ * cables run on without a step. A device face that links ({@link CableLinkedBlock}) gets a dense connection, a narrower
+ * arm that marks where the cable meets a machine. AE2 would shrink the connection to a smart machine such as its Pattern
  * Provider to a covered one with a cap; at the artist's request a Federation machine's port joins the cable as a
  * Router does. A Federation P2P tunnel's front is a part on another cable bus, which AE2 joins with a covered
  * connection.
@@ -30,7 +27,7 @@ public final class CableVisualConnections {
     };
     /** Not connected on that side. */
     public static final int NONE = 0;
-    /** A dense connection: a Router, or a Provider or Endpoint front. */
+    /** A dense connection: a device face that links, such as a Router or a Provider front. */
     public static final int DENSE = 1;
     /** A covered connection to a part on another cable bus: a Federation P2P tunnel's front. */
     public static final int COVERED = 2;
@@ -105,10 +102,9 @@ public final class CableVisualConnections {
         if (block instanceof FederationCableBlock) {
             return BundleView.bundled(level, position.relative(direction)) ? NONE : CABLE;
         }
-        if (block instanceof RouterBlock) return DENSE;
-        // Provider and Endpoint expose FederationPortCapability on their front only; the Bridge exposes none.
-        if ((block instanceof FederationPatternProviderBlock || block instanceof EndpointBlock)
-                && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {
+        // A device links through the faces its block names, Routers on every face once formed, a Beam Former through its
+        // back, a Converter, Provider or Endpoint through its front, and a Quantum Cube inside each face's centre.
+        if (block instanceof CableLinkedBlock linked && linked.linksCable(neighbor, direction.getOpposite())) {
             return DENSE;
         }
         // A Federation P2P tunnel's front is its port.

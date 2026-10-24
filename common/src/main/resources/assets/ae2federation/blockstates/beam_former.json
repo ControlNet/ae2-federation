@@ -1,0 +1,2196 @@
+{
+  "multipart": [
+    {
+      "when": {
+        "facing": "south",
+        "size": "small"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "large"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_00"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "large"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_01"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_10"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_11"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "large"
+          },
+          {
+            "OR": [
+              {
+                "north": "true"
+              },
+              {
+                "south": "true"
+              },
+              {
+                "east": "false",
+                "west": "false"
+              },
+              {
+                "east": "true",
+                "west": "true"
+              },
+              {
+                "up": "false",
+                "down": "false"
+              },
+              {
+                "up": "true",
+                "down": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_00"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "true",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_01"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_02"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_10"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "true",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_11"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_12"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_20"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "true",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_21"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_22"
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "south",
+            "size": "huge"
+          },
+          {
+            "OR": [
+              {
+                "north": "true"
+              },
+              {
+                "south": "true"
+              },
+              {
+                "east": "false",
+                "west": "false"
+              },
+              {
+                "up": "false",
+                "down": "false"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former"
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "size": "small"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_00",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_01",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_10",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_11",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "large"
+          },
+          {
+            "OR": [
+              {
+                "east": "true"
+              },
+              {
+                "west": "true"
+              },
+              {
+                "south": "false",
+                "north": "false"
+              },
+              {
+                "south": "true",
+                "north": "true"
+              },
+              {
+                "up": "false",
+                "down": "false"
+              },
+              {
+                "up": "true",
+                "down": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_00",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "true",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_01",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_02",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_10",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "true",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_11",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_12",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_20",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "true",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_21",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_22",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "west",
+            "size": "huge"
+          },
+          {
+            "OR": [
+              {
+                "east": "true"
+              },
+              {
+                "west": "true"
+              },
+              {
+                "south": "false",
+                "north": "false"
+              },
+              {
+                "up": "false",
+                "down": "false"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "size": "small"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_00",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_01",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "large"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_10",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "large"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_11",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "large"
+          },
+          {
+            "OR": [
+              {
+                "south": "true"
+              },
+              {
+                "north": "true"
+              },
+              {
+                "west": "false",
+                "east": "false"
+              },
+              {
+                "west": "true",
+                "east": "true"
+              },
+              {
+                "up": "false",
+                "down": "false"
+              },
+              {
+                "up": "true",
+                "down": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_00",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "true",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_01",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_02",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_10",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "true",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_11",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_12",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_20",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "true",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_21",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_22",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "north",
+            "size": "huge"
+          },
+          {
+            "OR": [
+              {
+                "south": "true"
+              },
+              {
+                "north": "true"
+              },
+              {
+                "west": "false",
+                "east": "false"
+              },
+              {
+                "up": "false",
+                "down": "false"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "size": "small"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_00",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_01",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_10",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_11",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "large"
+          },
+          {
+            "OR": [
+              {
+                "west": "true"
+              },
+              {
+                "east": "true"
+              },
+              {
+                "north": "false",
+                "south": "false"
+              },
+              {
+                "north": "true",
+                "south": "true"
+              },
+              {
+                "up": "false",
+                "down": "false"
+              },
+              {
+                "up": "true",
+                "down": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_00",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "true",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_01",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_02",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_10",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "true",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_11",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_12",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_20",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "true",
+            "down": "true",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_21",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "false",
+            "up": "false",
+            "down": "true",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_22",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "east",
+            "size": "huge"
+          },
+          {
+            "OR": [
+              {
+                "west": "true"
+              },
+              {
+                "east": "true"
+              },
+              {
+                "north": "false",
+                "south": "false"
+              },
+              {
+                "up": "false",
+                "down": "false"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "size": "small"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "large"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_00",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "large"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_01",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_10",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_11",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "large"
+          },
+          {
+            "OR": [
+              {
+                "down": "true"
+              },
+              {
+                "up": "true"
+              },
+              {
+                "east": "false",
+                "west": "false"
+              },
+              {
+                "east": "true",
+                "west": "true"
+              },
+              {
+                "north": "false",
+                "south": "false"
+              },
+              {
+                "north": "true",
+                "south": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_00",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_01",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_02",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_10",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_11",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_12",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_20",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_21",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_22",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "up",
+            "size": "huge"
+          },
+          {
+            "OR": [
+              {
+                "down": "true"
+              },
+              {
+                "up": "true"
+              },
+              {
+                "east": "false",
+                "west": "false"
+              },
+              {
+                "north": "false",
+                "south": "false"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "size": "small"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "large"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_00",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "large"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_01",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_10",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "large"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_large_11",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "large"
+          },
+          {
+            "OR": [
+              {
+                "up": "true"
+              },
+              {
+                "down": "true"
+              },
+              {
+                "east": "false",
+                "west": "false"
+              },
+              {
+                "east": "true",
+                "west": "true"
+              },
+              {
+                "south": "false",
+                "north": "false"
+              },
+              {
+                "south": "true",
+                "north": "true"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_00",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_01",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "false",
+            "up": "false",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_02",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_10",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_11",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "huge"
+          },
+          {
+            "east": "true",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_12",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "false"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_20",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "true",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_21",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "huge"
+          },
+          {
+            "east": "false",
+            "west": "true",
+            "up": "false",
+            "down": "false",
+            "south": "false",
+            "north": "true"
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former_huge_22",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "AND": [
+          {
+            "facing": "down",
+            "size": "huge"
+          },
+          {
+            "OR": [
+              {
+                "up": "true"
+              },
+              {
+                "down": "true"
+              },
+              {
+                "east": "false",
+                "west": "false"
+              },
+              {
+                "south": "false",
+                "north": "false"
+              }
+            ]
+          }
+        ]
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_former",
+        "x": 270
+      }
+    }
+  ]
+}

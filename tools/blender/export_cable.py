@@ -28,7 +28,7 @@ def export(root, output):
     build = output.parent / 'java'
     build.mkdir(parents=True, exist_ok=True)
     files = ['client/FederationCableBuilder.java', 'router/CableCoreFaces.java',
-             'router/CableVisualConnections.java', 'client/CableFlowGeometry.java']
+             'router/CableVisualConnections.java']
     hashes = {}
     for relative in files:
         path = base / relative

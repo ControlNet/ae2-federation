@@ -3,7 +3,7 @@ navigation:
   parent: examples/index.md
   title: A Factory That Takes Orders
   icon: ae2:molecular_assembler
-  position: 27
+  position: 527
 ---
 
 # A Factory That Takes Orders
@@ -52,8 +52,9 @@ The customer's crafting CPU runs the job, and the customer pays: the CPU takes t
 drive and pushes them straight to the factory's pattern provider, and the results come straight back to the customer.
 The customer's terminal lists none of the factory's stock, and its CPU cannot use it.
 
-Leftovers, such as byproducts and the results of cancelled jobs, land in the factory. They stay yours, out of the
-customer's reach.
+Leftovers come back to the customer too: byproducts the pattern does not list and the results of cancelled jobs go
+into the customer's drive, as if the pattern provider were on the customer's network. The factory needs no room for
+them.
 
 ## Try it
 

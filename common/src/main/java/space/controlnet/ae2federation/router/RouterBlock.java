@@ -2,9 +2,13 @@ package space.controlnet.ae2federation.router;
 
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -30,10 +34,10 @@ import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
  * neighbours in that body ({@link DeviceStructureUpdater}); the client draws the connected model from them. A block
  * that is not formed, part of an incomplete, hollow, branched, protruding or oversized candidate, links nothing.
  */
-public final class RouterBlock extends BaseEntityBlock {
+public final class RouterBlock extends BaseEntityBlock implements FormableDevice, CableLinkedBlock {
     public static final MapCodec<RouterBlock> CODEC = simpleCodec(RouterBlock::new);
     /** Indexed by {@link net.minecraft.core.Direction#get3DDataValue()}. */
-    private static final BooleanProperty[] CONNECTED = {BlockStateProperties.DOWN, BlockStateProperties.UP,
+    public static final BooleanProperty[] CONNECTED = {BlockStateProperties.DOWN, BlockStateProperties.UP,
             BlockStateProperties.NORTH, BlockStateProperties.SOUTH, BlockStateProperties.WEST, BlockStateProperties.EAST};
     /** Whether the block belongs to a validated body; a placed block becomes formed when its body is checked. */
     public static final BooleanProperty FORMED = BooleanProperty.create("formed");
@@ -50,14 +54,20 @@ public final class RouterBlock extends BaseEntityBlock {
         builder.add(CONNECTED).add(FORMED);
     }
 
-    /** Whether {@code state} is a Router or Switch of a validated body, whose faces link. */
+    /** Every face of a formed body links. */
+    @Override
+    public boolean linksCable(BlockState state, Direction face) {
+        return formed(state);
+    }
+
+    /** Whether {@code state} is a device block ({@link FormableDevice}) of a validated body, whose faces link. */
     public static boolean formed(BlockState state) {
-        return state.getBlock() instanceof RouterBlock && state.getValue(FORMED);
+        return state.getBlock() instanceof FormableDevice && state.getValue(FORMED);
     }
 
     /** The sides on which {@code state}'s neighbour belongs to the same formed body, one bit per 3D data value. */
     public static int connections(BlockState state) {
-        if (!(state.getBlock() instanceof RouterBlock)) return 0;
+        if (!(state.getBlock() instanceof FormableDevice)) return 0;
         int connections = 0;
         for (int i = 0; i < CONNECTED.length; i++) {
             if (state.getValue(CONNECTED[i])) connections |= 1 << i;
@@ -110,6 +120,17 @@ public final class RouterBlock extends BaseEntityBlock {
     /** Whether {@code state} is a Switch, whose faces attach ME networks; a Router's do not. */
     static boolean attachesNetworks(BlockState state) {
         return state.is(RouterRegistration.SWITCH.get());
+    }
+
+    /**
+     * A block in hand builds on an unformed body as on any other block; only an empty hand asks why it has not formed
+     * ({@link #useWithoutItem}).
+     */
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos position,
+            Player player, InteractionHand hand, BlockHitResult hit) {
+        return stack.isEmpty() || formed(state) ? ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+                : ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
     }
 
     @Override

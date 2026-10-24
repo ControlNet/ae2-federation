@@ -8,22 +8,30 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
-import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FastColor;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterRenderBuffersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import org.joml.Matrix3f;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import space.controlnet.ae2federation.bundle.BundleBeam;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
-/** Default M coherent optical carrier, soft moving packets, depth-tested light shoulders and in-shell fog. */
+/**
+ * Cable beams: R / PLASMA, a depth-tested core inside soft lobed sheaths, down every cable (R / LITE in a 1x1 cell) and
+ * down a 2x2 or 3x3 bundle's middle.
+ */
 public final class CableFlowRenderer implements BlockEntityRenderer<FederationCableBlockEntity> {
     private static final ResourceLocation WHITE = ResourceLocation.withDefaultNamespace("textures/misc/white.png");
     // Entity translucent emissive still calls minecraft_mix_light and dims optical carriers.
@@ -71,6 +79,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
      * and back ended a batch: two draw calls per cable per frame. Now all cables' beams go out in two.
      */
     public static void registerBuffers(RegisterRenderBuffersEvent event) {
+        BeamPortalRenderer.registerBuffers(event);
         event.registerRenderBuffer(GLOW, new ByteBufferBuilder(BATCH_BYTES));
         event.registerRenderBuffer(CORE, new ByteBufferBuilder(BATCH_BYTES));
     }
@@ -80,8 +89,12 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
      * must be in place before the shells are drawn, in every graphics mode.
      */
     public static void flush(RenderLevelStageEvent event) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
+            BeamPortalRenderer.beginFrame(event.getFrustum());
+        }
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) return;
         var buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+        BeamPortalRenderer.flush(buffers);
         buffers.endBatch(GLOW);
         buffers.endBatch(CORE);
     }
@@ -97,46 +110,115 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         // The beam shows the cable's capacity count against its limit, as the server counted it; not traffic.
         // The count changes only with the domain, so the alarm follows it directly and needs no hysteresis.
         double target = cable.capacityLoad();
-        var style = CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
-        int mask = cable.flowMask(), detail = CableBeamMesh.detail(distance);
+        // An unpowered domain's beams alarm at the width of no load.
+        var style = cable.unpowered() ? CableBeamStyle.fromLoad(0, true)
+                : CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
+        int detail = CableBeamMesh.detail(distance);
         long tick = level.getGameTime();
+        // A 2x2 or 3x3 bundle draws one beam down its middle, over the box its corner cell names.
+        var bundle = cable.bundleBeam();
+        if (bundle != null) {
+            if (bundle.length() > 0) {
+                emitBundle(stack, buffers, bundle, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style,
+                        detail);
+                endSceneBatch(level, buffers);
+            }
+            return;
+        }
+        emitCell(stack, buffers, cable.flowMask(), pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail);
+        endSceneBatch(level, buffers);
+    }
+
+    /**
+     * One cell's beam (R / LITE), glow then core, into the world's batched buffers: {@code x, y, z} place its pulses
+     * and lobes, the pose places its geometry.
+     */
+    static void emitCell(PoseStack stack, MultiBufferSource buffers, int mask, int x, int y, int z, long tick,
+            float partialTick, CableBeamStyle style, int detail) {
+        emitPlasma(stack, buffers, glow -> FRAME.cell(mask, x, y, z, tick, partialTick, style, detail, glow));
+    }
+
+    /**
+     * A 2x2 or 3x3 bundle's beam, in blocks from the corner cell at {@code x, y, z}, into the world's batched buffers; the pose places
+     * and stretches it.
+     */
+    static void emitBundle(PoseStack stack, MultiBufferSource buffers, BundleBeam bundle, int x, int y, int z,
+            long tick, float partialTick, CableBeamStyle style, int detail) {
+        emitPlasma(stack, buffers, glow -> FRAME.bundle(bundle, x, y, z, tick, partialTick, style, detail, glow));
+    }
+
+    private interface PlasmaLayer {
+        /** One pass of a cached plasma beam, {@link CableBeamFrame#BUNDLE_STRIDE} floats per vertex. */
+        float[] get(boolean glow);
+    }
+
+    /**
+     * A plasma beam, glow then core. Its sheaths and halo fade toward their outlines as they turn from the eye: the
+     * cached mesh carries normals, and the fade is taken here per vertex, since it depends on the view
+     * ({@link PlasmaFade}).
+     */
+    private static void emitPlasma(PoseStack stack, MultiBufferSource buffers, PlasmaLayer layers) {
         var pose = stack.last();
         var matrix = pose.pose();
         var normal = pose.transformNormal(0, 1, 0, new Vector3f());
-        var position = new Vector3f();
-        // Glow first: the carrier then writes depth over it without fighting the coplanar shoulders.
+        var modelView = RenderSystem.getModelViewMatrix();
+        boolean orthographic = RenderSystem.getProjectionMatrix().m23() == 0;
+        if (PlasmaFade.movesOnly(matrix) && PlasmaFade.turnsOnly(modelView)) {
+            for (int pass = 0; pass < 2; pass++) {
+                var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
+                PlasmaReplay.moved(layers.get(pass == 0), pass == 0, matrix.m30(), matrix.m31(), matrix.m32(),
+                        orthographic, modelView.m02(), modelView.m12(), modelView.m22(), normal, out);
+            }
+            return;
+        }
+        // From the block to the eye's space, as a guidebook scene's scaled and turned pose needs.
+        var view = new Matrix4f(modelView).mul(matrix);
+        var turn = view.normal(new Matrix3f());
         for (int pass = 0; pass < 2; pass++) {
             var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
-            float[] layer = FRAME.layer(mask, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail,
-                    pass == 0);
-            // The whole vertex in one call, which a block-format BufferBuilder writes straight to memory; the same
-            // values the chained calls in draw() would write.
-            for (int i = 0; i < layer.length; i += CableBeamFrame.STRIDE) {
-                matrix.transformPosition(layer[i], layer[i + 1], layer[i + 2], position);
-                int color = FastColor.ARGB32.color((int) (layer[i + 6] * 255), (int) (layer[i + 3] * 255),
-                        (int) (layer[i + 4] * 255), (int) (layer[i + 5] * 255));
-                out.addVertex(position.x(), position.y(), position.z(), color, .5f, .5f, OverlayTexture.NO_OVERLAY,
-                        LightTexture.FULL_BRIGHT, normal.x(), normal.y(), normal.z());
-            }
+            PlasmaReplay.inEye(layers.get(pass == 0), pass == 0, matrix, view, turn, orthographic, normal, out);
         }
     }
 
-    /** The visual-input seam shared by world cables and native renderer previews; no gameplay effects. */
+    /**
+     * A guidebook scene ends these buffers only after its terrain, once its camera is gone, so the beam came out with
+     * no depth against the scene, over every ring and rail. Drawn now, before the scene's terrain, it sits in its shell
+     * as in the world.
+     */
+    static void endSceneBatch(Level level, MultiBufferSource buffers) {
+        if (!(level instanceof ClientLevel) && buffers instanceof MultiBufferSource.BufferSource source) {
+            source.endBatch(GLOW);
+            source.endBatch(CORE);
+        }
+    }
+
+    /**
+     * Only the low corner of each layer of a 2x2 or 3x3 bundle draws its beam. The others draw nothing, so the
+     * dispatcher need not look up their light or call {@link #render} for them: in a big bundle they are most cells.
+     */
+    @Override
+    public boolean shouldRender(FederationCableBlockEntity cable, Vec3 camera) {
+        var bundle = cable.bundleBeam();
+        return (bundle == null || bundle.length() > 0) && BlockEntityRenderer.super.shouldRender(cable, camera);
+    }
+
+    /** A 2x2 or 3x3 bundle's middle beam reaches past its corner cell, over the box it is stretched to. */
+    @Override
+    public AABB getRenderBoundingBox(FederationCableBlockEntity cable) {
+        var box = new AABB(cable.getBlockPos());
+        var bundle = cable.bundleBeam();
+        if (bundle == null || bundle.length() == 0) return box;
+        return box.expandTowards(bundle.extent(Direction.Axis.X) - 1, bundle.extent(Direction.Axis.Y) - 1,
+                bundle.extent(Direction.Axis.Z) - 1);
+    }
+
+    /**
+     * The visual-input seam shared by world cables and native renderer previews; no gameplay effects. Each pass is
+     * complete before the next starts, so a shared buffer that a switch of RenderType finishes still gets both.
+     */
     public static void draw(PoseStack stack, MultiBufferSource buffers, int mask, int x, int y, int z,
             long tick, float partialTick, CableBeamStyle style, int detail) {
-        var pose = stack.last();
-        // In the world each pass has its own buffer (registerBuffers). Elsewhere, as in previews, switching RenderTypes
-        // can finish the prior shared buffer, so each pass is complete before the next starts.
-        // Glow first: the carrier then writes depth over it without fighting the coplanar shoulders.
-        for (int pass = 0; pass < 2; pass++) {
-            var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
-            CableBeamMesh.emitLayer(mask, x, y, z, tick, partialTick, style, detail, pass == 0,
-                (additive, px, py, pz, red, green, blue, alpha) -> {
-                    out.addVertex(pose, px, py, pz).setColor(red, green, blue, alpha)
-                            .setUv(.5f, .5f)
-                            .setLight(LightTexture.FULL_BRIGHT).setNormal(pose, 0, 1, 0);
-                });
-        }
+        emitCell(stack, buffers, mask, x, y, z, tick, partialTick, style, detail);
     }
 
     @Override
