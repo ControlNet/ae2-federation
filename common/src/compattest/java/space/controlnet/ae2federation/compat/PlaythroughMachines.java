@@ -290,6 +290,9 @@ final class PlaythroughMachines {
         return "";
     }
 
+    /** No machine, collector or provider lane still holds an input or product. */
+    boolean idle() { return checks().get("machine-idle-empty").equals("PASS"); }
+
     Map<String, String> checks() {
         var failures = new TreeMap<String, String>();
         for (var installation : installations) {

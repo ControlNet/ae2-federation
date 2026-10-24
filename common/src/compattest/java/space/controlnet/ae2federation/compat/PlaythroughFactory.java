@@ -683,11 +683,12 @@ final class PlaythroughFactory implements AutoCloseable {
                 if (perturbedAt != 0 && (!restored || ticks - perturbedAt < 40
                         || faces().stream().anyMatch(face -> !grid(face).getEnergyService().isNetworkPowered())
                         || grid(requesterFace()).getCraftingService().getCpus().isEmpty())) { idleSince = 0; return null; }
-                if (grid(requesterFace()).getCraftingService().getCpus().stream().anyMatch(cpu -> cpu.isBusy())) {
+                // Surplus machine output can still pass through the collectors after the job ends.
+                if (grid(requesterFace()).getCraftingService().getCpus().stream().anyMatch(cpu -> cpu.isBusy()) || !machines.idle()) {
                     idleSince = 0; return null;
                 }
                 if (idleSince == 0) idleSince = ticks;
-                // Allow a complete 20-tick return-ledger sweep after the CPU becomes idle.
+                // Allow a complete 20-tick return-ledger sweep after the CPU and the machines become idle.
                 if (ticks - idleSince < 25) return null;
                 return finish(true, "", "");
             }

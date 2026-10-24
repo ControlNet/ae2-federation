@@ -331,3 +331,33 @@ leaves the machine's DOWN face, and `inputFace` may be any other face. `Site` tr
 non-item adapters can replace the hopper with real pipes and declare justified raw keys via `providedInputs`.
 Fluid outputs receive an AE2 fluid cell; chemical adapters declare their pack cell IDs through `storageCells`.
 Those physical requester cells participate in the same full inventory balance. Non-item adapters still need their own runtime validation; this phase exercises items only. No main-mod code is changed.
+
+### Phase 3b: AE2 addon machines
+
+The default machine list also includes `crystal-assembler`, `reaction-chamber`, `overload-processing`,
+`lightning-assembly` and `lightning-simulation`. These machines are AE grid nodes. Each joins its input subnet through the cable above it and runs on that subnet's
+AE energy. The Interface exposes the whole subnet storage, so a pattern's fluid, FE and lightning inputs land in subnet
+storage as well. Water and lava are provided world fluids (`PlaythroughAddonRecipes.WORLD_FLUIDS`).
+
+`crystal-assembler` (`extendedae:crystal_assembler`): items and an optional fluid. The Storage Bus fills the
+assembler's slots and tank. The adapter replays the assembler's own search (the first recipe in `RecipeManager` order whose
+samples one run's contents satisfy) and rejects a recipe the machine would not pick. Four Acceleration Cards: 4 ticks.
+
+`reaction-chamber` (`advanced_ae:reaction`, the type name Phase 0 records): items and an optional fluid input, checked
+with Advanced AE's own `ReactionChamberRecipes.findRecipe`. Recipes with a fluid product (`quantum_infusion`, a KubeJS
+time fluid) are rejected, and so are those that need `quantum_infusion_source` as input. Four cards: 4 ticks.
+
+`overload-processing`, `lightning-assembly`, `lightning-simulation` (AE2 Lightning Tech): each recipe also needs FE and
+HV or EHV lightning. The pattern carries the recipe's exact `totalEnergy` as Applied Flux FE and its exact
+`lightningCost`. Two ME Chests beside the subnet hold them, one with an FE cell and one with a
+`lightning_storage_component_v` (65536). The machine draws both from grid storage, as on a player's network. The bus is
+filtered to the item and fluid inputs. FE is layout power. Lightning comes from the Lightning Collector, which stores
+strikes in ME storage, or from the Tesla Coil. The mod's `findFirstProcessable` must select the recipe. Rejected:
+lightning costs above 65536, fluid products, fluids other than water and lava (`superfluid_helium`,
+`cryotheum_solution`), and derived recipes that the machine resolves to another recipe. Leftovers also require an empty
+FE buffer, no locked recipe and empty subnet cells. `lightning_transform` strikes dropped items in the world and has
+no machine.
+
+Each item's proof first tries the producer that `QuestCoverageAnalysis.productionProofs` reaches at the
+shallowest depth. With every adapter enabled, the 8-target regression therefore makes AE2 processors in one Overload
+Processing Factory step and charged certus in the Reaction Chamber (`advanced_ae:certuscharger`), not in the Inscriber and Charger.
