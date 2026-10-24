@@ -331,3 +331,37 @@ leaves the machine's DOWN face, and `inputFace` may be any other face. `Site` tr
 non-item adapters can replace the hopper with real pipes and declare justified raw keys via `providedInputs`.
 Fluid outputs receive an AE2 fluid cell; chemical adapters declare their pack cell IDs through `storageCells`.
 Those physical requester cells participate in the same full inventory balance. Non-item adapters still need their own runtime validation; this phase exercises items only. No main-mod code is changed.
+
+Smithing and stonecutting (`smithing`, `stonecutting`) are AE2 pattern kinds rather than shelf machines: an adapter
+whose `assembler()` is true supplies its own `encode` (AE2's smithing-table or stonecutting pattern, decoded and
+checked by `Recipe.verify`), and the factory's Molecular Assemblers run it beside the crafting patterns. Such
+recipes never get a shelf site, input subnet or `place`/`leftovers` call (`Proof.shelf()` lists the rest), but they
+still appear in `machineSteps` and count as real when a passing layout plans runs of them. Only transform recipes
+are adapted; AE2 consumes the template, base and addition, as the vanilla smithing table does. Trim recipes (no fixed
+output), custom smithing classes that AE2 cannot encode (JustDireThings abilities, paxels) and recipes declaring
+remainders are rejected.
+
+The Crystal Aggregator (`crystal-aggregator`, `ae2cs:crystal_aggregator_recipe`) joins the input subnet as an
+ME-powered machine with four acceleration cards; its duration is the recipe's AE cost at 3,200 AE per tick plus one.
+Its three slots take any item, so the provider runs in blocking mode (`Site.blocking()`). Blocking also sets the
+input Storage Bus's Storage Filter to None: the provider sees the machine only through that bus, and the default
+extractable-only filter hides inputs the machine will not give back. Recipes whose output is also
+an input, or whose ingredients resolve to one item, are rejected: a hopper below could grow the output from an
+input it simulated as extractable.
+
+The Data Reassembler (`data-reassembler`, `data_energistics:data_reassembler`) also joins the input subnet, with four
+acceleration cards (40 ticks less each). Its slots accumulate batches, so the machine's own resolver must pick the
+recipe for one run and for full slots. Fluid recipes, the data flow resource and output modifiers have no
+pack-justified supply here and are rejected.
+
+Powah energizing (`energizing`) builds an Energizing Orb with one Nitro Energizing Rod linked to it, fed through the
+rod's mounting face by a Creative Energy Cell; the provider runs in blocking mode because the orb takes one item per
+slot and only while its output slot is empty. The duration is 20 warm-up ticks plus the scaled energy at 200,000 FE
+per tick.
+
+Mystical Agriculture's Seed Reprocessor (`reprocessor`) takes the seed from the top and sticks from the north; each
+run's pattern carries the sticks that cover its 4,000 FE (two sticks), and `leftovers` checks that no fuel or energy
+remains.
+
+Machines that return many items per run can finish their job before the hopper drains them, so a finished target
+waits up to `drainTicks()` (40 plus 8 ticks per output item of the largest run) until every machine is empty.

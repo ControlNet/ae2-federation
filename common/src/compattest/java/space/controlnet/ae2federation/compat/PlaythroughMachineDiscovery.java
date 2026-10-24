@@ -71,7 +71,7 @@ final class PlaythroughMachineDiscovery {
         for (var catalyst : machine.catalysts().values())
             if (!provided.contains(BuiltInRegistries.ITEM.getKey(catalyst.getItem()).toString()))
                 throw new IllegalArgumentException("Fixed catalyst is not in Phase 0's provided resources: " + catalyst);
-        return machine.pattern(helper);
+        return adapter.encode(helper, machine);
     }
 
     static ItemStack concrete(Ingredient ingredient, Set<String> provided) {

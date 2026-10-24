@@ -12,7 +12,13 @@ final class PlaythroughMachineAdapters {
             new PlaythroughChargerAdapter(),
             new PlaythroughCookingAdapter("furnace", "minecraft:smelting", "minecraft:furnace"),
             new PlaythroughCookingAdapter("smoker", "minecraft:smoking", "minecraft:smoker"),
-            new PlaythroughCookingAdapter("blast-furnace", "minecraft:blasting", "minecraft:blast_furnace")
+            new PlaythroughCookingAdapter("blast-furnace", "minecraft:blasting", "minecraft:blast_furnace"),
+            new PlaythroughSmithingAdapter(),
+            new PlaythroughStonecuttingAdapter(),
+            new PlaythroughCrystalAggregatorAdapter(),
+            new PlaythroughEnergizingAdapter(),
+            new PlaythroughDataReassemblerAdapter(),
+            new PlaythroughReprocessorAdapter()
     );
     static final List<PlaythroughMachineAdapter> ENABLED = selected();
 

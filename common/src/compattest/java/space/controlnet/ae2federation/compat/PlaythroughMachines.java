@@ -65,6 +65,19 @@ final class PlaythroughMachines {
                 throw new IllegalStateException("Storage Bus refused: " + pos);
             return storage;
         }
+        /**
+         * Blocking mode, as a player sets it for a machine that must finish one batch before the next arrives. The
+         * provider sees the machine only through the input Storage Bus, whose default extractable-only filter hides
+         * inputs the machine will not give back, so that bus must list every stack.
+         */
+        void blocking() {
+            ((PatternProviderLogicHost) helper.getBlockEntity(provider)).getConfigManager()
+                    .putSetting(appeng.api.config.Settings.BLOCKING_MODE, appeng.api.config.YesNo.YES);
+            for (var face : Direction.values())
+                if (helper.getLevel().getBlockEntity(helper.absolutePos(machine.relative(face))) instanceof appeng.api.parts.IPartHost host
+                        && host.getPart(face.getOpposite()) instanceof appeng.parts.storagebus.StorageBusPart bus)
+                    bus.getConfigManager().putSetting(appeng.api.config.Settings.STORAGE_FILTER, appeng.api.config.StorageFilter.NONE);
+        }
         private void claim(BlockPos pos) {
             if (layout.contains(pos)) throw new IllegalStateException("Machine shelf collides with a layout block at " + pos);
         }
@@ -90,21 +103,22 @@ final class PlaythroughMachines {
 
     private static Set<String> storageCells(PlaythroughRecipes.Proof proof) {
         var cells = new java.util.TreeSet<String>();
-        proof.machines().values().forEach(recipe -> cells.addAll(PlaythroughMachineAdapters.byId(recipe.adapter()).storageCells(recipe)));
+        proof.shelf().values().forEach(recipe -> cells.addAll(PlaythroughMachineAdapters.byId(recipe.adapter()).storageCells(recipe)));
         return cells;
     }
 
     /** Shelf capacity, checked at proof time so an oversized target fails as pattern-encoding. */
     static void validate(PlaythroughRecipes.Proof proof) {
-        if (proof.machines().size() > MAX_SITES)
-            throw new IllegalArgumentException("Machine shelf supports " + MAX_SITES + " distinct recipes, needed " + proof.machines().size());
+        if (proof.shelf().size() > MAX_SITES)
+            throw new IllegalArgumentException("Machine shelf supports " + MAX_SITES + " distinct recipes, needed " + proof.shelf().size());
         var cells = storageCells(proof);
         if (cells.size() > 12) throw new IllegalArgumentException("Requester supports at most 12 additional cell types: " + cells);
     }
 
     /** Builds after the rest of the layout, so any overlap with it fails here instead of replacing a block. */
     void initialize(PlaythroughRecipes.Proof proof, BlockPos factoryChest, BlockPos requesterChest) {
-        if (proof.machines().isEmpty()) return;
+        var shelf = proof.shelf();
+        if (shelf.isEmpty()) return;
         layout = Set.copyOf(placed);
         for (var cell : storageCells(proof)) {
             var pos = requesterChest.above(outputCells.size() + 1);
@@ -126,8 +140,8 @@ final class PlaythroughMachines {
         for (int y = factoryChest.getY() + 1; y <= 12; y++) denseCable(new BlockPos(33, y, factoryChest.getZ()));
         for (int z = factoryChest.getZ() + 1; z <= Z + 3; z++) denseCable(new BlockPos(33, 12, z));
         int index = 0;
-        int copies = Math.min(requestedCopies(), MAX_SITES / proof.machines().size());
-        for (int copy = 0; copy < copies; copy++) for (var recipe : proof.machines().values()) {
+        int copies = Math.min(requestedCopies(), MAX_SITES / shelf.size());
+        for (int copy = 0; copy < copies; copy++) for (var recipe : shelf.values()) {
             int row = index / 6;
             var pos = new BlockPos(2 + index % 6 * 5, 12 + row * 5, Z);
             for (int y = 13; y <= pos.getY(); y++) denseCable(new BlockPos(33, y, Z + 3));
@@ -288,6 +302,15 @@ final class PlaythroughMachines {
             if (!signature.equals(proof.signatures().get(installation.recipe().id()))) return "Machine signature changed";
         }
         return "";
+    }
+
+    /** Whether every machine, collector and input buffer is idle and empty. */
+    boolean drained() { return checks().get("machine-idle-empty").equals("PASS"); }
+
+    /** The longest time one run's output takes through its hopper, one item per 8 ticks, plus a margin. */
+    long drainTicks() {
+        return 40 + installations.stream().mapToLong(installation -> 8L * installation.recipe().outputs().stream()
+                .filter(stack -> stack.what() instanceof AEItemKey).mapToLong(appeng.api.stacks.GenericStack::amount).sum()).max().orElse(0);
     }
 
     Map<String, String> checks() {

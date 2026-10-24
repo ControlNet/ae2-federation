@@ -159,6 +159,7 @@ final class PlaythroughFactory implements AutoCloseable {
     private int stage;
     private int readyTick;
     private int idleSince;
+    private int drainedSince;
     private Result result;
     private final Set<NetworkId> networks = new LinkedHashSet<>();
     private final Map<String, PlaythroughAccounting.Signature> signatures = new TreeMap<>();
@@ -192,7 +193,7 @@ final class PlaythroughFactory implements AutoCloseable {
         if (layout.join().equals("quantum") && (!layout.path().equals("projection") || layout.networks() == 2 || factoryFace() != Direction.EAST))
             throw new IllegalArgumentException("Quantum factory requires projection and at least three separate networks");
         if (endpointPath()) {
-            if (!proof.machines().isEmpty())
+            if (!proof.shelf().isEmpty())
                 throw new IllegalArgumentException("Topology Endpoint paths run crafting recipes only; machine Endpoints use machinePath");
             this.proof = PlaythroughEndpoints.processing(helper, proof);
             patternGroups = proof.patterns().size(); copies = 1;
@@ -682,13 +683,16 @@ final class PlaythroughFactory implements AutoCloseable {
                 perturb();
                 if (perturbedAt != 0 && (!restored || ticks - perturbedAt < 40
                         || faces().stream().anyMatch(face -> !grid(face).getEnergyService().isNetworkPowered())
-                        || grid(requesterFace()).getCraftingService().getCpus().isEmpty())) { idleSince = 0; return null; }
+                        || grid(requesterFace()).getCraftingService().getCpus().isEmpty())) { idleSince = 0; drainedSince = 0; return null; }
                 if (grid(requesterFace()).getCraftingService().getCpus().stream().anyMatch(cpu -> cpu.isBusy())) {
-                    idleSince = 0; return null;
+                    idleSince = 0; drainedSince = 0; return null;
                 }
                 if (idleSince == 0) idleSince = ticks;
+                // Surplus machine output can still leave through its 8-tick hopper after the CPU is idle.
+                if (!machines.drained() && ticks - idleSince < machines.drainTicks()) { drainedSince = 0; return null; }
+                if (drainedSince == 0) drainedSince = ticks;
                 // Allow a complete 20-tick return-ledger sweep after the CPU becomes idle.
-                if (ticks - idleSince < 25) return null;
+                if (ticks - drainedSince < 25) return null;
                 return finish(true, "", "");
             }
             default -> throw new IllegalStateException("Unknown factory stage");
@@ -806,9 +810,11 @@ final class PlaythroughFactory implements AutoCloseable {
         expectedAmount = expectedStock.getOrDefault(keyName(target), 0L);
         var machineRuns = PlaythroughMachines.runs(plan, proof);
         cleanup.put("machineRuns", machineRuns);
-        long assemblerCrafts = totalCrafts - machineRuns.values().stream().mapToLong(Long::longValue).sum();
+        // Assembler-kind machine recipes (smithing, stonecutting) run as assembler crafts.
+        var shelfRuns = new TreeMap<>(machineRuns); shelfRuns.keySet().retainAll(proof.shelf().keySet());
+        long assemblerCrafts = totalCrafts - shelfRuns.values().stream().mapToLong(Long::longValue).sum();
         budget = Math.toIntExact(Math.addExact(Math.addExact(baseBudget, Math.multiplyExact(ticksPerCraft,
-                (assemblerCrafts + copies - 1) / copies)), machines.executionTicks(machineRuns)));
+                (assemblerCrafts + copies - 1) / copies)), machines.executionTicks(shelfRuns)));
         // A solid rectangular native CPU; storage grows with the plan and the rest are co-processors.
         long storageBlocks = Math.max(1, (plan.bytes() + 262143) / 262144);
         int height = Math.toIntExact((storageBlocks + 32 + 15) / 16);

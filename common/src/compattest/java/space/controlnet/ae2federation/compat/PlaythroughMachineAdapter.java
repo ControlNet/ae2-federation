@@ -51,6 +51,15 @@ interface PlaythroughMachineAdapter {
     /** Any face except DOWN, which is reserved for the output collector. */
     default net.minecraft.core.Direction inputFace() { return net.minecraft.core.Direction.UP; }
 
+    /**
+     * True for AE2 pattern kinds that the factory's Molecular Assemblers run beside crafting patterns, such as
+     * smithing and stonecutting: they get no shelf site, and {@link #place}/{@link #leftovers} are never called.
+     */
+    default boolean assembler() { return false; }
+
+    /** The installed AE2 pattern; shelf machines use the processing pattern of the recipe's exact amounts. */
+    default ItemStack encode(GameTestHelper helper, Recipe recipe) { return recipe.pattern(helper); }
+
     /** Placement receives tracked block/part operations and a powered subnet, shared by every machine path. */
     void place(PlaythroughMachines.Site site, Recipe recipe);
 
@@ -63,9 +72,13 @@ interface PlaythroughMachineAdapter {
             if (inputs.isEmpty() || outputs.isEmpty() || inputs.stream().anyMatch(s -> s.amount() <= 0)
                     || outputs.stream().anyMatch(s -> s.amount() <= 0))
                 throw new IllegalArgumentException("Empty or nonpositive processing recipe: " + id);
-            var pattern = PatternDetailsHelper.encodeProcessingPattern(inputs, outputs);
+            return verify(helper, PatternDetailsHelper.encodeProcessingPattern(inputs, outputs));
+        }
+
+        /** AE2 must decode {@code pattern} with exactly this recipe's inputs and outputs. */
+        ItemStack verify(GameTestHelper helper, ItemStack pattern) {
             var decoded = PatternDetailsHelper.decodePattern(pattern, helper.getLevel());
-            if (decoded == null) throw new IllegalArgumentException("AE2 rejected processing recipe: " + id);
+            if (decoded == null) throw new IllegalArgumentException("AE2 rejected pattern: " + id);
             var expected = new java.util.HashMap<appeng.api.stacks.AEKey, Long>();
             var actual = new java.util.HashMap<appeng.api.stacks.AEKey, Long>();
             inputs.forEach(stack -> expected.merge(stack.what(), stack.amount(), Math::addExact));
@@ -73,11 +86,11 @@ interface PlaythroughMachineAdapter {
                 var stack = input.getPossibleInputs()[0];
                 actual.merge(stack.what(), Math.multiplyExact(stack.amount(), input.getMultiplier()), Math::addExact);
             }
-            if (!expected.equals(actual)) throw new IllegalArgumentException("AE2 changed processing inputs: " + id);
+            if (!expected.equals(actual)) throw new IllegalArgumentException("AE2 changed pattern inputs: " + id);
             expected.clear(); actual.clear();
             outputs.forEach(stack -> expected.merge(stack.what(), stack.amount(), Math::addExact));
             decoded.getOutputs().forEach(stack -> actual.merge(stack.what(), stack.amount(), Math::addExact));
-            if (!expected.equals(actual)) throw new IllegalArgumentException("AE2 changed processing outputs: " + id);
+            if (!expected.equals(actual)) throw new IllegalArgumentException("AE2 changed pattern outputs: " + id);
             return pattern;
         }
     }
