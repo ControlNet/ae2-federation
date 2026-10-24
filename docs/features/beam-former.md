@@ -49,8 +49,9 @@ huge retains full-cube occlusion and inherited shading.
   (`BundleBeamMesh`, Blender study R; owner, 2026-10-18), its two-block box scaled to the square; load, over-capacity
   red and unpowered red follow the cable's rules. Each anchor syncs a `BeamLook` (partner, side, count, limit, unpowered) every 10 ticks. Linked 2x2 fronts also draw one floating portal ring at each end
   (Blender study J2; owner's choice, 2026-10-23), with a dark plate disc and inward drifting streaks.
-  Each end costs 5,272 vertices within 24 blocks, 2,264 through 48 blocks, and 1,144 beyond that, with
-  fewer angular segments and spill bands; the portal stops at the beam's 256-block view distance.
+  Each end costs 3,928 vertices within 24 blocks, 2,264 through 48 blocks, and 1,144 beyond that, with
+  fewer angular segments and spill bands (the dark disc and faint spill never use more than 48 segments);
+  the portal stops at the beam's 256-block view distance.
   Each world end is frustum-culled independently. All visible portals share two fixed buffers, flushed disc
   then glow after block entities and before the beam and translucent terrain, for two portal draw calls per frame.
   Both anchors reuse their existing synced look; 1x1, 3x3 and unlinked bodies draw no portal.

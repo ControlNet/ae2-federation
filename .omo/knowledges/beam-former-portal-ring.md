@@ -11,8 +11,9 @@ calls it before its positive-facing-only beam guard.
   spill 18.999/16, disc 14.01/16, streaks 14.02/16. The pair's render box already covers the ring.
 - **Render types.** Vanilla beacon shader (unlit vertex colour), white texture, no cull, LEQUAL depth test,
   colour-only writes. Disc alpha-blended and flushed first, then the SRC_ALPHA/ONE glow.
-- **LOD.** `CableBeamMesh.detail`: 5272 / 2264 / 1144 vertices per end (96/48/24 segments, 6/3/1 spill bands,
-  4/2/1 per dash); the outer line keeps 96 segments so its +3.75 deg/64-tick turn loops. Cut-off 256 blocks.
+- **LOD.** `CableBeamMesh.detail`: 3928 / 2264 / 1144 vertices per end (96/48/24 segments, 6/3/1 spill bands,
+  4/2/1 per dash); disc and spill cap at 48 segments (`soft`), the outer line keeps 96 segments so its
+  +3.75 deg/64-tick turn loops. Cut-off 256 blocks.
 - **Alarm.** Glow uses the beam's red; the disc stays dark red (.028, .006, .004) instead of the study's red tint
   (no red J2 render was ever shown, and a bright red disc read as a solid blob in game).
 
@@ -66,3 +67,19 @@ CPU probe (JUnit, real `BufferBuilder` writes, all facings): near end 192 -> 161
 A real GPU was not measured (driver cost per draw call differs). Tools (not in git): `build/beam-portal-check/tools/`
 `bench.sh` / `bench-all.sh` / `summarise.py`, instrumentation patches and probe in `build/beam-portal-perf/`; the
 benchmark types the scene twice because the XTEST typer sometimes drops a command (check the end count per run).
+
+## Soft-band segments (2026-10-24)
+
+Near detail drew the dark disc and the six faint spill bands with 96 segments (5272 vertices per end). They now
+use at most 48 (`CIRCLE[max(detail, 1)]`): 3928 vertices, -25.5%; detail 1 and 2 are unchanged. The main bands,
+the line and the dashes keep their segments, since the bright ring's facets would show.
+
+- **CPU probe** (same worktree, only `BeamPortalMesh.java` swapped, three alternating runs, medians): near end
+  75.7 -> 56.7 us (-25%); detail 1/2 controls unchanged within noise. Output in
+  `build/beam-portal-perf/option4-probe.txt`. No in-game FPS run: the expected gain (a few hundred us per frame
+  with ten near ends) is below this host's frame-time noise.
+- **Look.** `closeup.sh` (one linked Z pair, day/night, close/oblique/very close) now freezes ticks and steps to
+  a multiple of 64 game ticks, so before/after share one phase of every portal and beam animation (all loop in
+  64 or 32 ticks) and pixel diffs isolate the change. Very close (pair ~1.5 blocks away, 1600x960): 75 pixels
+  differ by more than 16/255, all on the dark disc's one-pixel rim; mean difference 0.02/255. Images in
+  `build/beam-portal-lod-check/`.

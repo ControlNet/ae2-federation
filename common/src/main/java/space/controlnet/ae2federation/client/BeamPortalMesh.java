@@ -96,13 +96,15 @@ public final class BeamPortalMesh {
         boolean red = style.overloaded();
         float r = red ? 1 : .14f, g = red ? .045f : .85f, b = red ? .015f : 1;
         var circle = CIRCLE[detail];
+        // The dark disc and faint spill show no facets at 48 segments, even up close.
+        var soft = CIRCLE[Math.max(detail, 1)];
         if (!glow) {
-            band(circle, 0, circle.length, 0, 4.8f, 14.01f / 16, 0,
+            band(soft, 0, soft.length, 0, 4.8f, 14.01f / 16, 0,
                     red ? .028f : .008f, red ? .006f : .018f, red ? .004f : .028f, .68f, sink);
             return;
         }
         for (var band : SPILL[detail]) {
-            band(circle, 0, circle.length, band[0], band[1], 18.999f / 16, 0, r, g, b, band[2] * strength, sink);
+            band(soft, 0, soft.length, band[0], band[1], 18.999f / 16, 0, r, g, b, band[2] * strength, sink);
         }
         for (var band : MAIN) {
             boolean core = band[0] == 7;
