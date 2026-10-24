@@ -99,7 +99,7 @@ octagonal `ring` + `connector` parts (r 13-17, top z 15). Bands are now offsets 
 bit for bit (a temporary probe compared 370M emitted floats and the bounds against the previous class). Choices
 not given by the owner: same z planes as the 2x2 (rings 19/16, four pixels above the ring parts, coplanar with
 but radially clear of the 3x3's z-19 prongs at r 6-8); disc and streaks scaled by side/2 (disc 7.2, streaks
-6.9 -> 2.7); spills of the two rings meet at 13.8 / 14. The centre is side/2 in `oriented`, the orientation
+6.9 -> 2.7); spills of the two rings meet at 13.8 / 14 (now overlap 13.75-14.05, see below). The centre is side/2 in `oriented`, the orientation
 matrices, `bounds` (radius = outer core + 1.8) and the renderer's distance; the guide queue entry carries the side.
 Vertices per 3x3 end: 6360 / 3288 / 1272.
 
@@ -114,3 +114,9 @@ r 4.8 on a 2x2, 7.2 on a 3x3, at 14.01/16) covered the artist's cyan centre plat
 `build/beam-portal-centre-check/`. The owner does not want the disc, so it went with its render type and buffer:
 `emit` lost its `glow` flag, the portal is one additive GLOW pass, one draw call per frame, and `bounds` starts
 at the streaks' 14.02/16. Earlier sections keep their history; their DISC mentions describe the old two-pass setup.
+
+**Widened to the 2x2's core (owner, 2026-10-24).** The first 3x3 cores were 0.5 px wide (11.5-12, 15.5-16) and read
+thinner than the 2x2's 1 px core 7-8. Owner: "要和2x2一样粗". Cores are now 11.25-12.25 and 15.25-16.25, one pixel
+each and centred on the asked radii; shoulders and spill unchanged, so each ring shows ~2.2 px (core + 0.6 px
+shoulders). Spills span 9.75-14.05 and 13.75-18.05 and overlap at 13.75-14.05; `bounds` radius is 18.05/16. Vertex
+counts are unchanged. Side-by-side shot: `build/beam-portal-3x3-width-check/after/pair-night.png`.

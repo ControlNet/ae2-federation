@@ -50,8 +50,8 @@ and shade brightness 1.0F to keep the open frame and inset joins from shading as
   red and unpowered red follow the cable's rules. Each anchor syncs a `BeamLook` (partner, side, count, limit, unpowered) every 10 ticks. Linked 2x2 fronts also draw one floating portal ring at each end
   (Blender study J2; owner's choice, 2026-10-23), with inward drifting streaks. Only the
   thick ring and its soft glow remain of the study's rings: the thin turning line and dashed ring outside it were
-  dropped at the artist's request (2026-10-24). Linked 3x3 fronts draw two such rings, their bright cores at
-  11.5-12 and 15.5-16 pixels from the face centre, over the artist's inner blocks and octagonal ring (owner,
+  dropped at the artist's request (2026-10-24). Linked 3x3 fronts draw two such rings, their one-pixel bright cores
+  (as wide as the 2x2's) at 11.25-12.25 and 15.25-16.25 pixels from the face centre, over the artist's inner blocks and octagonal ring (owner,
   2026-10-24); each keeps the 2x2's shoulders and spill about its own core, and the streaks scale by 1.5. The study's
   dark plate disc behind the beam's exit was dropped (owner, 2026-10-24): it blackened the emitter's centre
   whenever the pair linked. The portal is light only.

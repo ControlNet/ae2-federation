@@ -16,8 +16,8 @@ public final class BeamPortalMesh {
     }
 
     private static final int[] SEGMENTS = {96, 48, 24};
-    /** Each ring's bright core, inner and outer edge in pixels, for a 2x2 and a 3x3 front. */
-    private static final float[][][] CORES = {{{7, 8}}, {{11.5f, 12}, {15.5f, 16}}};
+    /** Each ring's bright core, inner and outer edge in pixels, for a 2x2 and a 3x3 front; all one pixel wide. */
+    private static final float[][][] CORES = {{{7, 8}}, {{11.25f, 12.25f}, {15.25f, 16.25f}}};
     // Bands as {core edge, offset, core edge, offset, alpha}, edge 0 being the core's inner edge and 1 its outer.
     private static final double[][] MAIN = {{0, -.6, 0, -.3, .10}, {0, -.3, 0, 0, .32}, {0, 0, 1, 0, .98},
             {1, 0, 1, .3, .32}, {1, .3, 1, .6, .10}};
