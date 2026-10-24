@@ -1,6 +1,6 @@
-"""Write the temporary textures of the ME Federation Beam Converter and Beam Former: the Federation Pattern Provider's,
-recoloured, until the artist draws them. Amber for the converter, the creative purple for the creative one, cyan for
-the former; greys stay as they are. The ME Federation Quantum Cube takes the Router's standalone texture and its
+"""Write the temporary textures of the ME Federation Beam Converter: the Federation Pattern Provider's, recoloured,
+until the artist draws them. Amber for the converter, the creative purple for the creative one; greys stay as they
+are. The ME Federation Quantum Cube takes the Router's standalone texture and its
 connected-face tiles, recoloured violet.
 """
 from pathlib import Path
@@ -10,7 +10,7 @@ from PIL import Image
 REPO = Path(__file__).resolve().parents[2]
 TEXTURES = REPO / 'common/src/main/resources/assets/ae2federation/textures/block'
 SOURCES = {'front': 'pattern_provider', 'side': 'pattern_provider_side', 'back': 'pattern_provider_back'}
-HUES = {'beam_converter': 36 / 360, 'creative_beam_converter': 290 / 360, 'beam_former': 190 / 360}
+HUES = {'beam_converter': 36 / 360, 'creative_beam_converter': 290 / 360}
 
 
 def recolour(image, hue):
@@ -39,4 +39,4 @@ folder.mkdir(exist_ok=True)
 for name in ['', '_base', '_corner', '_side_hor', '_side_ver']:
     image = Image.open(TEXTURES / 'router' / f'router{name}.png').convert('RGBA')
     recolour(image, QUANTUM_HUE).save(folder / f'quantum_cube{name}.png')
-print('Wrote temporary Beam Converter, Beam Former and Quantum Cube textures.')
+print('Wrote temporary Beam Converter and Quantum Cube textures.')

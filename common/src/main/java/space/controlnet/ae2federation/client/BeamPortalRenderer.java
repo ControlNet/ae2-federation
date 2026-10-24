@@ -63,8 +63,8 @@ public final class BeamPortalRenderer {
         frustum = current;
     }
 
-    static boolean visible(BlockPos origin, Direction facing) {
-        return frustum == null || frustum.isVisible(BeamPortalMesh.bounds(origin, facing));
+    static boolean visible(BlockPos origin, Direction facing, int side) {
+        return frustum == null || frustum.isVisible(BeamPortalMesh.bounds(origin, facing, side));
     }
 
     static void flush(MultiBufferSource.BufferSource buffers) {
@@ -77,32 +77,33 @@ public final class BeamPortalRenderer {
         SCENE.inScene(render);
     }
 
-    static void recordScene(PoseStack stack, Direction facing, long tick, float partialTick, CableBeamStyle style) {
-        SCENE.record(stack.last().pose(), facing, tick, partialTick, style);
+    static void recordScene(PoseStack stack, Direction facing, int side, long tick, float partialTick,
+            CableBeamStyle style) {
+        SCENE.record(stack.last().pose(), facing, side, tick, partialTick, style);
     }
 
     public static void drawScene(MultiBufferSource.BufferSource buffers) {
         SCENE.draw(entry -> {
             var stack = new PoseStack();
             stack.last().pose().set(entry.pose());
-            draw(stack, buffers, entry.facing(), 0, entry.tick(), entry.partialTick(), entry.style());
+            draw(stack, buffers, entry.facing(), entry.side(), 0, entry.tick(), entry.partialTick(), entry.style());
             buffers.endBatch(DISC);
             buffers.endBatch(GLOW);
         });
     }
 
-    static void draw(PoseStack stack, MultiBufferSource buffers, Direction facing, int detail, long tick,
+    static void draw(PoseStack stack, MultiBufferSource buffers, Direction facing, int side, int detail, long tick,
             float partialTick, CableBeamStyle style) {
-        var matrix = BeamPortalMesh.transform(stack.last().pose(), facing, TRANSFORM);
-        pass(matrix, buffers, detail, tick, partialTick, style, false);
-        pass(matrix, buffers, detail, tick, partialTick, style, true);
+        var matrix = BeamPortalMesh.transform(stack.last().pose(), facing, side, TRANSFORM);
+        pass(matrix, buffers, side, detail, tick, partialTick, style, false);
+        pass(matrix, buffers, side, detail, tick, partialTick, style, true);
     }
 
-    private static void pass(Matrix4f matrix, MultiBufferSource buffers, int detail, long tick,
+    private static void pass(Matrix4f matrix, MultiBufferSource buffers, int side, int detail, long tick,
             float partialTick, CableBeamStyle style, boolean glow) {
         var out = buffers.getBuffer(glow ? GLOW : DISC);
         BeamPortalMesh.Sink sink = (x, y, z, r, g, b, alpha) -> out.addVertex(matrix, x, y, z)
                 .setColor(r, g, b, alpha).setUv(0, 0).setUv2(240, 240).setNormal(0, 1, 0);
-        BeamPortalMesh.emit(true, 2, detail, tick, partialTick, style, glow, sink);
+        BeamPortalMesh.emit(true, side, detail, tick, partialTick, style, glow, sink);
     }
 }

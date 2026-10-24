@@ -2,14 +2,14 @@
 
 Status: implemented on `dev` (2026-10-17). Design discussion:
 [line-of-sight beam links](../archive/ideas/line-of-sight-beam-links.md); plan and decisions D1-D12:
-`.omo/plans/beam-former.md`. The 1x1 and 2x2 use the artist's models, exported by
-`tools/blockbench/export_beam_former_models.py`. The 3x3 keeps the cyan placeholder until the artist delivers.
+`.omo/plans/beam-former.md`. The 1x1, 2x2 and 3x3 use the artist's models, exported by
+`tools/blockbench/export_beam_former_models.py` (3x3 from PR #7, 2026-10-24).
 
 The multipart model selects a 2x2 quadrant only when a large member has exactly one connection on each
-in-plane axis and neither connection along its facing axis. Every other large connection mask uses the
-1x1 model for that facing, including damaged, partly unloaded bodies. Small and large models use empty
-occlusion and shade brightness 1.0F to keep the open frame and inset joins from shading as full cubes;
-huge retains full-cube occlusion and inherited shading.
+in-plane axis and neither connection along its facing axis. A huge member picks one of nine pieces from its
+in-plane connections: positive only, both, or negative only on each axis. Every other large or huge connection
+mask uses the 1x1 model for that facing, including damaged, partly unloaded bodies. All sizes use empty occlusion
+and shade brightness 1.0F to keep the open frame and inset joins from shading as full cubes.
 
 ## Behavior
 
@@ -50,13 +50,15 @@ huge retains full-cube occlusion and inherited shading.
   red and unpowered red follow the cable's rules. Each anchor syncs a `BeamLook` (partner, side, count, limit, unpowered) every 10 ticks. Linked 2x2 fronts also draw one floating portal ring at each end
   (Blender study J2; owner's choice, 2026-10-23), with a dark plate disc and inward drifting streaks. Only the
   thick ring and its soft glow remain of the study's rings: the thin turning line and dashed ring outside it were
-  dropped at the artist's request (2026-10-24).
-  Each end costs 3,288 vertices within 24 blocks, 1,752 through 48 blocks, and 696 beyond that, with
-  fewer angular segments and spill bands (the dark disc and faint spill never use more than 48 segments);
-  the portal stops at the beam's 256-block view distance.
+  dropped at the artist's request (2026-10-24). Linked 3x3 fronts draw two such rings, their bright cores at
+  11.5-12 and 15.5-16 pixels from the face centre, over the artist's inner blocks and octagonal ring (owner,
+  2026-10-24); each keeps the 2x2's shoulders and spill about its own core, and the disc and streaks scale by 1.5.
+  A 2x2 end costs 3,288 vertices within 24 blocks, 1,752 through 48 blocks, and 696 beyond that, a 3x3 end 6,360,
+  3,288 and 1,272, with fewer angular segments and spill bands (the dark disc and faint spill never use more than
+  48 segments); the portal stops at the beam's 256-block view distance.
   Each world end is frustum-culled independently. All visible portals share two fixed buffers, flushed disc
   then glow after block entities and before the beam and translucent terrain, for two portal draw calls per frame.
-  Both anchors reuse their existing synced look; 1x1, 3x3 and unlinked bodies draw no portal.
+  Both anchors reuse their existing synced look; 1x1 and unlinked bodies draw no portal.
   The disc stays dark during over-capacity and unpowered alarms (RGB .028, .006, .004; alpha .68).
   GuideME scenes queue the portals (copied pose and inputs) and draw them at the end of the scene's
   terrain, after flushing the solid and cutout quads its translucent pass queues a second time, while the

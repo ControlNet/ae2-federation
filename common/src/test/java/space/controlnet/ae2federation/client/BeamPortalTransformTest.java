@@ -21,19 +21,20 @@ class BeamPortalTransformTest {
         var poses = new Matrix4f[] {new Matrix4f(), new Matrix4f().translation(127.25f, -63.5f, 201.75f),
                 new Matrix4f().translation(3, -2, 7).rotateXYZ(.3f, -.7f, .2f).scale(.8f, 1.2f, .9f)};
         try (var oldBytes = new ByteBufferBuilder(1 << 20); var newBytes = new ByteBufferBuilder(1 << 20)) {
-            for (var facing : Direction.values()) for (int detail = 0; detail < 3; detail++) {
+            for (int side = 2; side <= 3; side++) for (var facing : Direction.values()) for (int detail = 0; detail < 3; detail++) {
                 for (int phase = 0; phase < 64; phase++) for (double load : new double[] {0, .5, 1, 1.5}) {
                     for (boolean alarm : new boolean[] {false, true}) for (var pose : poses) {
                         var style = CableBeamStyle.fromLoad(load, alarm);
                         var oldBuilder = new BufferBuilder(oldBytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
                         var newBuilder = new BufferBuilder(newBytes, VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
-                        var matrix = BeamPortalMesh.transform(pose, facing, new Matrix4f());
+                        int size = side;
+                        var matrix = BeamPortalMesh.transform(pose, facing, side, new Matrix4f());
                         var oldSink = sink(oldBuilder, pose);
                         var newSink = sink(newBuilder, matrix);
                         for (boolean glow : new boolean[] {false, true}) {
-                            BeamPortalMesh.emit(true, 2, detail, phase, .3f, style, glow,
-                                    (x, y, z, r, g, b, a) -> BeamPortalMesh.oriented(facing, oldSink, x, y, z, r, g, b, a));
-                            BeamPortalMesh.emit(true, 2, detail, phase, .3f, style, glow, newSink);
+                            BeamPortalMesh.emit(true, side, detail, phase, .3f, style, glow, (x, y, z, r, g, b, a) ->
+                                    BeamPortalMesh.oriented(facing, size, oldSink, x, y, z, r, g, b, a));
+                            BeamPortalMesh.emit(true, side, detail, phase, .3f, style, glow, newSink);
                         }
                         try (var oldMesh = oldBuilder.buildOrThrow(); var newMesh = newBuilder.buildOrThrow()) {
                             ByteBuffer a = oldMesh.vertexBuffer(), b = newMesh.vertexBuffer();
@@ -58,14 +59,15 @@ class BeamPortalTransformTest {
     @Test
     void boundsContainEveryOrientedVertex() {
         var origin = new BlockPos(42, -60, 51);
-        for (var facing : Direction.values()) {
-            var bounds = BeamPortalMesh.bounds(origin, facing).inflate(1e-7);
+        for (int side = 2; side <= 3; side++) for (var facing : Direction.values()) {
+            int size = side;
+            var bounds = BeamPortalMesh.bounds(origin, facing, side).inflate(1e-7);
             BeamPortalMesh.Sink check = (x, y, z, r, g, b, a) -> assertTrue(
                     bounds.contains(origin.getX() + x, origin.getY() + y, origin.getZ() + z));
             for (int detail = 0; detail < 3; detail++) for (int phase = 0; phase < 64; phase++) {
-                for (boolean glow : new boolean[] {false, true}) BeamPortalMesh.emit(true, 2, detail, phase, .3f,
+                for (boolean glow : new boolean[] {false, true}) BeamPortalMesh.emit(true, side, detail, phase, .3f,
                         CableBeamStyle.fromLoad(.5, false), glow,
-                        (x, y, z, r, g, b, a) -> BeamPortalMesh.oriented(facing, check, x, y, z, r, g, b, a));
+                        (x, y, z, r, g, b, a) -> BeamPortalMesh.oriented(facing, size, check, x, y, z, r, g, b, a));
             }
         }
     }
@@ -74,10 +76,10 @@ class BeamPortalTransformTest {
     void frustumRejectsOnlyTheOffscreenEnd() {
         var frustum = new Frustum(new Matrix4f(), new Matrix4f().perspective((float) Math.PI / 2, 1, .1f, 100));
         frustum.prepare(0, 0, 0);
-        for (var facing : Direction.values()) {
-            assertTrue(frustum.isVisible(BeamPortalMesh.bounds(new BlockPos(-1, -1, -3), facing)));
-            assertFalse(frustum.isVisible(BeamPortalMesh.bounds(new BlockPos(-1, -1, 3), facing)));
-            assertFalse(frustum.isVisible(BeamPortalMesh.bounds(new BlockPos(20, -1, -3), facing)));
+        for (int side = 2; side <= 3; side++) for (var facing : Direction.values()) {
+            assertTrue(frustum.isVisible(BeamPortalMesh.bounds(new BlockPos(-1, -1, -3), facing, side)));
+            assertFalse(frustum.isVisible(BeamPortalMesh.bounds(new BlockPos(-1, -1, 3), facing, side)));
+            assertFalse(frustum.isVisible(BeamPortalMesh.bounds(new BlockPos(20, -1, -3), facing, side)));
         }
     }
 

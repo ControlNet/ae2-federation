@@ -6,7 +6,7 @@ transforms) and `BeamPortalRenderer` (render types, world draw, guide queue) imp
 calls it before its positive-facing-only beam guard.
 
 - **Where.** Each linked body's lowest block already holds a `BeamLook` on both ends (`syncLook`), so both
-  ends draw one portal each with no new sync; other members have no look. Only side 2 draws.
+  ends draw one portal each with no new sync; other members have no look. Sides 2 and 3 draw (`BeamPortalMesh.drawn`).
 - **Geometry.** Local coordinates centred on the square; main bands at 19/16 from the back,
   spill 18.999/16, disc 14.01/16, streaks 14.02/16. The study's thin turning line (8.94-9.06) and 16 dashes
   (9.35-9.5) were removed on 2026-10-24 at the artist's request: only the thick ring stays. The pair's render box already covers the ring.
@@ -90,3 +90,20 @@ The artist asked to keep only the thick ring. The turning line (384 vertices at 
 (256 / 128 / 64) are gone, with `DASH` and their rotations; the spill glow, disc and streaks stay. Per end:
 3928 / 2264 / 1144 -> 3288 / 1752 / 696 vertices. The `bounds` radius stays 9.8/16, the spill's outer edge.
 Phase-locked before/after close-ups: `build/beam-portal-rings-check/` (`closeup.sh <worktree> <label> <topic>`).
+
+## 3x3 fronts: two rings (2026-10-24)
+
+The owner asked for two thick rings on the 3x3, cores 11.5-12 and 15.5-16 px from the face centre (16 px per
+block), over the artist's PR #7 emitter: inner over the `d` blocks and the corner arms' ends (r 8-13), outer over the
+octagonal `ring` + `connector` parts (r 13-17, top z 15). Bands are now offsets from a core's inner/outer edge
+(`CORES`, `MAIN`, `SPILL` as {edge, offset, edge, offset, alpha}); the 2x2's core 7-8 reproduces its old radii
+bit for bit (a temporary probe compared 370M emitted floats and the bounds against the previous class). Choices
+not given by the owner: same z planes as the 2x2 (rings 19/16, four pixels above the ring parts, coplanar with
+but radially clear of the 3x3's z-19 prongs at r 6-8); disc and streaks scaled by side/2 (disc 7.2, streaks
+6.9 -> 2.7); spills of the two rings meet at 13.8 / 14. The centre is side/2 in `oriented`, the orientation
+matrices, `bounds` (radius = outer core + 1.8) and the renderer's distance; the guide queue entry carries the side.
+Vertices per 3x3 end: 6360 / 3288 / 1272.
+
+In-game check: `build/beam-portal-check/tools/closeup3.sh <worktree> <label> <topic>`, one 3x3 pair at x 20-22,
+z 14 and 24; the beam fills the 3x3 square in front of the face, so cameras stay above or beside it (a camera
+inside the beam sees only white haze). Images `build/beam-former-3x3-check/`.
