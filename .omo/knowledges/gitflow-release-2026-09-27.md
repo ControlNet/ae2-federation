@@ -129,3 +129,23 @@
   New blocks and building; Networks and crafting; Look and interface; Modpacks and addons; In-game guide.
 - The unauthenticated Modrinth API (`/v2/project/orso4Dml/version`) returned a non-JSON body from this host. The
   workflow's own authenticated read-back is the check.
+
+## Published v0.0.8 (2026-10-24)
+
+- Flow: a separate worktree, `release/v0.0.8` from `dev` `5fe4a1d6` ("Prepare 0.0.8": only `mod_version`), then one
+  release-only commit `debd60f6` that leaves out the placeholder-art Beam Converter, Creative Beam Converter and
+  Quantum Cube and locks operating power off (see `release-0.0.8-placeholder-exclusion-2026-10-24.md`). Master
+  "Release 0.0.8" `6a141db4` (tag `v0.0.8` by CI); merged back into `dev` (`9e8bde48`), then `debd60f6` reverted on
+  `dev` at once (`fd9ddd40`), so `dev` keeps the blocks; only `mod_version` 0.0.8 changed there.
+- Release checks: strict build with 787 unit tests, release-metadata and artifact Python tests, `artifact_verify.py
+  inspect`, the manifest batch 273/273, Quick correctness and Compatibility on the release head, `validate_assets.py`,
+  guide pages compiled by `runGuideClient` with no warnings. The owner waived the cross-dimension production run for
+  this release.
+- Release run 40100690885: build, platform preflight, 16 GameTest shards, GitHub, Modrinth and CurseForge all succeeded.
+- Binary `ae2federation-neoforge-1.21.1-0.0.8.jar`, 3,235,187 bytes, SHA-256
+  `85a707450305be0c3367d07a8b75a6c8e9dbbf98f32110b4f7c6c5ad147eca1a`, identical to the local `artifact_verify.py inspect`
+  hash. Downloaded assets pass `sha256sum -c`; `neoforge.mods.toml` reads 0.0.8, NeoForge `[21.1.216,)`, AE2 `[19.2.9,)`,
+  LDLib2 `[2.2.34,)`; the JAR holds no `beam_converter` or `quantum_cube` entry.
+- Notes are English, in the 0.0.7 layout. Upgrade callout: Federation P2P pairs count toward cable capacity; new
+  bundles are 2x2 or 3x3 only (existing others keep working); conflicting merges wait for "Keep this one"; development
+  builds lose the Beam Converter and Quantum Cube and the `[power]` section.
