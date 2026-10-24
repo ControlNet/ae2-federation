@@ -12,7 +12,12 @@ final class PlaythroughMachineAdapters {
             new PlaythroughChargerAdapter(),
             new PlaythroughCookingAdapter("furnace", "minecraft:smelting", "minecraft:furnace"),
             new PlaythroughCookingAdapter("smoker", "minecraft:smoking", "minecraft:smoker"),
-            new PlaythroughCookingAdapter("blast-furnace", "minecraft:blasting", "minecraft:blast_furnace")
+            new PlaythroughCookingAdapter("blast-furnace", "minecraft:blasting", "minecraft:blast_furnace"),
+            new PlaythroughMetallurgicInfuserAdapter(),
+            new PlaythroughMekanismMachineAdapter("enrichment-chamber", "mekanism:enriching", "mekanism:enrichment_chamber",
+                    "mekanism.common.tile.machine.TileEntityEnrichmentChamber"),
+            new PlaythroughMekanismMachineAdapter("crusher", "mekanism:crushing", "mekanism:crusher",
+                    "mekanism.common.tile.machine.TileEntityCrusher")
     );
     static final List<PlaythroughMachineAdapter> ENABLED = selected();
 

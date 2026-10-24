@@ -331,3 +331,37 @@ leaves the machine's DOWN face, and `inputFace` may be any other face. `Site` tr
 non-item adapters can replace the hopper with real pipes and declare justified raw keys via `providedInputs`.
 Fluid outputs receive an AE2 fluid cell; chemical adapters declare their pack cell IDs through `storageCells`.
 Those physical requester cells participate in the same full inventory balance. Non-item adapters still need their own runtime validation; this phase exercises items only. No main-mod code is changed.
+
+### Phase 3b: Mekanism adapters
+
+These adapters are registered by default with the Phase 3a ones. The test mod does not build against Mekanism, so
+they read Mekanism's recipe classes and configure its machines by reflection (`MekanismSetup`). Each machine
+has its own filled Creative Energy Cube on its west side, ejecting into the machine's west energy input. Its side
+configuration takes items on top and gives the product at the bottom, where the site hopper collects it.
+A machine is idle when every internal slot and chemical tank is empty and no operation is in progress.
+Both adapters reject a recipe when another recipe of the same type accepts the same concrete input, because the
+machine runs the first recipe its input cache matches.
+
+`metallurgic-infuser` (`mekanism:metallurgic_infusing`) supplies the infuse type as items. The candidates come
+from the loaded `mekanism:chemical_conversion` recipes: items that exactly one conversion accepts, one at a time,
+producing a chemical the recipe accepts, in an amount that divides the recipe's chemical amount. The pattern holds
+that amount divided by the conversion amount, for example two redstone dust for the basic control circuit's 20
+redstone. A second Storage Bus on the east side, filtered to that item, feeds the infusion slot (side type EXTRA).
+The top bus is filtered to the main ingredient. Recipes with a per-tick chemical cost, no dividing conversion item,
+or an ingredient equal to the infuse item are rejected.
+
+`enrichment-chamber` (`mekanism:enriching`) and `crusher` (`mekanism:crushing`) share one item-to-item adapter. It
+reads `getInput()` with its count and `getOutput(input)`. The Energized Smelter is not adapted, because it runs the
+vanilla smelting recipes that the furnace adapter already covers. `mekanism:reaction` is not adapted. Every one of
+its recipes needs a chemical input (oxygen, hydrogen, ethene or plutonium) that only other chemical machines produce.
+
+Evidence (both machine paths, plain AE2 control on each). The two Mekanism chapters (`chapter=通用机械` also
+matches `通用机械附属`) give 195 tasks, after leaving out
+`compactmekanismmachines:compressed_wind_generator_x532480`. That target plans 7.1 million crafts and cannot finish
+within the wall clock. The result is 194 both-pass and one not-bootstrappable per path, validated by
+`tools/compat_playthrough_machines.py`. The infuser ran in 157 tasks (10 recipes), the Enrichment Chamber in 97 (3)
+and the Crusher in 1 (the refined obsidian dust quest). No planned machine step went unobserved. The infusing-dependent
+targets in other chapters (111 tasks) include the Applied Flux cores up to 64m and the AE2 Generators flux and
+singularity generators. They give 96 both-pass per path. The 256m tiers and the 64m singularity generator hit the
+1400-second wall clock in both layouts. The creative and infinite cells fail planning in both layouts, also without
+these adapters.
