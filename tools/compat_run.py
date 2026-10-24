@@ -220,14 +220,19 @@ def run_bare(name: str, profile: dict, timeout: int) -> dict:
 
 
 def run_profile(name: str, profile: dict, tests: str, timeout: int, parallel: int = 1,
-                properties: dict[str, str] | None = None) -> dict:
+                properties: dict[str, str] | None = None, fresh: bool = True) -> dict:
+    """Runs the tests in a newly assembled directory, or with fresh=False in the existing one and its saved world."""
     directory = RUNS / name
     started = time.monotonic()
     try:
-        assemble(profile, directory)
+        if fresh:
+            assemble(profile, directory)
+        elif not (directory / "server.properties").exists():
+            raise FileNotFoundError(f"{directory} holds no assembled server")
     except Exception as error:  # noqa: BLE001 - reported per profile
         return {"profile": name, "status": "setup-error", "detail": str(error), "seconds": 0}
     report = directory / "compat-report.json"
+    report.unlink(missing_ok=True)
     log = directory / "server-console.log"
     command = ["java", f"-Xmx{profile.get('memory', '4G')}", f"-Dae2federation.compat.tests={tests}",
                f"-Dae2federation.compat.report={report}", f"-Dae2federation.compat.parallel={parallel}",

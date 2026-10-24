@@ -40,8 +40,15 @@ final class PlaythroughMachines {
     private final List<Installation> installations = new ArrayList<>();
     private final Set<String> installed = new java.util.HashSet<>();
     private final List<BlockPos> outputCells = new ArrayList<>();
+    private final List<String> outputCellTypes = new ArrayList<>();
     private final Set<BlockPos> placed;
     private Set<BlockPos> layout = Set.of();
+    /** Phase 4 keeps the riser and output cells between orders and rebuilds only the sites. */
+    private boolean riser;
+    private final Set<BlockPos> sites = new java.util.LinkedHashSet<>();
+    private int copies = requestedCopies();
+    /** Blocks the base itself stacks above its requester chest (its bank Drive), below any output cells. */
+    private int cellOffset;
 
     PlaythroughMachines(GameTestHelper helper, Set<BlockPos> placed, boolean federated) {
         this.helper = helper; this.placed = placed; this.endpoint = federated && PATH.equals("endpoint");
@@ -65,6 +72,19 @@ final class PlaythroughMachines {
                 throw new IllegalStateException("Storage Bus refused: " + pos);
             return storage;
         }
+        /**
+         * Blocking mode, as a player sets it for a machine that must finish one batch before the next arrives. The
+         * provider sees the machine only through the input Storage Bus, whose default extractable-only filter hides
+         * inputs the machine will not give back, so that bus must list every stack.
+         */
+        void blocking() {
+            ((PatternProviderLogicHost) helper.getBlockEntity(provider)).getConfigManager()
+                    .putSetting(appeng.api.config.Settings.BLOCKING_MODE, appeng.api.config.YesNo.YES);
+            for (var face : Direction.values())
+                if (helper.getLevel().getBlockEntity(helper.absolutePos(machine.relative(face))) instanceof appeng.api.parts.IPartHost host
+                        && host.getPart(face.getOpposite()) instanceof appeng.parts.storagebus.StorageBusPart bus)
+                    bus.getConfigManager().putSetting(appeng.api.config.Settings.STORAGE_FILTER, appeng.api.config.StorageFilter.NONE);
+        }
         private void claim(BlockPos pos) {
             if (layout.contains(pos)) throw new IllegalStateException("Machine shelf collides with a layout block at " + pos);
         }
@@ -82,88 +102,158 @@ final class PlaythroughMachines {
         placeCable(helper, placed, pos, true);
     }
 
-    static int requestedCopies() {
-        int requested = Integer.getInteger("ae2federation.playthrough.machineCopies", 4);
+    static int requestedCopies() { return requestedCopies(4); }
+
+    static int requestedCopies(int fallback) {
+        int requested = Integer.getInteger("ae2federation.playthrough.machineCopies", fallback);
         if (requested < 1 || requested > MAX_SITES) throw new IllegalArgumentException("machineCopies must be 1.." + MAX_SITES);
         return requested;
     }
 
+    /** Phase 4: one copy per recipe unless {@code machineCopies} says otherwise, and the bank blocks above the requester. */
+    void persistent(int copies, int cellOffset) { this.copies = copies; this.cellOffset = cellOffset; }
+
+    /** Copies of each machine recipe that a shelf of this proof builds when {@code copies} are requested. */
+    static int siteCopies(int copies, PlaythroughRecipes.Proof proof) {
+        return proof.shelf().isEmpty() ? 0 : Math.min(copies, MAX_SITES / proof.shelf().size());
+    }
+
     private static Set<String> storageCells(PlaythroughRecipes.Proof proof) {
         var cells = new java.util.TreeSet<String>();
-        proof.machines().values().forEach(recipe -> cells.addAll(PlaythroughMachineAdapters.byId(recipe.adapter()).storageCells(recipe)));
+        proof.shelf().values().forEach(recipe -> cells.addAll(PlaythroughMachineAdapters.byId(recipe.adapter()).storageCells(recipe)));
         return cells;
     }
 
     /** Shelf capacity, checked at proof time so an oversized target fails as pattern-encoding. */
     static void validate(PlaythroughRecipes.Proof proof) {
-        if (proof.machines().size() > MAX_SITES)
-            throw new IllegalArgumentException("Machine shelf supports " + MAX_SITES + " distinct recipes, needed " + proof.machines().size());
+        if (proof.shelf().size() > MAX_SITES)
+            throw new IllegalArgumentException("Machine shelf supports " + MAX_SITES + " distinct recipes, needed " + proof.shelf().size());
         var cells = storageCells(proof);
         if (cells.size() > 12) throw new IllegalArgumentException("Requester supports at most 12 additional cell types: " + cells);
     }
 
     /** Builds after the rest of the layout, so any overlap with it fails here instead of replacing a block. */
     void initialize(PlaythroughRecipes.Proof proof, BlockPos factoryChest, BlockPos requesterChest) {
-        if (proof.machines().isEmpty()) return;
-        layout = Set.copyOf(placed);
+        var shelf = proof.shelf();
+        if (shelf.isEmpty()) return;
+        if (!riser) layout = Set.copyOf(placed);
         for (var cell : storageCells(proof)) {
-            var pos = requesterChest.above(outputCells.size() + 1);
+            if (outputCellTypes.contains(cell)) continue;
+            var pos = requesterChest.above(cellOffset + outputCells.size() + 1);
             if (layout.contains(pos)) throw new IllegalStateException("Requester cell collides with a layout block at " + pos);
             placed.add(pos); helper.setBlock(pos, AEBlocks.ME_CHEST.block());
             var chest = helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(pos);
             chest.setCell(new net.minecraft.world.item.ItemStack(AddonCraftingScene.item(cell)));
             chest.setPriority(1000);
             if (chest.getOriginalCellInventory(0) == null) throw new IllegalArgumentException("Not an AE2 storage cell: " + cell);
-            outputCells.add(pos);
+            outputCells.add(pos); outputCellTypes.add(cell);
         }
-        // The riser threads the controller spine, then leaves it clear of all assembler faces.
-        for (int x = factoryChest.getX() + 1; x <= 33; x++) {
-            var pos = new BlockPos(x, factoryChest.getY(), factoryChest.getZ());
-            if (layout.contains(pos) && !helper.getBlockState(pos).is(AEBlocks.CONTROLLER.block()))
-                throw new IllegalStateException("Machine riser collides with a layout block at " + pos);
-            placeCable(helper, placed, pos, true);
+        if (!riser) {
+            // The riser threads the controller spine, then leaves it clear of all assembler faces.
+            for (int x = factoryChest.getX() + 1; x <= 33; x++) {
+                var pos = new BlockPos(x, factoryChest.getY(), factoryChest.getZ());
+                if (layout.contains(pos) && !helper.getBlockState(pos).is(AEBlocks.CONTROLLER.block()))
+                    throw new IllegalStateException("Machine riser collides with a layout block at " + pos);
+                placeCable(helper, placed, pos, true);
+            }
+            for (int y = factoryChest.getY() + 1; y <= 12; y++) denseCable(new BlockPos(33, y, factoryChest.getZ()));
+            for (int z = factoryChest.getZ() + 1; z <= Z + 3; z++) denseCable(new BlockPos(33, 12, z));
+            riser = true;
         }
-        for (int y = factoryChest.getY() + 1; y <= 12; y++) denseCable(new BlockPos(33, y, factoryChest.getZ()));
-        for (int z = factoryChest.getZ() + 1; z <= Z + 3; z++) denseCable(new BlockPos(33, 12, z));
+        var before = Set.copyOf(placed);
         int index = 0;
-        int copies = Math.min(requestedCopies(), MAX_SITES / proof.machines().size());
-        for (int copy = 0; copy < copies; copy++) for (var recipe : proof.machines().values()) {
-            int row = index / 6;
-            var pos = new BlockPos(2 + index % 6 * 5, 12 + row * 5, Z);
-            for (int y = 13; y <= pos.getY(); y++) denseCable(new BlockPos(33, y, Z + 3));
-            for (int x = pos.getX(); x <= 33; x++) denseCable(new BlockPos(x, pos.getY(), Z + 3));
-            var current = new Site(helper, placed, layout, pos, pos.above(2), endpoint ? pos.east() : pos);
-            current.cable(pos.south()); current.cable(pos.south(2));
-            if (endpoint) {
-                current.block(pos, ProcessingRegistration.PROVIDER.get().defaultBlockState().setValue(BlockStateProperties.FACING, Direction.EAST));
-                current.block(pos.east(), ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(BlockStateProperties.FACING, Direction.WEST));
-            } else {
-                current.block(pos, AEBlocks.PATTERN_PROVIDER.block());
-                AEBlocks.PATTERN_PROVIDER.block().setSide(helper.getLevel(), helper.absolutePos(pos), Direction.WEST);
-                current.block(pos.east(), AEBlocks.INTERFACE.block());
-                // Quartz Fiber joins power only; the input subnet must never join the factory's item network.
-                current.cable(pos.north()); current.cable(pos.east().north());
-                if (PartHelper.setPart(helper.getLevel(), helper.absolutePos(pos.north()), Direction.EAST, null,
-                        AEParts.QUARTZ_FIBER.asItem()) == null) throw new IllegalStateException("Quartz Fiber refused");
-            }
-            var adapter = PlaythroughMachineAdapters.byId(recipe.adapter());
-            // The subnet rises east of the machine to the cable above it; the Endpoint's riser bypasses its collector.
-            if (endpoint) for (int y = 0; y <= 3; y++) current.cable(pos.east(2).above(y));
-            for (int y = endpoint ? 2 : 1; y <= 3; y++) current.cable(pos.east().above(y));
-            current.cable(current.machine().above());
-            var face = adapter.inputFace();
-            var port = current.machine().relative(face);
-            // North, south and west ports drop from a cable beside the one above the machine.
-            if (face != Direction.UP && face != Direction.EAST) current.cable(port.above());
-            current.storageBus(port, face.getOpposite());
-            adapter.place(current, recipe);
-            if (adapter.itemCollector()) {
-                current.block(pos.above(), Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING,
-                        endpoint ? Direction.EAST : Direction.DOWN));
-                // A second hopper drops the product into the Endpoint, bypassing its input Storage Buses.
-                if (endpoint) current.block(pos.east().above(), Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.DOWN));
-            }
-            installations.add(new Installation(current, recipe)); index++;
+        int copies = siteCopies(this.copies, proof);
+        for (int copy = 0; copy < copies; copy++) for (var recipe : shelf.values()) buildSite(index++, recipe);
+        placed.stream().filter(pos -> !before.contains(pos)).forEach(sites::add);
+    }
+
+    private void buildSite(int index, PlaythroughMachineAdapter.Recipe recipe) {
+        int row = index / 6;
+        var pos = new BlockPos(2 + index % 6 * 5, 12 + row * 5, Z);
+        for (int y = 13; y <= pos.getY(); y++) denseCable(new BlockPos(33, y, Z + 3));
+        for (int x = pos.getX(); x <= 33; x++) denseCable(new BlockPos(x, pos.getY(), Z + 3));
+        var current = new Site(helper, placed, layout, pos, pos.above(2), endpoint ? pos.east() : pos);
+        current.cable(pos.south()); current.cable(pos.south(2));
+        if (endpoint) {
+            current.block(pos, ProcessingRegistration.PROVIDER.get().defaultBlockState().setValue(BlockStateProperties.FACING, Direction.EAST));
+            current.block(pos.east(), ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(BlockStateProperties.FACING, Direction.WEST));
+        } else {
+            current.block(pos, AEBlocks.PATTERN_PROVIDER.block());
+            AEBlocks.PATTERN_PROVIDER.block().setSide(helper.getLevel(), helper.absolutePos(pos), Direction.WEST);
+            current.block(pos.east(), AEBlocks.INTERFACE.block());
+            // Quartz Fiber joins power only; the input subnet must never join the factory's item network.
+            current.cable(pos.north()); current.cable(pos.east().north());
+            if (PartHelper.setPart(helper.getLevel(), helper.absolutePos(pos.north()), Direction.EAST, null,
+                    AEParts.QUARTZ_FIBER.asItem()) == null) throw new IllegalStateException("Quartz Fiber refused");
+        }
+        var adapter = PlaythroughMachineAdapters.byId(recipe.adapter());
+        // The subnet rises east of the machine to the cable above it; the Endpoint's riser bypasses its collector.
+        if (endpoint) for (int y = 0; y <= 3; y++) current.cable(pos.east(2).above(y));
+        for (int y = endpoint ? 2 : 1; y <= 3; y++) current.cable(pos.east().above(y));
+        current.cable(current.machine().above());
+        var face = adapter.inputFace();
+        var port = current.machine().relative(face);
+        // North, south and west ports drop from a cable beside the one above the machine.
+        if (face != Direction.UP && face != Direction.EAST) current.cable(port.above());
+        current.storageBus(port, face.getOpposite());
+        adapter.place(current, recipe);
+        if (adapter.itemCollector()) {
+            current.block(pos.above(), Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING,
+                    endpoint ? Direction.EAST : Direction.DOWN));
+            // A second hopper drops the product into the Endpoint, bypassing its input Storage Buses.
+            if (endpoint) current.block(pos.east().above(), Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.DOWN));
+        }
+        installations.add(new Installation(current, recipe));
+    }
+
+    /**
+     * Phase 4: removes every site after an order, keeping the riser and output cells. The equipment that stood there
+     * stays owned by the base; its stacks never re-enter ME storage, so drops are discarded.
+     */
+    void retire() {
+        for (var pos : sites) { helper.setBlock(pos, Blocks.AIR); placed.remove(pos); }
+        sites.clear(); installations.clear(); installed.clear();
+        helper.getLevel().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+                net.minecraft.world.phys.AABB.encapsulatingFullBlocks(helper.absolutePos(new BlockPos(0, 10, Z - 3)),
+                        helper.absolutePos(new BlockPos(35, 36, Z + 5)))).forEach(net.minecraft.world.entity.Entity::discard);
+    }
+
+    /** Saved riser state and output cells, so a resumed base keeps building on them. */
+    record State(boolean riser, List<Long> layout, List<Long> outputCells, List<String> outputCellTypes) { }
+
+    State state() {
+        return new State(riser, layout.stream().map(BlockPos::asLong).toList(), outputCells.stream().map(BlockPos::asLong).toList(),
+                List.copyOf(outputCellTypes));
+    }
+
+    void restore(State state) {
+        riser = state.riser(); layout = state.layout().stream().map(BlockPos::of).collect(java.util.stream.Collectors.toSet());
+        state.outputCells().forEach(pos -> outputCells.add(BlockPos.of(pos))); outputCellTypes.addAll(state.outputCellTypes());
+    }
+
+    /** Output cells by type, read as physical requester storage. */
+    Map<String, appeng.api.storage.MEStorage> outputStorage() {
+        var result = new java.util.LinkedHashMap<String, appeng.api.storage.MEStorage>();
+        for (int i = 0; i < outputCells.size(); i++) result.put(outputCellTypes.get(i), java.util.Objects.requireNonNull(
+                helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(outputCells.get(i)).getOriginalCellInventory(0)));
+        return result;
+    }
+
+    /**
+     * Builds one projection site for {@code recipe} in an empty scratch area, reads what its adapter places as
+     * equipment, then removes the site. No item enters any network.
+     */
+    static List<net.minecraft.world.item.ItemStack> survey(GameTestHelper scratch, PlaythroughMachineAdapter.Recipe recipe) {
+        var placed = new java.util.LinkedHashSet<BlockPos>();
+        var machines = new PlaythroughMachines(scratch, placed, false);
+        try {
+            machines.buildSite(0, recipe);
+            return PlaythroughMachineAdapters.byId(recipe.adapter()).equipment(scratch, machines.installations.getFirst().site().machine(), recipe);
+        } finally {
+            for (var pos : placed) scratch.setBlock(pos, Blocks.AIR);
+            scratch.getLevel().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+                    net.minecraft.world.phys.AABB.encapsulatingFullBlocks(scratch.absolutePos(new BlockPos(0, 8, Z - 4)),
+                            scratch.absolutePos(new BlockPos(35, 20, Z + 5)))).forEach(net.minecraft.world.entity.Entity::discard);
         }
     }
 
@@ -288,6 +378,15 @@ final class PlaythroughMachines {
             if (!signature.equals(proof.signatures().get(installation.recipe().id()))) return "Machine signature changed";
         }
         return "";
+    }
+
+    /** Whether every machine, collector and input buffer is idle and empty. */
+    boolean drained() { return checks().get("machine-idle-empty").equals("PASS"); }
+
+    /** The longest time one run's output takes through its hopper, one item per 8 ticks, plus a margin. */
+    long drainTicks() {
+        return 40 + installations.stream().mapToLong(installation -> 8L * installation.recipe().outputs().stream()
+                .filter(stack -> stack.what() instanceof AEItemKey).mapToLong(appeng.api.stacks.GenericStack::amount).sum()).max().orElse(0);
     }
 
     Map<String, String> checks() {

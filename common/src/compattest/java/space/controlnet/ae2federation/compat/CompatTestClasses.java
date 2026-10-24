@@ -19,6 +19,7 @@ final class CompatTestClasses {
         groups.put("playthrough-topology", PlaythroughTopologyGameTests.class);
         groups.put("playthrough-crafting", PlaythroughCraftingGameTests.class);
         groups.put("playthrough-remainders", PlaythroughRemainderGameTests.class);
+        groups.put("playthrough-progression", PlaythroughProgressionGameTests.class);
         if (!System.getProperty("ae2federation.compat.transitRestartPhase", "").isBlank()) {
             groups.put("transit-restart", TransitRecoveryRestartGameTests.class);
         }

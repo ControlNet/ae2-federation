@@ -13,7 +13,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.nbt.TagParser;
 import net.minecraft.world.item.ItemStack;
 import appeng.api.stacks.AEItemKey;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -41,6 +40,16 @@ public final class PlaythroughCraftingGameTests {
     }
 
     static void runTopology(GameTestHelper helper) throws Exception { new Run(helper, null, true).start(); }
+
+    /** Appends {@code quest} after its dependencies; Phase 4 walks the quest book in the same order. */
+    static void visit(QuestCoverageCompatGameTests.Quest quest,
+                      Map<String, QuestCoverageCompatGameTests.Quest> quests, Set<String> seen,
+                      Set<String> active, List<QuestCoverageCompatGameTests.Quest> ordered) {
+        if (seen.contains(quest.id())) return;
+        if (!active.add(quest.id())) throw new IllegalStateException("Quest dependency cycle: " + quest.id());
+        for (var dependency : quest.dependencies()) if (quests.containsKey(dependency)) visit(quests.get(dependency), quests, seen, active, ordered);
+        active.remove(quest.id()); seen.add(quest.id()); ordered.add(quest);
+    }
 
     private record Target(String chapter, String chapterId, String quest, String questId, String taskId,
                           String item, long count, AEItemKey key) { }
@@ -116,7 +125,7 @@ public final class PlaythroughCraftingGameTests {
                 for (var task : quest.tasks()) {
                     if (!task.classification().equals("plain-item") || !items.isEmpty() && !items.contains(task.item())
                             || topologyMode && items.isEmpty() && !PlaythroughTopology.DEFAULT_TARGETS.contains(task.item())) continue;
-                    var tag = TagParser.parseTag(task.snbt());
+                    var tag = QuestCoverageCompatGameTests.parse(task.snbt());
                     long count = tag.contains("count") ? tag.getLong("count") : 1;
                     if (topologyMode) count = Long.getLong(PlaythroughTopology.PREFIX + "orderAmount", count);
                     if (count <= 0) throw new IllegalStateException("Invalid quest count: " + task.id());
@@ -155,15 +164,6 @@ public final class PlaythroughCraftingGameTests {
                 manager.requestGameToSprint(MAX_TICKS); sprintOwned = true;
             }
             helper.runAfterDelay(1, this::tick);
-        }
-
-        private static void visit(QuestCoverageCompatGameTests.Quest quest,
-                                  Map<String, QuestCoverageCompatGameTests.Quest> quests, Set<String> seen,
-                                  Set<String> active, List<QuestCoverageCompatGameTests.Quest> ordered) {
-            if (seen.contains(quest.id())) return;
-            if (!active.add(quest.id())) throw new IllegalStateException("Quest dependency cycle: " + quest.id());
-            for (var dependency : quest.dependencies()) if (quests.containsKey(dependency)) visit(quests.get(dependency), quests, seen, active, ordered);
-            active.remove(quest.id()); seen.add(quest.id()); ordered.add(quest);
         }
 
         private void tick() {

@@ -57,6 +57,17 @@ final class PlaythroughTopology {
         return new Layout(seed, networks, join, power, split, cpus, "normal", path, roles);
     }
 
+    /**
+     * Phase 4's federated base: four members joined by a Router and Switches, crafting by projection, in the roles the
+     * machine shelf expects (materials west, factory east, requester north). The seed picks power and extra CPUs.
+     */
+    static Layout base(long seed) {
+        var random = new Random(seed);
+        String power = DIMENSIONS.get("power").get(random.nextInt(DIMENSIONS.get("power").size()));
+        boolean cpus = random.nextBoolean();
+        return new Layout(seed, 4, "router-switch", power, false, cpus, "normal", "projection", "WEST/EAST/NORTH");
+    }
+
     private static String value(String name, Random random) {
         var values = DIMENSIONS.get(name);
         String selected = values.get(random.nextInt(name.equals("join") ? 6 : values.size()));
