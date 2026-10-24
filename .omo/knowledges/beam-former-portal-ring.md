@@ -7,13 +7,13 @@ calls it before its positive-facing-only beam guard.
 
 - **Where.** Each linked body's lowest block already holds a `BeamLook` on both ends (`syncLook`), so both
   ends draw one portal each with no new sync; other members have no look. Only side 2 draws.
-- **Geometry.** Local coordinates centred on the square; main bands, line and dashes at 19/16 from the back,
-  spill 18.999/16, disc 14.01/16, streaks 14.02/16. The pair's render box already covers the ring.
+- **Geometry.** Local coordinates centred on the square; main bands at 19/16 from the back,
+  spill 18.999/16, disc 14.01/16, streaks 14.02/16. The study's thin turning line (8.94-9.06) and 16 dashes
+  (9.35-9.5) were removed on 2026-10-24 at the artist's request: only the thick ring stays. The pair's render box already covers the ring.
 - **Render types.** Vanilla beacon shader (unlit vertex colour), white texture, no cull, LEQUAL depth test,
   colour-only writes. Disc alpha-blended and flushed first, then the SRC_ALPHA/ONE glow.
-- **LOD.** `CableBeamMesh.detail`: 3928 / 2264 / 1144 vertices per end (96/48/24 segments, 6/3/1 spill bands,
-  4/2/1 per dash); disc and spill cap at 48 segments (`soft`), the outer line keeps 96 segments so its
-  +3.75 deg/64-tick turn loops. Cut-off 256 blocks.
+- **LOD.** `CableBeamMesh.detail`: 3288 / 1752 / 696 vertices per end (96/48/24 segments, 6/3/1 spill bands);
+  disc and spill cap at 48 segments (`soft`). Cut-off 256 blocks. Animation left: the streaks and a 4% pulse.
 - **Alarm.** Glow uses the beam's red; the disc stays dark red (.028, .006, .004) instead of the study's red tint
   (no red J2 render was ever shown, and a bright red disc read as a solid blob in game).
 
@@ -72,7 +72,7 @@ benchmark types the scene twice because the XTEST typer sometimes drops a comman
 
 Near detail drew the dark disc and the six faint spill bands with 96 segments (5272 vertices per end). They now
 use at most 48 (`CIRCLE[max(detail, 1)]`): 3928 vertices, -25.5%; detail 1 and 2 are unchanged. The main bands,
-the line and the dashes keep their segments, since the bright ring's facets would show.
+then the line and the dashes, kept their segments, since the bright ring's facets would show.
 
 - **CPU probe** (same worktree, only `BeamPortalMesh.java` swapped, three alternating runs, medians): near end
   75.7 -> 56.7 us (-25%); detail 1/2 controls unchanged within noise. Output in
@@ -83,3 +83,10 @@ the line and the dashes keep their segments, since the bright ring's facets woul
   64 or 32 ticks) and pixel diffs isolate the change. Very close (pair ~1.5 blocks away, 1600x960): 75 pixels
   differ by more than 16/255, all on the dark disc's one-pixel rim; mean difference 0.02/255. Images in
   `build/beam-portal-lod-check/`.
+
+## Thick ring only (2026-10-24)
+
+The artist asked to keep only the thick ring. The turning line (384 vertices at every detail) and the dashed ring
+(256 / 128 / 64) are gone, with `DASH` and their rotations; the spill glow, disc and streaks stay. Per end:
+3928 / 2264 / 1144 -> 3288 / 1752 / 696 vertices. The `bounds` radius stays 9.8/16, the spill's outer edge.
+Phase-locked before/after close-ups: `build/beam-portal-rings-check/` (`closeup.sh <worktree> <label> <topic>`).

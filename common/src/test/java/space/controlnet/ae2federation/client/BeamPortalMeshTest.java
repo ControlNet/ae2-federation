@@ -22,7 +22,7 @@ final class BeamPortalMeshTest {
 
     @Test
     void countsAndEligibility() {
-        int[] counts = {3928, 2264, 1144};
+        int[] counts = {3288, 1752, 696};
         for (int detail = 0; detail < 3; detail++) {
             for (double load : new double[] {0, .6, 1, 1.25}) {
                 var style = CableBeamStyle.fromLoad(load);
@@ -44,8 +44,8 @@ final class BeamPortalMeshTest {
                 {6.4f, 7, 18.999f, .045f}, {7, 8, 18.999f, .06f}, {8, 8.6f, 18.999f, .045f},
                 {8.6f, 9.2f, 18.999f, .025f}, {9.2f, 9.8f, 18.999f, .012f},
                 {6.4f, 6.7f, 19, .10f}, {6.7f, 7, 19, .32f}, {7, 8, 19, .98f},
-                {8, 8.3f, 19, .32f}, {8.3f, 8.6f, 19, .10f}, {8.94f, 9.06f, 19, .65f}};
-        // The disc and spill use 48 segments; the main bands and line use 96.
+                {8, 8.3f, 19, .32f}, {8.3f, 8.6f, 19, .10f}};
+        // The disc and spill use 48 segments; the main bands use 96.
         for (int band = 0, start = 0; band < bands.length; start += band < 7 ? 192 : 384, band++) {
             for (int i = 0; i < (band < 7 ? 192 : 384); i++) {
                 var v = vertices.get(start + i);
@@ -55,14 +55,9 @@ final class BeamPortalMeshTest {
                 assertEquals(bands[band][3] * (band == 0 ? 1 : .82), v.alpha, 1e-7);
             }
         }
-        for (int i = 3648; i < 3904; i++) {
-            var v = vertices.get(i);
-            assertEquals((i % 4 == 0 || i % 4 == 3 ? 9.35 : 9.5) / 16, Math.hypot(v.x, v.y), 1e-7);
-            assertEquals(19f / 16, v.z);
-        }
-        for (int i = 3904; i < 3928; i++) assertEquals(14.02f / 16, vertices.get(i).z);
-        assertEquals(0, vertices.get(3904).alpha);
-        assertEquals(4.6 / 16, Math.hypot(vertices.get(3905).x, vertices.get(3905).y), 1e-7);
+        for (int i = 3264; i < 3288; i++) assertEquals(14.02f / 16, vertices.get(i).z);
+        assertEquals(0, vertices.get(3264).alpha);
+        assertEquals(4.6 / 16, Math.hypot(vertices.get(3265).x, vertices.get(3265).y), 1e-7);
     }
 
     @Test
@@ -71,9 +66,9 @@ final class BeamPortalMeshTest {
             var style = CableBeamStyle.fromLoad(.6);
             assertEquals(mesh(true, 2, detail, 7, .3f, style), mesh(true, 2, detail, 71, .3f, style));
         }
+        // Halfway through the loop the first streak has drifted from 4.6 to 3.2.
         var vertices = mesh(true, 2, 0, 32, 0, CableBeamStyle.fromLoad(.6));
-        assertEquals(Math.toRadians(3.75 / 2), Math.atan2(vertices.get(3264).y, vertices.get(3264).x), 1e-7);
-        assertEquals(Math.toRadians(-22.5 / 2), Math.atan2(vertices.get(3648).y, vertices.get(3648).x), 1e-7);
+        assertEquals(3.2 / 16, Math.hypot(vertices.get(3265).x, vertices.get(3265).y), 1e-6);
     }
 
     @Test

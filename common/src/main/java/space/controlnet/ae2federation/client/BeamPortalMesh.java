@@ -21,14 +21,10 @@ public final class BeamPortalMesh {
             {{5.5f, 7, .035f}, {7, 8.6f, .0525f}, {8.6f, 9.8f, .0185f}},
             {{5.5f, 9.8f, .035f}}};
     private static final float[][] CIRCLE = new float[3][];
-    private static final float[][] DASH = new float[3][];
     private static final float[] STREAK = new float[24];
 
     static {
-        for (int detail = 0; detail < 3; detail++) {
-            CIRCLE[detail] = angles(1, SEGMENTS[detail], 1, 0);
-            DASH[detail] = angles(16, 4 >> detail, .60, 0);
-        }
+        for (int detail = 0; detail < 3; detail++) CIRCLE[detail] = angles(1, SEGMENTS[detail], 1, 0);
         float[] angles = angles(6, 1, .025 * 6 / Math.TAU, .2);
         System.arraycopy(angles, 0, STREAK, 0, angles.length);
     }
@@ -111,11 +107,6 @@ public final class BeamPortalMesh {
             band(circle, 0, circle.length, band[0], band[1], 19f / 16, 0,
                     core && !red ? .92f : r, core && !red ? 1 : g, b, band[2] * strength, sink);
         }
-        // Keep the line's 96-fold symmetry at every distance so its slow rotation always loops.
-        band(CIRCLE[0], 0, CIRCLE[0].length, 8.94f, 9.06f, 19f / 16, Math.TAU * phase / 96,
-                r, g, b, .65f * strength, sink);
-        band(DASH[detail], 0, DASH[detail].length, 9.35f, 9.5f, 19f / 16, -Math.TAU * phase / 16,
-                r, g, b, .48f * strength, sink);
         for (int i = 0; i < 6; i++) {
             double travel = (phase + i / 6.0) % 1;
             float radius = (float) (4.6 - 2.8 * travel);

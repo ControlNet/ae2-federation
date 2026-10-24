@@ -48,8 +48,10 @@ huge retains full-cube occlusion and inherited shading.
   (`BeamFormerRenderer`): a 1x1 pair with the cable's own beam (R / LITE), a 2x2 or 3x3 pair with the 2x2 bundle's plasma beam
   (`BundleBeamMesh`, Blender study R; owner, 2026-10-18), its two-block box scaled to the square; load, over-capacity
   red and unpowered red follow the cable's rules. Each anchor syncs a `BeamLook` (partner, side, count, limit, unpowered) every 10 ticks. Linked 2x2 fronts also draw one floating portal ring at each end
-  (Blender study J2; owner's choice, 2026-10-23), with a dark plate disc and inward drifting streaks.
-  Each end costs 3,928 vertices within 24 blocks, 2,264 through 48 blocks, and 1,144 beyond that, with
+  (Blender study J2; owner's choice, 2026-10-23), with a dark plate disc and inward drifting streaks. Only the
+  thick ring and its soft glow remain of the study's rings: the thin turning line and dashed ring outside it were
+  dropped at the artist's request (2026-10-24).
+  Each end costs 3,288 vertices within 24 blocks, 1,752 through 48 blocks, and 696 beyond that, with
   fewer angular segments and spill bands (the dark disc and faint spill never use more than 48 segments);
   the portal stops at the beam's 256-block view distance.
   Each world end is frustum-culled independently. All visible portals share two fixed buffers, flushed disc
