@@ -122,8 +122,8 @@ own licence:
 
 | Modpack | Version |
 |---|---|
-| All the Mods 10 | 8.2 (`ServerFiles-8.2`) |
-| Create Ultimate Selection 2 | 12.4.0 (server pack) |
+| All the Mods 10 | 8.3 (`ServerFiles-8.3`) |
+| Create Ultimate Selection 2 | 12.9.0 (server pack) |
 | New Age Science and Technology | 2.2.1 (`nast server 2.2.1`) |
 
 ## Adapted code
