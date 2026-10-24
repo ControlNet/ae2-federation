@@ -154,6 +154,29 @@ checked against their pinned SHA-512.
 
 ATM10 needs about two minutes to load and 8 GB of heap. A test run takes about six minutes.
 
+### Newest releases
+
+Each modpack profile also names its CurseForge project (`"curseforge": {"project": 925200}`). With `--latest`, the
+runner runs the profile on the pack's newest release instead of its pin, using CurseForge's public website API, which
+needs no key:
+
+1. The newest file with release type "release" for Minecraft 1.21.1 and NeoForge. Betas and alphas are skipped.
+2. That file's server pack. The API marks a server pack only on its parent file (`hasServerPack`,
+   `additionalServerPackFilesCount`), not on the additional file itself. So the runner takes the server pack only when
+   it is the parent's one additional file, and stops with an error otherwise. It never guesses from file names.
+3. The server pack is downloaded from `mediafilez.forgecdn.net`, hashed, and unpacked into the cache once per
+   CurseForge file. Its zip is deleted after extraction.
+4. The NeoForge version comes from the pack, because a new release can move it. The runner checks, in order:
+   ServerPackCreator's `variables.txt` or `manifest.json`, a CurseForge `manifest.json`, `NEOFORGE_VERSION=` in a start
+   script, `libraries/net/neoforged/neoforge/<version>`, and an installer jar's `install_profile.json`. ATM10 states
+   it in `startserver.sh` and `startserver.bat`. CUS2 states it in `variables.txt`. NAST ships the installer renamed
+   to `neoforge-1.21.1.jar`.
+
+When the newest release is the pinned file, the profile is not run again; its summary row says `pinned-is-latest`.
+The summary JSON's `latest` block records the pinned file, the tested file and its CurseForge file id, the NeoForge
+version, and whether the pin is out of date. The CI job summary shows these in a table of their own. This run only
+reports: it never changes a pin. Updating a pin stays a manual change, made with `compat_run.py pin url`.
+
 On 2026-10-08 every profile, addon and modpack, ran again with the JAR built from `a2a20de` (SHA-256
 `96a6d26e1381c65e7309e4d47e7852adee91e567562652ff836f730b23932ad7`, the same JAR as the
 [cross-dimension production run](../testing/production-jar.md#cross-dimension-production-run)): 28 of 28 profiles and
@@ -268,10 +291,18 @@ python3 tools/compat_run.py --accept-eula --group modpacks -j 3     # every pack
 python3 tools/compat_run.py --accept-eula extendedae --tests extendedae
 python3 tools/compat_run.py --accept-eula -p 1 extendedae          # one test at a time
 python3 tools/compat_run.py --accept-eula --bare addons-all     # the same mods without AE2 Federation
+python3 tools/compat_run.py latest --group modpacks                  # each pin against the newest release
+python3 tools/compat_run.py --accept-eula --latest atm10          # ATM10's newest release instead of its pin
 ```
 
 A server that keeps running more than 30 seconds after writing its report is stopped; some pack mods leave threads
 behind. Each run directory, including `server-console.log` and `compat-report.json`, is under
 `neoforge-1.21.1/build/compat/runs/<profile>`. In CI, the `Compatibility` workflow runs one job per profile and
 summarises the reports in the job summary. Modpack profiles run there on release and hotfix branches, weekly, and when
-the workflow is dispatched with `modpacks`.
+the workflow is dispatched with `modpacks`. Weekly, and when the workflow is dispatched with `latest`, a separate job
+also runs each modpack on its newest release. That job caches nothing, frees runner disk space only when it has a new
+pack to download, and leaves the pins as they are. To run only the newest releases:
+
+```bash
+gh workflow run compat.yml --ref dev -f groups= -f latest=true
+```

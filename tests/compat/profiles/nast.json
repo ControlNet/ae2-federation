@@ -3,6 +3,9 @@
   "group": "modpacks",
   "description": "New Age Science and Technology 2.2.1: AE2-centred tech pack with ExtendedAE, Advanced AE, MEGA Cells, AE2 Lightning Tech, Data Energistics, Neo ECO, Applied Flux, Mekanism and KubeJS",
   "neoforge": "21.1.251",
+  "curseforge": {
+    "project": 1582045
+  },
   "pack": {
     "name": "nast server 2.2.1",
     "file": "nast server 2.2.1.zip",

@@ -10,6 +10,8 @@ with the test mod's runner, and reads its JSON report. Profiles run in parallel,
     python3 tools/compat_run.py --accept-eula -p 1 baseline          # one test at a time, to rule out a neighbour
     python3 tools/compat_run.py --accept-eula --group addons         # every profile in a group
     python3 tools/compat_run.py --accept-eula --bare addons-all    # the same mods without AE2 Federation
+    python3 tools/compat_run.py --accept-eula --latest atm10        # the pack's newest CurseForge release instead
+    python3 tools/compat_run.py latest --group modpacks             # pinned against newest release, no download
     python3 tools/compat_run.py --list
     python3 tools/compat_run.py --list --json --group addons        # profile names, for a CI matrix
     python3 tools/compat_run.py report build/compat-results           # Markdown table of summary JSON files
@@ -19,16 +21,22 @@ with the test mod's runner, and reads its JSON report. Profiles run in parallel,
 Starting a server accepts the Minecraft EULA (https://aka.ms/MinecraftEULA), so runs require --accept-eula.
 Downloads are cached in $AE2F_COMPAT_CACHE (default ~/.cache/ae2federation-compat) and checked against their pinned
 SHA-512. Third-party jars are never committed or uploaded; only logs and reports are kept.
+
+With --latest, a modpack profile with a "curseforge" project runs on the newest 1.21.1 NeoForge release of that pack
+instead of its pinned server zip, found through CurseForge's public website API without a key. The NeoForge version
+comes from the new pack itself. When the newest release is the pinned one, the profile is skipped and reported so.
 """
 import argparse
 import concurrent.futures
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
@@ -41,6 +49,10 @@ CACHE = Path(os.environ.get("AE2F_COMPAT_CACHE", Path.home() / ".cache/ae2federa
 # Seconds a server may keep running after it wrote its report before it is stopped.
 REPORTED_GRACE = 30
 USER_AGENT = "ae2federation-compat-tests (github.com/ControlNet/ae2-federation)"
+# Public file listing used by curseforge.com; it needs no key. Files download from the CDN that serves the website.
+CURSEFORGE_FILES = "https://www.curseforge.com/api/v1/mods"
+FORGECDN = "https://mediafilez.forgecdn.net/files"
+NEOFORGE_VERSION = re.compile(r"\d+\.\d+\.\d+(?:-beta)?")
 SERVER_PROPERTIES = """\
 level-type=minecraft\\:flat
 generate-structures=false
@@ -94,6 +106,21 @@ def fetch(url: str, target: Path) -> None:
     with urllib.request.urlopen(request, timeout=120) as response, partial.open("wb") as stream:
         shutil.copyfileobj(response, stream, 1 << 20)
     partial.replace(target)
+
+
+def fetch_json(url: str):
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as error:
+            if attempt == 2 or (error.code != 429 and error.code < 500):
+                raise RuntimeError(f"{url}: HTTP {error.code}") from None
+        except urllib.error.URLError as error:
+            if attempt == 2:
+                raise RuntimeError(f"{url}: {error.reason}") from None
+        time.sleep(2 ** attempt)
 
 
 def download(entry: dict) -> Path:
@@ -183,9 +210,9 @@ def assemble(profile: dict, directory: Path, bare: bool = False) -> None:
     (directory / "server.properties").write_text(SERVER_PROPERTIES)
 
 
-def run_bare(name: str, profile: dict, timeout: int) -> dict:
+def run_bare(name: str, profile: dict, timeout: int, directory: Path | None = None) -> dict:
     """Starts the profile without AE2 Federation and stops it once it is up: does it start on its own?"""
-    directory = RUNS / f"{name}-bare"
+    directory = directory or RUNS / f"{name}-bare"
     started = time.monotonic()
     try:
         assemble(profile, directory, bare=True)
@@ -218,8 +245,9 @@ def run_bare(name: str, profile: dict, timeout: int) -> dict:
     return result
 
 
-def run_profile(name: str, profile: dict, tests: str, timeout: int, parallel: int = 1) -> dict:
-    directory = RUNS / name
+def run_profile(name: str, profile: dict, tests: str, timeout: int, parallel: int = 1,
+                directory: Path | None = None) -> dict:
+    directory = directory or RUNS / name
     started = time.monotonic()
     try:
         assemble(profile, directory)
@@ -286,36 +314,230 @@ def pin(source: str, value: str, version: str | None) -> dict:
         file = next((item for item in match["files"] if item["primary"]), match["files"][0])
         return {"name": value, "version": match["version_number"], "file": file["filename"], "url": file["url"],
                 "sha512": file["hashes"]["sha512"]}
-    file = urllib.parse.unquote(Path(urllib.parse.urlparse(value).path).name)
+    return download_unpinned(value)
+
+
+def download_unpinned(url: str) -> dict:
+    """Downloads a file with no known hash into the cache and returns its pinned {name, file, url, sha512} entry."""
+    file = urllib.parse.unquote(Path(urllib.parse.urlparse(url).path).name)
     staging = CACHE / "pins" / file
-    fetch(value, staging)
+    fetch(url, staging)
     digest = sha512(staging)
     # Keep it where runs look for it, so a large pack is not downloaded again.
     cached = CACHE / "downloads" / digest[:16] / file
     cached.parent.mkdir(parents=True, exist_ok=True)
     staging.replace(cached)
-    return {"name": Path(file).stem, "file": file, "url": value, "sha512": digest}
+    return {"name": Path(file).stem, "file": file, "url": url, "sha512": digest}
+
+
+def curseforge_url(file_id: int, file_name: str) -> str:
+    return f"{FORGECDN}/{file_id // 1000}/{file_id % 1000}/{urllib.parse.quote(file_name)}"
+
+
+def curseforge_file_id(url: str) -> int | None:
+    """The CurseForge file id in a CDN URL: .../files/9190/182/name.zip is 9190182."""
+    match = re.search(r"/files/(\d+)/(\d+)/[^/]+$", urllib.parse.urlparse(url).path)
+    return int(match[1]) * 1000 + int(match[2]) if match else None
+
+
+def newest_release(files: list[dict]) -> dict | None:
+    """The first release for Minecraft 1.21.1 on NeoForge in a listing sorted newest first; betas are skipped."""
+    return next((row for row in files if row.get("releaseType") == 1 and not row.get("isEarlyAccessContent")
+                 and {"1.21.1", "NeoForge"} <= set(row.get("gameVersions", []))), None)
+
+
+def server_pack(parent: dict, additional: list[dict]) -> dict:
+    """The server pack among a file's additional files.
+
+    The website API marks a server pack only on its parent: hasServerPack and additionalServerPackFilesCount. An
+    additional file carries no mark of its own, so the pack is found only when it is the parent's one additional file;
+    anything else is an error rather than a guess from file names."""
+    label = f"{parent.get('displayName')} (file {parent.get('id')})"
+    if not parent.get("hasServerPack") or parent.get("additionalServerPackFilesCount", 0) < 1:
+        raise RuntimeError(f"{label} has no server pack")
+    files = [row for row in additional if row.get("parentProjectFileId") == parent["id"]]
+    if parent.get("additionalServerPackFilesCount") != 1 or parent.get("additionalFilesCount") != 1 or len(files) != 1:
+        found = ", ".join(f"{row.get('fileName')} ({row.get('id')})" for row in files) or "none"
+        raise RuntimeError(f"{label} marks {parent.get('additionalServerPackFilesCount')} server packs among "
+                           f"{parent.get('additionalFilesCount')} additional files; cannot tell which: {found}")
+    return files[0]
+
+
+def resolve_latest(project: int, get=fetch_json, page_size: int = 50) -> dict:
+    """The newest 1.21.1 NeoForge release of a CurseForge modpack and its server pack."""
+    index = 0
+    while True:
+        page = get(f"{CURSEFORGE_FILES}/{project}/files?pageIndex={index}&pageSize={page_size}"
+                   "&sort=dateCreated&sortDescending=true&removeAlphas=true")
+        parent = newest_release(page["data"])
+        if parent is not None:
+            break
+        if not page["data"] or (index + 1) * page_size >= page["pagination"]["totalCount"]:
+            raise RuntimeError(f"CurseForge project {project} has no 1.21.1 NeoForge release")
+        index += 1
+    pack = server_pack(parent, get(f"{CURSEFORGE_FILES}/{project}/files/{parent['id']}/additional-files")["data"])
+    return {"project": project, "release": parent["id"], "version": parent["displayName"], "id": pack["id"],
+            "file": pack["fileName"], "url": curseforge_url(pack["id"], pack["fileName"])}
+
+
+def pack_neoforge(root: Path) -> tuple[str, str]:
+    """The NeoForge version a server pack asks for, and the file that says so.
+
+    Packs state it in different places: ServerPackCreator's variables.txt and manifest.json (Create Ultimate Selection
+    2), a CurseForge manifest, a start script's NEOFORGE_VERSION (All the Mods 10), installed libraries, or the
+    installer jar itself, whose install_profile.json names the version even when the jar is renamed (New Age Science
+    and Technology ships it as neoforge-1.21.1.jar)."""
+    def valid(value: str | None) -> str | None:
+        return value if value and NEOFORGE_VERSION.fullmatch(value) else None
+
+    variables = root / "variables.txt"
+    if variables.is_file():
+        values = {key.strip(): value.strip() for key, value in (
+            line.split("=", 1) for line in variables.read_text(errors="replace").splitlines()
+            if "=" in line and not line.lstrip().startswith("#"))}
+        if values.get("MODLOADER", "").lower() == "neoforge" and valid(values.get("MODLOADER_VERSION")):
+            return values["MODLOADER_VERSION"], "variables.txt"
+    manifest = root / "manifest.json"
+    if manifest.is_file():
+        try:
+            data = json.loads(manifest.read_text(errors="replace"))
+        except ValueError:
+            data = {}
+        if str(data.get("modloader", "")).lower() == "neoforge" and valid(data.get("modloaderVersion")):
+            return data["modloaderVersion"], "manifest.json"
+        minecraft = data.get("minecraft") if isinstance(data.get("minecraft"), dict) else {}
+        for loader in minecraft.get("modLoaders", []):
+            if str(loader.get("id", "")).startswith("neoforge-") and valid(loader["id"][len("neoforge-"):]):
+                return loader["id"][len("neoforge-"):], "manifest.json"
+    for script in sorted([*root.glob("*.sh"), *root.glob("*.bat"), *root.glob("*.ps1")]):
+        match = re.search(r"^\s*(?:set\s+|\$)?NEOFORGE_VERSION\s*=\s*\"?([0-9][^\s\"]*)",
+                          script.read_text(errors="replace"), re.MULTILINE | re.IGNORECASE)
+        if match and valid(match[1]):
+            return match[1], script.name
+    installed = sorted(path.name for path in (root / "libraries/net/neoforged/neoforge").glob("*") if valid(path.name))
+    if len(installed) == 1:
+        return installed[0], f"libraries/net/neoforged/neoforge/{installed[0]}"
+    for jar in sorted(root.glob("*.jar")):
+        try:
+            with zipfile.ZipFile(jar) as zipped:
+                version = json.loads(zipped.read("install_profile.json")).get("version", "")
+        except (KeyError, ValueError, zipfile.BadZipFile):
+            continue
+        if version.startswith("neoforge-") and valid(version[len("neoforge-"):]):
+            return version[len("neoforge-"):], f"{jar.name} (install_profile.json)"
+    raise RuntimeError(f"{root.name}: no NeoForge version found in variables.txt, manifest.json, start scripts, "
+                       "libraries/net/neoforged/neoforge/ or an installer jar's install_profile.json")
+
+
+def latest_pack(profile: dict, get=fetch_json) -> tuple[dict, dict]:
+    """The profile on its pack's newest release, and what that release is against the pinned one.
+
+    The new pack is downloaded and unpacked into the cache once per CurseForge file, with no hash to check against,
+    and its zip is dropped once extracted. A pin that is still the newest release is returned unchanged."""
+    latest = resolve_latest(profile["curseforge"]["project"], get)
+    pinned = profile["pack"]
+    info = {"pinned": pinned["file"], "pinnedNeoforge": profile["neoforge"], "tested": latest["file"],
+            "fileId": latest["id"], "version": latest["version"],
+            "outdated": latest["id"] != curseforge_file_id(pinned["url"])}
+    if not info["outdated"]:
+        return profile, {**info, "neoforge": profile["neoforge"]}
+    index = CACHE / "curseforge" / f"{latest['id']}.json"
+    entry = json.loads(index.read_text()) if index.exists() else None
+    if entry is None or not (CACHE / "packs" / entry["sha512"][:16] / ".complete").exists():
+        entry = {**download_unpinned(latest["url"]), "name": Path(latest["file"]).stem}
+        home = unpack_pack(entry)
+        # A pack zipped with one top folder keeps mods/ in it.
+        folders = [path for path in home.iterdir() if path.is_dir()]
+        if not (home / "mods").is_dir() and len(folders) == 1:
+            entry["root"] = folders[0].name
+        (CACHE / "downloads" / entry["sha512"][:16] / entry["file"]).unlink(missing_ok=True)
+        index.parent.mkdir(parents=True, exist_ok=True)
+        index.write_text(json.dumps(entry, indent=2))
+    version, source = pack_neoforge(unpack_pack(entry))
+    return {**profile, "pack": entry, "neoforge": version}, {**info, "neoforge": version, "neoforgeSource": source}
 
 
 def report(directory: Path) -> str:
-    """A Markdown table of every summary JSON under a directory, as the CI job summary shows it."""
+    """A Markdown table of every summary JSON under a directory, as the CI job summary shows it.
+
+    Runs on a pack's newest release (--latest) get their own table, pinned file beside tested file."""
     rows = []
     for path in sorted(directory.rglob("summary*.json")):
         rows.extend(json.loads(path.read_text()))
-    lines = ["| Profile | Result | Tests | Time | Failed |", "|---|---|---|---|---|"]
-    for row in sorted(rows, key=lambda item: item["profile"]):
-        tests = f"{row['passed']}/{row['total']}" if "total" in row else ""
+
+    def failures(row: dict) -> str:
         failed = "<br>".join(f"`{test['id']}`: {test.get('error', test['status'])}" for test in row.get("failed", []))
-        if not failed and row["status"] not in ("pass", "boots"):
+        if not failed and row["status"] not in ("pass", "boots", "pinned-is-latest"):
             failed = (row.get("detail") or "").splitlines()[0] if row.get("detail") else ""
-        lines.append(f"| {row['profile']} | {row['status']} | {tests} | {row['seconds']} s | {failed} |")
+        return failed
+
+    def tests(row: dict) -> str:
+        return f"{row['passed']}/{row['total']}" if "total" in row else ""
+
+    pinned = [row for row in rows if "latest" not in row]
+    newest = [row for row in rows if "latest" in row]
+    lines = []
+    if pinned or not newest:
+        lines += ["| Profile | Result | Tests | Time | Failed |", "|---|---|---|---|---|"]
+        for row in sorted(pinned, key=lambda item: item["profile"]):
+            lines.append(f"| {row['profile']} | {row['status']} | {tests(row)} | {row['seconds']} s "
+                         f"| {failures(row)} |")
+    if newest:
+        lines += [""] if lines else []
+        lines += ["Newest modpack releases (--latest):", "",
+                  "| Profile | Pinned | Tested | NeoForge | Result | Tests | Time | Failed |",
+                  "|---|---|---|---|---|---|---|---|"]
+        for row in sorted(newest, key=lambda item: item["profile"]):
+            latest = row["latest"]
+            tested = (f"{latest['tested']} (file {latest['fileId']})" if latest.get("outdated")
+                      else "same as pinned, not run again" if "tested" in latest else "")
+            neoforge = latest.get("neoforge", "")
+            if neoforge and neoforge != latest.get("pinnedNeoforge"):
+                neoforge = f"{neoforge} (pinned {latest['pinnedNeoforge']})"
+            lines.append(f"| {row['profile']} | {latest.get('pinned', '')} | {tested} | {neoforge} | {row['status']} | "
+                         f"{tests(row)} | {row['seconds']} s | {failures(row)} |")
     return "\n".join(lines) + "\n"
+
+
+def latest_status(names: list[str], profiles: dict[str, dict]) -> list[dict]:
+    """Each profile's pinned pack against its newest CurseForge release, without downloading either."""
+    rows = []
+    for name in names:
+        pinned = profiles[name]["pack"]
+        try:
+            latest = resolve_latest(profiles[name]["curseforge"]["project"])
+        except Exception as error:  # noqa: BLE001 - reported per profile
+            rows.append({"profile": name, "pinned": pinned["file"], "error": str(error)})
+            continue
+        rows.append({"profile": name, "pinned": pinned["file"], "tested": latest["file"], "fileId": latest["id"],
+                     "version": latest["version"], "outdated": latest["id"] != curseforge_file_id(pinned["url"])})
+    return rows
 
 
 def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] == "report":
         print(report(Path(sys.argv[2])), end="")
         return 0
+    if len(sys.argv) > 1 and sys.argv[1] == "latest":
+        parser = argparse.ArgumentParser(prog="compat_run.py latest",
+                                         description="pinned modpack against its newest CurseForge release")
+        parser.add_argument("profiles", nargs="*")
+        parser.add_argument("--group", action="append", default=[])
+        parser.add_argument("--json", action="store_true")
+        args = parser.parse_args(sys.argv[2:])
+        profiles = load_profiles()
+        names = [name for name, profile in profiles.items() if profile.get("group") in args.group] + args.profiles
+        unknown = [name for name in names if "curseforge" not in profiles.get(name, {})]
+        if unknown or not names:
+            parser.error(f"profiles without a CurseForge project: {unknown}" if unknown else "name profiles or --group")
+        rows = latest_status(list(dict.fromkeys(names)), profiles)
+        if args.json:
+            print(json.dumps(rows, indent=2))
+        for row in [] if args.json else rows:
+            state = row.get("error") or ("newer release" if row["outdated"] else "pin is the newest release")
+            print(f"{row['profile']:8} pinned {row['pinned']}\n{'':8} newest {row.get('tested', '?')} "
+                  f"(file {row.get('fileId', '?')}): {state}")
+        return 0 if all("error" not in row for row in rows) else 1
     if len(sys.argv) > 1 and sys.argv[1] == "pin":
         parser = argparse.ArgumentParser(prog="compat_run.py pin")
         parser.add_argument("source", choices=["modrinth", "url"])
@@ -338,6 +560,8 @@ def main() -> int:
     parser.add_argument("--bare", action="store_true",
                         help="start each profile without AE2 Federation, to see whether a failure is its own")
     parser.add_argument("--accept-eula", action="store_true", help="accept the Minecraft EULA for the test servers")
+    parser.add_argument("--latest", action="store_true",
+                        help="run each modpack profile on its newest CurseForge release; skip it when that is the pin")
     parser.add_argument("--summary", type=Path, help="write the results as JSON")
     args = parser.parse_args()
     profiles = load_profiles()
@@ -355,9 +579,32 @@ def main() -> int:
         parser.error(f"unknown profiles {unknown}" if unknown else "name profiles, --group or --all")
     if not args.accept_eula:
         parser.error("starting a Minecraft server accepts its EULA (https://aka.ms/MinecraftEULA): pass --accept-eula")
-    if not args.no_build and not args.bare:
+    names = list(dict.fromkeys(names))
+    results, latest = [], {}
+    if args.latest:
+        missing = [name for name in names if "curseforge" not in profiles[name]]
+        if missing:
+            parser.error(f"--latest needs a CurseForge project in {missing}")
+        for name in list(names):
+            try:
+                profiles[name], latest[name] = latest_pack(profiles[name])
+            except Exception as error:  # noqa: BLE001 - reported per profile
+                results.append({"profile": name, "status": "setup-error", "detail": str(error), "seconds": 0,
+                                "latest": {"pinned": profiles[name]["pack"]["file"],
+                                           "pinnedNeoforge": profiles[name]["neoforge"]}})
+                names.remove(name)
+                print(f"SETUP-ERROR  {name}: newest release: {error}", flush=True)
+                continue
+            info = latest[name]
+            print(f"LATEST       {name}: pinned {info['pinned']}, newest {info['tested']} (file {info['fileId']}), "
+                  f"NeoForge {info['neoforge']}" + ("" if info["outdated"] else ": the pin is the newest release, "
+                                                   "not run again"), flush=True)
+            if not info["outdated"]:
+                results.append({"profile": name, "status": "pinned-is-latest", "seconds": 0, "latest": info})
+                names.remove(name)
+    if names and not args.no_build and not args.bare:
         build()
-    for jar in [] if args.bare else built_jars():
+    for jar in [] if args.bare or not names else built_jars():
         if not jar.exists():
             parser.error(f"{jar} is missing; build without --no-build")
     # Install each NeoForge version and fetch each file once, before the parallel runs share them.
@@ -369,13 +616,17 @@ def main() -> int:
     for name in names:
         if "pack" in profiles[name]:
             unpack_pack(profiles[name]["pack"])
-    results = []
+    suffix = "-latest" if args.latest else ""
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        futures = {(pool.submit(run_bare, name, profiles[name], profiles[name].get("timeout", 900)) if args.bare else
+        futures = {(pool.submit(run_bare, name, profiles[name], profiles[name].get("timeout", 900),
+                                RUNS / f"{name}{suffix}-bare") if args.bare else
                     pool.submit(run_profile, name, profiles[name], args.tests or ",".join(profiles[name]["tests"]),
-                                profiles[name].get("timeout", 900), args.parallel)): name for name in dict.fromkeys(names)}
+                                profiles[name].get("timeout", 900), args.parallel, RUNS / f"{name}{suffix}")): name
+                   for name in names}
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
+            if futures[future] in latest:
+                result["latest"] = latest[futures[future]]
             results.append(result)
             counts = f" {result['passed']}/{result['total']}" if "total" in result else ""
             print(f"{result['status'].upper():12} {result['profile']}{counts} ({result['seconds']} s)", flush=True)
@@ -386,7 +637,7 @@ def main() -> int:
     if args.summary:
         args.summary.parent.mkdir(parents=True, exist_ok=True)
         args.summary.write_text(json.dumps(sorted(results, key=lambda item: item["profile"]), indent=2))
-    return 0 if all(result["status"] in ("pass", "boots") for result in results) else 1
+    return 0 if all(result["status"] in ("pass", "boots", "pinned-is-latest") for result in results) else 1
 
 
 if __name__ == "__main__":

@@ -1,0 +1,21 @@
+{
+ "data": [
+  {
+   "id": 6986129,
+   "fileName": "Server-Files-1.1.0.zip",
+   "displayName": "Server-Files-1.1.0",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.20.1",
+    "Forge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": false,
+   "additionalFilesCount": 0,
+   "additionalServerPackFilesCount": 0,
+   "parentProjectFileId": 6985843,
+   "fileLength": 1137070201,
+   "dateCreated": "2025-09-11T12:52:58.147Z"
+  }
+ ]
+}

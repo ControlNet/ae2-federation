@@ -1,0 +1,57 @@
+{
+ "data": [
+  {
+   "id": 7097953,
+   "fileName": "All the Mods 9-1.1.1.zip",
+   "displayName": "All the Mods 9-1.1.1",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.20.1",
+    "Forge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": true,
+   "additionalFilesCount": 1,
+   "additionalServerPackFilesCount": 1,
+   "fileLength": 51433990,
+   "dateCreated": "2025-10-12T08:48:43.657Z"
+  },
+  {
+   "id": 6985843,
+   "fileName": "All the Mods 9-1.1.0.zip",
+   "displayName": "All the Mods 9-1.1.0",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.20.1",
+    "Forge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": false,
+   "additionalFilesCount": 1,
+   "additionalServerPackFilesCount": 0,
+   "fileLength": 51432664,
+   "dateCreated": "2025-09-11T10:45:35.08Z"
+  },
+  {
+   "id": 6451428,
+   "fileName": "All the Mods 9-1.0.8.zip",
+   "displayName": "All the Mods 9-1.0.8",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.20.1",
+    "Forge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": true,
+   "additionalFilesCount": 1,
+   "additionalServerPackFilesCount": 1,
+   "fileLength": 48674155,
+   "dateCreated": "2025-04-22T10:59:10.187Z"
+  }
+ ],
+ "pagination": {
+  "index": 0,
+  "pageSize": 3,
+  "totalCount": 153
+ }
+}
