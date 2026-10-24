@@ -19,10 +19,12 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
   Federation Pattern Provider's textures, recoloured amber and the creative purple; the models are plain cubes with the
   front to the south, as the Provider's. The converter is a solid-cuboid body facing one way (1x1x2 up to 3x3x6) and
   has no connected-face geometry yet. Replace the PNGs and models, then delete the script.
-- **Temporary: the ME Federation Beam Former.** The same script writes `textures/block/beam_former/` (front, side, back)
-  from the Provider's textures, recoloured cyan; the model is a plain cube with the front (the beam's face) to the
-  south and the back (the cable's face) to the north. A former is a square 1x1, 2x2 or 3x3 body one block thick and has
-  no connected-face geometry yet.
+- **The ME Federation Beam Former: 1x1 and 2x2 drawn, 3x3 temporary.** The artist's Blockbench projects
+  (`textures/block/beam_emitter/`) become the 1x1 model and the four 2x2 member models through
+  `tools/blockbench/export_beam_former_models.py`, with a multipart blockstate that picks each member's quarter. A 3x3
+  body still draws `beam_former_huge`, a plain cube from the same script's `textures/block/beam_former/` (front, side,
+  back), the Provider's textures recoloured cyan, with the front (the beam's face) to the south and the back (the
+  cable's face) to the north. Replace that model and those PNGs once the artist draws the 3x3.
 - **Temporary: the ME Federation Quantum Cube.** The same script writes `textures/block/quantum_cube/` from the
   Router's standalone texture and its four connected-face tiles, recoloured violet; the standalone model is the Router's
   with that texture, and a formed cube uses the Router's connected-face geometry from those tiles. A cube is a solid

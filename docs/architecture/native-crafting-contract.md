@@ -136,9 +136,11 @@ switches the two rules separately, and loading a save adds no rule.
     for a batch an ECO CPU pushed straight to an ECO parallel provider, never through a projection; and Data
     Energistics' Trinity pattern cores, which route their outputs into their own Data Core's CPUs
     (`insertExactIntoCpus`), not covered when P's provider is a Trinity pattern core. Lightning Tech's Tianshu
-    supercomputer plans only from the Matrix controllers on its own Grid and runs on an escrow of the inputs, so it
-    never pushes through a projection and never waits for an output. An output that arrives in the joined Grid when no
-    CPU waits for it goes to shared storage and keeps its debt.
+    Supercomputer has two paths: its ordinary jobs run on Thunderbolt's CPUs, which take outputs through
+    `insertIntoCpus`, so a projected Matrix on another network works as any provider (the Tianshu district GameTest);
+    its big-number orders (`BigCraftingService`) plan only from the Matrix controllers on its own Grid and run on an
+    escrow of the inputs, so they never push through a projection and never wait for an output. An output that arrives
+    in the joined Grid when no CPU waits for it goes to shared storage and keeps its debt.
   - Genuine native CPU removal ends its native job but does not erase machine return ownership. Outputs from already
     dispatched inputs still belong to the consumer, including after cancellation; they no longer depend on sharing
     the factory's inventory. If the consumer itself is permanently removed, responsibility remains diagnostic state;

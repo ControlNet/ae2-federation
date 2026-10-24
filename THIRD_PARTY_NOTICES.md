@@ -48,6 +48,7 @@ scenes. None of their code, assets or JARs is included:
 | `guide_ae2lt` | AE2 Lightning Tech |
 | `guide_data_energistics` | Data Energistics |
 | `guide_neoecoae` | Neo ECO AE Extension |
+| `guide_neoecoprototype` | Neo ECO Prototype, Neo ECO AE Extension |
 | `guide_omnisequence` | OmniSequence: Transfinite |
 | `guide_useless_mod` | Useless Mod |
 
