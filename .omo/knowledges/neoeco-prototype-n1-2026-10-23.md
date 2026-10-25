@@ -76,6 +76,11 @@ Art (temporary): the blockstate points formed states straight at Prototype's own
 Prototype's off base with our N screen; nothing of Prototype's is copied. Formed N1 therefore looks exactly like C1.
 Prototype's notice: 262 of its PNGs are ARR, so recolouring its controller sheets needs the author's permission.
 
+Guide: the N1 page lives in its own pack `guide_neoecoprototype_computing`, required mods `neoecoprototype`,
+`neoecoae`, `neoecoprototype@1.4.0` (d3cfdbf0). `GuideExamplePacks` requirements may be `<mod ID>@<version>` (that
+version or later, Maven ordering via `GuideExamplePacks.requirements`); keeping it out of `guide_neoecoprototype`
+leaves the singularity-mint page for Prototype 1.3.x. `GuideSceneCables` skips packs without an `assets` directory.
+
 Tests: compat group `neoecoprototype-computing` (`NeoEcoPrototypeComputingCompatGameTests`, in the neoecoprototype and
 addons-all profiles): forms/links/runs, 1-4 interfaces, refuses both Prototype interfaces, capacity incl. energized
 parts, recipe. `neoecoae-computing` gained `n1ExistsOnlyBesideNeoEcoPrototype` (runs in profiles with and without
