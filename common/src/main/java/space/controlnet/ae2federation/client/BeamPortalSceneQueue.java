@@ -7,7 +7,7 @@ import org.joml.Matrix4f;
 
 /** Render-call-scoped portal inputs, independent of GPU state. */
 final class BeamPortalSceneQueue {
-    record Entry(Matrix4f pose, Direction facing, long tick, float partialTick, CableBeamStyle style) {}
+    record Entry(Matrix4f pose, Direction facing, int side, long tick, float partialTick, CableBeamStyle style) {}
 
     private final ArrayList<Entry> entries = new ArrayList<>();
     private boolean active;
@@ -23,8 +23,8 @@ final class BeamPortalSceneQueue {
         }
     }
 
-    void record(Matrix4f pose, Direction facing, long tick, float partialTick, CableBeamStyle style) {
-        if (active) entries.add(new Entry(new Matrix4f(pose), facing, tick, partialTick, style));
+    void record(Matrix4f pose, Direction facing, int side, long tick, float partialTick, CableBeamStyle style) {
+        if (active) entries.add(new Entry(new Matrix4f(pose), facing, side, tick, partialTick, style));
     }
 
     void draw(Consumer<Entry> draw) {

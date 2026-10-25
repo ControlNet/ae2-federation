@@ -196,6 +196,17 @@ final class IdentityClaimIndexTest {
                 "Released claims must not leave stale copy evidence behind");
     }
 
+    @Test
+    void liveGridsAreTheGridsWithClaims() {
+        var registry = new IdentityClaimIndex<Object>();
+        var kept = grid();
+        var released = grid();
+        registry.add(kept, lineage(NETWORK_A, 1));
+        registry.add(released, lineage(NETWORK_B, 2));
+        registry.release(released);
+        assertEquals(java.util.List.of(kept), registry.liveGrids());
+    }
+
     private static NodeLineage lineage(NetworkId network, int node) {
         return new NodeLineage(network, new UUID(0, node), 1);
     }

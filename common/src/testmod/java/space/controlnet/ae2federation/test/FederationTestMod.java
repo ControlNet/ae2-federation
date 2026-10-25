@@ -20,7 +20,10 @@ public final class FederationTestMod {
     public static final String MOD_ID = "ae2federation_test";
 
     public FederationTestMod(IEventBus modBus) {
-        GridServices.register(NativeNodeDataProbe.class, NativeNodeDataProbeService.class);
+        // The identity tests' probe logs every node it sees; large benchmark scenes turn it off.
+        if (Boolean.parseBoolean(System.getProperty("ae2federation.perf.nodeDataProbe", "true"))) {
+            GridServices.register(NativeNodeDataProbe.class, NativeNodeDataProbeService.class);
+        }
         LargeEnergyCellRegistration.register(modBus);
         MixedMachineRegistration.register(modBus);
         ObservationRuntimeEvidence.register();
@@ -86,6 +89,7 @@ public final class FederationTestMod {
 							   CrossDimensionGameTests.class, FederationP2PGameTests.class, ProjectionContainerGameTests.class,
 							   ProjectionCpuSightGameTests.class,
 							   ProjectionHandBackGameTests.class,
+							   StorelessProviderReturnGameTests.class,
 							   ProjectionMergeGameTests.class,
 							   P2PRefreshBenchmarkGameTests.class, BeamScanBenchmarkGameTests.class,
 							   P2PTopologyGameTests.class,

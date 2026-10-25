@@ -146,14 +146,15 @@ def export(output):
     projects = REPO / "tools/blockbench/projects"
     small = json.loads((projects / "beam_emitter.bbmodel").read_text())
     large = json.loads((projects / "large_beam_emitter.bbmodel").read_text())
+    huge = json.loads((projects / "huge_beam_emitter.bbmodel").read_text())
     model("beam_former", small, export_elements(small))
     for qx, qy in itertools.product((0, 1), repeat=2):
         lo, hi = (16 * qx, 16 * qy), (16 * qx + 16, 16 * qy + 16)
         model(f"beam_former_large_{qx}{qy}", large, export_elements(large, (lo, hi), (*lo, 0)))
-    textures = {name: f"{NS}:block/beam_former/beam_former_" +
-                ("back" if name == "north" else "front" if name == "south" else "side")
-                for name in ("particle", "north", "south", "east", "west", "up", "down")}
-    write(models / "beam_former_huge.json", {"parent": "minecraft:block/cube", "textures": textures})
+    # The 3x3 project spans -16..32 about its centre member.
+    for mx, my in itertools.product((0, 1, 2), repeat=2):
+        lo, hi = (16 * mx - 16, 16 * my - 16), (16 * mx, 16 * my)
+        model(f"beam_former_huge_{mx}{my}", huge, export_elements(huge, (lo, hi), (*lo, 0)))
     parts = []
     for facing, (xr, yr) in ROT.items():
         def part(size, name, connections=None):
@@ -167,7 +168,6 @@ def export(output):
                 when = {"AND": [when, connections]}
             parts.append({"when": when, "apply": apply})
         part("small", "beam_former")
-        part("huge", "beam_former_huge")
         positive_x = dir_name(rotate((1, 0, 0), xr, yr))
         negative_x = dir_name(rotate((-1, 0, 0), xr, yr))
         positive_y = dir_name(rotate((0, 1, 0), xr, yr))
@@ -183,8 +183,19 @@ def export(output):
         for positive, negative in ((positive_x, negative_x), (positive_y, negative_y)):
             fallback.extend({positive: value, negative: value} for value in ("false", "true"))
         part("large", "beam_former", {"OR": fallback})
+        # A 3x3 member's connections on each in-plane axis tell its column: +only, both, -only.
+        for mx, my in itertools.product((0, 1, 2), repeat=2):
+            connections = {direction: "false" for direction in DIRS}
+            for index, positive, negative in ((mx, positive_x, negative_x), (my, positive_y, negative_y)):
+                connections[positive] = "true" if index < 2 else "false"
+                connections[negative] = "true" if index > 0 else "false"
+            part("huge", f"beam_former_huge_{mx}{my}", connections)
+        fallback = [{direction: "true"} for direction in axial]
+        fallback.extend({positive: "false", negative: "false"}
+                        for positive, negative in ((positive_x, negative_x), (positive_y, negative_y)))
+        part("huge", "beam_former", {"OR": fallback})
     write(assets / "blockstates/beam_former.json", {"multipart": parts})
-    print(f"Exported 6 Beam Former models and {len(parts)} multipart cases.")
+    print(f"Exported 14 Beam Former models and {len(parts)} multipart cases.")
 
 
 if __name__ == "__main__":

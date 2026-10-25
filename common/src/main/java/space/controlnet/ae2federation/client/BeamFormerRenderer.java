@@ -38,17 +38,19 @@ public final class BeamFormerRenderer implements BlockEntityRenderer<BeamFormerB
         // An unpowered domain's beam alarms at the width of no load, as a cable's does.
         var style = look.unpowered() ? CableBeamStyle.fromLoad(0, true)
                 : CableBeamStyle.fromLoad(former.beamLoad(target, Util.getNanos()), target > 1);
-        if (look.side() == 2) {
+        int side = look.side();
+        if (BeamPortalMesh.drawn(side)) {
             if (!(level instanceof ClientLevel)) {
-                BeamPortalRenderer.recordScene(stack, facing, level.getGameTime(), partialTick, style);
+                BeamPortalRenderer.recordScene(stack, facing, side, level.getGameTime(), partialTick, style);
             } else {
                 var eye = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
-                double portalDistance = eye.distanceToSqr(origin.getX() + (axis == Direction.Axis.X ? .5 : 1),
-                        origin.getY() + (axis == Direction.Axis.Y ? .5 : 1),
-                        origin.getZ() + (axis == Direction.Axis.Z ? .5 : 1));
+                double centre = side / 2.0;
+                double portalDistance = eye.distanceToSqr(origin.getX() + (axis == Direction.Axis.X ? .5 : centre),
+                        origin.getY() + (axis == Direction.Axis.Y ? .5 : centre),
+                        origin.getZ() + (axis == Direction.Axis.Z ? .5 : centre));
                 if (portalDistance <= getViewDistance() * getViewDistance()
-                        && BeamPortalRenderer.visible(origin, facing)) {
-                    BeamPortalRenderer.draw(stack, buffers, facing, CableBeamMesh.detail(portalDistance),
+                        && BeamPortalRenderer.visible(origin, facing, side)) {
+                    BeamPortalRenderer.draw(stack, buffers, facing, side, CableBeamMesh.detail(portalDistance),
                             level.getGameTime(), partialTick, style);
                 }
             }

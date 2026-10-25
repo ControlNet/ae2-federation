@@ -107,6 +107,27 @@ public final class NeoEcoCompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /**
+     * The real ECO CPU runs a projected processing job whose output is a fluid: the hand-run test machine turns each
+     * cobblestone into a bucket of lava on the provider network, and the return router hands it to the consumer.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemFluidReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(), AddonCraftingScene.lavaMachine())
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().outputStoredOnConsumer();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** As {@link #computationSystemFluidReturn}, with the ECO job cancelled before the lava comes back. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemFluidCancel(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(), AddonCraftingScene.lavaMachine())
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().outputStoredOnConsumer().cancellingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
     static AddonCraftingScene computationOrdering(GameTestHelper helper, Tier tier) {
         var start = AddonCraftingScene.PROVIDER.offset(0, -1, -1);
         return AddonCraftingScene.structure(helper, tier.id("crafting_system_l4"), List.of(),
@@ -169,6 +190,47 @@ public final class NeoEcoCompatGameTests {
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1200)
     public static void ecoWarehouseChain(GameTestHelper helper) {
         helper.succeedWhen(new Warehouse(helper, Tier.L4)::run);
+    }
+
+    /**
+     * Neo ECO's own planner, as its crafting screen starts it with cycle planning on, chains a seed pattern that only
+     * the provider network has; see {@link CyclePlanningScene}.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void ecoPlannerCycle(GameTestHelper helper) {
+        // Neo ECO gives the plans its planner makes only to its own computation systems.
+        helper.succeedWhen(new CyclePlanningScene(helper, "Neo ECO's planner", NeoEcoCompatGameTests::ecoPlannerRequest,
+                NeoEcoCompatGameTests::ecoOwnedPlan)
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4),
+                        () -> fitComputationCell(helper, Tier.L4))::tick);
+    }
+
+    /** Wraps {@code plain} as Neo ECO's screens do: ECOPlannerRequester with cycle planning on and nothing fuzzy. */
+    private static appeng.api.networking.crafting.ICraftingSimulationRequester ecoPlannerRequest(
+            appeng.api.networking.crafting.ICraftingSimulationRequester plain) {
+        try {
+            var options = Class.forName("cn.dancingsnow.neoecoae.api.me.planning.ECOPlannerOptions")
+                    .getConstructor(boolean.class, boolean.class, java.util.Set.class)
+                    .newInstance(true, false, java.util.Set.of());
+            return (appeng.api.networking.crafting.ICraftingSimulationRequester) Class.forName(
+                    "cn.dancingsnow.neoecoae.api.me.planning.ECOPlannerRequester")
+                    .getConstructor(appeng.api.networking.crafting.ICraftingSimulationRequester.class,
+                            options.getClass())
+                    .newInstance(plain, options);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Neo ECO's planner request is not available", exception);
+        }
+    }
+
+    /** Whether Neo ECO's planner made {@code plan}, as its registry of planning results records it. */
+    private static boolean ecoOwnedPlan(appeng.api.networking.crafting.ICraftingPlan plan) {
+        try {
+            return (boolean) Class.forName("cn.dancingsnow.neoecoae.api.me.planning.ECOPlanningResultRegistry")
+                    .getMethod("isECOOwnedPlan", appeng.api.networking.crafting.ICraftingPlan.class)
+                    .invoke(null, plan);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Neo ECO's planning registry is not available", exception);
+        }
     }
 
     /** The warehouse chain's stages; see {@link #ecoWarehouseChain}. */
@@ -463,5 +525,20 @@ public final class NeoEcoCompatGameTests {
             }
         }
         throw new IllegalStateException(tier.id(name) + " has no facing");
+    }
+
+    /**
+     * As {@link #computationSystemFluidReturn}, merged mid-job: only the Bridge part is removed while the job waits, so
+     * the fluix cable under it joins both networks into one AE2 Grid; the CPU takes the lava natively, the debt
+     * settles, and after the split the provider keeps its next lava.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemMergedFluidReturn(GameTestHelper helper) {
+        var tier = Tier.L4;
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(), AddonCraftingScene.lavaMachine())
+                .consumerCpuStructure(test -> placeComputationSystem(test, tier),
+                        () -> fitComputationCell(helper, tier))
+                .craftingOnly().outputStoredOnConsumer().mergingAfterPush();
+        helper.succeedWhen(scene::tick);
     }
 }

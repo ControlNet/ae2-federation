@@ -61,8 +61,10 @@ as they enter network B. Network B needs no crafting CPU.
   by AE2's own rules.
 * **Level emitters with a Crafting Card** on network B are not offered to network A.
 * **Storage is optional.** Switch on Storage under "A uses B's" too, and A's CPU can also pay with B's materials.
-* **Leftovers stay on network B:** byproducts the pattern does not list, and the results of a job cancelled on
-  network A. Network A sees and takes them only while "A uses B's" Storage is on.
+* **Leftovers go to network A:** the results of a job cancelled on network A go into A's storage. So do byproducts
+  the pattern does not list when network B has no crafting CPU of its own, so B needs no storage for them. A network B
+  with a crafting CPU keeps its byproducts, and A sees them only while "A uses B's" Storage is on. What A has no room
+  for waits in B's pattern provider until it has.
 * **If the networks are disconnected** while a job runs, or network A is not loaded, results that arrive in the
   meantime wait in network B's storage and A's CPU keeps waiting. Once the networks are linked again, network B hands
   them to the job. If someone on network B uses them up first, the job waits until network B stores that much again.

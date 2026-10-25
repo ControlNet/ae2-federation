@@ -57,10 +57,11 @@ their own and share nothing until the cause is gone; then the domain starts agai
 * **"No Federation node on one of the two networks can join the shared energy pool."** Shared ME power needs a
   Switch face or a Bridge on each network.
 * **"Too many storage links in this world to work out."** Remove some storage rules or links.
-* **"Merge pending": two networks with different names or rules were joined.** Names and cross-network rules pause,
+* **"Merge pending": two networks with different settings were joined.** Names and cross-network rules pause,
   because neither side is picked automatically. Select one of them in the topology and press **Keep this one**: the
-  other's name and rules are deleted. Or disconnect them. A network with no name or rules, or with exactly the same
-  ones, is simply taken into the other one when joined.
+  other's name and rules are deleted. Or disconnect them. A network with no name, no rules and no cross-network
+  crafting results still to come back is simply taken into the other one when joined. So are networks with exactly
+  the same name and rules, unless either still has such results to come back.
 * **"Split pending": a network was cut in two.** Both halves pause cross-network rules. Reconnect them, or remove one
   half, to recover.
 

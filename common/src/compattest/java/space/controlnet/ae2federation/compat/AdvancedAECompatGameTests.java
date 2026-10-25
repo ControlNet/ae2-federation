@@ -81,6 +81,14 @@ public final class AdvancedAECompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /** The Quantum Computer Core runs a projected job whose output is a bucket of lava per cobblestone. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void quantumCoreFluidReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(QUANTUM_CORE),
+                AddonCraftingScene.lavaMachine()).cpuOnCable().craftingOnly().outputStoredOnConsumer();
+        helper.succeedWhen(scene::tick);
+    }
+
     /** A lone Quantum Computer Core is the Federation Pattern Provider network's CPU for a job through an Endpoint. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
     public static void quantumCoreEndpoint(GameTestHelper helper) {
@@ -163,5 +171,18 @@ public final class AdvancedAECompatGameTests {
                 }
             }
         }
+    }
+
+    /**
+     * As {@link #quantumCoreFluidReturn}, merged mid-job: only the Bridge part is removed while the job waits, so the
+     * fluix cable under it joins both networks into one AE2 Grid; the CPU takes the lava natively, the debt settles,
+     * and after the split the provider keeps its next lava.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void quantumCoreMergedFluidReturn(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("advanced_ae:quantum_core"),
+                AddonCraftingScene.lavaMachine()).cpuOnCable().craftingOnly().outputStoredOnConsumer()
+                .mergingAfterPush();
+        helper.succeedWhen(scene::tick);
     }
 }

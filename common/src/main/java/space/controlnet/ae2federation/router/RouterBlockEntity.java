@@ -36,6 +36,8 @@ import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
  * Quantum Cube is one too, linking the fewer faces its block names ({@link CableLinkedBlock}).
  */
 public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHost {
+    /** Ticks between two looks of each Switch face without a node at its neighbour, missed events aside. */
+    private static final int VERIFY_TICKS = 100;
     private final Map<Direction, FederationPort> federationDomainPorts = new EnumMap<>(Direction.class);
     private final Map<Direction, RouterFacePort> facePorts = new EnumMap<>(Direction.class);
     private boolean initialized;
@@ -44,18 +46,32 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
     private @Nullable FederationDomainNodeEvidence publishedEvidence;
     /** Set when the chunk unloads, so the removal that follows is not taken for a broken block. */
     private boolean unloading;
+    /**
+     * A Router or Switch, which runs on {@link RouterTicks}; the blocks built on this one (Beam Converter, Beam
+     * Former, Quantum Cube) tick themselves through {@link #serverTick}.
+     */
+    private final boolean scheduled;
+    /** Compare the evidence with what was published at the next work, though no face changed. */
+    private boolean evidenceDue;
+    private long works;
 
     public RouterBlockEntity(BlockPos position, BlockState state) {
-        this(RouterBlock.blockEntityType(state), position, state, RouterBlock.attachesNetworks(state));
+        this(RouterBlock.blockEntityType(state), position, state, RouterBlock.attachesNetworks(state), true);
     }
 
     protected RouterBlockEntity(BlockEntityType<?> type, BlockPos position, BlockState state, boolean attachesNetworks) {
+        this(type, position, state, attachesNetworks, false);
+    }
+
+    private RouterBlockEntity(BlockEntityType<?> type, BlockPos position, BlockState state, boolean attachesNetworks,
+            boolean scheduled) {
         super(type, position, state);
+        this.scheduled = scheduled;
         for (var face : Direction.values()) {
             var federationDomainPort = new FederationPort(position, face);
             federationDomainPorts.put(face, federationDomainPort);
             facePorts.put(face, new RouterFacePort(position, face, federationDomainPort, attachesNetworks,
-                    () -> links(face)));
+                    () -> links(face), this::wake));
         }
     }
 
@@ -91,6 +107,7 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
                 || turned(previous, state)) && level instanceof ServerLevel) {
             facePorts.values().forEach(RouterFacePort::markDirty);
             federationDomainDirty = true;
+            wake();
         }
         if (previous != state && level instanceof ServerLevel serverLevel) {
             // A bundled cable links only to a whole body: the cables beside it, and this block's own caches of them,
@@ -119,12 +136,18 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
         }
         initialized = true;
         federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
+        if (scheduled) RouterTicks.register(serverLevel, this);
         facePorts.values().forEach(port -> port.initialize(serverLevel));
+        wake();
         // A placed or loaded block checks the body it belongs to; one check settles every member asking this tick.
         DeviceStructureUpdater.request(serverLevel, worldPosition);
     }
 
     public static void serverTick(Level level, BlockPos position, BlockState state, RouterBlockEntity router) {
+        // A slow sweep, spread over the Switches by position: a face without a node looks at its neighbour again.
+        if (Math.floorMod(level.getGameTime() + position.hashCode(), VERIFY_TICKS) == 0) {
+            router.facePorts.values().forEach(RouterFacePort::verifyIfNodeless);
+        }
         var changed = router.facePorts.values().stream().map(RouterFacePort::tick).reduce(false, Boolean::logicalOr);
         if (changed || router.federationDomainDirty) {
             router.publishFederationDomainTopology();
@@ -132,6 +155,63 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
             // A native network settles its identity without an event on this Router's faces.
             router.publishIfEvidenceChanged();
         }
+    }
+
+    /** Asks {@link RouterTicks} for this Router's work at its level's next tick end. */
+    private void wake() {
+        if (scheduled && initialized && !isRemoved() && level instanceof ServerLevel serverLevel) {
+            RouterTicks.wake(serverLevel, this);
+        }
+    }
+
+    /**
+     * Resolves the faces that wait for it and publishes what changed, or compares the evidence when asked to. Returns
+     * whether work is left for the next tick.
+     */
+    boolean work(ServerLevel serverLevel) {
+        if (!live(serverLevel)) return false;
+        works++;
+        var changed = false;
+        for (var port : facePorts.values()) changed |= port.tick();
+        if (changed || federationDomainDirty) {
+            publishFederationDomainTopology();
+        } else if (evidenceDue) {
+            publishIfEvidenceChanged();
+        }
+        evidenceDue = false;
+        if (federationDomainDirty) return true;
+        for (var port : facePorts.values()) {
+            if (port.dirty()) return true;
+        }
+        return false;
+    }
+
+    /** Whether this Router is initialized in {@code serverLevel} and not removed, so it may work there. */
+    boolean live(ServerLevel serverLevel) {
+        return initialized && !isRemoved() && level == serverLevel;
+    }
+
+    /** How many times this Router's scheduled work ran: an idle Router's count stays put, as tests check. */
+    public long works() {
+        return works;
+    }
+
+    /** The identities changed: compare the evidence with what was published at the next work. */
+    void compareEvidence() {
+        evidenceDue = true;
+        wake();
+    }
+
+    /**
+     * This Router's turn: every face resolves again, and a Switch face without a node looks at its AE2 neighbour
+     * without its caches.
+     */
+    void sweep() {
+        facePorts.values().forEach(port -> {
+            port.verifyIfNodeless();
+            port.markDirty();
+        });
+        compareEvidence();
     }
 
     public void neighborChanged(BlockPos neighborPosition) {
@@ -159,11 +239,18 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
         return facePorts.get(face).node();
     }
 
-    /** AE2 asks with a null side for a node not tied to a face; the nodes here all sit on faces. */
+    /**
+     * AE2 asks with a null side for a node not tied to a face; the nodes here all sit on faces. A Switch face asked
+     * while it has no node looks at its neighbour again on the next tick: an AE2 node asks every block beside it when
+     * it connects, so an AE2 block that appeared without telling this Switch still gets a face to connect to.
+     */
     @Nullable
     @Override
     public IGridNode getGridNode(@Nullable Direction face) {
-        return face == null ? null : boundaryNode(face);
+        if (face == null) return null;
+        var node = boundaryNode(face);
+        if (node == null) facePorts.get(face).verifyIfNodeless();
+        return node;
     }
 
     public Map<Direction, RouterPortBinding> bindings() {
@@ -221,6 +308,7 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
     }
 
     private void destroyPorts() {
+        if (scheduled && level instanceof ServerLevel serverLevel) RouterTicks.forget(serverLevel, this);
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
             FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId, !unloading);
             FederationBindingRefresh.request(serverLevel);

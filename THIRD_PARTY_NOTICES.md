@@ -48,6 +48,7 @@ scenes. None of their code, assets or JARs is included:
 | `guide_ae2lt` | AE2 Lightning Tech |
 | `guide_data_energistics` | Data Energistics |
 | `guide_neoecoae` | Neo ECO AE Extension |
+| `guide_neoecoprototype` | Neo ECO Prototype, Neo ECO AE Extension |
 | `guide_omnisequence` | OmniSequence: Transfinite |
 | `guide_useless_mod` | Useless Mod |
 
@@ -121,8 +122,8 @@ own licence:
 
 | Modpack | Version |
 |---|---|
-| All the Mods 10 | 8.2 (`ServerFiles-8.2`) |
-| Create Ultimate Selection 2 | 12.4.0 (server pack) |
+| All the Mods 10 | 8.3 (`ServerFiles-8.3`) |
+| Create Ultimate Selection 2 | 12.9.0 (server pack) |
 | New Age Science and Technology | 2.2.1 (`nast server 2.2.1`) |
 
 ## Adapted code

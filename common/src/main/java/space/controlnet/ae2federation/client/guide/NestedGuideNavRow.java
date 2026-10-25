@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.client.guide;
 
 import guideme.document.block.LytParagraph;
+import guideme.navigation.NavigationNode;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -12,6 +13,8 @@ public interface NestedGuideNavRow {
     int INDENT_PER_LEVEL = 10;
 
     void ae2federation$nest(@Nullable NestedGuideNavRow parent, int depth, boolean hasChildren);
+
+    NavigationNode ae2federation$node();
 
     LytParagraph ae2federation$paragraph();
 

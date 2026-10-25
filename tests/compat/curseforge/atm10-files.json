@@ -1,0 +1,57 @@
+{
+ "data": [
+  {
+   "id": 9190157,
+   "fileName": "All the Mods 10-8.3.zip",
+   "displayName": "All the Mods 10-8.3",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.21.1",
+    "NeoForge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": true,
+   "additionalFilesCount": 1,
+   "additionalServerPackFilesCount": 1,
+   "fileLength": 200037954,
+   "dateCreated": "2026-10-15T11:33:19.793Z"
+  },
+  {
+   "id": 8945086,
+   "fileName": "All the Mods 10-8.2.zip",
+   "displayName": "All the Mods 10-8.2",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.21.1",
+    "NeoForge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": true,
+   "additionalFilesCount": 1,
+   "additionalServerPackFilesCount": 1,
+   "fileLength": 199005126,
+   "dateCreated": "2026-09-22T05:38:48.91Z"
+  },
+  {
+   "id": 8764211,
+   "fileName": "All the Mods 10-8.1.zip",
+   "displayName": "All the Mods 10-8.1",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.21.1",
+    "NeoForge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": true,
+   "additionalFilesCount": 1,
+   "additionalServerPackFilesCount": 1,
+   "fileLength": 201751521,
+   "dateCreated": "2026-08-29T20:15:05.273Z"
+  }
+ ],
+ "pagination": {
+  "index": 0,
+  "pageSize": 3,
+  "totalCount": 146
+ }
+}

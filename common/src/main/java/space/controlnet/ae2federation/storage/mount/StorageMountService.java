@@ -46,6 +46,8 @@ public final class StorageMountService implements AutoCloseable {
     private long sourceValidations;
     /** The {@link IdentityEpoch} the last reconciliation saw. */
     private long reconciledEpoch = Long.MIN_VALUE;
+    /** An observed Grid's native mounts changed since the last reconciliation. */
+    private boolean nativeMountsPending;
 
     private StorageMountService(MinecraftServer server) {
         // The overworld names the server for registry and rule lookups, and keeps the game time of every dimension.
@@ -92,7 +94,9 @@ public final class StorageMountService implements AutoCloseable {
      */
     public static synchronized void tick(MinecraftServer server) {
         var service = SERVICES.get(server);
-        if (service != null && service.reconciledEpoch != IdentityEpoch.current()) service.reconcileAll();
+        if (service != null && (service.reconciledEpoch != IdentityEpoch.current() || service.nativeMountsPending)) {
+            service.reconcileAll();
+        }
     }
 
     public static synchronized void reconcileIfPresent(ServerLevel level) {
@@ -107,14 +111,25 @@ public final class StorageMountService implements AutoCloseable {
     /**
      * Called at most once per tick per AE2 StorageService whose real mount table changed (drive/chest cell swap,
      * priority change, node join/leave, global provider add/remove). Held projections are already fail-closed by the
-     * per-operation stamp check; this re-establishes relationships against the new native mounts without polling.
+     * per-operation stamp check; {@link #reconcileNativeMountChanges} re-establishes relationships against the new
+     * native mounts without polling, once for all the Grids whose mounts changed this tick.
      */
     public static synchronized void nativeMountsChanged(IStorageService service) {
-        for (var entry : List.copyOf(SERVICES.values())) {
-            if (entry.observesStorageService(service)) {
-                entry.reconcileAll();
+        for (var entry : SERVICES.values()) {
+            if (!entry.nativeMountsPending && entry.observesStorageService(service)) {
+                entry.nativeMountsPending = true;
             }
         }
+    }
+
+    /**
+     * After AE2 has ticked every Grid at the end of the server tick: one reconciliation for all of the tick's native
+     * mount changes. A thousand subnets that each change their mounts in one tick would otherwise reconcile a thousand
+     * times.
+     */
+    public static synchronized void reconcileNativeMountChanges(MinecraftServer server) {
+        var service = SERVICES.get(server);
+        if (service != null && service.nativeMountsPending) service.reconcileAll();
     }
 
     private boolean observesStorageService(IStorageService service) {
@@ -176,6 +191,12 @@ public final class StorageMountService implements AutoCloseable {
         }
     }
 
+    /** Observes two Grids a Federation block connects, leaving the reconciliation to {@code FederationBindingRefresh}. */
+    public void registerConnectedGrids(IGrid first, IGrid second) {
+        federationDomains.register(first);
+        federationDomains.register(second);
+    }
+
     public void observeConnectedGrids(IGrid first, IGrid second) {
         federationDomains.register(first);
         federationDomains.register(second);
@@ -203,6 +224,7 @@ public final class StorageMountService implements AutoCloseable {
 
     public void reconcileAll() {
         reconciledEpoch = IdentityEpoch.current();
+        nativeMountsPending = false;
         dependencies.refresh();
         var desired = dependencies.relationships();
         var desiredPolicies = new java.util.HashSet<PolicyKey>();

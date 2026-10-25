@@ -14,6 +14,7 @@
   ],
   "tests": [
     "core",
-    "extendedae-plus"
+    "extendedae-plus",
+    "aeallpattern"
   ]
 }

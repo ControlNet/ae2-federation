@@ -11,7 +11,6 @@ import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
-import space.controlnet.ae2federation.domain.FederationDomainRecomputeBudget;
 import space.controlnet.ae2federation.domain.FederationDomainRegistry;
 import space.controlnet.ae2federation.domain.FederationDomainSourceId;
 import space.controlnet.ae2federation.identity.IdentitySettlement;
@@ -27,7 +26,7 @@ final class PolicyActivationTest {
     void classifiesStatesWithDeterministicFailClosedPrecedence() {
         // Given
         var store = new PolicyStore();
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var disconnected = request(store, registry, settled(CONSUMER), settled(PROVIDER), BackendStatus.READY);
 
         // When / Then: absent configuration wins over every runtime condition.
@@ -65,7 +64,7 @@ final class PolicyActivationTest {
         // Given
         var store = new PolicyStore();
         store.edit(new PolicyEdit(KEY, PolicyRevision.NONE, PolicyRule.storageDefaults()));
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         registry.upsertDirectBridge(new FederationDomainSourceId("confirmed-bridge"), "test:dimension", CONSUMER, PROVIDER);
 
         // When
@@ -80,7 +79,7 @@ final class PolicyActivationTest {
     void aSharedDomainOverCapacityStopsTheRuleWithItsOwnReason() {
         var store = new PolicyStore();
         store.edit(new PolicyEdit(KEY, PolicyRevision.NONE, PolicyRule.storageDefaults()));
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         // One cable carries a Switch with nine networks, one more than the default capacity of eight.
         var cable = new FederationDomainNodeId("test:dimension", 0);
         var sw = new FederationDomainNodeId("test:dimension", 1);
@@ -107,7 +106,7 @@ final class PolicyActivationTest {
     void anUnpoweredSharedDomainStopsTheRuleWithItsOwnReason() {
         var store = new PolicyStore();
         store.edit(new PolicyEdit(KEY, PolicyRevision.NONE, PolicyRule.storageDefaults()));
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var sw = new FederationDomainNodeId("test:dimension", 1);
         var switchPorts = new java.util.LinkedHashMap<String, FederationDomainPortEvidence>();
         var networks = java.util.List.of(CONSUMER, PROVIDER);

@@ -55,11 +55,13 @@ public final class BoundaryIdentityGameTests {
         routers.placeSwitch(routerPos);
         var phase = new int[1];
         var original = new NetworkId[1];
+        var start = helper.getTick();
         helper.succeedWhen(() -> {
             var chestNode = routers.nativePorts().chestNode(chest);
             if (phase[0] == 0) {
-                helper.assertTrue(routers.router(routerPos).boundaryNode(Direction.WEST) != null,
-                        "Router face node must exist before the cable is placed");
+                helper.assertTrue(helper.getTick() >= start + 3, "Waiting for the Router's first ticks");
+                helper.assertTrue(routers.router(routerPos).boundaryNode(Direction.WEST) == null,
+                        "A Router face with nothing beside it has no node until the cable is placed");
                 original[0] = settled(helper, chestNode.getGrid(), "Native network must settle before the Router joins");
                 routers.nativePorts().placeCable(cable);
                 phase[0] = 1;
@@ -206,11 +208,12 @@ public final class BoundaryIdentityGameTests {
         var phase = new int[1];
         var key = new PolicyKey[1];
         var diamond = AEItemKey.of(Items.DIAMOND);
+        var start = helper.getTick();
         helper.succeedWhen(() -> {
             var consumer = node(helper, consumerDrive).getGrid();
             var provider = node(helper, providerDrive).getGrid();
             if (phase[0] == 0) {
-                helper.assertTrue(routers.router(routerPos).boundaryNode(Direction.WEST) != null, "Router must be ready");
+                helper.assertTrue(helper.getTick() >= start + 3, "Waiting for the Router's first ticks");
                 helper.<DriveBlockEntity>getBlockEntity(consumerDrive).getInternalInventory()
                         .setItemDirect(0, AEItems.ITEM_CELL_1K.stack());
                 helper.<DriveBlockEntity>getBlockEntity(providerDrive).getInternalInventory()

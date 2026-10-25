@@ -8,7 +8,7 @@ navigation:
 
 # 联邦粗线缆
 
-一根<ItemLink id="ae2federation:cable" />最多承载8个网络和设备（见[网络容量](capacity.md)）。 **粗线缆**把一整块联邦线缆合成一根承载更多的粗线缆： 外壳只有一个， 大小和截面相同， 里面每根线缆各有一道光在流动。
+一根<ItemLink id="ae2federation:cable" />最多承载8个网络和设备（见[网络容量](capacity.md)）。 **粗线缆**把一整块联邦线缆合成一根承载更多的粗线缆： 外壳只有一个， 大小和截面相同， 中间流动着一道粗光束。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/bundled_cables.snbt" />

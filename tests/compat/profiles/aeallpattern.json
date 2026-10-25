@@ -10,6 +10,7 @@
     "aeallpattern@0.2.6"
   ],
   "tests": [
-    "core"
+    "core",
+    "aeallpattern"
   ]
 }

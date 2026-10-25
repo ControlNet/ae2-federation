@@ -85,6 +85,12 @@ public final class StatisticsBook<K> {
         rankings.computeIfAbsent(name, ignored -> new TopKeys<>(RANKING_CAP)).add(second, key, amount);
     }
 
+    /** Adds every key's amount in {@code amounts} to the ranking {@code name} in {@code second}, as {@link #moved}. */
+    public void movedAll(String name, long second, it.unimi.dsi.fastutil.objects.Object2LongMap<K> amounts) {
+        if (amounts.isEmpty()) return;
+        rankings.computeIfAbsent(name, ignored -> new TopKeys<>(RANKING_CAP)).addAll(second, amounts);
+    }
+
     /** Whether the server observed each point of the range, oldest first. */
     public boolean[] observed(StatisticsRange range, long nowSecond) {
         var counts = observed.readCounts(range, nowSecond);

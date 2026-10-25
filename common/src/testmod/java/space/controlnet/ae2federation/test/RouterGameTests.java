@@ -177,8 +177,8 @@ public final class RouterGameTests {
                     "All six Router faces must accept Federation Cable capabilities");
             helper.assertValueEqual(unsupportedRouter.binding(Direction.NORTH).kind(), RouterPortKind.DISCONNECTED,
                     "Unsupported neighbor must fail closed");
-            helper.assertTrue(unsupportedRouter.boundaryNode(Direction.NORTH).getConnections().isEmpty(),
-                    "Unsupported neighbor must not create a native edge");
+            helper.assertTrue(unsupportedRouter.boundaryNode(Direction.NORTH) == null,
+                    "Unsupported neighbor must not create a node, so no native edge");
             helper.assertTrue(!fixtures.hasInternalNativeConnection(router), "Federation layout must not join native Grids");
             helper.assertTrue(fixtures.allBoundaryNodesUseZeroIdlePower(router), "Federation topology must need no power");
             RouterEvidence.write("routerrejectunsupported", 8, Map.of(
@@ -230,9 +230,9 @@ public final class RouterGameTests {
                         "The existing Router's face must link to the adjacent Router");
                 helper.assertValueEqual(adjacent.binding(Direction.WEST).kind(), RouterPortKind.FEDERATION,
                         "The new Router's face must link to the existing Router");
-                helper.assertTrue(first.boundaryNode(Direction.EAST).getConnections().isEmpty()
-                        && adjacent.boundaryNode(Direction.WEST).getConnections().isEmpty(),
-                        "Touching Router faces must not form a native Grid between them");
+                helper.assertTrue(first.boundaryNode(Direction.EAST) == null
+                        && adjacent.boundaryNode(Direction.WEST) == null,
+                        "Touching Router faces must have no node, so no native Grid between them");
                 helper.assertTrue(fixtures.allFederationLinksAreReciprocal(first)
                         && fixtures.allFederationLinksAreReciprocal(adjacent), "The direct link must be reciprocal");
                 helper.assertTrue(!fixtures.hasInternalNativeConnection(first)
@@ -433,6 +433,423 @@ public final class RouterGameTests {
         RouterEvidence.write("deviceocclusion", assertions, Map.of(
                 "routerFacesDrawn", "6", "frontFaceDrawn", "2", "backFaceHidden", "2"));
         helper.succeed();
+    }
+
+    /**
+     * A Switch face has a node, and so an AE2 Grid of its own, only while an AE2 block is beside it: a lone Switch has
+     * none, a cable placed beside it attaches through a new node, and the node goes with the cable.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void switchFaceNodeFollowsNeighbour(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeSwitch(CENTER);
+        var phase = new int[1];
+        var start = helper.getTick();
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertTrue(helper.getTick() >= start + 3, "Waiting for the Switch's first ticks");
+                helper.assertValueEqual(faceNodes(router), 0, "A lone Switch must have no face node");
+                fixtures.placeNativeCable(CENTER, Direction.WEST);
+                phase[0] = 1;
+                helper.fail("Waiting for the cable to attach");
+            }
+            if (phase[0] == 1) {
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                        "The cable must attach to the Switch");
+                helper.assertValueEqual(faceNodes(router), 1, "Only the face beside the cable has a node");
+                helper.assertValueEqual(GridHelper.getExposedNode(helper.getLevel(), helper.absolutePos(CENTER.west()),
+                        Direction.EAST).getGrid(), router.boundaryNode(Direction.WEST).getGrid(),
+                        "The face node joins the cable's Grid");
+                helper.setBlock(CENTER.west(), net.minecraft.world.level.block.Blocks.AIR);
+                phase[0] = 2;
+                helper.fail("Waiting for the cable removal");
+            }
+            if (phase[0] == 2) {
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.DISCONNECTED,
+                        "The face must disconnect with the cable gone");
+                helper.assertValueEqual(faceNodes(router), 0, "The face node must go with the cable");
+                fixtures.placeNativeCable(CENTER, Direction.WEST);
+                phase[0] = 3;
+                helper.fail("Waiting for the cable to attach again");
+            }
+            helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                    "A cable placed again must attach again");
+            helper.assertValueEqual(faceNodes(router), 1, "The face has a node again");
+            RouterEvidence.write("switchfacenodefollowsneighbour", 8, Map.of(
+                    "loneSwitchNodes", "0", "attached", "native", "nodesWithCable", "1",
+                    "removed", "disconnected", "nodesAfterRemoval", "0", "reattached", "native"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A Switch whose chunk border lies between it and its cable keeps its face across a real unload and load of both
+     * chunks, which load in either order, and across a reload of the block entities in one tick: the face attaches the
+     * same network again, and the faces with nothing beside them still have no node.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1200, required = true, manualOnly = true)
+    public static void switchFaceNodeSurvivesChunkReload(GameTestHelper helper) {
+        var absoluteX = helper.absolutePos(BlockPos.ZERO).getX();
+        // The Switch is the last block of its chunk along x; the cable and the ME chest are in the next chunk.
+        var switchPosition = new BlockPos(Math.floorMod(15 - absoluteX, 16), 1, 1);
+        var cable = switchPosition.east();
+        var chest = cable.east();
+        var site = space.controlnet.ae2federation.test.world.OtherDimensionSite.nether(helper,
+                new BlockPos(switchPosition.getX() + 4, 3, 3));
+        var phase = new int[1];
+        var original = new space.controlnet.ae2federation.identity.NetworkId[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertTrue(site.ready(), "Waiting for the nether site to tick: " + site.tickDiagnostics());
+                site.setBlock(chest.below(), appeng.core.definitions.AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
+                site.setBlock(chest, appeng.core.definitions.AEBlocks.ME_CHEST.block().defaultBlockState());
+                helper.assertTrue(space.controlnet.ae2federation.test.p2p.P2PTunnels.placeCable(site.level(),
+                        site.absolute(cable)), "An AE2 cable must be placed");
+                site.setBlock(switchPosition, RouterRegistration.SWITCH.get().defaultBlockState());
+                phase[0] = 1;
+                helper.fail("Waiting for the Switch to attach");
+            }
+            if (phase[0] == 1) {
+                original[0] = attachedNetwork(helper, site, switchPosition, chest);
+                site.releaseTickets();
+                phase[0] = 2;
+                helper.fail("Waiting for the nether chunks to unload");
+            }
+            if (phase[0] == 2) {
+                helper.assertFalse(site.loaded(), "Waiting for the nether chunks to unload");
+                site.forceAgain();
+                phase[0] = 3;
+                helper.fail("Waiting for the nether chunks to load again");
+            }
+            if (phase[0] == 3) {
+                helper.assertTrue(site.ticking(), "Waiting for the nether chunks to tick: " + site.tickDiagnostics());
+                helper.assertValueEqual(attachedNetwork(helper, site, switchPosition, chest), original[0],
+                        "The reloaded face must attach the same network");
+                site.reloadBlockEntities();
+                phase[0] = 4;
+                helper.fail("Waiting for the reloaded block entities");
+            }
+            helper.assertValueEqual(attachedNetwork(helper, site, switchPosition, chest), original[0],
+                    "The face must attach the same network after a reload in one tick");
+            RouterEvidence.write("switchfacenodesurviveschunkreload", 4, Map.of(
+                    "attached", "native", "chunkReload", "same network", "blockEntityReload", "same network",
+                    "otherFaceNodes", "0"));
+            site.close();
+        });
+    }
+
+    /**
+     * A Switch has no block entity ticker, and once settled its work runs only for its turn of the slow sweep (once
+     * in 100 ticks) and for evidence comparisons after identity changes, which other tests in the batch cause every
+     * 20 ticks at most. An ME chest placed on another face wakes it, and it attaches the chest within a few ticks, not
+     * at its next sweep.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void switchSleepsWhileIdle(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeSwitch(CENTER);
+        fixtures.placeNativeDevice(CENTER, Direction.WEST);
+        helper.assertTrue(helper.getBlockState(CENTER).getTicker(helper.getLevel(), router.getType()) == null,
+                "A Switch must have no block entity ticker");
+        var phase = new int[1];
+        var watched = new long[3];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                        "The Switch must attach the ME chest");
+                helper.assertTrue(!space.controlnet.ae2federation.router.RouterTicks.awake(router),
+                        "Waiting for the settled Switch to sleep");
+                watched[0] = helper.getTick();
+                watched[1] = router.works();
+                phase[0] = 1;
+            }
+            if (phase[0] == 1) {
+                if (helper.getTick() < watched[0] + 100) helper.fail("Watching the idle Switch for 100 ticks");
+                long works = router.works() - watched[1];
+                helper.assertTrue(works <= 7, "An idle Switch must sleep, but it worked " + works + " times in 100 ticks");
+                watched[1] = works;
+                fixtures.placeNativeDevice(CENTER, Direction.EAST);
+                watched[2] = helper.getTick();
+                phase[0] = 2;
+                helper.fail("Waiting for the new chest to attach");
+            }
+            if (phase[0] == 2) {
+                boolean attached = router.binding(Direction.EAST).kind() == RouterPortKind.NATIVE_ME;
+                if (!attached && helper.getTick() <= watched[2] + 5) helper.fail("Waiting for the new chest to attach");
+                phase[0] = attached ? 3 : 4;
+            }
+            helper.assertTrue(phase[0] == 3, "A chest placed beside the sleeping Switch must wake it and attach within"
+                    + " 5 ticks");
+            RouterEvidence.write("switchsleepswhileidle", 3, Map.of("ticker", "none",
+                    "worksIn100IdleTicks", Long.toString(watched[1]), "newNeighbour", "native within 5 ticks"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * An AE2 block placed and removed without block updates, as Mekanism's Cardboard Box and similar tools do (remove
+     * the block entity, then set the block with no neighbour update), still reaches the Switch face: NeoForge tells
+     * the face's capability cache when a block entity appears or goes.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void switchFaceNodeWithoutBlockUpdates(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeSwitch(CENTER);
+        var chest = helper.absolutePos(CENTER.west());
+        var level = helper.getLevel();
+        var phase = new int[1];
+        var start = helper.getTick();
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertTrue(helper.getTick() >= start + 3, "Waiting for the Switch's first ticks");
+                level.setBlock(chest, appeng.core.definitions.AEBlocks.ME_CHEST.block().defaultBlockState(),
+                        net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 1;
+                helper.fail("Waiting for the quietly placed chest to attach");
+            }
+            if (phase[0] == 1) {
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                        "A chest placed without block updates must attach");
+                level.removeBlockEntity(chest);
+                level.setBlock(chest, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),
+                        net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 2;
+                helper.fail("Waiting for the quietly removed chest to detach");
+            }
+            if (phase[0] == 2) {
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.DISCONNECTED,
+                        "A chest removed without block updates must detach");
+                helper.assertValueEqual(faceNodes(router), 0, "The face node must go with it");
+                level.setBlock(chest, appeng.core.definitions.AEBlocks.ME_CHEST.block().defaultBlockState(),
+                        net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 3;
+                helper.fail("Waiting for the chest to attach again");
+            }
+            helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                    "A chest put back without block updates must attach again");
+            RouterEvidence.write("switchfacenodewithoutblockupdates", 4, Map.of(
+                    "quietPlacement", "native", "quietRemoval", "disconnected", "nodesAfterRemoval", "0",
+                    "quietReplacement", "native"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A Federation Cable placed and removed without block updates still links and unlinks its neighbours: NeoForge
+     * tells their port caches when its block entity appears or goes.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void cableLinksWithoutBlockUpdates(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var west = new BlockPos(2, 2, 2);
+        var east = new BlockPos(6, 2, 2);
+        fixtures.placeSwitch(west);
+        fixtures.placeSwitch(east);
+        fixtures.placeNativeDevice(west, Direction.WEST);
+        fixtures.placeNativeDevice(east, Direction.EAST);
+        fixtures.placeFederationCable(west.east());
+        fixtures.placeFederationCable(west.east(3));
+        var middle = helper.absolutePos(west.east(2));
+        var level = helper.getLevel();
+        var cable = RouterRegistration.FEDERATION_CABLE.get().defaultBlockState();
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(level);
+            var left = network(helper, fixtures.router(west), Direction.WEST);
+            var right = network(helper, fixtures.router(east), Direction.EAST);
+            if (phase[0] == 0) {
+                level.setBlock(middle, cable, net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 1;
+                helper.fail("Waiting for the quietly placed cable to link");
+            }
+            if (phase[0] == 1) {
+                helper.assertTrue(registry.shareFederationDomain(left, right),
+                        "A cable placed without block updates must join the domain");
+                level.removeBlockEntity(middle);
+                level.setBlock(middle, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),
+                        net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 2;
+                helper.fail("Waiting for the quietly removed cable to unlink");
+            }
+            if (phase[0] == 2) {
+                helper.assertTrue(!registry.shareFederationDomain(left, right),
+                        "A cable removed without block updates must split the domain");
+                level.setBlock(middle, cable, net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 3;
+                helper.fail("Waiting for the cable to link again");
+            }
+            helper.assertTrue(registry.shareFederationDomain(left, right),
+                    "A cable put back without block updates must join the domain again");
+            RouterEvidence.write("cablelinkswithoutblockupdates", 3, Map.of(
+                    "quietPlacement", "linked", "quietRemoval", "split", "quietReplacement", "linked"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A Switch face that missed every event about the AE2 block beside it still gets its node: at once when AE2 (or
+     * anyone) asks the Switch for that face's node, and otherwise through the Switch's slow sweep. TEST-ONLY: the missed
+     * event is simulated by dropping the face's node and its pending work through reflection.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void switchFaceNodeRecoversMissedEvent(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeSwitch(CENTER);
+        fixtures.placeNativeDevice(CENTER, Direction.WEST);
+        var phase = new int[1];
+        var missedAt = new long[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                        "Waiting for the chest to attach");
+                missEvents(router, Direction.WEST);
+                // AE2 asks the blocks beside a node for theirs when it connects; the Switch must look again.
+                router.getGridNode(Direction.WEST);
+                phase[0] = 1;
+                helper.fail("Waiting for the asked face to recover");
+            }
+            if (phase[0] == 1) {
+                helper.assertValueEqual(faceNodes(router), 1, "The asked face must get its node back");
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                        "The asked face must attach again");
+                missEvents(router, Direction.WEST);
+                missedAt[0] = helper.getTick();
+                phase[0] = 2;
+                helper.fail("Waiting for the sweep");
+            }
+            helper.assertTrue(helper.getTick() <= missedAt[0] + 150, "The sweep must find the face within its period");
+            helper.assertValueEqual(faceNodes(router), 1, "Waiting for the sweep to give the face its node back");
+            helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                    "The swept face must attach again");
+            RouterEvidence.write("switchfacenoderecoversmissedevent", 4, Map.of(
+                    "askedRecovers", "native", "sweepRecovers", "native", "sweepWithinTicks", "150"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * TEST-ONLY: puts a Switch face in the state a missed event leaves it in, an AE2 block beside it but no node and no
+     * pending work, by destroying the node and clearing the face's flags through reflection.
+     */
+    private static void missEvents(space.controlnet.ae2federation.router.RouterBlockEntity router, Direction face) {
+        try {
+            var portsField = space.controlnet.ae2federation.router.RouterBlockEntity.class.getDeclaredField("facePorts");
+            portsField.setAccessible(true);
+            var port = ((java.util.Map<?, ?>) portsField.get(router)).get(face);
+            var type = port.getClass();
+            var nodeField = type.getDeclaredField("boundaryNode");
+            nodeField.setAccessible(true);
+            ((appeng.api.networking.IManagedGridNode) nodeField.get(port)).destroy();
+            nodeField.set(port, null);
+            var bindingField = type.getDeclaredField("binding");
+            bindingField.setAccessible(true);
+            bindingField.set(port, RouterPortBinding.Disconnected.INSTANCE);
+            var dirtyField = type.getDeclaredField("dirty");
+            dirtyField.setAccessible(true);
+            dirtyField.setBoolean(port, false);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("The test must reach the Switch face's state", exception);
+        }
+    }
+
+    /**
+     * A Federation Cable does no work while nothing around it changes, as an AE2 cable does not tick: once its domain
+     * settles, every cable sleeps. A third network joining wakes them, their capacity count follows, and they sleep again.
+     * A new capacity number wakes them too, even while the limit is not enforced, as the beam still shows the load.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void cableSleepsWhileIdle(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var west = new BlockPos(2, 2, 2);
+        var east = new BlockPos(6, 2, 2);
+        var cables = new BlockPos[] {west.east(), west.east(2), west.east(3)};
+        fixtures.placeSwitch(west);
+        fixtures.placeSwitch(east);
+        fixtures.placeNativeDevice(west, Direction.WEST);
+        fixtures.placeNativeDevice(east, Direction.EAST);
+        for (var cable : cables) fixtures.placeFederationCable(cable);
+        var phase = new int[1];
+        var load = new double[1];
+        // The capacity rule is global: the test changes it from what it finds and puts that back, also on a timeout.
+        var originalCapacity = space.controlnet.ae2federation.domain.CableCapacityLimit.capacity();
+        var originalEnforced = space.controlnet.ae2federation.domain.CableCapacityLimit.current().isPresent();
+        var changedCapacity = originalCapacity * 2 <= space.controlnet.ae2federation.domain.CableCapacityLimit.MAX_CAPACITY
+                ? originalCapacity * 2 : originalCapacity / 2;
+        Runnable restore = () -> space.controlnet.ae2federation.domain.CableCapacityLimit.set(originalEnforced,
+                originalCapacity);
+        var changedAt = new long[1];
+        helper.succeedWhen(() -> {
+            var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel());
+            var left = network(helper, fixtures.router(west), Direction.WEST);
+            var right = network(helper, fixtures.router(east), Direction.EAST);
+            helper.assertTrue(registry.shareFederationDomain(left, right), "Waiting for the domain");
+            for (var cable : cables) {
+                helper.assertTrue(!space.controlnet.ae2federation.router.FederationCableTicks.awake(
+                        helper.getBlockEntity(cable)), "Waiting for the cable at " + cable + " to sleep");
+            }
+            space.controlnet.ae2federation.router.FederationCableBlockEntity middle = helper.getBlockEntity(cables[1]);
+            if (phase[0] == 0) {
+                load[0] = middle.capacityLoad();
+                helper.assertTrue(load[0] > 0, "The cable has counted the networks it carries");
+                fixtures.placeNativeDevice(west, Direction.NORTH);
+                phase[0] = 1;
+                helper.fail("Waiting for the third network");
+            }
+            if (phase[0] == 1) {
+                helper.assertValueEqual(fixtures.router(west).binding(Direction.NORTH).kind(), RouterPortKind.NATIVE_ME,
+                        "The third network attaches");
+                helper.assertTrue(middle.capacityLoad() > load[0], "Waiting for the cable to count the third network");
+                load[0] = middle.capacityLoad();
+                space.controlnet.ae2federation.domain.CableCapacityLimit.set(false, changedCapacity);
+                changedAt[0] = helper.getTick();
+                phase[0] = 2;
+                helper.fail("Waiting for the new capacity number");
+            }
+            var shown = Math.abs(middle.capacityLoad() - load[0] * originalCapacity / changedCapacity) < 1e-9;
+            if (shown || helper.getTick() > changedAt[0] + 200) restore.run();
+            if (!shown && helper.getTick() > changedAt[0] + 200) {
+                throw new IllegalStateException("The sleeping cable never showed the new capacity");
+            }
+            helper.assertTrue(shown, "Waiting for the sleeping cable to show the new capacity");
+            RouterEvidence.write("cablesleepswhileidle", 6, Map.of(
+                    "domain", "formed", "asleep", "true", "thirdNetwork", "attached", "counted", "true",
+                    "asleepAgain", "true", "unenforcedCapacityShown", "true"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * The settled network the Switch's east face attaches, after checking that it is the ME chest's network and that
+     * no other face has a node.
+     */
+    private static space.controlnet.ae2federation.identity.NetworkId attachedNetwork(GameTestHelper helper,
+            space.controlnet.ae2federation.test.world.OtherDimensionSite site, BlockPos switchPosition, BlockPos chest) {
+        helper.assertTrue(site.getBlockEntity(switchPosition) instanceof space.controlnet.ae2federation.router.RouterBlockEntity,
+                "Waiting for the Switch");
+        space.controlnet.ae2federation.router.RouterBlockEntity router = site.getBlockEntity(switchPosition);
+        helper.assertTrue(router.binding(Direction.EAST) instanceof RouterPortBinding.Native,
+                "Waiting for the Switch's east face to attach");
+        helper.assertValueEqual(faceNodes(router), 1, "Only the face beside the cable has a node");
+        appeng.blockentity.storage.MEChestBlockEntity chestEntity = site.getBlockEntity(chest);
+        var chestNode = chestEntity.getMainNode().getNode();
+        helper.assertTrue(chestNode != null && chestNode.getGrid() == router.boundaryNode(Direction.EAST).getGrid(),
+                "Waiting for the face to join the chest's Grid");
+        return network(helper, router, Direction.EAST);
+    }
+
+    private static int faceNodes(space.controlnet.ae2federation.router.RouterBlockEntity router) {
+        var count = 0;
+        for (var face : Direction.values()) {
+            if (router.boundaryNode(face) != null) count++;
+        }
+        return count;
     }
 
     /** Whether the block at {@code position} draws its face toward {@code face}, as the chunk mesher decides. */

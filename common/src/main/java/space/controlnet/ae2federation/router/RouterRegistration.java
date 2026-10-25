@@ -51,6 +51,9 @@ public final class RouterRegistration {
         ITEMS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
         modBus.addListener(RouterRegistration::registerCapabilities);
+        // Before AE2's end-of-level device ticks (NORMAL priority), as the Routers' block entity ticks were.
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGH,
+                RouterTicks::onLevelTick);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(DeviceStructureUpdater::onLevelTick);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
                 space.controlnet.ae2federation.bundle.BundleInteraction::onRightClickBlock);

@@ -5,7 +5,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
 import org.joml.Matrix4f;
 
-/** J2 / Portal Ring: local coordinates about the face centre, with z measured from the body's back. */
+/**
+ * J2 / Portal Ring: local coordinates about the face centre, with z measured from the body's back. A 2x2 front draws
+ * one ring, a 3x3 front two, each over the artist's ring-shaped emitter parts.
+ */
 public final class BeamPortalMesh {
     @FunctionalInterface
     public interface Sink {
@@ -13,60 +16,65 @@ public final class BeamPortalMesh {
     }
 
     private static final int[] SEGMENTS = {96, 48, 24};
-    private static final float[][] MAIN = {{6.4f, 6.7f, .10f}, {6.7f, 7, .32f}, {7, 8, .98f},
-            {8, 8.3f, .32f}, {8.3f, 8.6f, .10f}};
-    private static final float[][][] SPILL = {
-            {{5.5f, 6.4f, .025f}, {6.4f, 7, .045f}, {7, 8, .06f}, {8, 8.6f, .045f},
-                    {8.6f, 9.2f, .025f}, {9.2f, 9.8f, .012f}},
-            {{5.5f, 7, .035f}, {7, 8.6f, .0525f}, {8.6f, 9.8f, .0185f}},
-            {{5.5f, 9.8f, .035f}}};
+    /** Each ring's bright core, inner and outer edge in pixels, for a 2x2 and a 3x3 front; all one pixel wide. */
+    private static final float[][][] CORES = {{{7, 8}}, {{11.25f, 12.25f}, {15.25f, 16.25f}}};
+    // Bands as {core edge, offset, core edge, offset, alpha}, edge 0 being the core's inner edge and 1 its outer.
+    private static final double[][] MAIN = {{0, -.6, 0, -.3, .10}, {0, -.3, 0, 0, .32}, {0, 0, 1, 0, .98},
+            {1, 0, 1, .3, .32}, {1, .3, 1, .6, .10}};
+    private static final double[][][] SPILL = {
+            {{0, -1.5, 0, -.6, .025}, {0, -.6, 0, 0, .045}, {0, 0, 1, 0, .06}, {1, 0, 1, .6, .045},
+                    {1, .6, 1, 1.2, .025}, {1, 1.2, 1, 1.8, .012}},
+            {{0, -1.5, 0, 0, .035}, {0, 0, 1, .6, .0525}, {1, .6, 1, 1.8, .0185}},
+            {{0, -1.5, 1, 1.8, .035}}};
     private static final float[][] CIRCLE = new float[3][];
-    private static final float[][] DASH = new float[3][];
     private static final float[] STREAK = new float[24];
 
     static {
-        for (int detail = 0; detail < 3; detail++) {
-            CIRCLE[detail] = angles(1, SEGMENTS[detail], 1, 0);
-            DASH[detail] = angles(16, 4 >> detail, .60, 0);
-        }
+        for (int detail = 0; detail < 3; detail++) CIRCLE[detail] = angles(1, SEGMENTS[detail], 1, 0);
         float[] angles = angles(6, 1, .025 * 6 / Math.TAU, .2);
         System.arraycopy(angles, 0, STREAK, 0, angles.length);
     }
 
-    private static final Matrix4f[] ORIENTATION = new Matrix4f[6];
+    private static final Matrix4f[][] ORIENTATION = new Matrix4f[2][6];
 
     static {
-        for (var facing : Direction.values()) {
+        for (int side = 2; side <= 3; side++) for (var facing : Direction.values()) {
             var m = new Matrix4f().zero().m33(1);
-            oriented(facing, (x, y, z, r, g, b, a) -> m.m30(x).m31(y).m32(z), 0, 0, 0, 0, 0, 0, 0);
-            oriented(facing, (x, y, z, r, g, b, a) -> m.m00(x - m.m30()).m01(y - m.m31()).m02(z - m.m32()),
+            oriented(facing, side, (x, y, z, r, g, b, a) -> m.m30(x).m31(y).m32(z), 0, 0, 0, 0, 0, 0, 0);
+            oriented(facing, side, (x, y, z, r, g, b, a) -> m.m00(x - m.m30()).m01(y - m.m31()).m02(z - m.m32()),
                     1, 0, 0, 0, 0, 0, 0);
-            oriented(facing, (x, y, z, r, g, b, a) -> m.m10(x - m.m30()).m11(y - m.m31()).m12(z - m.m32()),
+            oriented(facing, side, (x, y, z, r, g, b, a) -> m.m10(x - m.m30()).m11(y - m.m31()).m12(z - m.m32()),
                     0, 1, 0, 0, 0, 0, 0);
-            oriented(facing, (x, y, z, r, g, b, a) -> m.m20(x - m.m30()).m21(y - m.m31()).m22(z - m.m32()),
+            oriented(facing, side, (x, y, z, r, g, b, a) -> m.m20(x - m.m30()).m21(y - m.m31()).m22(z - m.m32()),
                     0, 0, 1, 0, 0, 0, 0);
-            ORIENTATION[facing.ordinal()] = m;
+            ORIENTATION[side - 2][facing.ordinal()] = m;
         }
     }
 
     private BeamPortalMesh() {}
 
-    public static Matrix4f transform(Matrix4f pose, Direction facing, Matrix4f destination) {
-        return pose.mul(ORIENTATION[facing.ordinal()], destination);
+    public static boolean drawn(int side) {
+        return side == 2 || side == 3;
     }
 
-    public static AABB bounds(BlockPos origin, Direction facing) {
-        double radius = 9.8f / 16;
-        double near = 14.01f / 16, far = 19f / 16;
+    public static Matrix4f transform(Matrix4f pose, Direction facing, int side, Matrix4f destination) {
+        return pose.mul(ORIENTATION[side - 2][facing.ordinal()], destination);
+    }
+
+    public static AABB bounds(BlockPos origin, Direction facing, int side) {
+        var cores = CORES[side - 2];
+        double centre = side / 2.0;
+        double radius = (float) (cores[cores.length - 1][1] + SPILL[0][SPILL[0].length - 1][3]) / 16;
+        double near = 14.02f / 16, far = 19f / 16;
         double low = facing.getAxisDirection() == Direction.AxisDirection.POSITIVE ? near : 1 - far;
         double high = facing.getAxisDirection() == Direction.AxisDirection.POSITIVE ? far : 1 - near;
         var axis = facing.getAxis();
-        return new AABB(origin.getX() + (axis == Direction.Axis.X ? low : 1 - radius),
-                origin.getY() + (axis == Direction.Axis.Y ? low : 1 - radius),
-                origin.getZ() + (axis == Direction.Axis.Z ? low : 1 - radius),
-                origin.getX() + (axis == Direction.Axis.X ? high : 1 + radius),
-                origin.getY() + (axis == Direction.Axis.Y ? high : 1 + radius),
-                origin.getZ() + (axis == Direction.Axis.Z ? high : 1 + radius));
+        return new AABB(origin.getX() + (axis == Direction.Axis.X ? low : centre - radius),
+                origin.getY() + (axis == Direction.Axis.Y ? low : centre - radius),
+                origin.getZ() + (axis == Direction.Axis.Z ? low : centre - radius),
+                origin.getX() + (axis == Direction.Axis.X ? high : centre + radius),
+                origin.getY() + (axis == Direction.Axis.Y ? high : centre + radius),
+                origin.getZ() + (axis == Direction.Axis.Z ? high : centre + radius));
     }
 
     private static float[] angles(int count, int segments, double duty, double offset) {
@@ -89,38 +97,38 @@ public final class BeamPortalMesh {
     }
 
     public static void emit(boolean linked, int side, int detail, long tick, float partialTick,
-            CableBeamStyle style, boolean glow, Sink sink) {
-        if (!linked || side != 2) return;
+            CableBeamStyle style, Sink sink) {
+        if (!linked || !drawn(side)) return;
+        var cores = CORES[side - 2];
+        // The streaks cross the emitter's centre plate, which grows with the body.
+        double scale = side / 2.0;
         double phase = phase(tick, partialTick);
         float strength = (float) ((.82 + .12 * Math.min(style.load(), 1)) * (1 + .04 * Math.sin(Math.TAU * phase)));
         boolean red = style.overloaded();
         float r = red ? 1 : .14f, g = red ? .045f : .85f, b = red ? .015f : 1;
         var circle = CIRCLE[detail];
-        if (!glow) {
-            band(circle, 0, circle.length, 0, 4.8f, 14.01f / 16, 0,
-                    red ? .028f : .008f, red ? .006f : .018f, red ? .004f : .028f, .68f, sink);
-            return;
+        // The faint spill shows no facets at 48 segments, even up close.
+        var soft = CIRCLE[Math.max(detail, 1)];
+        for (var core : cores) for (var band : SPILL[detail]) {
+            band(soft, 0, soft.length, radius(core, band, 0), radius(core, band, 2), 18.999f / 16, 0,
+                    r, g, b, (float) band[4] * strength, sink);
         }
-        for (var band : SPILL[detail]) {
-            band(circle, 0, circle.length, band[0], band[1], 18.999f / 16, 0, r, g, b, band[2] * strength, sink);
+        for (var core : cores) for (var band : MAIN) {
+            boolean bright = band[0] != band[2];
+            band(circle, 0, circle.length, radius(core, band, 0), radius(core, band, 2), 19f / 16, 0,
+                    bright && !red ? .92f : r, bright && !red ? 1 : g, b, (float) band[4] * strength, sink);
         }
-        for (var band : MAIN) {
-            boolean core = band[0] == 7;
-            band(circle, 0, circle.length, band[0], band[1], 19f / 16, 0,
-                    core && !red ? .92f : r, core && !red ? 1 : g, b, band[2] * strength, sink);
-        }
-        // Keep the line's 96-fold symmetry at every distance so its slow rotation always loops.
-        band(CIRCLE[0], 0, CIRCLE[0].length, 8.94f, 9.06f, 19f / 16, Math.TAU * phase / 96,
-                r, g, b, .65f * strength, sink);
-        band(DASH[detail], 0, DASH[detail].length, 9.35f, 9.5f, 19f / 16, -Math.TAU * phase / 16,
-                r, g, b, .48f * strength, sink);
         for (int i = 0; i < 6; i++) {
             double travel = (phase + i / 6.0) % 1;
-            float radius = (float) (4.6 - 2.8 * travel);
+            float radius = (float) (scale * (4.6 - 2.8 * travel));
             float fade = (float) Math.sin(Math.PI * travel);
-            band(STREAK, i * 4, i * 4 + 4, radius - .55f, radius, 14.02f / 16, 0,
+            band(STREAK, i * 4, i * 4 + 4, radius - (float) (.55 * scale), radius, 14.02f / 16, 0,
                     r, g, b, .07f * fade * fade * strength, sink);
         }
+    }
+
+    private static float radius(float[] core, double[] band, int at) {
+        return (float) (core[(int) band[at]] + band[at + 1]);
     }
 
     private static void band(float[] angles, int start, int end, float inner, float outer, float z, double rotation,
@@ -137,15 +145,16 @@ public final class BeamPortalMesh {
     }
 
     /** The same rotations as the artist's south-facing model, about the assembled body's centre. */
-    public static void oriented(Direction facing, Sink sink, float x, float y, float z,
+    public static void oriented(Direction facing, int side, Sink sink, float x, float y, float z,
             float r, float g, float b, float alpha) {
+        float c = side / 2f;
         switch (facing) {
-            case SOUTH -> sink.vertex(1 + x, 1 + y, z, r, g, b, alpha);
-            case NORTH -> sink.vertex(1 - x, 1 + y, 1 - z, r, g, b, alpha);
-            case EAST -> sink.vertex(z, 1 + y, 1 - x, r, g, b, alpha);
-            case WEST -> sink.vertex(1 - z, 1 + y, 1 + x, r, g, b, alpha);
-            case UP -> sink.vertex(1 + x, z, 1 - y, r, g, b, alpha);
-            case DOWN -> sink.vertex(1 + x, 1 - z, 1 + y, r, g, b, alpha);
+            case SOUTH -> sink.vertex(c + x, c + y, z, r, g, b, alpha);
+            case NORTH -> sink.vertex(c - x, c + y, 1 - z, r, g, b, alpha);
+            case EAST -> sink.vertex(z, c + y, c - x, r, g, b, alpha);
+            case WEST -> sink.vertex(1 - z, c + y, c + x, r, g, b, alpha);
+            case UP -> sink.vertex(c + x, z, c - y, r, g, b, alpha);
+            case DOWN -> sink.vertex(c + x, 1 - z, c + y, r, g, b, alpha);
         }
     }
 }

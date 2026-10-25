@@ -90,7 +90,7 @@ final class DomainUnpoweredTest {
 
     /** A cable linked to a Switch whose two faces attach networks A and B. */
     private static FederationDomainRegistry registry() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var cablePorts = new LinkedHashMap<String, FederationDomainPortEvidence>();
         cablePorts.put("east", new FederationDomainPortEvidence.Federation(new FederationDomainPortId(node(1), "west")));
         registry.upsertNode(new FederationDomainNodeEvidence(node(0), FederationDomainNodeKind.CABLE, cablePorts));

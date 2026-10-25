@@ -39,8 +39,9 @@ public abstract class StorageServiceMountLedgerMixin implements NativeMountLedge
     private boolean ae2federation$mountChanged;
 
     /**
-     * Coalesces this tick's native mount changes into one relationship reconcile for the observing level. This is
-     * event driven (only services whose mount table really changed), not a global poll.
+     * Reports this tick's native mount changes; the observing service reconciles once for every Grid that reported,
+     * after AE2 has ticked them all. This is event driven (only services whose mount table really changed), not a
+     * global poll.
      */
     @Inject(method = "onServerEndTick", at = @At("TAIL"))
     private void ae2federation$reconcileChangedMounts(CallbackInfo callback) {

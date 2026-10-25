@@ -17,6 +17,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.ae2.storage.NativeStorageProvenance;
+import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyFilter;
 import space.controlnet.ae2federation.policy.PolicyFilterMode;
@@ -136,6 +137,8 @@ public final class StorageMountGameTests {
                     providerRemainingCapacity + consumerLocalCapacity,
                     "Consumer aggregate capacity must include the provider exactly once");
             fixtures.removeFirstBridge();
+            // A removed Bridge is reconciled with the tick's other binding requests as the tick ends; run that now.
+            FederationBindingRefresh.flush(helper.getLevel());
             helper.assertValueEqual(projection.insert(IRON, 1, Actionable.MODULATE, ACTION_SOURCE), 1L,
                     "Removing one redundant route must preserve access");
             fixtures.removeSecondBridge();

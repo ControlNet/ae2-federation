@@ -154,6 +154,22 @@ public final class ExtendedAEPlusCompatGameTests {
     }
 
     /**
+     * As {@link #smartDoublingProcessing}, with Smart Doubling switched on only after the consumer already sees the
+     * pattern, as a player turns it on later: the provider decodes its patterns again with the mark, and the consumer
+     * must take up those marked objects, so its plan scales as the provider network's does.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void smartDoublingTurnedOnLater(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest",
+                List.of("ae2:1k_crafting_storage"), true).requesting(16)
+                .changingProviderAfterLink(entity -> enable(entity, "SMART_DOUBLING"))
+                .checkingPlan((plan, local) -> helper.assertTrue(scaled(plan) == scaled(local),
+                        "The consumer's plan must scale as the provider network's does: consumer " + plan.patternTimes()
+                                + ", provider network " + local.patternTimes()));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
      * Smart Doubling set on the Federation Pattern Provider reaches its Lanes, which refresh their patterns through
      * AE2's own updatePatterns, where ExtendedAE-Plus marks them as allowed to scale. Each Lane pattern must carry the
      * mark exactly when the same pattern in a plain AE2 Pattern Provider with Smart Doubling does: AE All Pattern

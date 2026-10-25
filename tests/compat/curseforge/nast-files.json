@@ -1,0 +1,41 @@
+{
+ "data": [
+  {
+   "id": 9286722,
+   "fileName": "New Age Science and Technology 2.2.1.zip",
+   "displayName": "New Age Science and Technology 2.2.1.zip",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.21.1",
+    "NeoForge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": true,
+   "additionalFilesCount": 1,
+   "additionalServerPackFilesCount": 1,
+   "fileLength": 18830023,
+   "dateCreated": "2026-10-22T12:06:37.503Z"
+  },
+  {
+   "id": 8740324,
+   "fileName": "New Age Science and Technology 2.0 beta1.zip",
+   "displayName": "New Age Science and Technology 2.0 beta1.zip",
+   "releaseType": 2,
+   "gameVersions": [
+    "1.21.1",
+    "NeoForge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": true,
+   "additionalFilesCount": 1,
+   "additionalServerPackFilesCount": 1,
+   "fileLength": 18546437,
+   "dateCreated": "2026-08-26T16:26:01.43Z"
+  }
+ ],
+ "pagination": {
+  "index": 0,
+  "pageSize": 2,
+  "totalCount": 26
+ }
+}
