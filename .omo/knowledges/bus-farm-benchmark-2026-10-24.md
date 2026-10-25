@@ -304,7 +304,7 @@ in vanilla's per-block-entity `shouldTickBlocksAt`, i.e. the cost of 10 000 tick
 showed ports are NOT re-dirtied in the steady state (resolves after setup are a few dozen per tick); JFR's attribution
 of `Level.isLoaded` to `CableFacePort.resolve` was an inlining artefact. AE2 cable buses do not tick at all.
 
-## Final systems table (2026-10-25, 6d810eef, `safety-nets-2026-10-25`, median of 3) - the reference result
+## Systems table with ticking Switches (2026-10-25, 6d810eef, `safety-nets-2026-10-25`, median of 3) - superseded below
 Tickless Federation Cables (9938fdcd) plus the missed-event safety nets (6d810eef: Switch face re-check on
 `getGridNode` and a sweep every 100 ticks per Switch). Every bus ran at AE2's fastest rate (99.9-100.1%). This run
 was noisier than the previous one: AE2 one network itself read 15.1 ms on 1000x10 (13.7 before).
@@ -331,3 +331,29 @@ unboxing is a sneak right-click with an empty hand; boxing sets the box with fla
 `setBlockAndUpdate` then `loadWithComponents`. Use NeoForge's `FakePlayerFactory`: GameTestHelper's mock server
 player is in the player list, so Mekanism's login payloads (`mekanism:player_data`) throw on its mock connection.
 Run: `python3 tools/compat_run.py --accept-eula --tests cardboardboxbesideswitch,cardboardboxfederationcable mekanism`.
+
+## Final systems table (2026-10-25, 35a49369, `tickless-routers-full-2026-10-25`, median of 3) - the reference result
+Profile of 6d810eef (1000x10 one domain, steady window, ~650 server samples) put Federation's own overhead at:
+Switch/Router ticker 5.5% (a stream over six ports + the verify sweep), statistics 4.5% (`pollJobs` walked every
+member Grid's CPUs each tick, plus the once-a-second drain/sample), per-operation metering
+(`AuthorizedStorageProjection.observe`) 3.8%, per-operation authorization (`permits`, already O(1): EnumMap get
+behind the AuthorityEpoch fast path, cost is cold pointer chasing over 1000 mounts) 3.4%, `owedWithin` 1.2%.
+Fixed: a0b069f6 (statistics poll only member networks with a CPU, AE2 `GridCraftingCpuChange` adds a network at
+once) and 35a49369 (Routers/Switches tickless on `RouterTicks`). Metering and authorization untouched (owner: later).
+Every bus ran at AE2's fastest rate (99.5-100.2%).
+| workload | system | Federation blocks | AE2 Grids | setup max tick | setup total | median | mean | max | median vs AE2 one network | mean vs AE2 one network | all rules | rule off | rule on | break tick | restore tick | teardown |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10x1000 | AE2 one network | - | 1 | 1.39 s | 4.5 s | 7.8 ms | 9.9 ms | 26.7 ms | 100% | 100% | - | - | - | - | - | 541 ms |
+| 10x1000 | AE2 subnets | - | 11 | 578 ms | 3.0 s | 8.6 ms | 9.9 ms | 14.4 ms | 110% | 100% | - | - | - | - | - | 290 ms |
+| 10x1000 | Federation Bridges | - | 11 | 554 ms | 2.8 s | 10.2 ms | 10.6 ms | 26.0 ms | 131% | 107% | 55.1 ms | 8.9 ms | 2.1 ms | - | - | 285 ms |
+| 10x1000 | Federation one domain | 320 | 11 | 573 ms | 2.8 s | 9.8 ms | 10.2 ms | 24.8 ms | 126% | 103% | 56.9 ms | 11.3 ms | 1.6 ms | 27.3 ms | 25.4 ms | 264 ms |
+| 1000x10 | AE2 one network | - | 1 | 690 ms | 6.5 s | 14.2 ms | 15.2 ms | 22.0 ms | 100% | 100% | - | - | - | - | - | 531 ms |
+| 1000x10 | AE2 subnets | - | 1001 | 1.44 s | 3.6 s | 15.4 ms | 16.2 ms | 27.1 ms | 108% | 107% | - | - | - | - | - | 366 ms |
+| 1000x10 | Federation Bridges | - | 1001 | 1.17 s | 3.5 s | 16.5 ms | 18.3 ms | 47.7 ms | 116% | 120% | 152 ms | 38.5 ms | 26.0 ms | - | - | 6.60 s |
+| 1000x10 | Federation one domain | 3494 | 1001 | 335 ms | 3.0 s | 14.0 ms | 14.9 ms | 55.7 ms | 99% | 98% | 148 ms | 37.3 ms | 23.5 ms | 97.1 ms | 82.4 ms | 1.71 s |
+| 1000x10 | Federation one domain, 10k blocks | 10046 | 1001 | 418 ms | 3.5 s | 15.0 ms | 15.9 ms | 41.4 ms | 106% | 105% | 193 ms | 35.7 ms | 23.2 ms | 140 ms | 160 ms | 2.90 s |
+
+The 10x1000 medians were noisy this run (AE2 one network 6.6/7.8/9.7 ms over the three runs); its means (9.9, 9.9,
+10.6, 10.2 ms) are the steadier comparison there. On 1000x10 the one domain now runs at AE2 one network's tick
+(99% median, 98% mean), below AE2 subnets (108%/107%); the 10k-block domain at 106%/105%. Max ticks stay higher
+(41-56 ms vs 22-27): not yet profiled (suspect the once-a-second statistics sample). Still open: Bridge teardown 6.6 s.
