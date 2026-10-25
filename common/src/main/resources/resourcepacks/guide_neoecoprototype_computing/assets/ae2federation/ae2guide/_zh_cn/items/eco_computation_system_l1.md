@@ -23,7 +23,7 @@ item_ids:
 * **连接、能量、容量和ID**： 和其他联邦计算系统主机相同。 结构成型后， 每个接口接一根<ItemLink id="ae2federation:cable" />； ME网络接不进这个结构， 它也不是合成CPU。
 * **算力**： 每个<ItemLink id="neoecoprototype:simplify_computation_parallel_core" />提供24 CU； 主机正后方的充能并行核心提供1,024 CU。
 * **带宽**： 驱动器里每个<ItemLink id="neoecoprototype:simplify_computation_cell_1m" />提供1,572,864 B/s， 每个充能晶阵提供5,242,880 B/s。
-* **安装数**： 每个<ItemLink id="neoecoprototype:simplify_computation_threading_core" />两个； 第一个线程核心位置上的充能线程核心提供16个。
+* **进程**： 每个安装是一个进程。 每个<ItemLink id="neoecoprototype:simplify_computation_threading_core" />两个； 第一个线程核心位置上的充能线程核心提供16个。
 
 以上是Neo ECO Prototype的默认值； 它的服务端配置（`l1_computation`）改动普通L1部件的数值时， 对N1和对L1主机一样生效。
 

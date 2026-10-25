@@ -150,14 +150,17 @@ final class DeviceBudgetTest {
         assertEquals(0, DeviceBudget.of(new ComputingHost.Capacity(64, 400, 8), costs).perCall("one"));
     }
 
-    /** Threads are the installations a device holds (user, 2026-10-20): one more is refused, a change of one is not. */
+    /**
+     * Processes are the installations a device holds (user, 2026-10-20; named processes 2026-10-25): one more is
+     * refused, a change of one is not.
+     */
     @Test
     void aDeviceHoldsAsManyInstallationsAsItHasThreads() {
         var two = new ComputingHost.Capacity(64, 1_000, 2);
         var one = Map.of("a", cost(1));
         var full = Map.of("a", cost(1), "b", cost(1));
         assertEquals(Optional.empty(), DeviceBudget.refusal(two, one, null, cost(1)));
-        assertTrue(DeviceBudget.refusal(two, full, null, cost(1)).orElseThrow().contains("installations"));
+        assertTrue(DeviceBudget.refusal(two, full, null, cost(1)).orElseThrow().contains("processes"));
         assertEquals(Optional.empty(), DeviceBudget.refusal(two, Map.of("a", cost(1)), cost(1), cost(2)));
     }
 
@@ -190,7 +193,7 @@ final class DeviceBudgetTest {
             assertEquals(DeviceBudget.refusal(DEVICE, costs, null, after), DeviceBudget.refusal(DEVICE, reserved, after));
         }
         var full = new ComputingHost.Capacity(64, 1_000, 2);
-        assertTrue(DeviceBudget.refusal(full, reserved, cost(1)).orElseThrow().contains("installations"));
+        assertTrue(DeviceBudget.refusal(full, reserved, cost(1)).orElseThrow().contains("processes"));
         assertEquals(Optional.empty(), DeviceBudget.refusal(ComputingHost.Capacity.UNLIMITED, reserved, cost(999)));
     }
 

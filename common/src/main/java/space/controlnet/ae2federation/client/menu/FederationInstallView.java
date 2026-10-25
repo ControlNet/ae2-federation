@@ -333,7 +333,7 @@ final class FederationInstallView {
 
     /**
      * A device's capacity row: compute and fixed bandwidth reserved of all, each underlined by its bar, and its
-     * installations of its threads; a figure over its capacity is red. A structure that is not formed has none: dashes.
+     * installations of its processes; a figure over its capacity is red. A structure that is not formed has none: dashes.
      */
     private UIElement meters(String device, ProgramSync.Budget budget) {
         var capacity = budget.capacity();
@@ -347,7 +347,7 @@ final class FederationInstallView {
         row.addChild(label("install-meter-name gap", tr("meter.bandwidth")));
         row.addChild(formed ? meter(reserved.bandwidth(), capacity.bandwidth(), reserved.elastic(),
                 () -> preview(device, cost -> cost.elastic() ? 0 : cost.bandwidth())) : dash());
-        row.addChild(label("install-meter-name gap", tr("meter.threads")));
+        row.addChild(label("install-meter-name gap", tr("meter.processes")));
         row.addChild(formed ? figure(reserved.installations() + "/" + capacity.installations(),
                 reserved.installations() > capacity.installations()) : dash());
         return row;

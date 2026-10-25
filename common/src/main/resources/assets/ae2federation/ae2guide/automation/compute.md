@@ -8,9 +8,10 @@ navigation:
 
 # Compute and Bandwidth
 
-A survival computing device has two limits: **compute**, counted in CU, and **bandwidth**, counted in bytes a second
-(B/s). Each installation reserves its share when it is installed, and a device that cannot hold it refuses the
-installation. The <ItemLink id="ae2federation:creative_computing_device" /> has no limits.
+A survival computing device has three limits: **compute**, counted in CU, **bandwidth**, counted in bytes a second
+(B/s), and **processes**, one for each installation. Each installation reserves its share when it is installed, and a
+device that cannot hold it refuses the installation. The
+<ItemLink id="ae2federation:creative_computing_device" /> has no limits.
 
 The game works out the cost from the program itself; you cannot set it.
 
@@ -55,6 +56,6 @@ An installation set to Parallel reserves 4 times its compute and fixed bandwidth
 ## When a device shrinks
 
 Taking a part or a cell out of a device keeps every installation. While the device holds less compute or bandwidth
-than the fixed reservations, or fewer threads than installations, the whole device pauses: runs wait where they are,
+than the fixed reservations, or fewer processes than installations, the whole device pauses: runs wait where they are,
 and triggers, events included, start their runs once it resumes. Each installation's log says "paused", then
 "resumed" once the device holds enough again.

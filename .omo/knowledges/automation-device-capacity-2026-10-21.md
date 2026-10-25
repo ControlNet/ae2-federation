@@ -36,3 +36,13 @@ elastic installation's current share, `9 CU · 67.1M B/s shared`.
 (`neoecoae:eco_computation_cell_l4`) goes in a drive by right-clicking it with the cell. `data merge` on the drive's
 `managed.cellStack` does not take. Over capacity: replace the drive with an empty one (`setblock air`, then the
 drive). `tools/visual/game_input.py close` closes the Minecraft window; press Escape with XTEST instead.
+
+## "Processes" (2026-10-25)
+
+The third limit is shown as **进程 / Processes** everywhere a player sees it (user, 2026-10-25), not 安装/Installations
+nor 线程/Threads: an installation is a running instance of a function with its own arguments, log and connections,
+like a process, while 线程 stays Neo ECO's word for what its threading cores give (one thread holds one process).
+Keys: `ae2federation.ui.automation.meter.processes` (automation tab card) and `ae2federation.eco_computation.installations`
+(ECO - N controller panel). 安装 stays the word for an installed function. Code keeps `installations` as the field
+name. Check image: `build/process-rename-check/process-rename-check.png` in the feature worktree. A Router placed with
+`setblock` stays "forming" until a neighbour update (place and remove a block beside it).

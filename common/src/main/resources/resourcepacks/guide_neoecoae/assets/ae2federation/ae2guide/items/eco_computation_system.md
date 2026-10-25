@@ -42,7 +42,7 @@ jobs. It needs Neo ECO 21.2.1 or later.
 * **Compute:** the accelerators of its parallel cores, 64, 192 or 576 CU per core for tier 4, 6 or 9.
 * **Bandwidth:** the bytes of the flash crystal matrices in its drives, 67,108,864 (CE4), 268,435,456 (CE6) or
   1,073,741,824 (CE9) B/s per matrix. Right-click the controller with matrices to fill empty drives.
-* **Installations:** as many as the threads of its threading cores.
+* **Processes:** one per installation, as many as the threads of its threading cores.
 * **ID and alias:** right-click the controller with an empty hand to see or copy its ID, such as `device-k3m9qa`, or
   to give it an alias.
 

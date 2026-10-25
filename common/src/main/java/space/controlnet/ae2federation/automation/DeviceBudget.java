@@ -118,7 +118,7 @@ public final class DeviceBudget {
     private static Optional<String> refusal(ComputingHost.Capacity capacity, Reserved others, boolean adding,
             InstallationCost after) {
         if (adding && others.installations() + 1 > capacity.installations()) {
-            return Optional.of("the device holds " + capacity.installations() + " installations and has none free");
+            return Optional.of("the device runs " + capacity.installations() + " processes and has none free");
         }
         long compute = others.compute();
         long fixed = others.bandwidth();

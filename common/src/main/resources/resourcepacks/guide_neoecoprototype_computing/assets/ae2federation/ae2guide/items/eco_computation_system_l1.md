@@ -35,8 +35,8 @@ installed.
   energized parallel core behind the controller.
 * **Bandwidth:** 1,572,864 B/s per <ItemLink id="neoecoprototype:simplify_computation_cell_1m" /> in its drives,
   5,242,880 B/s per energized array.
-* **Installations:** two per <ItemLink id="neoecoprototype:simplify_computation_threading_core" />, 16 from an
-  energized threading core in the first threading cell.
+* **Processes:** one per installation; two per <ItemLink id="neoecoprototype:simplify_computation_threading_core" />,
+  16 from an energized threading core in the first threading cell.
 
 These are Neo ECO Prototype's defaults; its server config (`l1_computation`) changes the plain L1 parts' numbers for
 N1 as for the L1 host.
