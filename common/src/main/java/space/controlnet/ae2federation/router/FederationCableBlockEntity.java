@@ -108,6 +108,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private void syncPower(ServerLevel serverLevel) {
         long now = serverLevel.getGameTime();
         if (now < nextPowerCheck || federationDomainNodeId == null) return;
+        if (FederationDomainRegistryAccess.get(serverLevel).pending()) return;
         nextPowerCheck = now + CAPACITY_CHECK_TICKS;
         var registry = FederationDomainRegistryAccess.get(serverLevel);
         boolean stopped = registry.federationDomainOf(federationDomainNodeId)
@@ -129,6 +130,8 @@ public final class FederationCableBlockEntity extends BlockEntity {
                 || now < nextCapacityCheck) {
             return;
         }
+        // A node published this tick: wait for the tick's one recompute rather than run one between two block entities.
+        if (FederationDomainRegistryAccess.get(serverLevel).pending()) return;
         capacityRevision = revision;
         nextCapacityCheck = now + CAPACITY_CHECK_TICKS;
         int units = CableCapacity.demand(serverLevel, worldPosition).map(CableCapacityCounter.Demand::units).orElse(0);

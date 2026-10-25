@@ -88,7 +88,7 @@ public final class NeoForgeEntrypoint {
     /**
      * Binding requests from the level ticks and from player actions or GameTests, then the beams and Quantum Cubes,
      * whose links change the domains, then the domains' operating power, which may stop a domain, then each service's
-     * tick.
+     * tick. Last, the domains settle what is still pending, so the next tick's cables read them without recomputing.
      */
     private static void onServerTickBindings(ServerTickEvent.Post event) {
         FederationBindingRefresh.flushAll();
@@ -98,6 +98,7 @@ public final class NeoForgeEntrypoint {
         StorageMountService.tick(event.getServer());
         CraftingProjectionService.tick(event.getServer());
         EnergySharingService.tickAll();
+        FederationDomainRegistryAccess.settle(event.getServer());
     }
 
     private static void onServerTickNativeMounts(ServerTickEvent.Post event) {

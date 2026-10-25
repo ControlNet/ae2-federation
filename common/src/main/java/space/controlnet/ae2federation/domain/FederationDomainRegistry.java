@@ -81,6 +81,9 @@ public final class FederationDomainRegistry {
     private final Set<FederationDomainNodeId> capacityNodes = new HashSet<>();
     /** Domains installed since they were last judged against the capacity limit. */
     private final Set<FederationDomainId> capacityDomains = new HashSet<>();
+    /** Each domain's cable demand as last judged: current after every flush, so a cable's lookup counts nothing. */
+    private final Map<FederationDomainId, Map<FederationDomainNodeId, CableCapacityCounter.Demand>> capacityCounts =
+            new HashMap<>();
     /** The limit the verdicts were judged with; null before the first judgement. */
     private java.util.OptionalInt judgedLimit;
 
@@ -434,9 +437,15 @@ public final class FederationDomainRegistry {
         boolean changed = false;
         for (var federationDomainId : capacityDomains) {
             var domain = federationDomains.get(federationDomainId);
-            boolean over = domain != null && limit.isPresent() && CableCapacityCounter.count(evidenceOf(domain))
-                    .entrySet().stream().anyMatch(entry -> CableCapacityLimit.current(
-                            nodes.get(entry.getKey()).capacityFactor()).stream()
+            // Counted with or without a limit: the cables show the count either way.
+            var counts = domain == null ? null : CableCapacityCounter.count(evidenceOf(domain));
+            if (counts == null) {
+                capacityCounts.remove(federationDomainId);
+            } else {
+                capacityCounts.put(federationDomainId, counts);
+            }
+            boolean over = counts != null && limit.isPresent() && counts.entrySet().stream()
+                    .anyMatch(entry -> CableCapacityLimit.current(nodes.get(entry.getKey()).capacityFactor()).stream()
                             .anyMatch(cap -> entry.getValue().units() > cap));
             changed |= over ? overCapacity.add(federationDomainId) : overCapacity.remove(federationDomainId);
         }
@@ -445,6 +454,30 @@ public final class FederationDomainRegistry {
             topologyRevision++;
             AuthorityEpoch.advance();
         }
+    }
+
+    /**
+     * The demand of each cable, P2P tunnel and other counting node of the domain, as {@link CableCapacityCounter}
+     * counts it; empty for a domain that does not exist.
+     */
+    public Map<FederationDomainNodeId, CableCapacityCounter.Demand> capacityDemand(FederationDomainId federationDomainId) {
+        flush();
+        return capacityCounts.getOrDefault(federationDomainId, Map.of());
+    }
+
+    /**
+     * Whether evidence changed since the domains were last recomputed and judged; the next read does both. A caller that
+     * only shows the domain, such as a cable's count, waits for a settled registry instead of recomputing it between
+     * two block entities' changes.
+     */
+    public boolean pending() {
+        return !pendingSeeds.isEmpty() || !capacityNodes.isEmpty() || !capacityDomains.isEmpty()
+                || !federationDomains.isEmpty() && !CableCapacityLimit.current().equals(judgedLimit);
+    }
+
+    /** Recomputes and judges pending changes now, as the next read would. */
+    public void settle() {
+        if (pending()) flush();
     }
 
     /** How many times changed components were recomputed, for diagnostics and benchmarks. */

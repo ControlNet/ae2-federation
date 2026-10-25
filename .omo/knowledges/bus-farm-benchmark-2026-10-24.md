@@ -172,3 +172,18 @@ ambiguous. `StorageMountContractTest` pinned the old member loop; `PolicyContrac
 2.7 s -> 75 ms; restore 2.2 s -> 57 ms; idle median 3.2 ms; teardown 1.1 s (unchanged). Setup max tick still ~5.9 s
 with 5.4 s of registry recompute (`setupRecomputeTime`): item 2 (capacity recount / recompute during setup) is next.
 `buses-1k-rules` (Bridge layout, 1 run): unchanged (setup 1.17 s, rule 42/27 ms, teardown 7.7 s, bus rate 100%).
+
+### Fix: one domain recompute per tick, counts shared with the judgement (2026-10-25)
+Cause: the registry flushes lazily on any read. Router/Switch/cable block entities publish evidence in their own
+ticks, and every cable's `syncCapacity`/`syncPower` read the registry in between, so each publish was followed by a
+whole-component recompute + `judgeCapacity` count, then `CableCapacity` counted the domain a second time (its cache
+was per global evidence revision). ~1900 recomputes during setup.
+- `FederationDomainRegistry.pending()` (seeds, capacity nodes/domains, or a changed limit with domains present);
+  cables skip both syncs while it holds and retry next tick (their check timers are not advanced).
+- `FederationDomainRegistryAccess.settle(server)` at the end of the HIGH Post `onServerTickBindings` flushes once, so
+  a cable is never left waiting on a registry nobody reads.
+- `judgeCapacity` always counts (limit or not) and keeps `capacityCounts` per domain; `capacityDemand(domain)` returns
+  it; `CableCapacity` is now a lookup with no cache of its own (its `clear()` and the call in `closeServer` removed).
+`domain-1k-settle` (median of 3): setup max tick 5.9 s -> 330 ms, setup recomputes ~1930 -> 6-11, setup 13.4 -> 1.8 s;
+rule edit / cable break / restore unchanged (22-28 ms, 75 ms, 55 ms); teardown 1.0 s. Bridge layout unchanged
+(`buses-1k-settle`: setup 1.06 s, rule 38/27 ms, teardown 6.8 s). Cable count display may lag one tick behind a change.
