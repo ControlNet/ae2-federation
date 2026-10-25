@@ -151,7 +151,12 @@ public final class CraftingProjectionService implements AutoCloseable {
      * routes nothing, and AE2's own crafting storage hands a machine's output straight to the waiting CPUs. Zero at
      * once while nothing is owed.
      */
-    public static synchronized long owedWithin(IGrid grid, AEKey what) {
+    public static long owedWithin(IGrid grid, AEKey what) {
+        // Every insert into a Grid's CPUs asks; while no ledger owes anything there is nothing to look up.
+        return CraftingReturnLedger.anyOwes() ? debtWithin(grid, what) : 0;
+    }
+
+    private static synchronized long debtWithin(IGrid grid, AEKey what) {
         var service = service(grid);
         return service == null ? 0
                 : service.debtsWithin(grid, what).stream().mapToLong(CraftingReturnLedger.Owed::amount).sum();
