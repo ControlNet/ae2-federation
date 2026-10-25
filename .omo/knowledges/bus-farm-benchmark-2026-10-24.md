@@ -134,3 +134,29 @@ layouts: 1.5-1.9 s in `buses-10k-full`).
 Open: deferring removals too would make teardown/unload one reconcile, at the cost of one tick fail-closed on a
 redundant route (what cables already accept) and `storagepriority` asserting after one tick.
 
+
+## One domain, 1000 networks (`perfdomainthousandnetworks`, 2026-10-25)
+Scene `test/perf/DomainFarmScene` (TEST-ONLY), the owner's topology: 63 Router bodies 3x3x1 in a row along X, each
+pair joined by a 3x3 bundle three long (`BundledCables.form`, unlimited capacity). From the middle of each Router's
+north/south face a plain cable two long leads to a 1x1x2 Switch body; its 8 free side faces carry 8 networks (one
+coloured glass cable each, 8 colours), exactly one plain cable's capacity. 125 subdomains = 1000 networks; network 0 is
+main (creative cell + `BulkItemStorage`), the other 999 get storage + ME power rules in one `editAll`. Neighbouring
+subdomains stay a block apart. Steps measured with a per-tick running max (`FullTickClock.lastTickNanos`): setup, idle
+(100 settle + 100 window), one rule off/on, break/restore the farthest subdomain's plain cable, teardown.
+```
+python3 tools/perf_benchmark.py --tests perfdomainthousandnetworks --repeat 1 --label domain-1k-first \
+  -P federationPerfNodeDataProbe=false
+```
+~1 minute. First numbers (`domain-1k-first`): setup max tick 4.7-9.1 s, all-rules edit 2.0 s, idle median 3.7 ms,
+one rule off/on 2.3 s each, cable break tick 2.7 s, restore 2.2 s, teardown 1.05 s.
+
+JFR (attach to the JVM with `-Dfml.modFolders`, not the first java with "gametest" in its args):
+- `Storage/Crafting/EnergyFederationDomainObserver.relationships()` build every ordered member pair of every domain:
+  999,000 pairs here, each with two `confirmedNetworkId` lookups, then each service's `reconcileAll` reads
+  `PolicyService.configured` per pair. Every rule edit runs it three times synchronously; every topology change runs it
+  through `FederationBindingRefresh`. All consumers skip pairs without a configured rule (UI status only asks for
+  enabled rules), so enumerating configured rules of the capability whose two networks share a domain is equivalent.
+- `FederationCableBlockEntity.syncCapacity -> CableCapacity.demand` is cached per evidence revision and domain, but
+  Router/cable ticks publish evidence between cable ticks during setup and breaks, so the whole domain is recounted
+  several times a tick; `FederationDomainRegistry.flush` recompute + `judgeCapacity` show up under it (lazy flush is
+  charged to the first caller).

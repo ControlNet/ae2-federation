@@ -31,6 +31,12 @@ public final class FullTickClock {
         });
     }
 
+    /** The last whole tick completed, in nanoseconds; 0 before the first. */
+    public static long lastTickNanos() {
+        register();
+        return completed == 0 ? 0 : TIMES[(completed - 1) % TIMES.length];
+    }
+
     /** A window over whole server ticks, opened during the current tick. */
     public static final class Window {
         private final MinecraftServer server;
