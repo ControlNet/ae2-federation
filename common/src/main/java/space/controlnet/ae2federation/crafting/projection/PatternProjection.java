@@ -5,6 +5,7 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.crafting.ICraftingProvider;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
+import appeng.helpers.patternprovider.PatternProviderLogic;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -30,6 +31,12 @@ import java.util.Set;
  * projection carries the real provider's add-on markers too, so the add-on treats it as it treats the real provider, and
  * the push still goes through {@link #pushPattern} to the real provider. AE2 then holds {@link #registered()}, a proxy
  * with those markers, instead of the projection itself.
+ *
+ * <p>The proxy also shows AE2's own provider logic ({@link #shownLogic}) through
+ * {@link ProjectedProviderLogic#getLogic()}, so Neo ECO's CPU pushes many runs as one scaled pattern here as it does to
+ * that logic on its own network, still through {@link #pushPattern}. Other logic stays hidden: add-ons that recognise
+ * their own logic, such as AE2LT's overloaded provider, push into it directly, past the projection and its return
+ * ledger.
  */
 final class PatternProjection implements ICraftingProvider {
     /** Captures dispatch context before external callbacks; the returned action runs only for an accepted push. */
@@ -56,7 +63,16 @@ final class PatternProjection implements ICraftingProvider {
         this.listener = Objects.requireNonNull(listener);
         patterns = List.copyOf(real.getAvailablePatterns());
         priority = real.getPatternPriority();
-        registered = withMarkers(this, addonMarkers(real.getClass()));
+        registered = withMarkers(this, addonMarkers(real.getClass()), shownLogic() != null);
+    }
+
+    /**
+     * The real provider when it is AE2's own provider logic, which add-ons only read and push to through
+     * {@link #pushPattern}: a plain AE2 Pattern Provider's, or a Federation Pattern Provider's Lane. Null otherwise.
+     */
+    Object shownLogic() {
+        return real.getClass() == PatternProviderLogic.class
+                || real instanceof space.controlnet.ae2federation.ae2.processing.NativeProviderLane ? real : null;
     }
 
     /** What the consumer's crafting service holds for this projection: itself, or a proxy with add-on markers. */
@@ -66,7 +82,7 @@ final class PatternProjection implements ICraftingProvider {
 
     /** Whether AE2 holds {@code provider} for a projection, rather than for a real provider. */
     static boolean isProjection(ICraftingProvider provider) {
-        return provider instanceof PatternProjection
+        return provider instanceof PatternProjection || provider instanceof ProjectionShowingLogic
                 || Proxy.isProxyClass(provider.getClass()) && Proxy.getInvocationHandler(provider) instanceof Markers;
     }
 
@@ -99,19 +115,24 @@ final class PatternProjection implements ICraftingProvider {
     }
 
     /**
-     * {@code projection} as a provider that also has {@code markers}; the projection itself when there are none or
-     * they cannot be combined, such as when they live in class loaders that cannot see each other.
+     * {@code projection} as a provider that also has {@code markers}, and {@link ProjectedProviderLogic} with
+     * {@code showsLogic}: the projection itself when there is nothing to add, a {@link ProjectionShowingLogic} for the
+     * logic alone, and a proxy for markers. With markers that cannot be combined, such as when they live in class
+     * loaders that cannot see each other, the projection itself.
      */
-    private static ICraftingProvider withMarkers(PatternProjection projection, List<Class<?>> markers) {
-        if (markers.isEmpty()) return projection;
+    private static ICraftingProvider withMarkers(PatternProjection projection, List<Class<?>> markers,
+            boolean showsLogic) {
+        if (markers.isEmpty()) return showsLogic ? new ProjectionShowingLogic(projection) : projection;
         var interfaces = new ArrayList<Class<?>>();
         interfaces.add(ICraftingProvider.class);
+        if (showsLogic) interfaces.add(ProjectedProviderLogic.class);
         interfaces.addAll(markers);
         try {
             return (ICraftingProvider) Proxy.newProxyInstance(markers.getFirst().getClassLoader(),
                     interfaces.toArray(Class<?>[]::new), new Markers(projection));
         } catch (IllegalArgumentException exception) {
-            return projection;
+            // The markers matter more than the logic: an add-on that marks its providers pushes only to marked ones.
+            return showsLogic ? withMarkers(projection, markers, false) : projection;
         }
     }
 
@@ -119,6 +140,7 @@ final class PatternProjection implements ICraftingProvider {
     private record Markers(PatternProjection projection) implements InvocationHandler {
         @Override
         public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
+            if (method.getDeclaringClass() == ProjectedProviderLogic.class) return projection.shownLogic();
             if (method.getDeclaringClass() == Object.class) {
                 return switch (method.getName()) {
                     case "equals" -> proxy == arguments[0];

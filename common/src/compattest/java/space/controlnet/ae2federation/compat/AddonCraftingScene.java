@@ -228,6 +228,12 @@ final class AddonCraftingScene {
         return reorderingAfterwards(change, check);
     }
 
+    /** {@code check} sees the consumer CPU that ran the order once the job has finished. */
+    AddonCraftingScene checkingAfterJob(CpuCheck check) {
+        cpuCheck = check;
+        return this;
+    }
+
     /** Checks the consumer CPU that ran an order, the first being 1, against the provider network. */
     interface CpuCheck {
         void check(int order, appeng.api.networking.crafting.ICraftingCPU cpu, IGrid provider);
