@@ -7,10 +7,12 @@ import appeng.api.networking.security.IActionSource;
 import appeng.api.parts.IPartHost;
 import appeng.api.parts.PartHelper;
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.GenericStack;
 import appeng.api.util.AEColor;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEParts;
 import appeng.me.service.PathingService;
+import appeng.parts.automation.ExportBusPart;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -35,86 +37,110 @@ import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
 /**
- * TEST-ONLY scene with every network in one Federation domain: a row of 3x3x1 Router bodies along X, each joined to
- * the next by a 3x3 bundled cable, whose capacity has no limit. From the middle of each Router's north and south faces
- * a plain cable two blocks long leads to a subdomain: a 1x1x2 Switch body with {@link #NETWORKS_EACH} networks on its
- * other faces, each one coloured glass cable, as many as a plain cable carries. One of them is the main network, with a
- * creative energy cell and the storage every other network reaches through its storage and ME power rules.
+ * TEST-ONLY bus scene with every network in one Federation domain. The subnets and their bus pairs are those of
+ * {@link BusFarmScene}: a block of columns each, a column stacking {@link BusFarmScene#LAYERS} chests between cable
+ * layers, an Export Bus under each chest and an Import Bus above it, and one all-cable riser per block. The main
+ * network is one more riser, with the creative energy cell and the storage every subnet reaches through its storage
+ * and ME power rules.
  *
- * <p>Subdomains of neighbouring Routers stay a block apart, so neither their plain cables nor their networks touch;
- * the networks of one Switch differ in colour.
+ * <p>The domain: a row of 3x3x1 Router bodies along X, each joined to the next by a 3x3 bundled cable two long,
+ * whose capacity has no limit. A Switch sits on every riser; risers side by side make one Switch body, which attaches
+ * up to {@link #NETWORKS_EACH} networks, one plain cable's capacity. From the middle of each Router's north and south
+ * faces a plain cable runs over the farm and down onto one Switch body: a subdomain. Narrow subnets share a body eight
+ * at a time; a subnet as wide as a Router's next three has a body of its own.
+ *
+ * <p>Each Router's subdomains lie in one of four rows on its side, so neighbouring subdomains stay apart; neighbouring
+ * subnets of one subdomain differ in cable colour. Every network runs in AE2's infinite channel mode, as in
+ * {@link BusFarmScene}.
  */
-public final class DomainFarmScene implements AutoCloseable {
-    /** Networks on each Switch: one plain cable's capacity. */
+public final class DomainFarmScene implements BusScene {
+    /** Networks on each Switch body at most: one plain cable's capacity. */
     public static final int NETWORKS_EACH = 8;
+    private static final int LAYERS = BusFarmScene.LAYERS;
     private static final int PLACEMENTS_PER_TICK = 2000;
-    /** Routers' X spacing: one Router block and a bundle three long. */
-    private static final int PITCH = 4;
-    private static final AEColor[] COLORS = {AEColor.RED, AEColor.BLUE, AEColor.GREEN, AEColor.YELLOW,
-            AEColor.ORANGE, AEColor.PURPLE, AEColor.CYAN, AEColor.LIGHT_GRAY};
-    /** The Switch faces that carry a network, as offsets from the Switch block nearer the Router. */
-    private static final Direction[] NETWORK_FACES = {Direction.UP, Direction.DOWN, Direction.EAST, Direction.WEST};
+    /** Routers' X spacing: one Router block and a bundle two long. */
+    private static final int PITCH = 3;
+    /** Rows of subdomains on each side of the Routers: a subdomain may be as wide as this many Routers' spacing, less one. */
+    private static final int ROWS = 4;
+    private static final AEColor MAIN_COLOR = AEColor.YELLOW;
+    private static final AEColor[] SUBNET_COLORS = {AEColor.RED, AEColor.BLUE};
+    /** Relative height of the top cable layer, the risers' top. */
+    private static final int TOP_Y = 2 * LAYERS + 1;
+    /** Relative height of the Switches, on the risers. */
+    private static final int SWITCH_Y = TOP_Y + 1;
+    /**
+     * Relative height of the Routers' middle, two above the Switches: the plain cables run one block over them. Every
+     * Federation block of the domain counts against the registry's recompute budget of 4096 nodes.
+     */
+    private static final int ROUTER_Y = SWITCH_Y + 2;
 
     private final GameTestHelper helper;
-    private final int networks;
+    private final int subnets;
     private final BulkItemStorage bulk;
     private final BlockPos origin;
+    private final int blockWidth;
+    private final int blockDepth;
     private final int routers;
+    private final int routerZ;
     private final List<Runnable> placements = new ArrayList<>();
     private final List<BlockPos> placed = new ArrayList<>();
+    /** Each network's riser top, in network order; the first is the main network's. */
+    private final List<BlockPos> risers = new ArrayList<>();
+    /** Each subdomain's networks: the index of its first network and of the one after its last. */
+    private final List<int[]> subdomains = new ArrayList<>();
     /** Each subdomain's plain cable next to its Router, in subdomain order. */
     private final List<BlockPos> subdomainCables = new ArrayList<>();
-    /** Each network's glass cable, in network order; the first is the main network's. */
-    private final List<BlockPos> networkCables = new ArrayList<>();
-    private final List<AEKey> keys;
+    private final List<BlockPos> chests = new ArrayList<>();
+    private final List<AEKey> pairKeys = new ArrayList<>();
     private final Set<ChunkPos> chunks = new HashSet<>();
     private final List<PolicyKey> rules = new ArrayList<>();
+    /** Router, Switch and Federation Cable blocks: the domain's nodes. */
+    private int federationBlocks;
     private int next;
     private boolean ruled;
     private IGrid mountedOn;
     private long ruleEditNanos;
 
-    /** @param networks how many networks join the domain, the main network among them; a multiple of eight */
-    public DomainFarmScene(GameTestHelper helper, int networks) {
-        if (networks % NETWORKS_EACH != 0) throw new IllegalArgumentException("Whole subdomains only");
+    /**
+     * @param subnets   how many subnets reach the main network
+     * @param busesEach buses on each subnet, an even number: half export, half import
+     * @param types     distinct item types the main network stores
+     */
+    public DomainFarmScene(GameTestHelper helper, int subnets, int busesEach, int types) {
+        if (busesEach % 2 != 0) throw new IllegalArgumentException("Buses come in pairs");
         this.helper = helper;
-        this.networks = networks;
-        var subdomains = networks / NETWORKS_EACH;
-        routers = (subdomains + 1) / 2;
-        bulk = new BulkItemStorage(networks, 1_000_000L);
-        keys = bulk.keys();
-        // Beside the test's own structure; the subdomains reach five blocks north and south of the Routers.
-        origin = new BlockPos(0, 2, (int) helper.getBounds().getZsize() + 10);
-        for (var router = 0; router < routers; router++) {
-            var x = router * PITCH;
-            for (var dy = 0; dy < 3; dy++) {
-                for (var dz = 0; dz < 3; dz++) block(origin.offset(x, dy, dz), RouterRegistration.ROUTER.get().defaultBlockState());
-            }
+        this.subnets = subnets;
+        bulk = new BulkItemStorage(types, 1_000_000L);
+        var pairs = busesEach / 2;
+        var columns = (pairs + LAYERS - 1) / LAYERS + 1;
+        // Narrow blocks stand side by side under one Switch body, so they are one column wide.
+        blockWidth = columns <= 2 ? 1 : (int) Math.ceil(Math.sqrt(columns));
+        blockDepth = (columns + blockWidth - 1) / blockWidth;
+        var each = Math.min(NETWORKS_EACH, (ROWS * PITCH - 1) / blockWidth);
+        if (each < 1) throw new IllegalArgumentException("A subnet wider than a subdomain's row");
+        var networks = subnets + 1;
+        var subdomainCount = (networks + each - 1) / each;
+        routers = (subdomainCount + 1) / 2;
+        // Beside the test's own structure; the rows reach ROWS blocks deep on each side of the Routers.
+        var reach = ROWS * (blockDepth + 1) + 2;
+        origin = new BlockPos(0, 1, (int) helper.getBounds().getZsize() + 4);
+        routerZ = reach + 1;
+        var keys = bulk.keys();
+        var totalPairs = subnets * pairs;
+        for (var subdomain = 0; subdomain < subdomainCount; subdomain++) {
+            var first = subdomain * each;
+            var end = Math.min(networks, first + each);
+            subdomains.add(new int[] {first, end});
+            planSubdomain(subdomain, first, end, pairs, keys, totalPairs);
         }
-        var bundles = new ArrayList<BundleSegment>();
-        for (var router = 0; router + 1 < routers; router++) {
-            var min = origin.offset(router * PITCH + 1, 0, 0);
-            var max = min.offset(PITCH - 2, 2, 2);
-            for (var position : BlockPos.betweenClosed(min, max)) {
-                block(position.immutable(), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
-            }
-            bundles.add(new BundleSegment(helper.absolutePos(min), helper.absolutePos(max), Direction.Axis.X));
-        }
-        for (var subdomain = 0; subdomain < subdomains; subdomain++) planSubdomain(subdomain);
-        var mainCable = networkCables.getFirst();
-        block(mainCable.above(), AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
-        // Bundles form from cables already placed.
-        placements.add(() -> {
-            var record = BundledCables.get(helper.getLevel());
-            for (var segment : bundles) record.form(helper.getLevel(), segment);
-        });
-        for (var x = -1; x <= routers * PITCH; x++) {
-            for (var z = -6; z <= 8; z++) chunks.add(new ChunkPos(helper.absolutePos(origin.offset(x, 0, z))));
+        planRouters();
+        for (var x = -2; x <= routers * PITCH + ROWS * PITCH; x++) {
+            for (var z = 0; z <= 2 * routerZ; z++) chunks.add(new ChunkPos(helper.absolutePos(origin.offset(x, 0, z))));
         }
         for (var chunk : chunks) helper.getLevel().setChunkForced(chunk.x, chunk.z, true);
     }
 
-    /** Runs the next batch of placements; true once the whole scene is placed. */
+    @Override
     public boolean build() {
         var end = Math.min(placements.size(), next + PLACEMENTS_PER_TICK);
         for (; next < end; next++) placements.get(next).run();
@@ -122,15 +148,15 @@ public final class DomainFarmScene implements AutoCloseable {
     }
 
     /**
-     * Advances the networks towards their working state; true once every network is powered and reaches its item on
-     * the main network. Turns on every other network's storage and ME power rules in one edit, once each shares the
-     * main network's domain.
+     * True once every subnet is powered and its own storage reaches its pairs' item on the main network. Turns on every
+     * subnet's storage and ME power rules in one edit, once each shares the main network's domain.
      */
+    @Override
     public boolean ready() {
         var main = mainGrid();
         if (main == null) return false;
-        for (var cable : networkCables) {
-            var grid = gridAt(cable);
+        for (var riser : risers) {
+            var grid = gridAt(riser);
             if (grid != null) infiniteChannels(grid);
         }
         var mainId = FederationDomainRegistryAccess.confirmedNetworkId(main);
@@ -142,10 +168,10 @@ public final class DomainFarmScene implements AutoCloseable {
             return false;
         }
         if (!ruled) {
-            if (!inMainDomain(1, networks)) return false;
+            if (!inMainDomain(1, risers.size())) return false;
             var policies = PolicyService.get(helper.getLevel());
             var edits = new ArrayList<PolicyEdit>();
-            for (var network = 1; network < networks; network++) {
+            for (var network = 1; network < risers.size(); network++) {
                 var id = networkId(network);
                 var storage = new PolicyKey(id, mainId.get(), PolicyCapability.STORAGE);
                 var power = new PolicyKey(id, mainId.get(), PolicyCapability.ME_POWER);
@@ -164,7 +190,12 @@ public final class DomainFarmScene implements AutoCloseable {
             ruled = true;
             return false;
         }
-        return reachMain(1, networks);
+        var grids = new HashSet<IGrid>();
+        for (var network = 1; network < risers.size(); network++) {
+            if (!reaches(network)) return false;
+            grids.add(gridAt(risers.get(network)));
+        }
+        return grids.size() == subnets && !grids.contains(main);
     }
 
     /** Whether networks {@code from} (inclusive) to {@code to} (exclusive) share a domain with the main network. */
@@ -175,7 +206,7 @@ public final class DomainFarmScene implements AutoCloseable {
         var mainDomains = registry.federationdomainsFor(mainId.get());
         if (mainDomains.isEmpty()) return false;
         for (var network = from; network < to; network++) {
-            var grid = gridAt(networkCables.get(network));
+            var grid = gridAt(risers.get(network));
             var id = grid == null ? java.util.Optional.<NetworkId>empty()
                     : FederationDomainRegistryAccess.confirmedNetworkId(grid);
             if (id.isEmpty() || registry.federationdomainsFor(id.get()).stream().noneMatch(mainDomains::contains)) {
@@ -185,7 +216,7 @@ public final class DomainFarmScene implements AutoCloseable {
         return true;
     }
 
-    /** Whether networks {@code from} to {@code to} (exclusive) are powered and each reaches its item on main. */
+    /** Whether subnets {@code from} to {@code to} (exclusive) are powered and each reaches its item on main. */
     public boolean reachMain(int from, int to) {
         for (var network = from; network < to; network++) {
             if (!reaches(network)) return false;
@@ -193,7 +224,7 @@ public final class DomainFarmScene implements AutoCloseable {
         return true;
     }
 
-    /** Whether no network from {@code from} to {@code to} (exclusive) reaches its item on main any more. */
+    /** Whether no subnet from {@code from} to {@code to} (exclusive) reaches its item on main any more. */
     public boolean cutOff(int from, int to) {
         for (var network = from; network < to; network++) {
             if (reaches(network)) return false;
@@ -203,7 +234,12 @@ public final class DomainFarmScene implements AutoCloseable {
 
     /** The networks of the last subdomain, the farthest from the main network: first and end (exclusive). */
     public int[] lastSubdomain() {
-        return new int[] {networks - NETWORKS_EACH, networks};
+        return subdomains.getLast().clone();
+    }
+
+    /** How many networks join the domain, the main network among them. */
+    public int networks() {
+        return risers.size();
     }
 
     /** Breaks the plain cable joining the last subdomain to its Router, as a player does. */
@@ -216,6 +252,26 @@ public final class DomainFarmScene implements AutoCloseable {
         helper.setBlock(subdomainCables.getLast(), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
     }
 
+    @Override
+    public long operations() {
+        return bulk.operations();
+    }
+
+    @Override
+    public long itemsInChests() {
+        long items = 0;
+        for (var position : chests) {
+            if (helper.getLevel().getBlockEntity(helper.absolutePos(position))
+                    instanceof net.minecraft.world.Container container) {
+                for (var slot = 0; slot < container.getContainerSize(); slot++) {
+                    items += container.getItem(slot).getCount();
+                }
+            }
+        }
+        return items;
+    }
+
+    @Override
     public int placements() {
         return placements.size();
     }
@@ -224,12 +280,17 @@ public final class DomainFarmScene implements AutoCloseable {
         return routers;
     }
 
-    /** How long the one edit that turned on every network's rules took. */
+    /** The domain's Router, Switch and Federation Cable blocks, which its recompute budget counts. */
+    public int federationBlocks() {
+        return federationBlocks;
+    }
+
+    @Override
     public long ruleEditNanos() {
         return ruleEditNanos;
     }
 
-    /** Turns the first network's storage rule off and on again; returns the nanoseconds of each edit. */
+    @Override
     public long[] toggleOneRule() {
         var policies = PolicyService.get(helper.getLevel());
         var key = rules.getFirst();
@@ -246,13 +307,19 @@ public final class DomainFarmScene implements AutoCloseable {
         return times;
     }
 
-    /** Removes every block the scene placed and releases its chunks; returns the nanoseconds it took. */
+    @Override
     public long clear() {
         var started = System.nanoTime();
         if (mountedOn != null) mountedOn.getStorageService().removeGlobalStorageProvider(bulk);
         mountedOn = null;
         // Removing a bundle's cables removes the bundle, which the level would keep otherwise.
-        for (var position : placed) helper.setBlock(position, Blocks.AIR);
+        for (var position : placed) {
+            if (helper.getLevel().getBlockEntity(helper.absolutePos(position))
+                    instanceof net.minecraft.world.Container container) {
+                container.clearContent();
+            }
+            helper.setBlock(position, Blocks.AIR);
+        }
         placed.clear();
         for (var chunk : chunks) helper.getLevel().setChunkForced(chunk.x, chunk.z, false);
         return System.nanoTime() - started;
@@ -264,36 +331,106 @@ public final class DomainFarmScene implements AutoCloseable {
         clear();
     }
 
-    /** Subdomain {@code subdomain}: even ones south of their Router, odd ones north. */
-    private void planSubdomain(int subdomain) {
-        var x = (subdomain / 2) * PITCH;
+    /**
+     * Subdomain {@code subdomain}: networks {@code first} to {@code end} (exclusive) side by side along X from its
+     * Router's X, in row {@code router % ROWS} south of the Routers for even subdomains, north for odd ones.
+     */
+    private void planSubdomain(int subdomain, int first, int end, int pairs, List<AEKey> keys, int totalPairs) {
+        var router = subdomain / 2;
         var south = subdomain % 2 == 0;
         var step = south ? 1 : -1;
-        // The middle of the Router's face, then the plain cable, then the Switch body.
-        var face = origin.offset(x, 1, south ? 2 : 0);
-        var cable = face.relative(south ? Direction.SOUTH : Direction.NORTH);
-        subdomainCables.add(cable);
-        block(cable, RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
-        block(cable.offset(0, 0, step), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
-        var near = cable.offset(0, 0, 2 * step);
-        var far = near.offset(0, 0, step);
-        block(near, RouterRegistration.SWITCH.get().defaultBlockState());
-        block(far, RouterRegistration.SWITCH.get().defaultBlockState());
-        var color = 0;
-        for (var switchBlock : List.of(near, far)) {
-            for (var direction : NETWORK_FACES) glassCable(switchBlock.relative(direction), COLORS[color++]);
+        var row = router % ROWS;
+        var x = router * PITCH;
+        // The riser row nearest the Routers; the blocks reach away from them.
+        var z = routerZ + step * (2 + row * (blockDepth + 1));
+        for (var network = first; network < end; network++) {
+            var corner = origin.offset(x + (network - first) * blockWidth, 0, z);
+            var riser = corner.above(TOP_Y);
+            risers.add(riser);
+            if (network == 0) {
+                for (var y = 1; y <= TOP_Y; y++) cable(corner.above(y), MAIN_COLOR);
+                // Beside the main riser only: no subnet block reaches X below the first Router's.
+                block(corner.offset(-1, LAYERS, 0), AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
+            } else {
+                planSubnet(network - 1, corner, step, SUBNET_COLORS[(network - first) % 2], pairs, keys, totalPairs);
+            }
+            block(riser.above(), RouterRegistration.SWITCH.get().defaultBlockState());
+        }
+        // Over the farm from the Router's face, then down onto the subdomain's first Switch.
+        var face = origin.offset(x, ROUTER_Y, routerZ + step);
+        subdomainCables.add(face.offset(0, 0, step));
+        for (var dz = face.getZ() + step; dz != origin.getZ() + z + step; dz += step) {
+            block(new BlockPos(face.getX(), face.getY(), dz), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
+        }
+        for (var y = SWITCH_Y + 1; y < ROUTER_Y; y++) {
+            block(origin.offset(x, y, z), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
         }
     }
 
+    /** A subnet's block, as in {@link BusFarmScene}: its riser at {@code corner}, its columns reaching {@code step} in Z. */
+    private void planSubnet(int subnet, BlockPos corner, int step, AEColor color, int pairs, List<AEKey> keys,
+            int totalPairs) {
+        for (var y = 1; y <= TOP_Y; y++) cable(corner.above(y), color);
+        var pair = 0;
+        for (var dz = 0; dz < blockDepth && pair < pairs; dz++) {
+            for (var dx = 0; dx < blockWidth && pair < pairs; dx++) {
+                if (dx == 0 && dz == 0) continue;
+                var column = corner.offset(dx, 0, step * dz);
+                for (var layer = 0; layer < LAYERS && pair < pairs; layer++, pair++) {
+                    var key = keys.get((int) ((long) (subnet * pairs + pair) * keys.size() / totalPairs));
+                    if (pair == 0) pairKeys.add(key);
+                    var below = column.above(2 * layer + 1);
+                    var chest = below.above();
+                    var top = chest.above();
+                    if (layer == 0) cable(below, color);
+                    cable(top, color);
+                    block(chest, Blocks.CHEST.defaultBlockState());
+                    chests.add(chest);
+                    placements.add(() -> {
+                        ExportBusPart export = PartHelper.setPart(helper.getLevel(), helper.absolutePos(below),
+                                Direction.UP, null, AEParts.EXPORT_BUS.asItem());
+                        export.getConfig().setStack(0, new GenericStack(key, 1));
+                    });
+                    placements.add(() -> PartHelper.setPart(helper.getLevel(), helper.absolutePos(top), Direction.DOWN,
+                            null, AEParts.IMPORT_BUS.asItem()));
+                }
+            }
+        }
+    }
+
+    /** The Routers and the bundles between them; the bundles form once their cables are placed. */
+    private void planRouters() {
+        var bundles = new ArrayList<BundleSegment>();
+        for (var router = 0; router < routers; router++) {
+            var x = router * PITCH;
+            for (var dy = -1; dy <= 1; dy++) {
+                for (var dz = -1; dz <= 1; dz++) {
+                    block(origin.offset(x, ROUTER_Y + dy, routerZ + dz), RouterRegistration.ROUTER.get().defaultBlockState());
+                }
+            }
+            if (router + 1 == routers) break;
+            var min = origin.offset(x + 1, ROUTER_Y - 1, routerZ - 1);
+            var max = min.offset(PITCH - 2, 2, 2);
+            for (var position : BlockPos.betweenClosed(min, max)) {
+                block(position.immutable(), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
+            }
+            bundles.add(new BundleSegment(helper.absolutePos(min), helper.absolutePos(max), Direction.Axis.X));
+        }
+        placements.add(() -> {
+            var record = BundledCables.get(helper.getLevel());
+            for (var segment : bundles) record.form(helper.getLevel(), segment);
+        });
+    }
+
     private boolean reaches(int network) {
-        var grid = gridAt(networkCables.get(network));
+        var grid = gridAt(risers.get(network));
         if (grid == null || !grid.getEnergyService().isNetworkPowered()) return false;
-        return grid.getStorageService().getInventory().extract(keys.get(network), 1, Actionable.SIMULATE,
+        return grid.getStorageService().getInventory().extract(pairKeys.get(network - 1), 1, Actionable.SIMULATE,
                 IActionSource.empty()) == 1;
     }
 
     private NetworkId networkId(int network) {
-        return FederationDomainRegistryAccess.confirmedNetworkId(gridAt(networkCables.get(network)))
+        return FederationDomainRegistryAccess.confirmedNetworkId(gridAt(risers.get(network)))
                 .orElseThrow(() -> new IllegalStateException("Network " + network + " has no confirmed id"));
     }
 
@@ -303,7 +440,7 @@ public final class DomainFarmScene implements AutoCloseable {
     }
 
     private IGrid mainGrid() {
-        return gridAt(networkCables.getFirst());
+        return gridAt(risers.getFirst());
     }
 
     private IGrid gridAt(BlockPos position) {
@@ -313,14 +450,17 @@ public final class DomainFarmScene implements AutoCloseable {
         return cable.getGridNode().getGrid();
     }
 
-    private void glassCable(BlockPos position, AEColor color) {
+    private void cable(BlockPos position, AEColor color) {
         placed.add(position);
-        networkCables.add(position);
         placements.add(() -> PartHelper.setPart(helper.getLevel(), helper.absolutePos(position), null, null,
                 AEParts.GLASS_CABLE.item(color)));
     }
 
     private void block(BlockPos position, BlockState state) {
+        if (state.getBlock() == RouterRegistration.ROUTER.get() || state.getBlock() == RouterRegistration.SWITCH.get()
+                || state.getBlock() == RouterRegistration.FEDERATION_CABLE.get()) {
+            federationBlocks++;
+        }
         placed.add(position);
         placements.add(() -> helper.setBlock(position, state));
     }

@@ -222,3 +222,27 @@ AE2 rows have no Federation code in their path: their before/after difference is
 | 1000x10 Federation Bridge | after | 1.03 s | 3.3 s | 17.3 ms | 18.4 ms | 47.7 ms | 100.1% | 152 ms | 39.7 ms | 27.0 ms | - | - | 6.73 s |
 | 1000 networks, one domain | before | 6.79 s | 16.8 s | 3.7 ms | 4.2 ms | 15.7 ms | - | 2.01 s | 2.35 s | 2.21 s | 2.71 s | 2.26 s | 1.05 s |
 | 1000 networks, one domain | after | 313 ms | 1.7 s | 3.2 ms | 3.5 ms | 18.7 ms | - | 106 ms | 28.0 ms | 21.7 ms | 70.4 ms | 51.6 ms | 1.08 s |
+
+## Final systems table (2026-10-25, `final-systems-2026-10-25`, median of 3) - the reference result
+`perfdomainthousandnetworks` (no buses) was replaced: the one-domain system now runs the same workload as the others
+(`DomainFarmScene` builds BusFarm's subnet blocks; a Switch on every riser top, side-by-side risers merge into a 1x1x8
+body = one 8-network subdomain; 10x1000 blocks are 11 wide, so one network per Switch; Routers 3x3x1 at pitch 3
+with 2-long 3x3 bundles, two above the Switches, a plain cable from each side face over the farm and down; 4 rows per
+side). Tests `perfbuses{ten,thousand}subnetsdomain`. All `setupMaxTick` values are now a running max over every setup
+tick (`FullTickClock.lastTickNanos`), not the last-100-tick window. Workload per row: main network with 10 000 types;
+10x1000 or 1000x10 buses; bus rate = share of AE2's fastest rate.
+| workload | system | setup max tick | setup total | median | mean | max | bus rate | all rules | rule off | rule on | break tick | restore tick | teardown |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10x1000 | AE2 one network | 681 ms | 4.4 s | 9.3 ms | 9.7 ms | 15.2 ms | 99.9% | - | - | - | - | - | 558 ms |
+| 10x1000 | AE2 subnets | 595 ms | 3.1 s | 9.6 ms | 9.7 ms | 20.5 ms | 99.9% | - | - | - | - | - | 258 ms |
+| 10x1000 | Federation Bridges | 578 ms | 3.0 s | 10.0 ms | 10.3 ms | 26.7 ms | 99.7% | 63.7 ms | 7.4 ms | 1.8 ms | - | - | 275 ms |
+| 10x1000 | Federation one domain | 555 ms | 2.9 s | 10.2 ms | 10.6 ms | 21.3 ms | 100.2% | 55.5 ms | 9.3 ms | 1.8 ms | 27.9 ms | 35.3 ms | 279 ms |
+| 1000x10 | AE2 one network | 738 ms | 6.7 s | 14.9 ms | 14.9 ms | 19.4 ms | 100.0% | - | - | - | - | - | 510 ms |
+| 1000x10 | AE2 subnets | 1.46 s | 3.6 s | 16.0 ms | 16.7 ms | 26.2 ms | 99.9% | - | - | - | - | - | 400 ms |
+| 1000x10 | Federation Bridges | 1.18 s | 3.4 s | 17.2 ms | 18.0 ms | 46.9 ms | 100.1% | 154 ms | 38.6 ms | 26.1 ms | - | - | 6.53 s |
+| 1000x10 | Federation one domain | 339 ms | 4.0 s | 27.9 ms | 29.5 ms | 61.2 ms | 100.0% | 161 ms | 36.5 ms | 23.9 ms | 110 ms | 104 ms | 1.87 s |
+Open: 1000x10 one domain runs at 27.9 ms median vs 17.2 ms Bridges (profile: mostly AE2 bus/tick-queue time, Federation
+block entity ticks + statistics + energy reform ~6-10% of samples; not yet explained). Bridge teardown 6.5 s.
+Product limit found: `FederationDomainRecomputeBudget.standard()` = 4096 node visits; a domain larger than that is
+dropped whole (`BUDGET_EXHAUSTED`, no networks link, no in-game message). The first layout (Routers 9 above the
+Switches) had ~4800 Federation blocks and never formed; the compact one has 3494.

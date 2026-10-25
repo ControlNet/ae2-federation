@@ -38,6 +38,7 @@ import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.test.perf.BulkItemStorage;
 import space.controlnet.ae2federation.test.perf.BusFarmScene;
+import space.controlnet.ae2federation.test.perf.BusScene;
 import space.controlnet.ae2federation.test.perf.DomainFarmScene;
 import space.controlnet.ae2federation.test.perf.FullTickClock;
 import space.controlnet.ae2federation.test.perf.EnergyMeshScene;
@@ -303,19 +304,39 @@ public final class PerformanceBenchmarkGameTests {
         busFarm(helper, "perfbusesthousandsubnetsfederation", BusFarmScene.Layout.FEDERATION, 1000, 10);
     }
 
-    /**
-     * Builds a {@link BusFarmScene} and runs every bus until a hundred ticks reach 99% of AE2's fastest bus rate (or
-     * {@link #BUS_WARMUP_TICKS} pass), then reports the median, mean and slowest whole server tick over the next
-     * {@link #WINDOW_TICKS} and how many bus operations reached the main network's storage per tick, so layouts are
-     * compared at the same work.
-     */
+    /** Ten subnets with a thousand buses each, all in one Federation domain of Routers, bundles and Switches. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 12000, required = true, manualOnly = true)
+    public static void perfBusesTenSubnetsDomain(GameTestHelper helper) {
+        busFarm(helper, "perfbusestensubnetsdomain", new DomainFarmScene(helper, 10, 1000, BUS_TYPES), true, 10, 1000);
+    }
+
+    /** A thousand subnets with ten buses each, all in one Federation domain of Routers, bundles and Switches. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 12000, required = true, manualOnly = true)
+    public static void perfBusesThousandSubnetsDomain(GameTestHelper helper) {
+        busFarm(helper, "perfbusesthousandsubnetsdomain", new DomainFarmScene(helper, 1000, 10, BUS_TYPES), true, 1000,
+                10);
+    }
+
     private static void busFarm(GameTestHelper helper, String testId, BusFarmScene.Layout layout, int subnets,
             int busesEach) {
-        var scene = new BusFarmScene(helper, layout, subnets, busesEach, BUS_TYPES);
+        busFarm(helper, testId, new BusFarmScene(helper, layout, subnets, busesEach, BUS_TYPES),
+                layout == BusFarmScene.Layout.FEDERATION, subnets, busesEach);
+    }
+
+    /**
+     * Builds a bus scene and runs every bus until a hundred ticks reach 99% of AE2's fastest bus rate (or
+     * {@link #BUS_WARMUP_TICKS} pass), then reports the median, mean and slowest whole server tick over the next
+     * {@link #WINDOW_TICKS} and how many bus operations reached the main network's storage per tick, so systems are
+     * compared at the same work. With Federation rules it then turns one rule off and on; in one domain it also breaks
+     * and restores the cable to the subdomain farthest from the main network. The setup and each later step report
+     * their slowest whole tick over every tick of the step.
+     */
+    private static void busFarm(GameTestHelper helper, String testId, BusScene scene, boolean federation, int subnets,
+            int busesEach) {
         var perf = new PerfMeasure(testId);
         var server = helper.getLevel().getServer();
-        // Whole ticks: the server's own tick times stop before the Post event, where AE2 ticks every bus.
-        var setup = new FullTickClock.Window(server);
         var setupStarted = System.nanoTime();
         var mounts = StorageMountService.get(helper.getLevel());
         var stage = new int[] {0};
@@ -324,152 +345,102 @@ public final class PerformanceBenchmarkGameTests {
         var start = new long[3];
         var full = (long) subnets * busesEach / 5 * 100;
         var warm = new long[] {-1, 0};
-        helper.succeedWhen(() -> {
-            if (stage[0] == 0) {
-                helper.assertTrue(scene.build(), "Building the scene");
-                perf.count("placements", scene.placements());
-                perf.count("buildTicks", server.getTickCount() - built);
-                stage[0] = 1;
-            }
-            if (stage[0] == 1) {
-                helper.assertTrue(scene.ready(), "Waiting for every subnet to reach the main network");
-                perf.count("readyTicks", server.getTickCount() - built);
-                perf.record("setupMaxTick", setup.maxTickNanos() / 1e6, "ms/tick");
-                perf.record("setupSeconds", (System.nanoTime() - setupStarted) / 1e9, "s");
-                if (layout == BusFarmScene.Layout.FEDERATION) {
-                    perf.record("allRulesEdit", scene.ruleEditNanos() / 1e6, "ms");
-                }
-                window[0] = new FullTickClock.Window(server);
-                stage[0] = 2;
-            }
-            if (warm[0] < 0) {
-                if (window[0].ticks() % 100 == 0) {
-                    var operations = scene.operations();
-                    if (operations - warm[1] >= full * 99 / 100 || window[0].ticks() >= BUS_WARMUP_TICKS) {
-                        warm[0] = window[0].ticks();
-                        perf.count("warmupTicks", warm[0]);
-                    }
-                    warm[1] = operations;
-                }
-                start[0] = scene.operations();
-                start[1] = AuthorityEpoch.current();
-                start[2] = mounts.dependencyRefreshCount();
-                helper.assertTrue(false, "Running every bus up to its full rate");
-            }
-            helper.assertTrue(window[0].ticks() > warm[0] + WINDOW_TICKS, "Measuring with every bus working");
-            var ticks = window[0].ticks() - warm[0];
-            var operations = scene.operations() - start[0];
-            helper.assertTrue(operations > 0, "The buses must move items to and from the main network");
-            perf.count("subnets", subnets);
-            perf.count("buses", (long) subnets * busesEach);
-            perf.count("types", BUS_TYPES);
-            perf.record("medianTick", window[0].medianTickNanos() / 1e6, "ms/tick");
-            perf.record("meanTick", window[0].meanTickNanos() / 1e6, "ms/tick");
-            perf.record("maxTick", window[0].maxTickNanos() / 1e6, "ms/tick");
-            perf.record("busOperations", (double) operations / ticks, "ops/tick");
-            // AE2 runs a working bus at most every 5 ticks: the share of that rate the buses reached.
-            perf.record("busRate", 100.0 * operations / ticks / (subnets * busesEach / 5.0), "%");
-            perf.count("authorityEpochs", AuthorityEpoch.current() - start[1]);
-            perf.count("dependencyRefreshes", mounts.dependencyRefreshCount() - start[2]);
-            perf.count("itemsInChests", scene.itemsInChests());
-            if (layout == BusFarmScene.Layout.FEDERATION) {
-                var toggle = scene.toggleOneRule();
-                perf.record("oneRuleOff", toggle[0] / 1e6, "ms");
-                perf.record("oneRuleOn", toggle[1] / 1e6, "ms");
-            }
-            perf.record("teardown", scene.clear() / 1e6, "ms");
-        });
-    }
-
-    /** A thousand networks in one Federation domain: Routers chained by 3x3 bundles, eight networks per subdomain. */
-    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
-            timeoutTicks = 12000, required = true, manualOnly = true)
-    public static void perfDomainThousandNetworks(GameTestHelper helper) {
-        domainFarm(helper, "perfdomainthousandnetworks", 1000);
-    }
-
-    /**
-     * Builds a {@link DomainFarmScene}, then reports the slowest whole tick of each step a player takes in it: setting
-     * it up, idling, turning one rule off and on, breaking the cable to the subdomain farthest from the main network
-     * and placing it back, and removing the scene. Each step's slowest tick is taken over every tick of the step.
-     */
-    private static void domainFarm(GameTestHelper helper, String testId, int networks) {
-        var scene = new DomainFarmScene(helper, networks);
-        var perf = new PerfMeasure(testId);
-        var server = helper.getLevel().getServer();
-        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
-        var setupStarted = System.nanoTime();
-        var stage = new int[] {0};
-        // The step's first tick, the registry's recomputes and their nanoseconds when it started; its slowest tick.
-        var mark = new long[] {server.getTickCount(), registry.recomputes(), registry.recomputeNanos()};
-        var slowest = new long[] {0};
-        var window = new FullTickClock.Window[1];
-        var last = scene.lastSubdomain();
+        // The slowest whole tick of the current step, and the tick it started.
+        var slowest = new long[] {0, built};
+        var domain = scene instanceof DomainFarmScene farm ? farm : null;
+        var last = domain == null ? null : domain.lastSubdomain();
         Consumer<String> endStep = name -> {
-            perf.count(name + "Ticks", server.getTickCount() - mark[0]);
             perf.record(name + "MaxTick", slowest[0] / 1e6, "ms/tick");
-            perf.count(name + "Recomputes", registry.recomputes() - mark[1]);
-            perf.record(name + "RecomputeTime", (registry.recomputeNanos() - mark[2]) / 1e6, "ms");
-            mark[0] = server.getTickCount();
-            mark[1] = registry.recomputes();
-            mark[2] = registry.recomputeNanos();
+            perf.count(name + "Ticks", server.getTickCount() - slowest[1]);
             slowest[0] = 0;
+            slowest[1] = server.getTickCount();
         };
         helper.succeedWhen(() -> {
             slowest[0] = Math.max(slowest[0], FullTickClock.lastTickNanos());
             if (stage[0] == 0) {
                 helper.assertTrue(scene.build(), "Building the scene");
                 perf.count("placements", scene.placements());
-                perf.count("routers", scene.routers());
+                perf.count("buildTicks", server.getTickCount() - built);
+                if (domain != null) {
+                    perf.count("routers", domain.routers());
+                    perf.count("federationBlocks", domain.federationBlocks());
+                }
                 stage[0] = 1;
             }
             if (stage[0] == 1) {
-                helper.assertTrue(scene.ready(), "Waiting for every network to reach the main network");
+                helper.assertTrue(scene.ready(), "Waiting for every subnet to reach the main network");
+                perf.count("readyTicks", server.getTickCount() - built);
                 endStep.accept("setup");
                 perf.record("setupSeconds", (System.nanoTime() - setupStarted) / 1e9, "s");
-                perf.record("allRulesEdit", scene.ruleEditNanos() / 1e6, "ms");
+                if (federation) perf.record("allRulesEdit", scene.ruleEditNanos() / 1e6, "ms");
                 window[0] = new FullTickClock.Window(server);
                 stage[0] = 2;
             }
             if (stage[0] == 2) {
-                helper.assertTrue(window[0].ticks() > IDLE_SETTLE_TICKS + WINDOW_TICKS, "Measuring idle ticks");
+                if (warm[0] < 0) {
+                    if (window[0].ticks() % 100 == 0) {
+                        var operations = scene.operations();
+                        if (operations - warm[1] >= full * 99 / 100 || window[0].ticks() >= BUS_WARMUP_TICKS) {
+                            warm[0] = window[0].ticks();
+                            perf.count("warmupTicks", warm[0]);
+                        }
+                        warm[1] = operations;
+                    }
+                    start[0] = scene.operations();
+                    start[1] = AuthorityEpoch.current();
+                    start[2] = mounts.dependencyRefreshCount();
+                    helper.assertTrue(false, "Running every bus up to its full rate");
+                }
+                helper.assertTrue(window[0].ticks() > warm[0] + WINDOW_TICKS, "Measuring with every bus working");
+                var ticks = window[0].ticks() - warm[0];
+                var operations = scene.operations() - start[0];
+                helper.assertTrue(operations > 0, "The buses must move items to and from the main network");
+                perf.count("subnets", subnets);
+                perf.count("buses", (long) subnets * busesEach);
+                perf.count("types", BUS_TYPES);
                 perf.record("medianTick", window[0].medianTickNanos() / 1e6, "ms/tick");
                 perf.record("meanTick", window[0].meanTickNanos() / 1e6, "ms/tick");
                 perf.record("maxTick", window[0].maxTickNanos() / 1e6, "ms/tick");
-                endStep.accept("idle");
-                var toggle = scene.toggleOneRule();
-                perf.record("oneRuleOff", toggle[0] / 1e6, "ms");
-                perf.record("oneRuleOn", toggle[1] / 1e6, "ms");
-                stage[0] = 3;
-                helper.assertTrue(false, "Waiting for the rule toggle to settle");
+                perf.record("busOperations", (double) operations / ticks, "ops/tick");
+                // AE2 runs a working bus at most every 5 ticks: the share of that rate the buses reached.
+                perf.record("busRate", 100.0 * operations / ticks / (subnets * busesEach / 5.0), "%");
+                perf.count("authorityEpochs", AuthorityEpoch.current() - start[1]);
+                perf.count("dependencyRefreshes", mounts.dependencyRefreshCount() - start[2]);
+                perf.count("itemsInChests", scene.itemsInChests());
+                endStep.accept("running");
+                if (!federation) {
+                    stage[0] = 6;
+                } else {
+                    var toggle = scene.toggleOneRule();
+                    perf.record("oneRuleOff", toggle[0] / 1e6, "ms");
+                    perf.record("oneRuleOn", toggle[1] / 1e6, "ms");
+                    stage[0] = domain == null ? 6 : 3;
+                    helper.assertTrue(false, "Waiting for the rule toggle to settle");
+                }
             }
             if (stage[0] == 3) {
-                helper.assertTrue(server.getTickCount() - mark[0] > 40, "Waiting for the rule toggle to settle");
-                helper.assertTrue(scene.reachMain(1, networks), "Waiting for every network to reach main again");
+                helper.assertTrue(server.getTickCount() - slowest[1] > 40, "Waiting for the rule toggle to settle");
+                helper.assertTrue(domain.reachMain(1, domain.networks()), "Waiting for every subnet to reach main again");
                 endStep.accept("ruleToggle");
-                scene.breakLastSubdomainCable();
+                domain.breakLastSubdomainCable();
                 stage[0] = 4;
                 helper.assertTrue(false, "Waiting for the cut subdomain to leave the domain");
             }
             if (stage[0] == 4) {
-                helper.assertTrue(!scene.inMainDomain(last[0], last[1]) && scene.cutOff(last[0], last[1]),
+                helper.assertTrue(!domain.inMainDomain(last[0], last[1]) && domain.cutOff(last[0], last[1]),
                         "Waiting for the cut subdomain to leave the domain");
-                helper.assertTrue(scene.reachMain(1, last[0]), "The rest of the domain must keep its storage");
+                helper.assertTrue(domain.reachMain(1, last[0]), "The rest of the domain must keep its storage");
                 endStep.accept("cableBreak");
-                scene.restoreLastSubdomainCable();
+                domain.restoreLastSubdomainCable();
                 stage[0] = 5;
                 helper.assertTrue(false, "Waiting for the subdomain to rejoin");
             }
             if (stage[0] == 5) {
-                helper.assertTrue(scene.reachMain(last[0], last[1]), "Waiting for the subdomain to rejoin");
+                helper.assertTrue(domain.reachMain(last[0], last[1]), "Waiting for the subdomain to rejoin");
                 endStep.accept("cableRestore");
-                perf.record("teardown", scene.clear() / 1e6, "ms");
                 stage[0] = 6;
-                helper.assertTrue(false, "Waiting after the teardown");
             }
-            helper.assertTrue(server.getTickCount() - mark[0] > 40, "Waiting after the teardown");
-            endStep.accept("teardown");
-            perf.count("networks", networks);
+            perf.record("teardown", scene.clear() / 1e6, "ms");
         });
     }
 

@@ -52,7 +52,7 @@ import space.controlnet.ae2federation.storage.mount.StorageMountService;
  * Every network runs in AE2's infinite channel mode, as AE2's own test plots force it: channels are assigned only when a network changes,
  * so a static scene ticks the same as one built from controllers and dense cable.
  */
-public final class BusFarmScene implements AutoCloseable {
+public final class BusFarmScene implements BusScene {
     public enum Layout {
         DIRECT, NATIVE, FEDERATION
     }
