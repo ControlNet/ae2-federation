@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.test;
 import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixture.cobblestone;
 import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixture.planks;
 import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixture.sticks;
+import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixture.stone;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.IActionSource;
@@ -122,6 +123,62 @@ public final class StatisticsGameTests {
                     "The consumer holds no cobblestone of its own, whatever its storage rule shows");
             PolicyEvidence.write("statisticscountrealtraffic", 10, Map.of("cobblestoneToConsumer", "3",
                     "planksToProvider", "2", "sticksToConsumer", "4", "pushes", "1", "jobsDone", "1"));
+            fixture.close();
+        });
+    }
+
+    /**
+     * A member network without a crafting CPU builds one later: the statistics poll only networks that have CPUs, and
+     * AE2's CPU change event adds this one at once, so the job it starts on the new CPU is counted without waiting for
+     * the next second's look at the member networks. The job waits in the machine until the test ejects its stone.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void statisticsCountJobsOnACpuBuiltLater(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper);
+        var statistics = LevelObservabilityService.get(helper.getLevel()).statistics();
+        var stage = new int[1];
+        var counted = new double[1];
+        @SuppressWarnings("unchecked")
+        java.util.concurrent.Future<appeng.api.networking.crafting.ICraftingPlan>[] plan =
+                new java.util.concurrent.Future[1];
+        helper.succeedWhen(() -> {
+            helper.assertTrue(stage[0] > 0 || fixture.ready(), "Waiting for both networks and their providers");
+            var provider = fixture.providerNetwork();
+            if (stage[0] == 0) {
+                fixture.putInProvider(cobblestone(), 1);
+                // Planned before the CPU exists, so the job starts as soon as the CPU does.
+                plan[0] = fixture.planOnProvider(stone(), 1);
+                stage[0] = 1;
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(plan[0].isDone(), "Waiting for the provider network's plan");
+                // The member networks as of now, the provider's without a CPU.
+                statistics.finishSecond(statistics.nowSecond() - 1);
+                helper.assertTrue(statistics.cpus(provider).isEmpty(), "The provider network starts without a CPU");
+                fixture.placeProviderCpu();
+                stage[0] = 2;
+            }
+            if (stage[0] == 2) {
+                helper.assertValueEqual(fixture.providerGrid().getCraftingService().getCpus().size(), 1,
+                        "Waiting for the provider network's new CPU");
+                helper.assertTrue(fixture.submitOnProvider(plan[0].resultNow()), "The new CPU must take the job");
+                stage[0] = 3;
+                helper.fail("Waiting a tick for the statistics to look at the CPU");
+            }
+            if (stage[0] == 3) {
+                // Read once: finishing a second looks at the member networks again, which would find the CPU anyway.
+                long now = statistics.nowSecond();
+                statistics.finishSecond(now);
+                counted[0] = statistics.book().total(StatisticsNames.network(StatisticsNames.STARTED, provider),
+                        StatisticsRange.MINUTES, now);
+                fixture.ejectIntoProvider(stone(), 1);
+                stage[0] = 4;
+            }
+            helper.assertValueEqual(counted[0], 1d, "The job on the new CPU must be counted at once");
+            helper.assertValueEqual(fixture.busyProviderCpus(), 0L, "Waiting for the job to finish");
+            PolicyEvidence.write("statisticscountjobsonacpubuiltlater", 3, Map.of("cpusAtFirst", "0",
+                    "jobsCounted", "1", "jobFinished", "true"));
             fixture.close();
         });
     }

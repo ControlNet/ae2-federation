@@ -1,7 +1,9 @@
 package space.controlnet.ae2federation.observability.statistics;
 
+import appeng.api.networking.GridHelper;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.ICraftingCPU;
+import appeng.api.networking.events.GridCraftingCpuChange;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
@@ -38,7 +40,8 @@ import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
  * its native sources only: never {@code getCachedInventory}, which re-enumerates the mounted storage of other
  * networks too when no terminal is open. That reading also keeps the amounts of the keys each network holds most of,
  * and of the keys players pinned ({@link #TRACKED_TOP}, {@link #TRACKED_CAP}). Every tick it looks at the busy
- * crafting CPUs of the member networks, to count the jobs they start.
+ * crafting CPUs of the member networks that have any, to count the jobs they start: a network gets polled the tick
+ * after AE2 reports a change to its CPUs, and the member networks' CPUs are looked at again every second.
  */
 public final class FederationStatistics {
     /** Seconds between two enumerations of one network's own storage. */
@@ -87,6 +90,9 @@ public final class FederationStatistics {
             @org.jetbrains.annotations.Nullable GenericStack output, long total, long progress, long elapsedNanos) {
     }
 
+    /** Grids whose crafting CPUs changed since the last tick, from AE2's event; weak, as Grids come and go. */
+    private static final Set<IGrid> CPUS_CHANGED = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+
     private final ServerLevel level;
     private final LongSupplier millis;
     private final StatisticsBook<AEKey> book;
@@ -96,6 +102,13 @@ public final class FederationStatistics {
     private final Map<NetworkId, StoredReading> stored = new HashMap<>();
     /** The loaded member networks' Grids as of the last finished second. */
     private Map<NetworkId, IGrid> grids = Map.of();
+    /** The member networks each Grid of {@link #grids} is. */
+    private Map<IGrid, NetworkId> networks = Map.of();
+    /**
+     * The member networks whose crafting CPUs are polled every tick: those with a CPU at the last finished second,
+     * and any whose CPUs changed since.
+     */
+    private final Map<NetworkId, IGrid> crafting = new HashMap<>();
     private final Map<ICraftingCPU, JobSeen> jobs = new IdentityHashMap<>();
     /** Our own index of native sources: reading storage must not change the one storage mounts rely on. */
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
@@ -115,6 +128,11 @@ public final class FederationStatistics {
         this.millis = millis;
         this.book = book;
         this.changed = changed;
+    }
+
+    /** Once, at mod start: AE2's Grid event subscriptions are global and permanent. */
+    public static void register() {
+        GridHelper.addEventHandler(GridCraftingCpuChange.class, (grid, event) -> CPUS_CHANGED.add(grid));
     }
 
     public StatisticsBook<AEKey> book() {
@@ -163,6 +181,7 @@ public final class FederationStatistics {
      * once the wall clock has passed it.
      */
     public void tick() {
+        followCpuChanges();
         pollJobs();
         var step = clock.ended(millis.getAsLong());
         if (step == null) return;
@@ -170,9 +189,22 @@ public final class FederationStatistics {
         for (long second = step.observeFrom(); second <= step.observeTo(); second++) book.observe(second);
     }
 
+    /**
+     * Polls a member network whose CPUs changed from now on, as when a player builds its first CPU, so a job started
+     * on it before the next second is counted; the next second keeps it only if it has a CPU then.
+     */
+    private void followCpuChanges() {
+        if (CPUS_CHANGED.isEmpty()) return;
+        for (var grid : CPUS_CHANGED) {
+            var network = networks.get(grid);
+            if (network != null) crafting.put(network, grid);
+        }
+        CPUS_CHANGED.clear();
+    }
+
     /** Counts each job a member network's crafting CPU started since the last tick. */
     private void pollJobs() {
-        grids.forEach((network, grid) -> {
+        crafting.forEach((network, grid) -> {
             if (grid.isEmpty()) return;
             for (var cpu : grid.getCraftingService().getCpus()) {
                 var status = cpu.isBusy() ? cpu.getJobStatus() : null;
@@ -300,8 +332,17 @@ public final class FederationStatistics {
             }
         }
         this.grids = grids;
-        jobs.keySet().retainAll(grids.values().stream().flatMap(grid -> grid.getCraftingService().getCpus().stream())
-                .collect(java.util.stream.Collectors.toSet()));
+        var networks = new IdentityHashMap<IGrid, NetworkId>();
+        var allCpus = new HashSet<ICraftingCPU>();
+        crafting.clear();
+        grids.forEach((network, grid) -> {
+            networks.put(grid, network);
+            var own = grid.getCraftingService().getCpus();
+            if (!own.isEmpty()) crafting.put(network, grid);
+            allCpus.addAll(own);
+        });
+        this.networks = networks;
+        jobs.keySet().retainAll(allCpus);
         var pools = new IdentityHashMap<EnergyService, EnergyPoolReading>();
         grids.forEach((network, grid) -> {
             var energy = grid.getEnergyService();
