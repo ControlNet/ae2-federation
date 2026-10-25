@@ -80,13 +80,18 @@ server-thread `jdk.ExecutionSample` stacks; `jfr print --json` is 5.8 GB for 4 m
   so draining there would be a tick late). `tick` also drains a leftover mark.
 Rule edits still reconcile everything (storage, crafting, energy), now O(networks) each.
 
-| 1000 x 10 Federation (one run each) | before | after |
-|---|---|---|
-| setup max tick | 149 s | 1.05 s |
-| setup | 156 s | 6.6 s |
-| editAll of 2000 rules | 290 ms | 115 ms |
-| one rule off / on | 193 / 167 ms | 42 / 26 ms |
-| teardown | 57 s | 8.3 s |
+Median of 3 (`--label buses-10k-fix12 --compare buses-10k-full`, Federation layouts only):
+
+| Federation | 1000 x 10 before | 1000 x 10 after | 10 x 1000 before | 10 x 1000 after |
+|---|---|---|---|---|
+| setup max tick | 152 s | 1.3 s | 473 ms | 326 ms |
+| setup | 159 s | 6.0 s | 3.4 s | 3.1 s |
+| editAll of 2000 / 20 rules | 310 ms | 114 ms | 65 ms | 64 ms |
+| one rule off / on | 200 / 171 ms | 41 / 25 ms | 8 / 2 ms | 8 / 2 ms |
+| steady median / mean tick | 19.5 / 22.0 ms | 17.0 / 18.8 ms | 11.7 / 12.4 ms | 9.8 / 10.3 ms |
+| teardown | 57 s | 7.5 s | 0.29 s | 0.29 s |
+The steady-tick drop was not separated from host load (the earlier runs shared the host with ffmpeg); the ~100 ms statistics tick
+every ~2 s (point 3) is unchanged.
 After the fix the remaining Federation samples are mostly teardown and setup Bridge `setStatus` -> three
 `reconcileIfPresent`/`observeConnectedGrids` per Bridge (one full reconcile per Bridge change, point 4) and the
 statistics sample (point 3).
