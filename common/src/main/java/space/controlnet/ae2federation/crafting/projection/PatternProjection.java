@@ -34,9 +34,9 @@ import java.util.Set;
  *
  * <p>The proxy also shows AE2's own provider logic ({@link #shownLogic}) through
  * {@link ProjectedProviderLogic#getLogic()}, so Neo ECO's CPU pushes many runs as one scaled pattern here as it does to
- * that logic on its own network, still through {@link #pushPattern}. Other logic stays hidden: add-ons that recognise
- * their own logic, such as AE2LT's overloaded provider, push into it directly, past the projection and its return
- * ledger.
+ * that logic on its own network, still through {@link #pushPattern}; AdvancedAE's logic is shown the same way. Other
+ * logic stays hidden: add-ons that recognise their own logic, such as AE2LT's overloaded provider, push into it
+ * directly, past the projection and its return ledger.
  */
 final class PatternProjection implements ICraftingProvider {
     /** Captures dispatch context before external callbacks; the returned action runs only for an accepted push. */
@@ -48,6 +48,9 @@ final class PatternProjection implements ICraftingProvider {
         Runnable prepare(PatternProjection projection, IPatternDetails details, KeyCounter containerItems,
                 KeyCounter inputs);
     }
+
+    /** AdvancedAE's provider logic, which Neo ECO reads and pushes to only through its provider interface. */
+    private static final String ADVANCED_AE_LOGIC = "net.pedroksl.advanced_ae.common.logic.AdvPatternProviderLogic";
 
     private final ICraftingProvider real;
     private final PushListener listener;
@@ -67,12 +70,14 @@ final class PatternProjection implements ICraftingProvider {
     }
 
     /**
-     * The real provider when it is AE2's own provider logic, which add-ons only read and push to through
-     * {@link #pushPattern}: a plain AE2 Pattern Provider's, or a Federation Pattern Provider's Lane. Null otherwise.
+     * The real provider when its logic is one add-ons only read and push to through {@link #pushPattern}: a plain AE2
+     * Pattern Provider's, a Federation Pattern Provider's Lane, or AdvancedAE's Advanced Pattern Provider's. Null
+     * otherwise.
      */
     Object shownLogic() {
         return real.getClass() == PatternProviderLogic.class
-                || real instanceof space.controlnet.ae2federation.ae2.processing.NativeProviderLane ? real : null;
+                || real instanceof space.controlnet.ae2federation.ae2.processing.NativeProviderLane
+                || real.getClass().getName().equals(ADVANCED_AE_LOGIC) ? real : null;
     }
 
     /** What the consumer's crafting service holds for this projection: itself, or a proxy with add-on markers. */

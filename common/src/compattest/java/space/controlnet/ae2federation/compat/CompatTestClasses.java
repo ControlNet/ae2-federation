@@ -47,6 +47,7 @@ final class CompatTestClasses {
         groups.put("expandedae", ExpandedAECompatGameTests.class);
         groups.put("neoecoae", NeoEcoCompatGameTests.class);
         groups.put("neoecoprototype", NeoEcoPrototypeCompatGameTests.class);
+        groups.put("neoecoae-advanced-ae", NeoEcoAdvancedAECompatGameTests.class);
         groups.put("useless-mod", UselessModCompatGameTests.class);
         // Spans several addons: each profile names its addon's tests by id (see the class).
         return groups;

@@ -132,15 +132,23 @@ public final class NeoEcoCompatGameTests {
 
     /**
      * Neo ECO's smart doubling: its CPU pushes many runs of a processing pattern as one scaled batch, to the providers
-     * it recognises. The consumer's ECO CPU orders sixteen stone through a projected AE2 Pattern Provider: it must
-     * batch through the projection exactly when Neo ECO batches to that provider on its own network.
+     * it recognises; here through a projected AE2 Pattern Provider ({@link #smartDoubling}).
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
     public static void computationSystemSmartDoubling(GameTestHelper helper) {
-        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true)
+        helper.succeedWhen(smartDoubling(helper, "ae2:pattern_provider")::tick);
+    }
+
+    /**
+     * The consumer's ECO CPU orders sixteen stone through a projection of {@code providerId} on the provider network:
+     * Neo ECO must batch to that provider on its own network, batch through the projection too, and every scaled
+     * push's output must come back.
+     */
+    static AddonCraftingScene smartDoubling(GameTestHelper helper, String providerId) {
+        var scene = new AddonCraftingScene(helper, providerId, "minecraft:chest", List.of(), true)
                 .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
                 .craftingOnly().requesting(16);
-        scene.checkingAfterJob((order, cpu, provider) -> {
+        return scene.checkingAfterJob((order, cpu, provider) -> {
             var bridge = scene.bridge();
             var consumer = scene.consumerGrid();
             var stone = appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.STONE);
@@ -157,17 +165,16 @@ public final class NeoEcoCompatGameTests {
             statistics.finishSecond(now);
             double pushes = statistics.book().total(StatisticsNames.pair(StatisticsNames.PUSHED,
                     bridge.mainNetwork(), bridge.outerNetwork()), StatisticsRange.MINUTES, now);
-            var observed = "Neo ECO batches to the real provider: " + local + ", to the projection: " + remote
-                    + "; pushes through the projection for 16 runs: " + pushes;
-            helper.assertTrue(local, "Neo ECO must batch to an AE2 Pattern Provider on its own network. " + observed);
+            var observed = providerId + ": Neo ECO batches to the real provider: " + local + ", to the projection: "
+                    + remote + "; pushes through the projection for 16 runs: " + pushes;
+            helper.assertTrue(local, "Neo ECO must batch to the provider on its own network. " + observed);
             helper.assertTrue(remote, "Neo ECO must batch through the projection as it does locally. " + observed);
             helper.assertTrue(pushes < 16, "The projection must carry fewer, larger pushes. " + observed);
             helper.assertValueEqual(space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger
                     .get(helper.getLevel()).owed(bridge.outerNetwork(), bridge.mainNetwork(), stone), 0L,
                     "The scaled pushes' outputs must all be returned");
-            com.mojang.logging.LogUtils.getLogger().info("computationSystemSmartDoubling: {}", observed);
+            com.mojang.logging.LogUtils.getLogger().info("Smart doubling: {}", observed);
         });
-        helper.succeedWhen(scene::tick);
     }
 
     /**
