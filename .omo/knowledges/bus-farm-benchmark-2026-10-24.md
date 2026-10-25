@@ -464,3 +464,19 @@ At 10x1000 the one domain's max ticks (12-19 ms) are now within AE2's range. Bri
 (was 6.64 s). Medians: every Federation system is within 0.5 ms of AE2 subnets or below; at 1000x10 the one domain
 runs below AE2 one network (93%/95%). Remaining 1000x10 max spikes are chunk saving (above); a benchmark without saving
 during the window (e.g. `server.setAutoSave(false)`/`level.noSave`) would show Federation's own max, not yet adopted.
+
+## Why AE2 one network differs between 10x1000 and 1000x10 (2026-10-25)
+The two workloads share bus, chest and operation counts but not geometry, so their absolute ticks are not comparable;
+the owner accepted them as two scenes (no layout change). Each 1000x10 subnet block is one bus column plus one all-cable
+riser that joins the column's cable layers (it cannot be dropped), laid out as a checkerboard: every chest has AE2
+cables on its four horizontal sides; in 10x1000 a chest's neighbours are mostly chests. Every bus operation changes a
+chest, and `BlockEntity.setChanged` -> `Level.updateNeighbourForOutputSignal` visits the four horizontal neighbours.
+For a cable bus that costs `CableBusBlock.onNeighborChange` -> `cb()` -> `getBlockEntity` (0.12 -> 1.49 ms/tick) and the
+redstone-conductor test `isCollisionShapeFullBlock` -> `Block.isShapeFullBlock`'s Guava cache on the dynamic shape
+(0.96 -> 2.57 ms/tick). Level-tick timing: vanilla level work ~0.2 ms in both; the gap sits in the level-end phase.
+Together ~3 of the ~5.5 ms gap (9.6 vs 14.9 ms); the rest was not attributed. The bus work itself
+(`TickManagerService`) is not larger at 1000x10.
+
+Profiling note: `jfr print` cuts stacks to 5 frames unless given `--stack-depth 64`; earlier caller analyses that saw
+"truncated" stacks were this. A copy of the JDK's `profile.jfc` with the `jdk.ExecutionSample` period at 1 ms, attached
+with `jcmd <pid> JFR.start settings=<file>`, gives ~700 server-thread samples per second.
