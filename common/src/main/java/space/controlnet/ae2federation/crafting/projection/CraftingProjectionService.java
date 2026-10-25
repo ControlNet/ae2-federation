@@ -242,6 +242,12 @@ public final class CraftingProjectionService implements AutoCloseable {
         return service == null ? Optional.empty() : Optional.ofNullable(service.statuses.get(key));
     }
 
+    /** Observes two Grids a Federation block connects, leaving the reconciliation to {@code FederationBindingRefresh}. */
+    public void registerConnectedGrids(IGrid first, IGrid second) {
+        federationDomains.register(first);
+        federationDomains.register(second);
+    }
+
     public void observeConnectedGrids(IGrid first, IGrid second) {
         federationDomains.register(first);
         federationDomains.register(second);

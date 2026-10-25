@@ -110,3 +110,27 @@ median/mean unchanged. `setupMaxTick` at 1000 subnets swings 1.1-2.4 s run to ru
 linking tick, point 4). AE2's own overlay build (`connectedEnergyServices`) still walks 1000 x 1000 once per pool
 re-form; not measured separately.
 
+## Fix for 4, linking half (2026-10-25)
+A Bridge that links (status with a membership candidate and confirmed ids) registers its two Grids with the storage,
+crafting and energy services at once (`registerConnectedGrids`) and leaves the reconciliation to
+`FederationBindingRefresh`, which cables and routers already use (one reconcile per level when the server tick's
+HIGH Post listener flushes). A Bridge that stops linking after it linked still reconciles at once (`request` +
+`flush`): `storagepriority` pins that removing one of two redundant Bridges keeps the held projection working in the
+same tick, and a deferred reconcile fails it closed until the flush. A Bridge that was never linked only requests.
+Pitfalls hit on the way:
+- Deferring the Grid registration too (a member supplier read at flush time) failed three subscription tests: register
+  at once, defer only the reconcile.
+- `StorageSubscriptionService.updateTargets` invalidates every target consumer on every reconcile, so each extra
+  reconcile counts one consumer delivery even when nothing changed (pre-existing). `DirectSubscriptionFixture.ready()`
+  and `ChainStorageFixture.bridgesReady()` now also wait for `!FederationBindingRefresh.pending(level)`, so their
+  baselines start after Federation has reconciled the Bridge.
+- A GameTest that fails inside its final assertion and is retried by `succeedWhen` reports the LAST message, which can
+  be an earlier "Waiting for ..." (storagepriority removed its own Bridge, then waited on it forever).
+1000 x 10 Federation, median of 3 (`buses-10k-fix4` vs `buses-10k-fix3`): setup max tick 2.4 s (1.1-2.4) -> 1.05 s
+(1.03-1.18), setup 6.1 -> 3.4 s; teardown unchanged at 7.5 s (removals stay synchronous); one rule on 26 -> 33 ms,
+off 42 -> 46 ms (10-subnet numbers also rose 3-13% in that run, not separated from host load). The remaining 1 s
+setup tick is the scene placing 2000 AE2 parts plus AE2 `CableBusBlockEntity.onReady` (one-network and AE2-subnet
+layouts: 1.5-1.9 s in `buses-10k-full`).
+Open: deferring removals too would make teardown/unload one reconcile, at the cost of one tick fail-closed on a
+redundant route (what cables already accept) and `storagepriority` asserting after one tick.
+

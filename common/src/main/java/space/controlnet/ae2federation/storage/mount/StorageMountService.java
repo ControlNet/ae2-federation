@@ -191,6 +191,12 @@ public final class StorageMountService implements AutoCloseable {
         }
     }
 
+    /** Observes two Grids a Federation block connects, leaving the reconciliation to {@code FederationBindingRefresh}. */
+    public void registerConnectedGrids(IGrid first, IGrid second) {
+        federationDomains.register(first);
+        federationDomains.register(second);
+    }
+
     public void observeConnectedGrids(IGrid first, IGrid second) {
         federationDomains.register(first);
         federationDomains.register(second);

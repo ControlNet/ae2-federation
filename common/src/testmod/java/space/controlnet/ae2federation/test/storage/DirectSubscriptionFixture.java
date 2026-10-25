@@ -45,7 +45,9 @@ public final class DirectSubscriptionFixture implements AutoCloseable {
             bridgePlaced = true;
             return false;
         }
-        return bridgePlaced && bridge.firstBridgeReady();
+        // And Federation has reconciled the Bridge's link: a Bridge's reconciliation waits for the end of its tick.
+        return bridgePlaced && bridge.firstBridgeReady()
+                && !space.controlnet.ae2federation.domain.FederationBindingRefresh.pending(helper.getLevel());
     }
 
     public PolicyRevision configure(PolicyRule rule) {

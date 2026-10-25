@@ -24,6 +24,7 @@ import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.ae2.NativeAttachment;
 import space.controlnet.ae2federation.ae2.NativeAttachmentResolver;
 import net.minecraft.server.level.ServerLevel;
+import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
@@ -313,24 +314,34 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
         lastPublished = published;
         if (candidate == null) {
             FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
-            StorageMountService.reconcileIfPresent(serverLevel);
-            CraftingProjectionService.reconcileIfPresent(serverLevel);
-            EnergySharingService.reconcileIfPresent(serverLevel);
+            reconcile(serverLevel, previous);
             return;
         }
         var mainId = FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid());
         var outerId = FederationDomainRegistryAccess.confirmedNetworkId(candidate.outerGrid());
         if (mainId.isEmpty() || outerId.isEmpty()) {
             FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
-            StorageMountService.reconcileIfPresent(serverLevel);
-            CraftingProjectionService.reconcileIfPresent(serverLevel);
-            EnergySharingService.reconcileIfPresent(serverLevel);
+            reconcile(serverLevel, previous);
             return;
         }
         FederationDomainRegistryAccess.get(serverLevel).upsertDirectBridge(federationDomainSource,
                 FederationDomainRegistryAccess.dimension(serverLevel), mainId.get(), outerId.get());
-        StorageMountService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
-        CraftingProjectionService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
-        EnergySharingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
+        // Reconciled once for every Bridge that links this tick, as cables and routers are: a main network with a
+        // Bridge to each of many subnets would otherwise reconcile every service once per Bridge as a chunk loads.
+        StorageMountService.get(serverLevel).registerConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
+        CraftingProjectionService.get(serverLevel).registerConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
+        EnergySharingService.get(serverLevel).registerConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
+        FederationBindingRefresh.request(serverLevel);
+    }
+
+    /**
+     * After this Bridge stopped linking: at once when it linked before, so a redundant route that remains carries a held
+     * storage projection on in the same tick; otherwise (a Bridge not yet linked) with the tick's other requests.
+     */
+    private static void reconcile(ServerLevel serverLevel, BridgeStatus previous) {
+        FederationBindingRefresh.request(serverLevel);
+        if (previous.membershipCandidate().isPresent()) {
+            FederationBindingRefresh.flush(serverLevel);
+        }
     }
 }
