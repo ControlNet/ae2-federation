@@ -355,7 +355,7 @@ public final class NeoEcoComputingCompatGameTests {
                             .bandwidth(), 1L << 26, "an L4 cell gives its bytes");
                     installed.add(scheduler.install(device, file, "give", List.of("port")).id());
                     installed.add(scheduler.install(device, file, "drain", List.of("port")).id());
-                    refused(helper, () -> scheduler.install(device, file, "ping", List.of()), "4 installations");
+                    refused(helper, () -> scheduler.install(device, file, "ping", List.of()), "4 processes");
                     scheduler.uninstall(installed.remove(0));
                     scheduler.uninstall(installed.remove(0));
                     // Fluids count in mB, 8,000 to a byte: 64,000 mB of water named by an argument is 8 bytes a tick.
