@@ -262,7 +262,7 @@ read again, and an unloaded position reads as null without loading it, so the sy
 Tests: `switchfacenodefollowsneighbour`, `switchfacenodesurviveschunkreload` (Switch and cable on two sides of a
 nether chunk border, real unload/load plus a one-tick block entity reload). New benchmark metric `ae2Grids`.
 
-## Final systems table (2026-10-25, 06074081, `lazy-face-nodes-2026-10-25`, median of 3) - the reference result
+## Systems table after lazy face nodes (2026-10-25, 06074081, `lazy-face-nodes-2026-10-25`, median of 3) - superseded below
 Same workloads and scenes as above; every bus ran at AE2's fastest rate (99.6-100.1%). The 10x1000 AE2 one network
 median is noisy (runs 9.7/6.6/7.0 ms), so for 10x1000 read the mean column; 1000x10 runs agree within ~1 ms.
 | workload | system | AE2 Grids | setup max tick | setup total | median | mean | max | median vs AE2 one network | mean vs AE2 one network | all rules | rule off | rule on | break tick | restore tick | teardown |
@@ -276,4 +276,30 @@ median is noisy (runs 9.7/6.6/7.0 ms), so for 10x1000 read the mean column; 1000
 | 1000x10 | Federation Bridges | 1001 | 1.17 s | 3.4 s | 18.7 ms | 19.1 ms | 48.0 ms | 127% | 129% | 168 ms | 38.5 ms | 26.5 ms | - | - | 6.77 s |
 | 1000x10 | Federation one domain | 1001 | 341 ms | 3.0 s | 16.8 ms | 18.2 ms | 42.0 ms | 114% | 123% | 139 ms | 35.2 ms | 22.9 ms | 91.2 ms | 80.6 ms | 1.67 s |
 1000x10 one domain is now level with AE2 subnets on the median (16.8 ms both) and 4% above them on the mean; it was
-27.9 ms (187%) with 6006 Grids. Open: Bridge teardown 6.8 s; the 4096-node recompute budget drops larger domains whole.
+27.9 ms (187%) with 6006 Grids.
+
+## No domain size limit (3bd89462)
+The 4096-node / 24576-port recompute budget is gone (with `BUDGET_EXHAUSTED`): AE2 has no node limit on a Grid either
+and re-runs its channel pathing over the whole Grid once on the next tick after a change; the registry recomputes at
+most once per tick. New benchmark `perfbusesthousandsubnetslargedomain`: the 1000x10 workload with the Routers lifted
+52 blocks (`DomainFarmScene` `lift`), 10 046 Federation blocks.
+
+## Final systems table (2026-10-25, 3bd89462, `unlimited-domain-2026-10-25`, median of 3) - the reference result
+Every bus ran at AE2's fastest rate (99.8-100.2%). Runs agree within ~1 ms except where noted in the samples.
+| workload | system | Federation blocks | AE2 Grids | setup max tick | setup total | median | mean | max | median vs AE2 one network | mean vs AE2 one network | all rules | rule off | rule on | break tick | restore tick | teardown |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10x1000 | AE2 one network | - | 1 | 568 ms | 4.0 s | 9.2 ms | 9.4 ms | 12.1 ms | 100% | 100% | - | - | - | - | - | 572 ms |
+| 10x1000 | AE2 subnets | - | 11 | 639 ms | 2.9 s | 9.9 ms | 9.9 ms | 19.2 ms | 108% | 105% | - | - | - | - | - | 267 ms |
+| 10x1000 | Federation Bridges | - | 11 | 586 ms | 3.0 s | 10.5 ms | 10.5 ms | 34.2 ms | 114% | 112% | 63.8 ms | 8.1 ms | 2.0 ms | - | - | 298 ms |
+| 10x1000 | Federation one domain | 320 | 11 | 575 ms | 2.9 s | 9.6 ms | 10.1 ms | 20.5 ms | 104% | 107% | 37.0 ms | 8.9 ms | 1.7 ms | 25.1 ms | 35.7 ms | 269 ms |
+| 1000x10 | AE2 one network | - | 1 | 637 ms | 6.8 s | 13.7 ms | 14.5 ms | 21.3 ms | 100% | 100% | - | - | - | - | - | 515 ms |
+| 1000x10 | AE2 subnets | - | 1001 | 1.51 s | 3.5 s | 15.7 ms | 16.0 ms | 21.4 ms | 115% | 110% | - | - | - | - | - | 388 ms |
+| 1000x10 | Federation Bridges | - | 1001 | 1.09 s | 3.4 s | 17.6 ms | 18.3 ms | 46.7 ms | 128% | 126% | 177 ms | 39.3 ms | 26.8 ms | - | - | 6.72 s |
+| 1000x10 | Federation one domain | 3494 | 1001 | 402 ms | 2.9 s | 16.4 ms | 17.3 ms | 43.6 ms | 120% | 119% | 149 ms | 37.3 ms | 23.0 ms | 97.7 ms | 93.7 ms | 1.71 s |
+| 1000x10 | Federation one domain, 10k blocks | 10046 | 1001 | 335 ms | 3.7 s | 22.8 ms | 24.2 ms | 50.4 ms | 166% | 167% | 143 ms | 36.4 ms | 24.1 ms | 133 ms | 136 ms | 2.88 s |
+The 10k-block domain forms (it was dropped whole before) and a cable break/restore costs ~35 ms more than at 3494
+blocks. Its steady tick is ~6.4 ms higher: JFR (`prof/large.jfr`) puts 23% of server samples in
+`FederationCableBlockEntity.serverTick` (a stream over six ports, `syncCapacity`'s bundle lookup, `syncPower`) and ~9%
+in vanilla's per-block-entity `shouldTickBlocksAt`, i.e. the cost of 10 000 ticking cable block entities. Counting
+showed ports are NOT re-dirtied in the steady state (resolves after setup are a few dozen per tick); JFR's attribution
+of `Level.isLoaded` to `CableFacePort.resolve` was an inlining artefact. AE2 cable buses do not tick at all.
