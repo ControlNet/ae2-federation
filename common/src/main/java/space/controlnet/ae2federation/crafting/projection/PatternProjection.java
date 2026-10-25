@@ -4,6 +4,7 @@ import appeng.api.config.FuzzyMode;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.crafting.ICraftingProvider;
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import java.lang.reflect.InvocationHandler;
@@ -15,6 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 /**
  * One real pattern provider of another network, offered to a consumer network's crafting service as AE2 offers its
@@ -37,6 +39,10 @@ import java.util.Set;
  * that logic on its own network, still through {@link #pushPattern}; AdvancedAE's logic is shown the same way. Other
  * logic stays hidden: add-ons that recognise their own logic, such as AE2LT's overloaded provider, push into it
  * directly, past the projection and its return ledger.
+ *
+ * <p>A projection of a provider with one of Neo ECO's batch interfaces, such as a crafting system's pattern bus or the
+ * Large Integrated Working Station's interface, has that interface too ({@link NeoEcoBatching}): its batches go
+ * through {@link #pushBatch}.
  */
 final class PatternProjection implements ICraftingProvider {
     /** Captures dispatch context before external callbacks; the returned action runs only for an accepted push. */
@@ -66,7 +72,8 @@ final class PatternProjection implements ICraftingProvider {
         this.listener = Objects.requireNonNull(listener);
         patterns = List.copyOf(real.getAvailablePatterns());
         priority = real.getPatternPriority();
-        registered = withMarkers(this, addonMarkers(real.getClass()), shownLogic() != null);
+        registered = withMarkers(this, addonMarkers(real.getClass()), shownLogic() != null,
+                NeoEcoBatching.interfaces(real.getClass()));
     }
 
     /**
@@ -80,7 +87,10 @@ final class PatternProjection implements ICraftingProvider {
                 || real.getClass().getName().equals(ADVANCED_AE_LOGIC) ? real : null;
     }
 
-    /** What the consumer's crafting service holds for this projection: itself, or a proxy with add-on markers. */
+    /**
+     * What the consumer's crafting service holds for this projection: itself, or a proxy with add-on markers and Neo
+     * ECO's batch interfaces.
+     */
     ICraftingProvider registered() {
         return registered;
     }
@@ -120,24 +130,29 @@ final class PatternProjection implements ICraftingProvider {
     }
 
     /**
-     * {@code projection} as a provider that also has {@code markers}, and {@link ProjectedProviderLogic} with
-     * {@code showsLogic}: the projection itself when there is nothing to add, a {@link ProjectionShowingLogic} for the
-     * logic alone, and a proxy for markers. With markers that cannot be combined, such as when they live in class
-     * loaders that cannot see each other, the projection itself.
+     * {@code projection} as a provider that also has {@code markers}, {@link ProjectedProviderLogic} with
+     * {@code showsLogic}, and Neo ECO's {@code batching} interfaces: the projection itself when there is nothing to add,
+     * a {@link ProjectionShowingLogic} for the logic alone, and a proxy otherwise. With interfaces that cannot be
+     * combined, such as when they live in class loaders that cannot see each other, only the markers.
      */
     private static ICraftingProvider withMarkers(PatternProjection projection, List<Class<?>> markers,
-            boolean showsLogic) {
-        if (markers.isEmpty()) return showsLogic ? new ProjectionShowingLogic(projection) : projection;
+            boolean showsLogic, List<Class<?>> batching) {
+        if (markers.isEmpty() && batching.isEmpty()) {
+            return showsLogic ? new ProjectionShowingLogic(projection) : projection;
+        }
         var interfaces = new ArrayList<Class<?>>();
         interfaces.add(ICraftingProvider.class);
         if (showsLogic) interfaces.add(ProjectedProviderLogic.class);
+        interfaces.addAll(batching);
         interfaces.addAll(markers);
         try {
-            return (ICraftingProvider) Proxy.newProxyInstance(markers.getFirst().getClassLoader(),
+            return (ICraftingProvider) Proxy.newProxyInstance(
+                    (batching.isEmpty() ? markers : batching).getFirst().getClassLoader(),
                     interfaces.toArray(Class<?>[]::new), new Markers(projection));
         } catch (IllegalArgumentException exception) {
-            // The markers matter more than the logic: an add-on that marks its providers pushes only to marked ones.
-            return showsLogic ? withMarkers(projection, markers, false) : projection;
+            // The markers matter more than the logic and the batches: an add-on that marks its providers pushes only
+            // to marked ones.
+            return showsLogic || !batching.isEmpty() ? withMarkers(projection, markers, false, List.of()) : projection;
         }
     }
 
@@ -146,6 +161,7 @@ final class PatternProjection implements ICraftingProvider {
         @Override
         public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
             if (method.getDeclaringClass() == ProjectedProviderLogic.class) return projection.shownLogic();
+            if (NeoEcoBatching.declares(method)) return NeoEcoBatching.invoke(projection, proxy, method, arguments);
             if (method.getDeclaringClass() == Object.class) {
                 return switch (method.getName()) {
                     case "equals" -> proxy == arguments[0];
@@ -200,6 +216,10 @@ final class PatternProjection implements ICraftingProvider {
         live = false;
     }
 
+    boolean isLive() {
+        return live;
+    }
+
     @Override
     public List<IPatternDetails> getAvailablePatterns() {
         return live ? patterns : List.of();
@@ -227,6 +247,38 @@ final class PatternProjection implements ICraftingProvider {
         if (!real.pushPattern(patternDetails, inputHolder)) return false;
         accepted.run();
         return true;
+    }
+
+    /**
+     * Hands over a batch of {@code details}' crafts, such as Neo ECO's: {@code handOver} pushes it to the real provider,
+     * and once it is accepted the consumer is owed {@code outputs} and {@code containerItems}, the batch's totals, as
+     * for a push of a pattern with those outputs. {@code inputs} are what the batch takes, counted before the push.
+     */
+    boolean pushBatch(IPatternDetails details, List<GenericStack> outputs, KeyCounter containerItems,
+            KeyCounter inputs, BooleanSupplier handOver) {
+        if (!live) return false;
+        var accepted = listener.prepare(this, new BatchPattern(details, outputs), containerItems, inputs);
+        if (!handOver.getAsBoolean()) return false;
+        accepted.run();
+        return true;
+    }
+
+    /** A batch of {@code pattern}'s crafts, whose outputs are the batch's totals. */
+    private record BatchPattern(IPatternDetails pattern, List<GenericStack> outputs) implements IPatternDetails {
+        @Override
+        public appeng.api.stacks.AEItemKey getDefinition() {
+            return pattern.getDefinition();
+        }
+
+        @Override
+        public IInput[] getInputs() {
+            return pattern.getInputs();
+        }
+
+        @Override
+        public List<GenericStack> getOutputs() {
+            return outputs;
+        }
     }
 
     /**

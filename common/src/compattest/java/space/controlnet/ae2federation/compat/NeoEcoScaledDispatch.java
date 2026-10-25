@@ -15,6 +15,7 @@ import net.minecraft.world.level.Level;
  */
 final class NeoEcoScaledDispatch {
     private static final String EXECUTION = "cn.dancingsnow.neoecoae.crafting.execution.";
+    private static final String PROVIDER = "cn.dancingsnow.neoecoae.api.me.provider.";
 
     private NeoEcoScaledDispatch() {
     }
@@ -33,6 +34,28 @@ final class NeoEcoScaledDispatch {
             return (boolean) check.invoke(null, request, provider);
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException("Neo ECO's scaled dispatch check is not available", exception);
+        }
+    }
+
+    /**
+     * Which of Neo ECO's batch paths take {@code provider}: its crafting fast path ({@code ECOFastPathFacade.supports},
+     * which the crafting system's pattern bus takes) and its parallel providers ({@code ECOParallelCraftingProviders},
+     * or before Neo ECO had that registry, the {@code ECOParallelCraftingProvider} interface).
+     */
+    static String batchPaths(ICraftingProvider provider) {
+        try {
+            var fastPath = (boolean) Class.forName("cn.dancingsnow.neoecoae.api.me.ECOFastPathFacade")
+                    .getMethod("supports", ICraftingProvider.class).invoke(null, provider);
+            boolean parallel;
+            try {
+                parallel = Class.forName(PROVIDER + "ECOParallelCraftingProviders")
+                        .getMethod("find", Object.class).invoke(null, provider) != null;
+            } catch (ClassNotFoundException olderNeoEco) {
+                parallel = Class.forName(PROVIDER + "ECOParallelCraftingProvider").isInstance(provider);
+            }
+            return "fast path " + fastPath + ", parallel " + parallel;
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Neo ECO's batch paths are not available", exception);
         }
     }
 
