@@ -33,35 +33,35 @@
       "y": 90
     },
     "facing=east,formed=true,high_energy_network_switch=false,mirrored=false,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 90
     },
     "facing=east,formed=true,high_energy_network_switch=false,mirrored=false,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 90
     },
     "facing=east,formed=true,high_energy_network_switch=false,mirrored=true,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 90
     },
     "facing=east,formed=true,high_energy_network_switch=false,mirrored=true,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 90
     },
     "facing=east,formed=true,high_energy_network_switch=true,mirrored=false,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 90
     },
     "facing=east,formed=true,high_energy_network_switch=true,mirrored=false,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 90
     },
     "facing=east,formed=true,high_energy_network_switch=true,mirrored=true,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 90
     },
     "facing=east,formed=true,high_energy_network_switch=true,mirrored=true,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 90
     },
     "facing=north,formed=false,high_energy_network_switch=false,mirrored=false,network_switch=false": {
@@ -89,28 +89,28 @@
       "model": "ae2federation:block/eco_computation/controller_l1_off"
     },
     "facing=north,formed=true,high_energy_network_switch=false,mirrored=false,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed"
+      "model": "ae2federation:block/eco_computation/controller_l1_formed"
     },
     "facing=north,formed=true,high_energy_network_switch=false,mirrored=false,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed"
+      "model": "ae2federation:block/eco_computation/controller_l1_formed"
     },
     "facing=north,formed=true,high_energy_network_switch=false,mirrored=true,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored"
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored"
     },
     "facing=north,formed=true,high_energy_network_switch=false,mirrored=true,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored"
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored"
     },
     "facing=north,formed=true,high_energy_network_switch=true,mirrored=false,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed"
+      "model": "ae2federation:block/eco_computation/controller_l1_formed"
     },
     "facing=north,formed=true,high_energy_network_switch=true,mirrored=false,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed"
+      "model": "ae2federation:block/eco_computation/controller_l1_formed"
     },
     "facing=north,formed=true,high_energy_network_switch=true,mirrored=true,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored"
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored"
     },
     "facing=north,formed=true,high_energy_network_switch=true,mirrored=true,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored"
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored"
     },
     "facing=south,formed=false,high_energy_network_switch=false,mirrored=false,network_switch=false": {
       "model": "ae2federation:block/eco_computation/controller_l1_off",
@@ -145,35 +145,35 @@
       "y": 180
     },
     "facing=south,formed=true,high_energy_network_switch=false,mirrored=false,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 180
     },
     "facing=south,formed=true,high_energy_network_switch=false,mirrored=false,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 180
     },
     "facing=south,formed=true,high_energy_network_switch=false,mirrored=true,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 180
     },
     "facing=south,formed=true,high_energy_network_switch=false,mirrored=true,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 180
     },
     "facing=south,formed=true,high_energy_network_switch=true,mirrored=false,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 180
     },
     "facing=south,formed=true,high_energy_network_switch=true,mirrored=false,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 180
     },
     "facing=south,formed=true,high_energy_network_switch=true,mirrored=true,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 180
     },
     "facing=south,formed=true,high_energy_network_switch=true,mirrored=true,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 180
     },
     "facing=west,formed=false,high_energy_network_switch=false,mirrored=false,network_switch=false": {
@@ -209,35 +209,35 @@
       "y": 270
     },
     "facing=west,formed=true,high_energy_network_switch=false,mirrored=false,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 270
     },
     "facing=west,formed=true,high_energy_network_switch=false,mirrored=false,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 270
     },
     "facing=west,formed=true,high_energy_network_switch=false,mirrored=true,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 270
     },
     "facing=west,formed=true,high_energy_network_switch=false,mirrored=true,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 270
     },
     "facing=west,formed=true,high_energy_network_switch=true,mirrored=false,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 270
     },
     "facing=west,formed=true,high_energy_network_switch=true,mirrored=false,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed",
       "y": 270
     },
     "facing=west,formed=true,high_energy_network_switch=true,mirrored=true,network_switch=false": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 270
     },
     "facing=west,formed=true,high_energy_network_switch=true,mirrored=true,network_switch=true": {
-      "model": "neoecoprototype:block/computation_controller/controller_l1_formed_mirrored",
+      "model": "ae2federation:block/eco_computation/controller_l1_formed_mirrored",
       "y": 270
     }
   }

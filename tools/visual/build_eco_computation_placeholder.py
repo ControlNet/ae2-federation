@@ -9,9 +9,11 @@ frame's dark ring painted white, so an interface sits in the side face as a ligh
 blends with the face's light rim (user asked for no dark border, 2026-10-21). The client composes them like a
 Router's faces, framing a lone interface and joining a filled 2x2 square into one panel (user, 2026-10-21). The
 artist replaces those four files to change the look. The artist of both mods allowed the recolour. Tier colours (L4 blue, L6 orange, L9
-purple) live in textures this leaves to Neo ECO, so the tiers still read apart. The network switch variants map to
+purple) live in textures this leaves to Neo ECO, so the tiers still read apart. ECO - N1 gets the same treatment from
+Neo ECO Prototype's C1 sheets (its author allowed it as our placeholder, 2026-10-25): its chips turn green, its ME
+interface cell is painted over and its green L1 lights are kept; the models stay Prototype's geometry. The network switch variants map to
 the plain ones, since the Federation system refuses a switch. Reads from the Neo ECO jar Gradle resolved for the
-build (run `./gradlew :neoforge-1.21.1:compileJava` first).
+build, and Neo ECO Prototype's likewise (run `./gradlew :neoforge-1.21.1:compileJava` first).
 """
 from pathlib import Path
 import colorsys
@@ -24,6 +26,9 @@ REPO = Path(__file__).resolve().parents[2]
 ASSETS = REPO / 'common/src/main/resources/assets/ae2federation'
 OUT = ASSETS / 'textures/block/eco_computation'
 JAR = 'maven.modrinth/udZtKfzP/p9oqETs4'
+PROTOTYPE_JAR = 'maven.modrinth/3HO3APHb/YY1JqK65'
+PROTOTYPE = 'neoecoprototype:block/computation_controller/'
+PROTOTYPE_SOURCE = 'assets/neoecoprototype/textures/block/computation_recolor/'
 SOURCE = 'assets/neoecoae/textures/block/compute/'
 TEXTURES = ['controller/screen_off', 'controller_formed/controller_formed', 'controller_formed/controller_formed_a',
             'controller_formed/controller_formed_switch']
@@ -32,10 +37,10 @@ LIGHTS = [f'controller_formed/controller_formed_light_{tier}{mirror}' for tier i
 TILES = ('base', 'corner', 'side_hor', 'side_ver')
 
 
-def jar():
-    found = sorted((Path.home() / '.gradle/caches/modules-2/files-2.1' / JAR).glob('*/*.jar'))
+def jar(path=JAR):
+    found = sorted((Path.home() / '.gradle/caches/modules-2/files-2.1' / path).glob('*/*.jar'))
     if not found:
-        raise SystemExit('Neo ECO jar not in the Gradle cache; build the neoforge project first')
+        raise SystemExit(path + ' jar not in the Gradle cache; build the neoforge project first')
     return found[0]
 
 
@@ -102,6 +107,38 @@ def compose(tiles):
     return face
 
 
+def prototype_l1(archive, l4_state):
+    """N1's textures, models and blockstate from Neo ECO Prototype's C1 controller, under eco_computation/l1/."""
+    out = OUT / 'l1'
+    out.mkdir(parents=True, exist_ok=True)
+    def read(name):
+        return Image.open(io.BytesIO(archive.read(PROTOTYPE_SOURCE + name + '.png'))).convert('RGBA')
+    recolour(read('controller/screen_off')).save(out / 'screen_off.png')
+    for mirror in ('', '_switch'):
+        without_me_interface(recolour(read('controller_formed/controller_formed' + mirror)),
+                             mirror).save(out / f'controller_formed{mirror}.png')
+        without_me_interface(read('controller_formed/controller_formed_light_a' + mirror),
+                             mirror).save(out / f'controller_formed_light_a{mirror}.png')
+    ours = 'ae2federation:block/eco_computation/l1/'
+    folder = ASSETS / 'models/block/eco_computation'
+    for mirror, sheet in (('', ''), ('_mirrored', '_switch')):
+        model = json.loads(archive.read(f'assets/{PROTOTYPE.replace(":", "/models/", 1)}controller_l1_formed{mirror}.json'))
+        model['children']['base']['textures'].update({'base': ours + 'controller_formed' + sheet,
+                                                      'light': ours + 'controller_formed_light_a' + sheet,
+                                                      'screen': ours + 'screen_off'})
+        model['children']['glass']['textures']['base'] = ours + 'controller_formed'
+        (folder / f'controller_l1_formed{mirror}.json').write_text(json.dumps(model, indent=2) + '\n')
+    (folder / 'controller_l1_off.json').write_text(json.dumps(
+        {'parent': PROTOTYPE + 'controller_off_base',
+         'textures': {'level': 'neoecoprototype:block/computation_recolor/controller/controller_side_layer_a',
+                      'screen': ours + 'screen_off'}}, indent=2) + '\n')
+    # N1 is N4's block, so it has N4's block states; L4's models become L1's.
+    state = json.loads(json.dumps(l4_state).replace('/controller_l4_', '/controller_l1_'))
+    (ASSETS / 'blockstates/eco_computation_system_l1.json').write_text(json.dumps(state, indent=2) + '\n')
+    (ASSETS / 'models/item/eco_computation_system_l1.json').write_text(json.dumps(
+        {'parent': 'ae2federation:block/eco_computation/controller_l1_off'}, indent=2) + '\n')
+
+
 OUT.mkdir(parents=True, exist_ok=True)
 with zipfile.ZipFile(jar()) as archive:
     for name in TEXTURES:
@@ -122,6 +159,8 @@ with zipfile.ZipFile(jar()) as archive:
             variant['model'] = f'ae2federation:block/eco_computation/{name}'
             names.add(name)
         (ASSETS / 'blockstates' / f'eco_computation_system_{tier}.json').write_text(json.dumps(state, indent=2) + '\n')
+        if tier == 'l4':
+            l4_state = state
         for name in sorted(names):
             text = archive.read(f'assets/neoecoae/models/block/computation_controller/{name}.json').decode()
             for texture in TEXTURES + LIGHTS:
@@ -166,4 +205,6 @@ with zipfile.ZipFile(jar()) as archive:
                                                                        + '\n')
     (ASSETS / 'models/item/eco_computation_interface.json').write_text(json.dumps(
         {'parent': 'ae2federation:block/eco_computation/interface'}, indent=2) + '\n')
+with zipfile.ZipFile(jar(PROTOTYPE_JAR)) as archive:
+    prototype_l1(archive, l4_state)
 print('Wrote temporary Federation computation system textures, models and blockstates.')

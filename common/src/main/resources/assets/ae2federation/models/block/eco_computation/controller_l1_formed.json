@@ -1,0 +1,50 @@
+{
+  "loader": "neoforge:composite",
+  "parent": "block/block",
+  "textures": {
+    "particle": "neoecoprototype:block/computation_recolor/casing"
+  },
+  "children": {
+    "base": {
+      "parent": "neoecoprototype:block/computation_controller/controller_formed_base",
+      "textures": {
+        "light": "ae2federation:block/eco_computation/l1/controller_formed_light_a",
+        "screen_light": "neoecoprototype:block/computation_recolor/controller/screen_on_a",
+        "base": "ae2federation:block/eco_computation/l1/controller_formed",
+        "screen": "ae2federation:block/eco_computation/l1/screen_off"
+      }
+    },
+    "glass": {
+      "render_type": "translucent",
+      "textures": {
+        "base": "ae2federation:block/eco_computation/l1/controller_formed"
+      },
+      "elements": [
+        {
+          "name": "glass_a",
+          "from": [
+            -15,
+            3,
+            1
+          ],
+          "to": [
+            -3,
+            13,
+            1
+          ],
+          "faces": {
+            "north": {
+              "uv": [
+                4.375,
+                2.375,
+                5.875,
+                3.625
+              ],
+              "texture": "#base"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

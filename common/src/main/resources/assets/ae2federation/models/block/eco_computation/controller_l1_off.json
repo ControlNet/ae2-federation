@@ -2,6 +2,6 @@
   "parent": "neoecoprototype:block/computation_controller/controller_off_base",
   "textures": {
     "level": "neoecoprototype:block/computation_recolor/controller/controller_side_layer_a",
-    "screen": "ae2federation:block/eco_computation/screen_off"
+    "screen": "ae2federation:block/eco_computation/l1/screen_off"
   }
 }

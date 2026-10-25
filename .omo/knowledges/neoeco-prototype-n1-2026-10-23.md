@@ -71,10 +71,13 @@ Numbers (Prototype 1.4.0 server config `l1_computation`, defaults): 24 CU per L1
 energized threading core 16 threads, energized array 5,242,880 B. The `SimplifyTier` enum literals (16 / 1 / 1 MiB)
 are NOT what runs - `getCPU*` read the config for L1.
 
-Art (temporary): the blockstate points formed states straight at Prototype's own C1 models
-(`neoecoprototype:block/computation_controller/controller_l1_formed[_mirrored]`) and the item/unformed model at
-Prototype's off base with our N screen; nothing of Prototype's is copied. Formed N1 therefore looks exactly like C1.
-Prototype's notice: 262 of its PNGs are ARR, so recolouring its controller sheets needs the author's permission.
+Art (temporary): Prototype's author allowed us (2026-10-25) to modify Prototype's art as our in-development placeholder;
+both mods share one artist. `tools/visual/build_eco_computation_placeholder.py` writes N1 as it writes N4: C1's
+`computation_recolor` sheets with purple (hue 210-300) turned Federation green 130, the ME interface cell of the side
+face painted over with the other column mirrored (lights too), L1's green tier lights kept; textures under
+`textures/block/eco_computation/l1/`, models `controller_l1_formed[_mirrored]` keep Prototype's geometry as parents.
+As with N4 vs C4, the change hardly shows: C1's front has no purple, and the side-face chip is under our interface.
+Check: `build/eco-n1-check/n1-art-check.png`.
 
 Guide: the N1 page lives in its own pack `guide_neoecoprototype_computing`, required mods `neoecoprototype`,
 `neoecoae`, `neoecoprototype@1.4.0` (d3cfdbf0). `GuideExamplePacks` requirements may be `<mod ID>@<version>` (that
