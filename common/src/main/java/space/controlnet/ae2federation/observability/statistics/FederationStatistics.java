@@ -333,13 +333,8 @@ public final class FederationStatistics {
      * power, not on the one that used it, so the pool's drain is split by each network's idle draw: an estimate.
      */
     private static double pooledUsage(appeng.api.networking.energy.IEnergyService energy, EnergyPoolReading pool) {
-        double drain = 0;
-        double idle = 0;
-        for (var service : pool.services()) {
-            drain += service.getAvgPowerUsage();
-            idle += service.getIdlePowerUsage();
-        }
-        return idle > 0 ? drain * energy.getIdlePowerUsage() / idle : drain / pool.grids();
+        // The pool's sums, read once per pool: summing every member again for each network is quadratic in its size.
+        return pool.idle() > 0 ? pool.drain() * energy.getIdlePowerUsage() / pool.idle() : pool.drain() / pool.grids();
     }
 
     private void sampleStorage(long second, NetworkId network, IGrid grid) {

@@ -155,6 +155,7 @@
     {"id":"energy-proof.no-source","backend":"gametest","testId":"energyproofnosource","structure":"ae2federation_test:harness_native_smoke","assertions":2},
     {"id":"energy-proof.ring","backend":"gametest","testId":"energyproofring","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"energy.shared-mutual","backend":"gametest","testId":"energysharedmutual","structure":"ae2federation_test:harness_native_smoke","assertions":18},
+    {"id":"energy.pool-reading-many-bridges","backend":"gametest","testId":"energypoolreadingmanybridges","structure":"ae2federation_test:harness_native_smoke","assertions":32},
     {"id":"energy.cold-start","backend":"gametest","testId":"energycoldstart","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"energy.shared-transitive","backend":"gametest","testId":"energysharedtransitive","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"energy.rule-off-splits","backend":"gametest","testId":"energyruleoffsplits","structure":"ae2federation_test:harness_native_smoke","assertions":10},

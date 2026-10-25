@@ -27,6 +27,7 @@ import space.controlnet.ae2federation.bridge.MultipartBridgePart;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
+import space.controlnet.ae2federation.policy.PolicyDelete;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.policy.PolicyMutationResult;
@@ -234,6 +235,26 @@ public final class BusFarmScene implements AutoCloseable {
             }
         }
         return times;
+    }
+
+    /** The main network's Grid, then each subnet's; null for a network that is not formed. */
+    public List<IGrid> grids() {
+        var grids = new ArrayList<IGrid>();
+        grids.add(mainGrid());
+        for (var riser : risers) grids.add(gridAt(riser.above(MAIN_Y - 1)));
+        return grids;
+    }
+
+    /** Deletes the rules the scene turned on, for a test that shares its level with others. */
+    public void deleteRules() {
+        var policies = PolicyService.get(helper.getLevel());
+        for (var key : rules) {
+            var result = policies.delete(new PolicyDelete(key, policies.revision(key)));
+            if (!(result instanceof PolicyMutationResult.Accepted)) {
+                throw new IllegalStateException("Rule delete refused: " + result);
+            }
+        }
+        rules.clear();
     }
 
     /** Removes every block the scene placed and releases its chunks; returns the nanoseconds it took. */

@@ -95,3 +95,18 @@ every ~2 s (point 3) is unchanged.
 After the fix the remaining Federation samples are mostly teardown and setup Bridge `setStatus` -> three
 `reconcileIfPresent`/`observeConnectedGrids` per Bridge (one full reconcile per Bridge change, point 4) and the
 statistics sample (point 3).
+
+## Fix for 3 (2026-10-25)
+JFR filtered to stacks through `FederationStatistics.sample` (~6 samples per sampled second): half in
+`EnergyPoolReading.measure`, a quarter in `pooledUsage`. Every Bridge puts its own `FederationEnergyConnection` on the
+main Grid, so the main energy service had 1000 overlay links, each listing the main Grid's 1000 peers (1M adds per
+reading), and `pooledUsage` summed the 1001-member pool again for each of the 1001 networks.
+- `measure` lists a Grid's Federation peers once (every Federation link on a Grid reaches that Grid's peers) and sums
+  the members' average and idle usage into the reading (`drain`, `idle`); `pooledUsage` uses those sums.
+- GameTest `energypoolreadingmanybridges`: a small `BusFarmScene` (3 subnets, one Bridge each) checks the reading from
+  each of the four Grids against per-Grid sums. `BusFarmScene.deleteRules()` cleans up for shared batch levels.
+Steady 1000 x 10 max tick (median of 3, `buses-10k-fix3` vs `buses-10k-fix12`): 100 -> 46 ms (runs 44-58 vs 91-107);
+median/mean unchanged. `setupMaxTick` at 1000 subnets swings 1.1-2.4 s run to run both before and after (the Bridge
+linking tick, point 4). AE2's own overlay build (`connectedEnergyServices`) still walks 1000 x 1000 once per pool
+re-form; not measured separately.
+
