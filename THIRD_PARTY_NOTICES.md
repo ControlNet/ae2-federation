@@ -99,8 +99,8 @@ its JAR's metadata.
 | LDLib2 | 2.2.34, 2.2.41 | LGPL-3.0-only |
 | MEGA Cells | 4.11.0 | LGPL-3.0-only |
 | Mekanism | 10.7.19.85 | MIT |
-| Neo ECO AE Extension | 21.2.0, 21.2.1, 21.2.9 | GPL-3.0-only |
-| Neo ECO Prototype ¹ | 1.3.3, 1.3.9 | GPL-3.0-only |
+| Neo ECO AE Extension | 21.2.0, 21.2.1, 21.2.9, 21.2.10 | GPL-3.0-only |
+| Neo ECO Prototype | 1.3.3, 1.3.9, 1.4.0 | GPL-3.0-only |
 | OmniSequence: Transfinite ¹ | 2.0.7 | MIT |
 | Sophisticated Core | 1.21.1-1.5.5.2363 | All Rights Reserved |
 | Sophisticated Storage | 1.21.1-1.6.1.2147 | All Rights Reserved |
