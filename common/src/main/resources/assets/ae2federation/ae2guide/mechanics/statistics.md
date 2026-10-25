@@ -16,14 +16,15 @@ networks of this domain only.
 
 ## Reading the page
 
-* **Range.** 2 min, 10 min, 1 h or 24 h, at the top right. The history is saved with the world, so the last 24 hours
-  survive a restart.
+* **Range.** 2 min, 10 min, 1 h or 24 h, at the top right, in game time: 20 ticks make a second. A lagging server
+  does not lower the rates, and time the game was paused or the server was stopped does not count. The history is
+  saved with the world, so the last 24 hours survive a restart.
 * **Networks.** The row under the title shows all networks or only one. Networks keep their colours from the graph.
 * **Cards.** Each card on the left shows a metric's newest figure and a small chart. Click a card to draw it large;
   the box under the large chart shows what that metric has besides.
 * **Hover** over a chart to see each network's or item's figure at that moment.
-* **Hatched stretches** are time with no record: the server was not running, a singleplayer game was paused, or a
-  network was not loaded. They are never drawn as zero.
+* **Hatched stretches** are time with no record, such as when a network was not loaded. They are never drawn as
+  zero.
 
 ## The metrics
 

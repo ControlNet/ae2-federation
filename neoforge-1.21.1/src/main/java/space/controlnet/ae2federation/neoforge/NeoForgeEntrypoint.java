@@ -75,7 +75,6 @@ public final class NeoForgeEntrypoint {
         // Before AE2's own end-of-tick Grid ticks (NORMAL priority), which draw energy from the shared pools: like
         // AE2's Grid services, Federation's work runs once per server tick, after every level has ticked.
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, NeoForgeEntrypoint::onServerTickBindings);
-        NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTickStart);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTick);
         // After AE2's end-of-tick Grid ticks, where each Grid's storage service reports its native mount changes.
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, NeoForgeEntrypoint::onServerTickNativeMounts);
@@ -106,10 +105,6 @@ public final class NeoForgeEntrypoint {
 
     private static void onServerTickNativeMounts(ServerTickEvent.Post event) {
         StorageMountService.reconcileNativeMountChanges(event.getServer());
-    }
-
-    private static void onServerTickStart(ServerTickEvent.Pre event) {
-        LevelObservabilityService.tickStartedAll();
     }
 
     private static void onServerTick(ServerTickEvent.Post event) {

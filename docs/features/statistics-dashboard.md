@@ -11,7 +11,8 @@ The in-game guide explains it on its Statistics page (`ae2guide/mechanics/statis
 
 - **Where.** The third tab on the domain screen's left rail. It shows the domain's member networks only.
 - **Ranges.** 2 min (1 s points), 10 min (5 s), 1 h (1 min) and 24 h (10 min), picked at the top right. History
-  uses wall-clock time and is saved with the world, so a restart keeps the last 24 hours.
+  uses game time (20 ticks a second, the overworld's game time) and is saved with the world, so a restart keeps the
+  last 24 hours. A lagging server does not lower the rates, and a paused game or a stopped server adds no time.
 - **Metrics.** Seven cards on the left. Each has a name, the newest figure and a sparkline. Clicking a card shows that
   metric in the large chart, and the box below it shows what that metric has besides:
 
@@ -54,9 +55,8 @@ The in-game guide explains it on its Statistics page (`ae2guide/mechanics/statis
   and marked along the top of the chart.
 - **Networks.** The chip row filters to one network or shows all of them. Networks keep the topology's colours; items
   get colours of their own.
-- **Gaps.** Time the server was not running (stopped, or a paused singleplayer game), and spans where a network was not
-  loaded, are hatched. They are never drawn as zero. The tooltip says "no record" or "no data". Seconds a long tick
-  ran through are observed: counters read zero there, gauges are missing.
+- **Gaps.** Spans where a network was not loaded, and seconds nothing was recorded, are hatched. They are never drawn
+  as zero. The tooltip says "no record" or "no data".
 - **Tooltip.** Hovering a chart shows a crosshair and each network's or item's figure at that point.
 - **No rules.** Without a Storage or Crafting rule, the moved chart says so instead of drawing an empty graph.
 

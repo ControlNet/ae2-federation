@@ -534,7 +534,7 @@ public final class PerformanceBenchmarkGameTests {
      */
     private static void measureStatistics(GameTestHelper helper, PerfMeasure perf, PolicyBridgeFixtures fixtures) {
         var book = new StatisticsBook<AEKey>();
-        var statistics = new FederationStatistics(helper.getLevel(), System::currentTimeMillis, book, second -> {
+        var statistics = new FederationStatistics(helper.getLevel(), helper.getLevel()::getGameTime, book, second -> {
         });
         var provider = fixtures.outerNetwork();
         long phase = Math.floorMod(-(long) provider.value().hashCode(), FederationStatistics.STORAGE_PERIOD_SECONDS);

@@ -31,9 +31,9 @@ import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
 
 /**
  * Keeps the Federation's statistics for the domain screen's statistics page: one per server, ticked every server
- * tick, writing its {@link StatisticsBook} once per wall-clock second. Wall-clock seconds, so time the server was
- * stopped or paused shows as a gap; seconds a long tick ran through are observed, with no gauge sampled in them
- * ({@link SecondClock}).
+ * tick, writing its {@link StatisticsBook} once per game second ({@link #TICKS_PER_SECOND} ticks of the world's game
+ * time). Game seconds, so rates are per game second however fast the server ticks, and time the server was stopped or
+ * paused is no time at all.
  *
  * <p>What it costs. Storage operations, pattern pushes and crafting returns each add their amount to a
  * {@link PairMeter} (one hash map add). Each second it drains the meters and reads the gauges of every loaded member
@@ -54,6 +54,8 @@ public final class FederationStatistics {
     private static final int PRUNE_PERIOD_SECONDS = 60;
     /** Ticks over which a finished second is written, so no single tick writes every meter and network. */
     public static final int PASS_TICKS = 10;
+    /** Game ticks in one statistics second. */
+    public static final int TICKS_PER_SECOND = net.minecraft.SharedConstants.TICKS_PER_SECOND;
     /** The keys of each resource type a network holds most of, whose amounts are kept. */
     public static final int TRACKED_TOP = 16;
     /**
@@ -181,7 +183,7 @@ public final class FederationStatistics {
     private static final Set<IGrid> CPUS_CHANGED = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
 
     private final ServerLevel level;
-    private final LongSupplier millis;
+    private final LongSupplier ticks;
     private final StatisticsBook<AEKey> book;
     private final java.util.function.LongConsumer changed;
     private final Map<Route, PairMeter> meters = new HashMap<>();
@@ -202,7 +204,8 @@ public final class FederationStatistics {
     private final Set<IGrid> cpusChangedUnknown = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
     /** Our own index of native sources: reading storage must not change the one storage mounts rely on. */
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
-    private final SecondClock clock = new SecondClock();
+    /** The second the last tick ended in. */
+    private long lastSecond = Long.MIN_VALUE;
     /** Each Federation domain's converter bodies as of the last second, by domain id, for the page's list. */
     private Map<String, List<space.controlnet.ae2federation.power.OperatingPowerService.ConverterBody>> converters = Map.of();
     private long finishedSecond = Long.MIN_VALUE;
@@ -210,13 +213,14 @@ public final class FederationStatistics {
 
     /**
      * @param level   the overworld; the registries it reaches are the server's
+     * @param ticks   the game time in ticks, usually the overworld's
      * @param book    the book to write, usually the saved one
      * @param changed called with each second once it is recorded, so the saved book is written with the world
      */
-    public FederationStatistics(ServerLevel level, LongSupplier millis, StatisticsBook<AEKey> book,
+    public FederationStatistics(ServerLevel level, LongSupplier ticks, StatisticsBook<AEKey> book,
             java.util.function.LongConsumer changed) {
         this.level = level;
-        this.millis = millis;
+        this.ticks = ticks;
         this.book = book;
         this.changed = changed;
     }
@@ -230,9 +234,9 @@ public final class FederationStatistics {
         return book;
     }
 
-    /** The wall-clock second now. */
+    /** The game second now. */
     public long nowSecond() {
-        return Math.floorDiv(millis.getAsLong(), 1000L);
+        return Math.floorDiv(ticks.getAsLong(), TICKS_PER_SECOND);
     }
 
     /**
@@ -262,23 +266,20 @@ public final class FederationStatistics {
         return finishedSecond == Long.MIN_VALUE ? nowSecond() - 1 : finishedSecond;
     }
 
-    /** Called as each server tick starts, so a pause between ticks is told apart from a long tick. */
-    public void tickStarted() {
-        clock.started(millis.getAsLong());
-    }
-
     /**
      * Called as each server tick ends: counts the crafting jobs started this tick, starts writing the previous second
-     * once the wall clock has passed it, and writes the next slice of the second being written.
+     * once the game time has passed it, and writes the next slice of the second being written. A second already
+     * written ({@link #finishSecond}) is not written again.
      */
     public void tick() {
         followCpuChanges();
         pollJobs();
-        var step = clock.ended(millis.getAsLong());
-        if (step != null) {
+        long now = nowSecond();
+        long previous = lastSecond;
+        lastSecond = now;
+        if (previous != Long.MIN_VALUE && now != previous) {
             completePass();
-            beginPass(step.finish());
-            for (long second = step.observeFrom(); second <= step.observeTo(); second++) book.observe(second);
+            if (finishedSecond == Long.MIN_VALUE || previous > finishedSecond) beginPass(previous);
         }
         var pass = this.pass;
         if (pass != null && advance(pass, pass.perTick)) completePass();
@@ -350,7 +351,7 @@ public final class FederationStatistics {
     /**
      * Writes {@code second} into the book at once, after the rest of any second still being written: marks it
      * observed, drains the meters into it and samples every loaded member network. Tests call it with a second of
-     * their own; {@link #tick()} writes each wall-clock second over {@link #PASS_TICKS} ticks instead.
+     * their own; {@link #tick()} writes each game second over {@link #PASS_TICKS} ticks instead.
      */
     public void finishSecond(long second) {
         completePass();

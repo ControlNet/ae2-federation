@@ -48,7 +48,7 @@ public final class StatisticsGameTests {
         var fixture = new PatternProjectionFixture(helper);
         var statistics = LevelObservabilityService.get(helper.getLevel()).statistics();
         var stage = new int[1];
-        var lastSecond = new long[1];
+        var planned = new long[] {Long.MIN_VALUE};
         helper.succeedWhen(() -> {
             helper.assertTrue(stage[0] > 0 || fixture.ready(), "Waiting for both networks and their providers");
             var consumer = fixture.consumerNetwork();
@@ -71,9 +71,11 @@ public final class StatisticsGameTests {
             }
             if (stage[0] == 2) {
                 helper.assertTrue(fixture.planReady(), "Waiting for the consumer's plan");
-                // Member networks are looked up once a wall-clock second, and a batch can run this whole test within
-                // one: look them up now, or a job that starts and ends before the first lookup is not seen.
-                statistics.finishSecond(statistics.nowSecond() - 1);
+                // Member networks are looked up once a game second: wait for a lookup after both networks formed, or
+                // a job that starts and ends before it is not seen.
+                if (planned[0] == Long.MIN_VALUE) planned[0] = statistics.nowSecond();
+                helper.assertTrue(statistics.finishedSecond() >= planned[0],
+                        "Waiting for the statistics to look the member networks up again");
                 helper.assertTrue(!statistics.cpus(consumer).isEmpty(), "Waiting for the statistics to see the consumer");
                 helper.assertTrue(fixture.submit(), "The consumer's own CPU must take the job");
                 stage[0] = 3;
@@ -81,15 +83,12 @@ public final class StatisticsGameTests {
             if (stage[0] == 3) {
                 helper.assertValueEqual(fixture.busyConsumerCpus(), 0L, "Waiting for the consumer's job to finish");
                 helper.assertValueEqual(fixture.owed(sticks()), 0L, "Waiting for every stick to come back");
-                lastSecond[0] = statistics.nowSecond();
                 stage[0] = 4;
             }
-            // The service writes a second once the wall clock passes it, and a GameTest server runs its ticks faster
-            // than that: each attempt writes the next second itself. Ten of them read each network's stock once;
-            // the job's end is counted at the crafting service's next ledger sweep.
-            statistics.finishSecond(++lastSecond[0]);
+            // The service writes each game second as the game time passes it: within ten of them it reads each
+            // network's stock once; the job's end is counted at the crafting service's next ledger sweep.
             var book = statistics.book();
-            long now = lastSecond[0];
+            long now = statistics.finishedSecond();
             var range = StatisticsRange.MINUTES;
             helper.assertValueEqual(moved(book, provider, consumer, cobblestone(), now), 3d,
                     "Three cobblestone moved from the provider to the consumer");
@@ -139,6 +138,7 @@ public final class StatisticsGameTests {
         var fixture = new PatternProjectionFixture(helper);
         var statistics = LevelObservabilityService.get(helper.getLevel()).statistics();
         var stage = new int[1];
+        var planned = new long[] {Long.MIN_VALUE};
         var counted = new double[1];
         @SuppressWarnings("unchecked")
         java.util.concurrent.Future<appeng.api.networking.crafting.ICraftingPlan>[] plan =
@@ -154,8 +154,10 @@ public final class StatisticsGameTests {
             }
             if (stage[0] == 1) {
                 helper.assertTrue(plan[0].isDone(), "Waiting for the provider network's plan");
-                // The member networks as of now, the provider's without a CPU.
-                statistics.finishSecond(statistics.nowSecond() - 1);
+                // The member networks as looked up after the plan, the provider's without a CPU.
+                if (planned[0] == Long.MIN_VALUE) planned[0] = statistics.nowSecond();
+                helper.assertTrue(statistics.finishedSecond() >= planned[0],
+                        "Waiting for the statistics to look the member networks up again");
                 helper.assertTrue(statistics.cpus(provider).isEmpty(), "The provider network starts without a CPU");
                 fixture.placeProviderCpu();
                 stage[0] = 2;
@@ -169,6 +171,7 @@ public final class StatisticsGameTests {
             }
             if (stage[0] == 3) {
                 // Read once: finishing a second looks at the member networks again, which would find the CPU anyway.
+                // The service does not write this second again.
                 long now = statistics.nowSecond();
                 statistics.finishSecond(now);
                 counted[0] = statistics.book().total(StatisticsNames.network(StatisticsNames.STARTED, provider),
@@ -187,13 +190,13 @@ public final class StatisticsGameTests {
     /**
      * A finished second is written over the ticks after it, so no tick writes every route and network at once: the
      * second reads as finished only once all of it is written, and what moves meanwhile counts for the next second.
-     * The statistics run on a clock of the test's own.
+     * The statistics run on a game time of the test's own.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
             required = true)
     public static void statisticsWriteASecondOverTheNextTicks(GameTestHelper helper) {
-        var millis = new long[] {1_000_000_000_000L};
-        var statistics = new FederationStatistics(helper.getLevel(), () -> millis[0], new StatisticsBook<>(),
+        var gameTime = new long[] {1_000_000L * FederationStatistics.TICKS_PER_SECOND};
+        var statistics = new FederationStatistics(helper.getLevel(), () -> gameTime[0], new StatisticsBook<>(),
                 second -> { });
         var iron = AEItemKey.of(Items.IRON_INGOT);
         var from = new NetworkId(java.util.UUID.randomUUID());
@@ -201,17 +204,14 @@ public final class StatisticsGameTests {
         for (int route = 0; route < 3 * FederationStatistics.PASS_TICKS; route++) {
             routes.add(new NetworkId(java.util.UUID.randomUUID()));
         }
-        Runnable tick = () -> {
-            statistics.tickStarted();
-            statistics.tick();
-        };
+        Runnable tick = statistics::tick;
         // A whole second first: until one is finished, the statistics count the second before now as finished.
         tick.run();
-        millis[0] += 1000;
+        gameTime[0] += FederationStatistics.TICKS_PER_SECOND;
         for (int more = 0; more <= FederationStatistics.PASS_TICKS; more++) tick.run();
         long first = statistics.nowSecond();
         routes.forEach(to -> statistics.meter(from, to).add(iron, 3));
-        millis[0] += 1000;
+        gameTime[0] += FederationStatistics.TICKS_PER_SECOND;
         tick.run();
         helper.assertTrue(statistics.finishedSecond() < first, "The tick after a second writes only a slice of it");
         routes.forEach(to -> statistics.meter(from, to).add(iron, 7));
@@ -225,7 +225,7 @@ public final class StatisticsGameTests {
         var book = statistics.book();
         helper.assertTrue(routes.stream().allMatch(to -> book.total(StatisticsNames.moved(from, to, ITEMS),
                 StatisticsRange.SECONDS, first) == 3d), "Each route moved three in the finished second");
-        millis[0] += 1000;
+        gameTime[0] += FederationStatistics.TICKS_PER_SECOND;
         for (int more = 0; more <= FederationStatistics.PASS_TICKS; more++) tick.run();
         helper.assertTrue(routes.stream().allMatch(to -> book.total(StatisticsNames.moved(from, to, ITEMS),
                 StatisticsRange.SECONDS, first + 1) == 10d), "What moved while it was written counts for the next one");
