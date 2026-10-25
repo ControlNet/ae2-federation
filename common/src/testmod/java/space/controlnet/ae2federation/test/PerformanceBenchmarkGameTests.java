@@ -340,7 +340,7 @@ public final class PerformanceBenchmarkGameTests {
      * Builds a bus scene and runs every bus until a hundred ticks reach 99% of AE2's fastest bus rate (or
      * {@link #BUS_WARMUP_TICKS} pass), then reports the median, mean and slowest whole server tick over the next
      * {@link #WINDOW_TICKS} and how many bus operations reached the main network's storage per tick, so systems are
-     * compared at the same work. With Federation rules it then turns one rule off and on; in one domain it also breaks
+     * compared at the same work. Chunk saving is off from the warm-up to the end of the window. With Federation rules it then turns one rule off and on; in one domain it also breaks
      * and restores the cable to the subdomain farthest from the main network. The setup and each later step report
      * their slowest whole tick over every tick of the step.
      */
@@ -356,6 +356,7 @@ public final class PerformanceBenchmarkGameTests {
         var start = new long[3];
         var full = (long) subnets * busesEach / 5 * 100;
         var warm = new long[] {-1, 0};
+        var savedBefore = new boolean[1];
         // The slowest whole tick of the current step, and the tick it started.
         var slowest = new long[] {0, built};
         var domain = scene instanceof DomainFarmScene farm ? farm : null;
@@ -385,6 +386,10 @@ public final class PerformanceBenchmarkGameTests {
                 perf.record("setupSeconds", (System.nanoTime() - setupStarted) / 1e9, "s");
                 if (federation) perf.record("allRulesEdit", scene.ruleEditNanos() / 1e6, "ms");
                 window[0] = new FullTickClock.Window(server);
+                // Vanilla saves up to 20 changed chunks on a tick with time to spare, every chunk at most once in 10 s:
+                // a batch that falls in the window sets its slowest tick in every system alike, as /save-off stops it.
+                savedBefore[0] = helper.getLevel().noSave;
+                helper.getLevel().noSave = true;
                 stage[0] = 2;
             }
             if (stage[0] == 2) {
@@ -421,6 +426,7 @@ public final class PerformanceBenchmarkGameTests {
                 // AE2 ticks every Grid on every level tick, used or not.
                 perf.count("ae2Grids", appeng.hooks.ticking.TickHandler.instance().getGridList().size());
                 endStep.accept("running");
+                helper.getLevel().noSave = savedBefore[0];
                 if (!federation) {
                     stage[0] = 6;
                 } else {

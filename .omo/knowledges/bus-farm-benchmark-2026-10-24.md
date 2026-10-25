@@ -435,7 +435,7 @@ tick once every 10 seconds, 13-16 ms when timed at 1000x10, not split by the pas
   tick before its Post event; AE2 subnets once 118 ms (15256 block entities). Whether a save batch falls in the 100-tick
   window decides the max, so single-run maxima at 1000x10 are noise; the same 32-62 ms range shows at 0af051b6.
 
-## Final systems table (2026-10-25, `stock-teardown-permits-final-2026-10-25`, median of 3) - the reference result
+## Systems table with chunk saving on (2026-10-25, `stock-teardown-permits-final-2026-10-25`, median of 3) - superseded below
 
 | workload | system | Federation blocks | AE2 Grids | setup max tick | setup total | median | mean | max | median vs AE2 one network | mean vs AE2 one network | all rules | rule off | rule on | break tick | restore tick | teardown |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -480,3 +480,35 @@ Together ~3 of the ~5.5 ms gap (9.6 vs 14.9 ms); the rest was not attributed. Th
 Profiling note: `jfr print` cuts stacks to 5 frames unless given `--stack-depth 64`; earlier caller analyses that saw
 "truncated" stacks were this. A copy of the JDK's `profile.jfc` with the `jdk.ExecutionSample` period at 1 ms, attached
 with `jcmd <pid> JFR.start settings=<file>`, gives ~700 server-thread samples per second.
+
+## Final systems table, chunk saving off (2026-10-25, `save-off-2026-10-25`, median of 3) - the reference result
+Owner approved: `busFarm` sets the level's `noSave` (as `/save-off`) from the warm-up to the end of the measurement
+window, then restores it, so vanilla's eager chunk saves no longer set the max tick. Machine load average ~4.6 during
+the run.
+
+| workload | system | Federation blocks | AE2 Grids | setup max tick | setup total | median | mean | max | median vs AE2 one network | mean vs AE2 one network | all rules | rule off | rule on | break tick | restore tick | teardown |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10x1000 | AE2 one network | - | 1 | 582 ms | 3.9 s | 9.4 ms | 9.5 ms | 12.4 ms | 100% | 100% | - | - | - | - | - | 674 ms |
+| 10x1000 | AE2 subnets | - | 11 | 600 ms | 2.9 s | 8.7 ms | 9.8 ms | 16.8 ms | 93% | 103% | - | - | - | - | - | 268 ms |
+| 10x1000 | Federation Bridges | - | 11 | 592 ms | 3.1 s | 9.7 ms | 10.0 ms | 21.0 ms | 103% | 105% | 58.5 ms | 8.3 ms | 2.0 ms | - | - | 290 ms |
+| 10x1000 | Federation one domain | 320 | 11 | 624 ms | 3.0 s | 9.5 ms | 9.8 ms | 12.8 ms | 101% | 103% | 56.7 ms | 8.4 ms | 1.6 ms | 26.4 ms | 26.0 ms | 268 ms |
+| 1000x10 | AE2 one network | - | 1 | 662 ms | 6.8 s | 14.6 ms | 14.7 ms | 23.5 ms | 100% | 100% | - | - | - | - | - | 501 ms |
+| 1000x10 | AE2 subnets | - | 1001 | 1.48 s | 3.6 s | 15.5 ms | 16.3 ms | 24.8 ms | 106% | 111% | - | - | - | - | - | 393 ms |
+| 1000x10 | Federation Bridges | - | 1001 | 1.19 s | 3.6 s | 17.7 ms | 17.7 ms | 26.4 ms | 121% | 120% | 161 ms | 40.2 ms | 27.1 ms | - | - | 696 ms |
+| 1000x10 | Federation one domain | 3494 | 1001 | 333 ms | 3.0 s | 13.9 ms | 14.3 ms | 23.7 ms | 95% | 97% | 212 ms | 40.7 ms | 25.7 ms | 97.8 ms | 94.0 ms | 1.68 s |
+| 1000x10 | Federation one domain, 10k blocks | 10046 | 1001 | 385 ms | 3.4 s | 14.1 ms | 14.4 ms | 20.3 ms | 97% | 98% | 183 ms | 36.3 ms | 23.8 ms | 127 ms | 120 ms | 2.95 s |
+
+Max tick per run (ms):
+- 10x1000 AE2 one network: 17.6/12.4/11.0
+- 10x1000 AE2 subnets: 16.8/10.3/18.3
+- 10x1000 Federation Bridges: 16.8/22.5/21.0
+- 10x1000 Federation one domain: 12.8/13.6/12.6
+- 1000x10 AE2 one network: 17.0/24.3/23.5
+- 1000x10 AE2 subnets: 22.6/26.7/24.8
+- 1000x10 Federation Bridges: 26.4/29.2/21.5
+- 1000x10 Federation one domain: 23.7/27.0/21.2
+- 1000x10 Federation one domain, 10k blocks: 23.8/20.3/20.2
+
+Max ticks are now within a few ms of each other in every workload: at 1000x10 the one domain 21-27 ms against AE2 one
+network 17-24 ms (31-62 ms with saving on). The 1000x10 Bridges median moves between runs: 17.0-17.7 ms here, 15.2-16.4
+in `stock-teardown-permits-final-2026-10-25`, 18.1 in `statistics-metering-2026-10-25`.
