@@ -203,3 +203,22 @@ also came out ~15% faster than in `buses-10k-full` (host load), so compare Feder
 Same run, AE2 at 1000 subnets: direct setup max tick 1.44 s, median 15.2 ms; AE2 subnets (Storage Bus + Quartz
 Fiber) 1.45 s, median 16.0 ms, teardown 0.39 s. Federation bus rate 100.1% everywhere. Left: Bridge teardown 6.7 s
 (removals reconcile synchronously; deferring them on chunk unload is the open question).
+
+### Full table, every configuration (before = `buses-10k-full` / `domain-1k-first`, after = `final-2026-10-25`)
+AE2 rows have no Federation code in their path: their before/after difference is host noise.
+| config | run | setup max tick | setup total | median | mean | max | bus rate | all rules | rule off | rule on | break tick | restore tick | teardown |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10x1000 AE2 one network | before | 1.29 s | 5.3 s | 11.5 ms | 11.7 ms | 29.8 ms | 100.1% | - | - | - | - | - | 640 ms |
+| 10x1000 AE2 one network | after | 695 ms | 4.0 s | 9.4 ms | 9.7 ms | 16.5 ms | 99.9% | - | - | - | - | - | 603 ms |
+| 10x1000 AE2 subnets | before | 437 ms | 3.2 s | 11.8 ms | 12.8 ms | 41.1 ms | 99.8% | - | - | - | - | - | 301 ms |
+| 10x1000 AE2 subnets | after | 317 ms | 2.9 s | 9.1 ms | 9.7 ms | 16.8 ms | 99.9% | - | - | - | - | - | 266 ms |
+| 10x1000 Federation Bridge | before | 473 ms | 3.4 s | 11.7 ms | 12.4 ms | 27.9 ms | 99.8% | 65.4 ms | 8.0 ms | 1.9 ms | - | - | 286 ms |
+| 10x1000 Federation Bridge | after | 363 ms | 2.9 s | 10.5 ms | 10.1 ms | 21.2 ms | 100.2% | 58.4 ms | 7.7 ms | 2.1 ms | - | - | 286 ms |
+| 1000x10 AE2 one network | before | 1.68 s | 7.6 s | 18.9 ms | 18.7 ms | 27.5 ms | 100.1% | - | - | - | - | - | 550 ms |
+| 1000x10 AE2 one network | after | 1.44 s | 7.1 s | 15.2 ms | 15.3 ms | 23.5 ms | 100.0% | - | - | - | - | - | 525 ms |
+| 1000x10 AE2 subnets | before | 1.56 s | 3.9 s | 19.3 ms | 19.9 ms | 31.5 ms | 99.9% | - | - | - | - | - | 420 ms |
+| 1000x10 AE2 subnets | after | 1.45 s | 3.4 s | 16.0 ms | 16.4 ms | 28.4 ms | 99.9% | - | - | - | - | - | 386 ms |
+| 1000x10 Federation Bridge | before | 151.70 s | 158.8 s | 19.5 ms | 22.0 ms | 99.4 ms | 100.1% | 310 ms | 200 ms | 171 ms | - | - | 57.09 s |
+| 1000x10 Federation Bridge | after | 1.03 s | 3.3 s | 17.3 ms | 18.4 ms | 47.7 ms | 100.1% | 152 ms | 39.7 ms | 27.0 ms | - | - | 6.73 s |
+| 1000 networks, one domain | before | 6.79 s | 16.8 s | 3.7 ms | 4.2 ms | 15.7 ms | - | 2.01 s | 2.35 s | 2.21 s | 2.71 s | 2.26 s | 1.05 s |
+| 1000 networks, one domain | after | 313 ms | 1.7 s | 3.2 ms | 3.5 ms | 18.7 ms | - | 106 ms | 28.0 ms | 21.7 ms | 70.4 ms | 51.6 ms | 1.08 s |
