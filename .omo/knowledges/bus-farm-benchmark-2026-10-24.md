@@ -332,7 +332,7 @@ unboxing is a sneak right-click with an empty hand; boxing sets the box with fla
 player is in the player list, so Mekanism's login payloads (`mekanism:player_data`) throw on its mock connection.
 Run: `python3 tools/compat_run.py --accept-eula --tests cardboardboxbesideswitch,cardboardboxfederationcable mekanism`.
 
-## Final systems table (2026-10-25, 35a49369, `tickless-routers-full-2026-10-25`, median of 3) - the reference result
+## Systems table with per-tick statistics work (2026-10-25, 35a49369, `tickless-routers-full-2026-10-25`, median of 3) - superseded below
 Profile of 6d810eef (1000x10 one domain, steady window, ~650 server samples) put Federation's own overhead at:
 Switch/Router ticker 5.5% (a stream over six ports + the verify sweep), statistics 4.5% (`pollJobs` walked every
 member Grid's CPUs each tick, plus the once-a-second drain/sample), per-operation metering
@@ -357,3 +357,62 @@ The 10x1000 medians were noisy this run (AE2 one network 6.6/7.8/9.7 ms over the
 10.6, 10.2 ms) are the steadier comparison there. On 1000x10 the one domain now runs at AE2 one network's tick
 (99% median, 98% mean), below AE2 subnets (108%/107%); the 10k-block domain at 106%/105%. Max ticks stay higher
 (41-56 ms vs 22-27): not yet profiled (suspect the once-a-second statistics sample). Still open: Bridge teardown 6.6 s.
+
+## Max ticks and the 10x1000 gap (2026-10-25)
+Timers around each Federation step of the server tick (temporary, not committed) put every Federation max tick above
+AE2's on the once-a-second statistics write: 23-61 ms in one tick at 1000x10 (drain of the route meters 10-33 ms,
+gauges of 1000 networks 8-36 ms, `liveClaims()` copying every Grid's lineages ~5 ms, the 10k-type main network's
+stock reading up to 16 ms on its turn). GC pauses (5-10 ms, ~12 ms for a young + mixed pair, every ~1.5 s) and ticks
+slow only in the level phase were the same in AE2 one network, and account for its own 22-27 ms max. At 10x1000 a
+JFR profile (excluding the TEST-ONLY `BulkItemStorage` both systems pay) put Federation at ~10% of server time:
+per-operation metering 5.7% (mostly `PairMeter.add`, a `HashMap.computeIfAbsent` with a `long[]` per key), `permits`
+1.4%, the CPU receipt hook's `owedWithin` 1.4% (a synchronized lookup on every insert into a Grid's CPUs), statistics
+and binding ticks 2.7%.
+
+Fixes (owner approved M1-M4, G1, G2):
+- The finished second is written over the next 10 ticks (`FederationStatistics.PASS_TICKS`): meters double-buffer
+  (`moved`/`finished`), so what moves meanwhile counts for the next second; the second reads as finished only once
+  written. Series names are made once per network and route. `TopKeys.addAll` writes a meter's map with one point
+  lookup per range and reuses a slot's map when it moves on (same results as per-key `add` in the same order).
+  `NetworkIdentityRegistry.liveGrids()` lists Grids without copying lineages.
+- `PairMeter` uses fastutil `Object2LongOpenHashMap.addTo`. Its iteration order differs from `HashMap`'s, so when a
+  ranking point trims (over 2x its 16-key cap) the kept keys can differ from before; the ranking was already
+  approximate there.
+- `CraftingReturnLedger` counts the ledgers owing anything; `owedWithin` returns 0 without the lock or lookups while
+  none does.
+After: statistics cost 0.22-0.35 ms per tick on average at 1000x10 (was ~1.15 ms, all in one tick per second);
+metering 3.7% of server time at 10x1000; `owedWithin` no longer in the profile.
+
+## Final systems table (2026-10-25, `statistics-metering-2026-10-25`, median of 3) - the reference result
+Another project's compat server ran on the machine during part of this run, so the max ticks of single runs are
+noisy (listed below the table).
+
+| workload | system | Federation blocks | AE2 Grids | setup max tick | setup total | median | mean | max | median vs AE2 one network | mean vs AE2 one network | all rules | rule off | rule on | break tick | restore tick | teardown |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10x1000 | AE2 one network | - | 1 | 736 ms | 4.3 s | 9.0 ms | 9.5 ms | 13.0 ms | 100% | 100% | - | - | - | - | - | 593 ms |
+| 10x1000 | AE2 subnets | - | 11 | 599 ms | 2.9 s | 9.4 ms | 9.6 ms | 16.3 ms | 104% | 101% | - | - | - | - | - | 268 ms |
+| 10x1000 | Federation Bridges | - | 11 | 589 ms | 3.1 s | 10.6 ms | 10.3 ms | 16.2 ms | 118% | 108% | 58.3 ms | 7.5 ms | 1.6 ms | - | - | 312 ms |
+| 10x1000 | Federation one domain | 320 | 11 | 563 ms | 3.0 s | 9.1 ms | 9.6 ms | 20.2 ms | 101% | 101% | 59.4 ms | 8.4 ms | 1.5 ms | 27.1 ms | 26.3 ms | 270 ms |
+| 1000x10 | AE2 one network | - | 1 | 812 ms | 7.1 s | 13.7 ms | 14.8 ms | 24.8 ms | 100% | 100% | - | - | - | - | - | 510 ms |
+| 1000x10 | AE2 subnets | - | 1001 | 1.45 s | 3.4 s | 15.8 ms | 16.2 ms | 32.0 ms | 115% | 109% | - | - | - | - | - | 374 ms |
+| 1000x10 | Federation Bridges | - | 1001 | 1.07 s | 3.3 s | 18.1 ms | 18.6 ms | 39.6 ms | 132% | 126% | 154 ms | 44.3 ms | 30.7 ms | - | - | 6.64 s |
+| 1000x10 | Federation one domain | 3494 | 1001 | 278 ms | 3.0 s | 14.8 ms | 15.1 ms | 24.5 ms | 108% | 102% | 128 ms | 38 ms | 24.7 ms | 93.7 ms | 93.7 ms | 1.64 s |
+| 1000x10 | Federation one domain, 10k blocks | 10046 | 1001 | 387 ms | 3.4 s | 13.4 ms | 13.9 ms | 38.8 ms | 98% | 94% | 142 ms | 34.2 ms | 22.6 ms | 131 ms | 117 ms | 2.80 s |
+
+Max tick per run (ms):
+- 10x1000 AE2 one network: 13.0/15.7/11.3
+- 10x1000 AE2 subnets: 16.3/12.9/18.6
+- 10x1000 Federation Bridges: 24.3/16.2/16.0
+- 10x1000 Federation one domain: 19.4/23.2/20.2
+- 1000x10 AE2 one network: 15.9/24.8/33.9
+- 1000x10 AE2 subnets: 21.4/44.5/32.0
+- 1000x10 Federation Bridges: 48.9/23.4/39.6
+- 1000x10 Federation one domain: 20.6/25.1/24.5
+- 1000x10 Federation one domain, 10k blocks: 47.1/19.0/38.8
+
+At 10x1000 the one domain now matches AE2 one network (101%/101%); at 1000x10 the one domain is at 108%/102% (its
+three runs 14.8/13.7/14.9 ms against AE2's 13.7/14.7/13.3) and the 10k-block domain at 98%/94%. The one domain's max
+tick matches AE2's at 1000x10 (24.5 vs 24.8 ms). At 10x1000 it stays higher (19-23 ms vs 11-16 ms); the likely
+cause, not yet confirmed there, is the statistics reading of the 10k-type main network's stock: one network in one
+tick once every 10 seconds, 13-16 ms when timed at 1000x10, not split by the pass. Still open: Bridge teardown 6.6 s.
+
