@@ -50,4 +50,11 @@ python3 tools/compat_run.py --accept-eula neoecoae --tests computationSystemSmar
   projection and the return ledger. ExtendedAE-Plus' reflective `getLogic` users are menu packets on block entities.
 - If the proxy cannot combine the interface with an add-on's markers (class loaders), the markers win.
 - Regression: dev gate 299/299, every addon profile green (`addons-all` 111/111, `useless-mod-addons` 111/111).
-- Not covered: projected Advanced AE providers (Neo ECO recognises their logic separately) still go one push per run.
+- Advanced AE (same day): Neo ECO's `ECOAdvancedAEPatternScaling` only reads AdvancedAE's
+  `AdvPatternProviderLogic` (isProvider, isBlocking, config) and scales the pattern; the push goes through
+  `provider.pushPattern`. No compat jar subclasses that logic. The projection now also shows a real provider whose
+  class name is exactly `net.pedroksl.advanced_ae.common.logic.AdvPatternProviderLogic` (by name: no compile
+  dependency). Before: real `true`, projection `false`, 16 pushes; after: 5 pushes, ledger settled.
+- Profile `neoecoae-advanced-ae` (AdvancedAE 1.6.12 + Neo ECO 21.2.10; groups advanced-ae, neoecoae and
+  `neoecoae-advanced-ae`) is the only one with both mods on a current Neo ECO; `useless-mod-addons` has Neo ECO
+  21.2.0, `nast` 21.2.9.
