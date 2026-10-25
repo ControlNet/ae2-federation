@@ -383,7 +383,7 @@ Fixes (owner approved M1-M4, G1, G2):
 After: statistics cost 0.22-0.35 ms per tick on average at 1000x10 (was ~1.15 ms, all in one tick per second);
 metering 3.7% of server time at 10x1000; `owedWithin` no longer in the profile.
 
-## Final systems table (2026-10-25, `statistics-metering-2026-10-25`, median of 3) - the reference result
+## Systems table after statistics metering (2026-10-25, `statistics-metering-2026-10-25`, median of 3) - superseded below
 Another project's compat server ran on the machine during part of this run, so the max ticks of single runs are
 noisy (listed below the table).
 
@@ -416,3 +416,51 @@ tick matches AE2's at 1000x10 (24.5 vs 24.8 ms). At 10x1000 it stays higher (19-
 cause, not yet confirmed there, is the statistics reading of the 10k-type main network's stock: one network in one
 tick once every 10 seconds, 13-16 ms when timed at 1000x10, not split by the pass. Still open: Bridge teardown 6.6 s.
 
+
+## Stock reading, Bridge teardown and permits (2026-10-25)
+- The 10x1000 domain's higher max tick was the statistics stock reading of the 10k-type main network (one network,
+  one tick, every 10 s). Timed at 1000x10 before the change: discover 0.9, enumerate 3.6, removeZeros 3.3, read 8.3 ms.
+  `read()` now sums by `AEKeyType` (an identity map, the last type cached across consecutive keys), names each type
+  once at the end, and skips zero amounts instead of a `removeZeros()` pass; `stock(network)` (the dashboard's own
+  view) still removes zeros. Read went to 3.9 ms and removeZeros to 0; splitting the read across ticks (A2) was not
+  needed.
+- Bridge teardown (6.6 s at 1000x10) was one full binding reconcile per removed Bridge: a linked Bridge that stopped
+  linking flushed `FederationBindingRefresh` at once. It now only requests, as cables and Routers do, so 1000 Bridges
+  reconcile once at the tick's end. Until then a held storage projection fails closed, even on a redundant route
+  (`storagepriority` flushes explicitly after removing the first Bridge).
+- `EffectiveStorageAuthority.permitsAll` is a bit test of a mask built in the constructor (~1.4% of samples before).
+- The 1000x10 max ticks of every system, AE2 subnets included, come from vanilla chunk saving
+  (`ChunkMap.processUnloads` saves up to 20 accessible, unsaved chunk holders per tick with spare time, 10 s cooldown
+  per chunk; the chests dirty their chunks). Timed: 20 chunks with 4319-4718 block entities = 26-47 ms in the level
+  tick before its Post event; AE2 subnets once 118 ms (15256 block entities). Whether a save batch falls in the 100-tick
+  window decides the max, so single-run maxima at 1000x10 are noise; the same 32-62 ms range shows at 0af051b6.
+
+## Final systems table (2026-10-25, `stock-teardown-permits-final-2026-10-25`, median of 3) - the reference result
+
+| workload | system | Federation blocks | AE2 Grids | setup max tick | setup total | median | mean | max | median vs AE2 one network | mean vs AE2 one network | all rules | rule off | rule on | break tick | restore tick | teardown |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10x1000 | AE2 one network | - | 1 | 1.46 s | 4.8 s | 9.6 ms | 9.9 ms | 21.7 ms | 100% | 100% | - | - | - | - | - | 602 ms |
+| 10x1000 | AE2 subnets | - | 11 | 558 ms | 2.8 s | 9.5 ms | 9.5 ms | 11.6 ms | 99% | 96% | - | - | - | - | - | 281 ms |
+| 10x1000 | Federation Bridges | - | 11 | 600 ms | 3.1 s | 9.6 ms | 9.2 ms | 17.6 ms | 100% | 93% | 57.0 ms | 7.5 ms | 1.6 ms | - | - | 272 ms |
+| 10x1000 | Federation one domain | 320 | 11 | 567 ms | 3.0 s | 9.2 ms | 9.6 ms | 18.1 ms | 96% | 97% | 54.8 ms | 9.3 ms | 1.6 ms | 25.3 ms | 23.5 ms | 252 ms |
+| 1000x10 | AE2 one network | - | 1 | 741 ms | 6.7 s | 14.9 ms | 15.1 ms | 20.8 ms | 100% | 100% | - | - | - | - | - | 520 ms |
+| 1000x10 | AE2 subnets | - | 1001 | 1.39 s | 3.4 s | 15.7 ms | 16.3 ms | 28.9 ms | 105% | 108% | - | - | - | - | - | 372 ms |
+| 1000x10 | Federation Bridges | - | 1001 | 1.24 s | 3.5 s | 16.1 ms | 16.4 ms | 23.4 ms | 108% | 109% | 148 ms | 37.8 ms | 26.1 ms | - | - | 656 ms |
+| 1000x10 | Federation one domain | 3494 | 1001 | 336 ms | 2.8 s | 13.8 ms | 14.3 ms | 38.7 ms | 93% | 95% | 166 ms | 36.9 ms | 23.3 ms | 91.7 ms | 82.5 ms | 1.67 s |
+| 1000x10 | Federation one domain, 10k blocks | 10046 | 1001 | 336 ms | 3.4 s | 14.2 ms | 14.8 ms | 39.1 ms | 95% | 98% | 174 ms | 35.2 ms | 22.9 ms | 125 ms | 142 ms | 2.92 s |
+
+Max tick per run (ms):
+- 10x1000 AE2 one network: 21.7/11.2/125.8
+- 10x1000 AE2 subnets: 11.6/17.9/10.5
+- 10x1000 Federation Bridges: 20.0/13.4/17.6
+- 10x1000 Federation one domain: 18.1/12.4/18.6
+- 1000x10 AE2 one network: 20.8/22.6/18.2
+- 1000x10 AE2 subnets: 29.2/25.1/28.9
+- 1000x10 Federation Bridges: 23.4/20.7/24.3
+- 1000x10 Federation one domain: 38.7/30.8/61.7
+- 1000x10 Federation one domain, 10k blocks: 20.8/39.1/53.2
+
+At 10x1000 the one domain's max ticks (12-19 ms) are now within AE2's range. Bridge teardown at 1000x10 is 656 ms
+(was 6.64 s). Medians: every Federation system is within 0.5 ms of AE2 subnets or below; at 1000x10 the one domain
+runs below AE2 one network (93%/95%). Remaining 1000x10 max spikes are chunk saving (above); a benchmark without saving
+during the window (e.g. `server.setAutoSave(false)`/`level.noSave`) would show Federation's own max, not yet adopted.
