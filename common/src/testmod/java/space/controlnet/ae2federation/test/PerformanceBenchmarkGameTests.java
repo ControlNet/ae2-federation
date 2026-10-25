@@ -407,6 +407,8 @@ public final class PerformanceBenchmarkGameTests {
                 perf.count("authorityEpochs", AuthorityEpoch.current() - start[1]);
                 perf.count("dependencyRefreshes", mounts.dependencyRefreshCount() - start[2]);
                 perf.count("itemsInChests", scene.itemsInChests());
+                // AE2 ticks every Grid on every level tick, used or not.
+                perf.count("ae2Grids", appeng.hooks.ticking.TickHandler.instance().getGridList().size());
                 endStep.accept("running");
                 if (!federation) {
                     stage[0] = 6;

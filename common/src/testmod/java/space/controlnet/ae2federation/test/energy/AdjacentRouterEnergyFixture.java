@@ -75,8 +75,8 @@ public final class AdjacentRouterEnergyFixture implements AutoCloseable {
         var provider = routers.router(PROVIDER_ROUTER);
         return consumer.binding(Direction.EAST) instanceof RouterPortBinding.Federation
                 && provider.binding(Direction.WEST) instanceof RouterPortBinding.Federation
-                && consumer.boundaryNode(Direction.EAST).getConnections().isEmpty()
-                && provider.boundaryNode(Direction.WEST).getConnections().isEmpty();
+                && consumer.boundaryNode(Direction.EAST) == null
+                && provider.boundaryNode(Direction.WEST) == null;
     }
 
     public IGrid consumerGrid() {

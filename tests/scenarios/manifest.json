@@ -178,6 +178,8 @@
     {"id":"router.port-replacement","backend":"gametest","testId":"routerportreplacement","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"router.reject-unsupported","backend":"gametest","testId":"routerrejectunsupported","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"router.adjacent-federation","backend":"gametest","testId":"routeradjacentfederation","structure":"ae2federation_test:harness_native_smoke","assertions":9},
+    {"id":"switch.face-node-follows-neighbour","backend":"gametest","testId":"switchfacenodefollowsneighbour","structure":"ae2federation_test:harness_native_smoke","assertions":8},
+    {"id":"switch.face-node-survives-chunk-reload","backend":"gametest","testId":"switchfacenodesurviveschunkreload","structure":"ae2federation_test:harness_native_smoke","assertions":4},
     {"id":"switch.router-refuses-me-networks","backend":"gametest","testId":"routerrefusesmenetworks","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"switch.joins-through-router","backend":"gametest","testId":"switchesjointhroughrouter","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"router.null-side-node","backend":"gametest","testId":"routernullsidenode","structure":"ae2federation_test:harness_native_smoke","assertions":5},
