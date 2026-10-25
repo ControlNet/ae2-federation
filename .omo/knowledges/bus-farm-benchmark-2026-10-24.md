@@ -160,3 +160,15 @@ JFR (attach to the JVM with `-Dfml.modFolders`, not the first java with "gametes
   Router/cable ticks publish evidence between cable ticks during setup and breaks, so the whole domain is recounted
   several times a tick; `FederationDomainRegistry.flush` recompute + `judgeCapacity` show up under it (lazy flush is
   charged to the first caller).
+
+### Fix: pair networks by configured rules (2026-10-25)
+`PolicyService.configuredRules(capability)` (store walk, O(rules)); the three observers' `relationships()` iterate
+those rules, look both networks up in `ObservedGrids.confirmed()` and keep the pair when
+`registry.shareFederationDomain` holds. Equivalent output for every consumer (they skip unconfigured pairs).
+Named `configuredRules`, not a `configured` overload: a GameTest calls `configured(context.get(..))`, which became
+ambiguous. `StorageMountContractTest` pinned the old member loop; `PolicyContractTest` now pins the rule loop.
+
+`domain-1k-rules` (median of 3): all rules 2.0 s -> 95 ms; one rule off/on 2.3 s -> 31/24 ms; cable break tick
+2.7 s -> 75 ms; restore 2.2 s -> 57 ms; idle median 3.2 ms; teardown 1.1 s (unchanged). Setup max tick still ~5.9 s
+with 5.4 s of registry recompute (`setupRecomputeTime`): item 2 (capacity recount / recompute during setup) is next.
+`buses-1k-rules` (Bridge layout, 1 run): unchanged (setup 1.17 s, rule 42/27 ms, teardown 7.7 s, bus rate 100%).

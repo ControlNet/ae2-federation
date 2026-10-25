@@ -65,4 +65,18 @@ final class PolicyContractTest {
         assertTrue(script.contains("federationTaskFourteenEvidenceSelfTest"));
         assertTrue(script.contains("AE2F_POLICY_NATIVE_TRACE"));
     }
+
+    @Test
+    void bindingServicesPairNetworksByConfiguredRulesNotByDomainMembers() throws IOException {
+        // A domain of N networks has N(N-1) ordered pairs, a million at a thousand networks; only rules link any.
+        for (var observer : new String[] {"storage/mount/StorageFederationDomainObserver.java",
+                "crafting/projection/CraftingFederationDomainObserver.java",
+                "energy/EnergyFederationDomainObserver.java"}) {
+            var source = Files.readString(ROOT.resolve(
+                    "common/src/main/java/space/controlnet/ae2federation/" + observer));
+            assertTrue(source.contains(".configuredRules(PolicyCapability."), observer);
+            assertTrue(source.contains("shareFederationDomain("), observer);
+            assertFalse(source.contains("for (var provider : members)"), observer);
+        }
+    }
 }

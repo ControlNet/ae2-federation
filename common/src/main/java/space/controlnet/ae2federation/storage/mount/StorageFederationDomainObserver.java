@@ -10,6 +10,7 @@ import space.controlnet.ae2federation.domain.ObservedGrids;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyKey;
+import space.controlnet.ae2federation.policy.PolicyService;
 
 final class StorageFederationDomainObserver {
     private final ServerLevel level;
@@ -30,18 +31,15 @@ final class StorageFederationDomainObserver {
     Map<PolicyKey, StorageRelationship> relationships() {
         var loadedGrids = observed.confirmed();
         var relationships = new HashMap<PolicyKey, StorageRelationship>();
-        for (var federationDomain : FederationDomainRegistryAccess.get(level).federationDomains()) {
-            var members = federationDomain.memberships().keySet().stream().map(loadedGrids::get)
-                    .filter(java.util.Objects::nonNull).toList();
-            for (var consumer : members) {
-                for (var provider : members) {
-                    if (consumer != provider) {
-                        var key = new PolicyKey(FederationDomainRegistryAccess.confirmedNetworkId(consumer).orElseThrow(),
-                                FederationDomainRegistryAccess.confirmedNetworkId(provider).orElseThrow(),
-                                PolicyCapability.STORAGE);
-                        relationships.put(key, new StorageRelationship(key, consumer, provider));
-                    }
-                }
+        var registry = FederationDomainRegistryAccess.get(level);
+        // By rule: every two networks of a domain would be N(N-1) pairs, and only pairs with a rule link anything.
+        for (var rule : PolicyService.get(level).configuredRules(PolicyCapability.STORAGE)) {
+            var key = rule.key();
+            var consumer = loadedGrids.get(key.consumerNetworkId());
+            var provider = loadedGrids.get(key.providerNetworkId());
+            if (consumer != null && provider != null && consumer != provider
+                    && registry.shareFederationDomain(key.consumerNetworkId(), key.providerNetworkId())) {
+                relationships.put(key, new StorageRelationship(key, consumer, provider));
             }
         }
         return relationships;

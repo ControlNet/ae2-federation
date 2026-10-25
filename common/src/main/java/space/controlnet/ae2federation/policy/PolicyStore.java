@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.policy;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -74,6 +75,17 @@ public final class PolicyStore {
     public Optional<PolicyRecord.Configured> configured(PolicyKey key) {
         return entries.get(key) instanceof PolicyRecord.Configured configured ? Optional.of(configured)
                 : Optional.empty();
+    }
+
+    /** The configured rules of {@code capability}, enabled or not; deleted rules are left out. */
+    public List<PolicyRecord.Configured> configuredRules(PolicyCapability capability) {
+        var result = new ArrayList<PolicyRecord.Configured>();
+        for (var record : entries.values()) {
+            if (record instanceof PolicyRecord.Configured configured && configured.key().capability() == capability) {
+                result.add(configured);
+            }
+        }
+        return result;
     }
 
     public PolicyRevision revision(PolicyKey key) {
