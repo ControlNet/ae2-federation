@@ -583,6 +583,20 @@ public final class NeoEcoComputingCompatGameTests {
         helper.succeed();
     }
 
+    /** ECO - N1 is on Neo ECO Prototype's C1 structure, so it exists only beside Neo ECO Prototype. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke")
+    public static void n1ExistsOnlyBesideNeoEcoPrototype(GameTestHelper helper) {
+        var loaded = net.neoforged.fml.ModList.get().isLoaded("neoecoprototype");
+        for (var id : List.of("eco_computation_system_l1")) {
+            var key = ResourceLocation.fromNamespaceAndPath("ae2federation", id);
+            helper.assertValueEqual(BuiltInRegistries.BLOCK.containsKey(key), loaded, key + " block");
+            helper.assertValueEqual(BuiltInRegistries.ITEM.containsKey(key), loaded, key + " item");
+            helper.assertValueEqual(helper.getLevel().getRecipeManager().byKey(key).isPresent(), loaded,
+                    key + " recipe");
+        }
+        helper.succeed();
+    }
+
     /** Breaking the controller stops its runs, drops its installations and frees its ID. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void breakingTheFederationComputationSystemDropsItsInstallations(GameTestHelper helper) {
@@ -620,7 +634,7 @@ public final class NeoEcoComputingCompatGameTests {
     }
 
     /** Whether the blocks at {@code a} and {@code b} are nodes of one Federation domain. */
-    private static boolean sharesDomain(GameTestHelper helper, BlockPos a, BlockPos b) {
+    static boolean sharesDomain(GameTestHelper helper, BlockPos a, BlockPos b) {
         var level = helper.getLevel();
         var registry = FederationDomainRegistryAccess.get(level);
         var domain = registry.federationDomainOf(FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(b)));
@@ -628,11 +642,11 @@ public final class NeoEcoComputingCompatGameTests {
                 FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(a)));
     }
 
-    private static List<String> log(ProgramScheduler scheduler, String installation) {
+    static List<String> log(ProgramScheduler scheduler, String installation) {
         return scheduler.log(installation).stream().map(ProgramScheduler.LogEntry::text).toList();
     }
 
-    private static void writeProgram(GameTestHelper helper, String file, String text) {
+    static void writeProgram(GameTestHelper helper, String file, String text) {
         var store = ProgramStore.get(helper.getLevel().getServer());
         try {
             Files.writeString(store.folder().resolve(file + ".ae2f"), text);
@@ -642,7 +656,7 @@ public final class NeoEcoComputingCompatGameTests {
         store.reload();
     }
 
-    private static void deleteProgram(GameTestHelper helper, String file) {
+    static void deleteProgram(GameTestHelper helper, String file) {
         var store = ProgramStore.get(helper.getLevel().getServer());
         try {
             Files.deleteIfExists(store.folder().resolve(file + ".ae2f"));
@@ -653,28 +667,33 @@ public final class NeoEcoComputingCompatGameTests {
     }
 
     /** The default communication interface, in the cell where Neo ECO's ME interface would go, and its cable. */
-    private static final BlockPos INTERFACE = NeoEcoCompatGameTests.COMPUTATION;
-    private static final BlockPos CABLE = INTERFACE.west();
+    static final BlockPos INTERFACE = NeoEcoCompatGameTests.COMPUTATION;
+    static final BlockPos CABLE = INTERFACE.west();
 
     /**
      * {@link #placeFederationComputationSystem} with casing where Neo ECO's ME interface would go, then a
      * communication interface there and a Federation Cable against it, at {@link #CABLE}.
      */
     private static BlockPos placeLinkedFederationComputationSystem(GameTestHelper helper, String controllerId) {
-        var controller = placeFederationComputationSystem(helper, "computation_casing", controllerId);
+        return placeLinkedFederationComputationSystem(helper, Tier.L4, controllerId);
+    }
+
+    /** {@link #placeLinkedFederationComputationSystem} from {@code tier}'s parts. */
+    static BlockPos placeLinkedFederationComputationSystem(GameTestHelper helper, Tier tier, String controllerId) {
+        var controller = placeFederationComputationSystem(helper, tier, "computation_casing", controllerId);
         helper.setBlock(INTERFACE, communicationInterface());
         helper.setBlock(CABLE, space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get());
         return controller;
     }
 
     /** The Federation communication interface, by its ID: the compatibility tests see no Neo ECO class. */
-    private static net.minecraft.world.level.block.Block communicationInterface() {
+    static net.minecraft.world.level.block.Block communicationInterface() {
         return BuiltInRegistries.BLOCK.get(ResourceLocation.fromNamespaceAndPath("ae2federation",
                 "eco_computation_interface"));
     }
 
     /** The side face of {@link #placeFederationComputationSystem}'s structure: front column, then back, bottom up. */
-    private static List<BlockPos> sideFace(BlockPos controller) {
+    static List<BlockPos> sideFace(BlockPos controller) {
         var front = controller.west();
         var back = front.south();
         return List.of(front.below(), front, front.above(), back.below(), back, back.above());
@@ -688,7 +707,12 @@ public final class NeoEcoComputingCompatGameTests {
      */
     private static BlockPos placeFederationComputationSystem(GameTestHelper helper, String interfaceCell,
             String controllerId) {
-        var tier = Tier.L4;
+        return placeFederationComputationSystem(helper, Tier.L4, interfaceCell, controllerId);
+    }
+
+    /** {@link #placeFederationComputationSystem} from {@code tier}'s parts, by their Neo ECO L4 names. */
+    static BlockPos placeFederationComputationSystem(GameTestHelper helper, Tier tier, String interfaceCell,
+            String controllerId) {
         var start = NeoEcoCompatGameTests.COMPUTATION.offset(0, -1, -1);
         for (int y = 0; y < 3; y++) {
             helper.setBlock(start.offset(0, y, 0), block(tier, "computation_casing"));
@@ -716,7 +740,7 @@ public final class NeoEcoComputingCompatGameTests {
         return controller;
     }
 
-    private static boolean formed(BlockState state) {
+    static boolean formed(BlockState state) {
         for (var property : state.getProperties()) {
             if (property.getName().equals("formed")) return Boolean.TRUE.equals(state.getValue(property));
         }

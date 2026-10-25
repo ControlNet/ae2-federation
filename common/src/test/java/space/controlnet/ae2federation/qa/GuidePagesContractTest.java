@@ -40,7 +40,7 @@ final class GuidePagesContractTest {
     /** Our items that exist only beside another mod, by that mod; only a pack that requires the mod may name them. */
     private static final Map<String, Set<String>> FEDERATION_MOD_ITEMS = Map.of("neoecoae",
             Set.of("eco_computation_system_l4", "eco_computation_system_l6", "eco_computation_system_l9",
-                    "eco_computation_interface"));
+                    "eco_computation_interface"), "neoecoprototype", Set.of("eco_computation_system_l1"));
     /** Recipes a page shows by id with {@code <Recipe>} whose id is not an item's: the second recipe for an item. */
     private static final Set<String> FEDERATION_RECIPES = Set.of("nexus_processor_press_from_iron");
     /** The AE2 19.2.17 guide pages and items the pages name; the client check opens them for real. */
@@ -74,7 +74,9 @@ final class GuidePagesContractTest {
             Map.entry("molecularmanipulator", Set.of("matter_fabrication_controller",
                     "matter_fabrication_pattern_assembly")),
             Map.entry("neoecoprototype", Set.of("simplify_storage_controller", "simplify_drive",
-                    "simplify_singularity_cell", "superconductive_interface")),
+                    "simplify_singularity_cell", "superconductive_interface", "simplify_computation_system",
+                    "simplify_computation_parallel_core", "simplify_computation_threading_core",
+                    "simplify_computation_cell_1m")),
             Map.entry("useless_mod", Set.of("advanced_alloy_furnace_block")));
     /** Other mods' guide pages the optional examples link to, by mod; only a pack that requires the mod may. */
     private static final Map<String, Set<String>> MOD_PAGES = Map.ofEntries(
@@ -88,7 +90,8 @@ final class GuidePagesContractTest {
             Map.entry("neoecoae", Set.of("neoecoae_intro/storage_system.md", "neoecoae_intro/crafting_system.md",
                     "neoecoae_intro/computation_system.md")),
             Map.entry("neoecoprototype", Set.of("neoecoprototype_intro/storage_system.md",
-                    "neoecoprototype_intro/singularity_cell.md", "neoecoprototype_intro/superconductive_interface.md")),
+                    "neoecoprototype_intro/singularity_cell.md", "neoecoprototype_intro/superconductive_interface.md",
+                    "neoecoprototype_intro/computation_system.md")),
             Map.entry("molecularmanipulator", Set.of("items-blocks-machines/matter_fabrication_well.md",
                     "items-blocks-machines/matter_fabrication_research.md",
                     "items-blocks-machines/matter_fabrication_pattern_assembly.md")));

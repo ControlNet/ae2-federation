@@ -37,6 +37,7 @@ final class CompatTestClasses {
         groups.put("neoecoae", NeoEcoCompatGameTests.class);
         groups.put("neoecoae-computing", NeoEcoComputingCompatGameTests.class);
         groups.put("neoecoprototype", NeoEcoPrototypeCompatGameTests.class);
+        groups.put("neoecoprototype-computing", NeoEcoPrototypeComputingCompatGameTests.class);
         groups.put("useless-mod", UselessModCompatGameTests.class);
         return groups;
     }

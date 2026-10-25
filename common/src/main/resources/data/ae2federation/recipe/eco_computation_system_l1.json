@@ -1,0 +1,33 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "ae2federation:eco_computation_system_l1"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "neoecoprototype:simplify_computation_casing"
+    },
+    "B": {
+      "item": "neoecoprototype:simplify_computation_threading_core"
+    },
+    "C": {
+      "item": "neoecoprototype:simplify_computation_parallel_core"
+    },
+    "D": {
+      "item": "ae2federation:nexus_processor"
+    }
+  },
+  "pattern": [
+    "ABA",
+    "CDC",
+    "ABA"
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2federation:eco_computation_system_l1"
+  }
+}

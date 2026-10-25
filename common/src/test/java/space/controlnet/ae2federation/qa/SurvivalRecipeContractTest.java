@@ -49,7 +49,7 @@ final class SurvivalRecipeContractTest {
         expected.put("beam_converter", "ae2federation:beam_converter x1");
         expected.put("beam_former", "ae2federation:beam_former x1");
         expected.put("quantum_cube", "ae2federation:quantum_cube x8");
-        for (var tier : List.of("l4", "l6", "l9")) {
+        for (var tier : List.of("l1", "l4", "l6", "l9")) {
             expected.put("eco_computation_system_" + tier, "ae2federation:eco_computation_system_" + tier + " x1");
         }
         expected.put("eco_computation_interface", "ae2federation:eco_computation_interface x1");
@@ -220,6 +220,21 @@ final class SurvivalRecipeContractTest {
         assertTrue(recipe.contains("\"key\":{\"A\":{\"item\":\"neoecoae:computation_casing\"},"
                 + "\"B\":{\"item\":\"ae2federation:nexus_processor\"},\"C\":{\"item\":\"ae2:singularity\"},"
                 + "\"D\":{\"item\":\"ae2federation:router\"}}"), recipe);
+    }
+
+    // ECO - N1 is crafted as Neo ECO Prototype's C1 controller, with a Nexus Processor in place of its Calculation
+    // Processor (user, 2026-10-23); it loads only while N1 exists, beside Neo ECO Prototype 1.4.0 or later.
+    @Test
+    void n1IsNeoEcoPrototypesC1RecipeWithANexusProcessor() throws IOException {
+        var recipe = recipes().get("eco_computation_system_l1");
+        assertTrue(recipe.contains("\"neoforge:conditions\":[{\"type\":\"neoforge:item_exists\","
+                + "\"item\":\"ae2federation:eco_computation_system_l1\"}]"), recipe);
+        assertTrue(recipe.contains("\"type\":\"minecraft:crafting_shaped\""), recipe);
+        assertTrue(recipe.contains("\"pattern\":[\"ABA\",\"CDC\",\"ABA\"]"), recipe);
+        assertTrue(recipe.contains("\"key\":{\"A\":{\"item\":\"neoecoprototype:simplify_computation_casing\"},"
+                + "\"B\":{\"item\":\"neoecoprototype:simplify_computation_threading_core\"},"
+                + "\"C\":{\"item\":\"neoecoprototype:simplify_computation_parallel_core\"},\"D\":" + PROCESSOR + "}"),
+                recipe);
     }
 
     @Test

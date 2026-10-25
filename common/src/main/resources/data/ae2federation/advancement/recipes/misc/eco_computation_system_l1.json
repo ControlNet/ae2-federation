@@ -1,0 +1,38 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "ae2federation:eco_computation_system_l1"
+    }
+  ],
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_computation_casing": {
+      "conditions": {
+        "items": [
+          {
+            "items": "neoecoprototype:simplify_computation_casing"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "ae2federation:eco_computation_system_l1"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_computation_casing",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "ae2federation:eco_computation_system_l1"
+    ]
+  }
+}
