@@ -9,6 +9,8 @@ import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.me.service.EnergyService;
+import it.unimi.dsi.fastutil.objects.Object2LongMaps;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -34,11 +36,12 @@ import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
  * ({@link SecondClock}).
  *
  * <p>What it costs. Storage operations, pattern pushes and crafting returns each add their amount to a
- * {@link PairMeter} (one hash map add); the meters are drained once a second. Each second it reads the gauges of
- * every loaded member network (field reads, a small CPU set, and each energy pool walked once). A network's own
- * storage is enumerated once every {@link #STORAGE_PERIOD_SECONDS} seconds, networks spread over those seconds, from
- * its native sources only: never {@code getCachedInventory}, which re-enumerates the mounted storage of other
- * networks too when no terminal is open. That reading also keeps the amounts of the keys each network holds most of,
+ * {@link PairMeter} (one hash map add). Each second it drains the meters and reads the gauges of every loaded member
+ * network (field reads, a small CPU set, and each energy pool walked once), spread over the next {@link #PASS_TICKS}
+ * ticks so that a thousand networks do not all land in one tick. A network's own storage is enumerated once every
+ * {@link #STORAGE_PERIOD_SECONDS} seconds, networks spread over those seconds, from its native sources only: never
+ * {@code getCachedInventory}, which re-enumerates the mounted storage of other networks too when no terminal is
+ * open. That reading also keeps the amounts of the keys each network holds most of,
  * and of the keys players pinned ({@link #TRACKED_TOP}, {@link #TRACKED_CAP}). Every tick it looks at the busy
  * crafting CPUs of the member networks that have any, to count the jobs they start: a network gets polled the tick
  * after AE2 reports a change to its CPUs, and the member networks' CPUs are looked at again every second.
@@ -49,6 +52,8 @@ public final class FederationStatistics {
     /** A storage reading older than this is not recorded again: the network's storage could not be read since. */
     private static final int STORAGE_STALE_SECONDS = 3 * STORAGE_PERIOD_SECONDS;
     private static final int PRUNE_PERIOD_SECONDS = 60;
+    /** Ticks over which a finished second is written, so no single tick writes every meter and network. */
+    public static final int PASS_TICKS = 10;
     /** The keys of each resource type a network holds most of, whose amounts are kept. */
     public static final int TRACKED_TOP = 16;
     /**
@@ -64,16 +69,98 @@ public final class FederationStatistics {
     /** What moved along one route since the last second, by key; added to on the storage hot path. */
     public static final class PairMeter {
         private final Route route;
-        private final Map<AEKey, long[]> moved = new HashMap<>();
+        /** The route's ranking name, and its counter name by resource type, made once. */
+        private final String ranking;
+        private final Map<AEKeyType, String> movedNames = new HashMap<>();
+        private Object2LongOpenHashMap<AEKey> moved = new Object2LongOpenHashMap<>();
+        /** What moved in the last finished second while it is written into the book, else empty. */
+        private Object2LongOpenHashMap<AEKey> finished = new Object2LongOpenHashMap<>();
 
         private PairMeter(Route route) {
             this.route = route;
+            this.ranking = StatisticsNames.pair(StatisticsNames.MOVED, route.from(), route.to());
         }
 
         /** Records {@code amount} of {@code key} actually accepted on this route; anything not positive is ignored. */
         public void add(AEKey key, long amount) {
             if (amount <= 0) return;
-            moved.computeIfAbsent(key, ignored -> new long[1])[0] += amount;
+            moved.addTo(key, amount);
+        }
+
+        /** Sets what moved so far aside as the finished second's and starts the next; false when nothing moved. */
+        private boolean finish() {
+            if (moved.isEmpty()) return false;
+            var next = finished;
+            finished = moved;
+            moved = next;
+            return true;
+        }
+
+        private String movedName(AEKeyType type) {
+            return movedNames.computeIfAbsent(type,
+                    ignored -> StatisticsNames.moved(route.from(), route.to(), type.getId().toString()));
+        }
+    }
+
+    /** A member network's series names, made once instead of every second. */
+    private static final class NetworkNames {
+        private final NetworkId network;
+        private final String power;
+        private final String pool;
+        private final String usage;
+        private final String cpus;
+        private final String busyCpus;
+        private final String channels;
+        private final String stock;
+        private final Map<String, String> stored = new HashMap<>();
+
+        private NetworkNames(NetworkId network) {
+            this.network = network;
+            power = StatisticsNames.network(StatisticsNames.POWER, network);
+            pool = StatisticsNames.network(StatisticsNames.POOL, network);
+            usage = StatisticsNames.network(StatisticsNames.USAGE, network);
+            cpus = StatisticsNames.network(StatisticsNames.CPUS, network);
+            busyCpus = StatisticsNames.network(StatisticsNames.BUSY_CPUS, network);
+            channels = StatisticsNames.network(StatisticsNames.CHANNELS, network);
+            stock = StatisticsNames.network(StatisticsNames.STOCK, network);
+        }
+
+        private String stored(String keyType) {
+            return stored.computeIfAbsent(keyType, ignored -> StatisticsNames.stored(network, keyType));
+        }
+    }
+
+    /**
+     * A finished second being written into the book over the next {@link #PASS_TICKS} ticks: the meters that moved
+     * anything in it, then the member networks loaded as it ended.
+     */
+    private static final class Pass {
+        private final long second;
+        private final Set<NetworkId> members;
+        private final List<PairMeter> meters;
+        private final List<Map.Entry<NetworkId, IGrid>> networks;
+        /** What each CPU with a job was seen doing as the pass began: only these can be found gone at its end. */
+        private final Map<ICraftingCPU, JobSeen> jobsBefore;
+        private final int perTick;
+        /** Each energy pool read so far, by member service, so a pool shared by many networks is read once. */
+        private final Map<EnergyService, EnergyPoolReading> pools = new IdentityHashMap<>();
+        /** The crafting CPUs of the networks sampled so far. */
+        private final Set<ICraftingCPU> cpus = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+        private int nextMeter;
+        private int nextNetwork;
+
+        private Pass(long second, Set<NetworkId> members, List<PairMeter> meters,
+                List<Map.Entry<NetworkId, IGrid>> networks, Map<ICraftingCPU, JobSeen> jobsBefore) {
+            this.second = second;
+            this.members = members;
+            this.meters = meters;
+            this.networks = networks;
+            this.jobsBefore = jobsBefore;
+            perTick = Math.max(1, Math.ceilDiv(meters.size() + networks.size(), PASS_TICKS));
+        }
+
+        private boolean done() {
+            return nextMeter == meters.size() && nextNetwork == networks.size();
         }
     }
 
@@ -100,6 +187,7 @@ public final class FederationStatistics {
     private final Map<Route, PairMeter> meters = new HashMap<>();
     private final Map<String, long[]> counts = new HashMap<>();
     private final Map<NetworkId, StoredReading> stored = new HashMap<>();
+    private final Map<NetworkId, NetworkNames> names = new HashMap<>();
     /** The loaded member networks' Grids as of the last finished second. */
     private Map<NetworkId, IGrid> grids = Map.of();
     /** The member networks each Grid of {@link #grids} is. */
@@ -110,12 +198,15 @@ public final class FederationStatistics {
      */
     private final Map<NetworkId, IGrid> crafting = new HashMap<>();
     private final Map<ICraftingCPU, JobSeen> jobs = new IdentityHashMap<>();
+    /** Grids whose CPUs changed while they were no known member network's, looked up again as the next pass begins. */
+    private final Set<IGrid> cpusChangedUnknown = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
     /** Our own index of native sources: reading storage must not change the one storage mounts rely on. */
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
     private final SecondClock clock = new SecondClock();
     /** Each Federation domain's converter bodies as of the last second, by domain id, for the page's list. */
     private Map<String, List<space.controlnet.ae2federation.power.OperatingPowerService.ConverterBody>> converters = Map.of();
     private long finishedSecond = Long.MIN_VALUE;
+    private @org.jetbrains.annotations.Nullable Pass pass;
 
     /**
      * @param level   the overworld; the registries it reaches are the server's
@@ -177,16 +268,20 @@ public final class FederationStatistics {
     }
 
     /**
-     * Called as each server tick ends: counts the crafting jobs started this tick, and finishes the previous second
-     * once the wall clock has passed it.
+     * Called as each server tick ends: counts the crafting jobs started this tick, starts writing the previous second
+     * once the wall clock has passed it, and writes the next slice of the second being written.
      */
     public void tick() {
         followCpuChanges();
         pollJobs();
         var step = clock.ended(millis.getAsLong());
-        if (step == null) return;
-        finishSecond(step.finish());
-        for (long second = step.observeFrom(); second <= step.observeTo(); second++) book.observe(second);
+        if (step != null) {
+            completePass();
+            beginPass(step.finish());
+            for (long second = step.observeFrom(); second <= step.observeTo(); second++) book.observe(second);
+        }
+        var pass = this.pass;
+        if (pass != null && advance(pass, pass.perTick)) completePass();
     }
 
     /**
@@ -198,6 +293,7 @@ public final class FederationStatistics {
         for (var grid : CPUS_CHANGED) {
             var network = networks.get(grid);
             if (network != null) crafting.put(network, grid);
+            else cpusChangedUnknown.add(grid);
         }
         CPUS_CHANGED.clear();
     }
@@ -250,37 +346,113 @@ public final class FederationStatistics {
     }
 
     /**
-     * Writes {@code second} into the book: marks it observed, drains the meters into it and samples every loaded
-     * member network. {@link #tick()} calls it once per wall-clock second; tests call it with a second of their own.
+     * Writes {@code second} into the book at once, after the rest of any second still being written: marks it
+     * observed, drains the meters into it and samples every loaded member network. Tests call it with a second of
+     * their own; {@link #tick()} writes each wall-clock second over {@link #PASS_TICKS} ticks instead.
      */
     public void finishSecond(long second) {
-        finishedSecond = Math.max(finishedSecond, second);
+        completePass();
+        beginPass(second);
+        completePass();
+    }
+
+    /**
+     * Starts writing {@code second}: marks it observed, sets the meters' amounts aside, records the counters and the
+     * Federation power, and looks up the loaded member networks. Their gauges and the meters are written by
+     * {@link #advance}, so a gauge is read up to {@link #PASS_TICKS} ticks after its second ended.
+     */
+    private void beginPass(long second) {
         book.observe(second);
-        drain(second);
-        sample(second);
+        var finished = new ArrayList<PairMeter>();
+        for (var meter : meters.values()) {
+            if (meter.finish()) finished.add(meter);
+        }
+        counts.forEach((name, amount) -> book.count(name, second, amount[0]));
+        counts.clear();
+        sampleFederationPower(second);
+        var members = members();
+        var grids = new HashMap<NetworkId, IGrid>();
+        if (!members.isEmpty()) {
+            for (var grid : NetworkIdentityRegistry.get(level).liveGrids()) {
+                FederationDomainRegistryAccess.confirmedNetworkId(grid).filter(members::contains)
+                        .ifPresent(network -> grids.put(network, grid));
+            }
+        }
+        this.grids = grids;
+        var networks = new IdentityHashMap<IGrid, NetworkId>();
+        grids.forEach((network, grid) -> networks.put(grid, network));
+        this.networks = networks;
+        // A network that is no loaded member any more is no longer polled; the others are looked at in their turn.
+        // A polled network whose Grid was replaced is polled on its new Grid at once, as is a Grid whose CPUs changed
+        // before its network was known.
+        crafting.replaceAll((network, grid) -> grids.get(network));
+        crafting.values().removeIf(java.util.Objects::isNull);
+        for (var grid : cpusChangedUnknown) {
+            var network = networks.get(grid);
+            if (network != null) crafting.put(network, grid);
+        }
+        cpusChangedUnknown.clear();
+        pass = new Pass(second, members, finished, new ArrayList<>(grids.entrySet()), new IdentityHashMap<>(jobs));
+    }
+
+    /** Writes up to {@code count} more of the pass's meters and networks; true once all of them are written. */
+    private boolean advance(Pass pass, int count) {
+        for (; count > 0 && pass.nextMeter < pass.meters.size(); count--) {
+            drain(pass.second, pass.meters.get(pass.nextMeter++));
+        }
+        for (; count > 0 && pass.nextNetwork < pass.networks.size(); count--) {
+            var entry = pass.networks.get(pass.nextNetwork++);
+            sample(pass, entry.getKey(), entry.getValue());
+        }
+        return pass.done();
+    }
+
+    /** Writes the rest of the second being written, if any, and marks it finished. */
+    private void completePass() {
+        var pass = this.pass;
+        if (pass == null) return;
+        advance(pass, Integer.MAX_VALUE);
+        this.pass = null;
+        // A CPU that had a job as the pass began, that its network did not list and that no poll saw since is gone.
+        // AE2 lists only active CPUs, so one inactive as its network was sampled and polled again later stays, and so
+        // does one that started a job meanwhile, perhaps built after its network was sampled.
+        pass.jobsBefore.forEach((cpu, seen) -> {
+            if (!pass.cpus.contains(cpu) && jobs.get(cpu) == seen) jobs.remove(cpu);
+        });
+        long second = pass.second;
+        finishedSecond = Math.max(finishedSecond, second);
         if (Math.floorMod(second, PRUNE_PERIOD_SECONDS) == 0) {
             book.prune(second);
-            var members = members();
-            stored.keySet().retainAll(members);
+            stored.keySet().retainAll(pass.members);
+            names.keySet().retainAll(pass.members);
         }
         changed.accept(second);
     }
 
-    private void drain(long second) {
-        for (var meter : meters.values()) {
-            if (meter.moved.isEmpty()) continue;
-            var byType = new HashMap<AEKeyType, double[]>();
-            var ranking = StatisticsNames.pair(StatisticsNames.MOVED, meter.route.from(), meter.route.to());
-            meter.moved.forEach((key, amount) -> {
-                byType.computeIfAbsent(key.getType(), ignored -> new double[1])[0] += amount[0];
-                book.moved(ranking, second, key, amount[0]);
-            });
-            byType.forEach((type, amount) -> book.count(
-                    StatisticsNames.moved(meter.route.from(), meter.route.to(), type.getId().toString()), second, amount[0]));
-            meter.moved.clear();
+    private void drain(long second, PairMeter meter) {
+        var moved = meter.finished;
+        book.movedAll(meter.ranking, second, moved);
+        AEKeyType onlyType = null;
+        double onlyAmount = 0;
+        Map<AEKeyType, double[]> byType = null;
+        for (var entry : Object2LongMaps.fastIterable(moved)) {
+            var type = entry.getKey().getType();
+            double amount = entry.getLongValue();
+            // Most routes move one resource type, whose total needs no map.
+            if (onlyType == null || onlyType == type && byType == null) {
+                onlyType = type;
+                onlyAmount += amount;
+                continue;
+            }
+            if (byType == null) {
+                byType = new HashMap<>();
+                byType.put(onlyType, new double[] {onlyAmount});
+            }
+            byType.computeIfAbsent(type, ignored -> new double[1])[0] += amount;
         }
-        counts.forEach((name, amount) -> book.count(name, second, amount[0]));
-        counts.clear();
+        if (byType != null) byType.forEach((type, amount) -> book.count(meter.movedName(type), second, amount[0]));
+        else if (onlyType != null) book.count(meter.movedName(onlyType), second, onlyAmount);
+        moved.clear();
     }
 
     private java.util.Set<NetworkId> members() {
@@ -321,52 +493,33 @@ public final class FederationStatistics {
         converters = Map.copyOf(bodies);
     }
 
-    private void sample(long second) {
-        sampleFederationPower(second);
-        var members = members();
-        var grids = new HashMap<NetworkId, IGrid>();
-        if (!members.isEmpty()) {
-            for (var grid : NetworkIdentityRegistry.get(level).liveClaims().keySet()) {
-                FederationDomainRegistryAccess.confirmedNetworkId(grid).filter(members::contains)
-                        .ifPresent(network -> grids.put(network, grid));
-            }
+    /** Samples one member network's gauges into the pass's second, and polls its CPUs from now on if it has any. */
+    private void sample(Pass pass, NetworkId network, IGrid grid) {
+        // A Grid that came apart since the pass began has nothing to read; its network's next Grid is in the next pass.
+        if (grid.isEmpty()) return;
+        long second = pass.second;
+        var names = this.names.computeIfAbsent(network, NetworkNames::new);
+        var energy = grid.getEnergyService();
+        double max = energy.getMaxStoredPower();
+        if (max > 0) book.gauge(names.power, second, 100 * energy.getStoredPower() / max);
+        var pool = energy instanceof EnergyService service ? pass.pools.get(service) : null;
+        if (pool == null) {
+            pool = EnergyPoolReading.measure(energy);
+            if (pool != null) for (var member : pool.services()) pass.pools.put(member, pool);
         }
-        this.grids = grids;
-        var networks = new IdentityHashMap<IGrid, NetworkId>();
-        var allCpus = new HashSet<ICraftingCPU>();
-        crafting.clear();
-        grids.forEach((network, grid) -> {
-            networks.put(grid, network);
-            var own = grid.getCraftingService().getCpus();
-            if (!own.isEmpty()) crafting.put(network, grid);
-            allCpus.addAll(own);
-        });
-        this.networks = networks;
-        jobs.keySet().retainAll(allCpus);
-        var pools = new IdentityHashMap<EnergyService, EnergyPoolReading>();
-        grids.forEach((network, grid) -> {
-            var energy = grid.getEnergyService();
-            double max = energy.getMaxStoredPower();
-            if (max > 0) book.gauge(StatisticsNames.network(StatisticsNames.POWER, network), second,
-                    100 * energy.getStoredPower() / max);
-            var pool = energy instanceof EnergyService service ? pools.get(service) : null;
-            if (pool == null) {
-                pool = EnergyPoolReading.measure(energy);
-                if (pool != null) for (var member : pool.services()) pools.put(member, pool);
-            }
-            if (pool != null && pool.grids() > 1 && pool.max() > 0) {
-                book.gauge(StatisticsNames.network(StatisticsNames.POOL, network), second, 100 * pool.stored() / pool.max());
-            }
-            book.gauge(StatisticsNames.network(StatisticsNames.USAGE, network), second,
-                    pool != null && pool.grids() > 1 ? pooledUsage(energy, pool) : energy.getAvgPowerUsage());
-            var cpus = grid.getCraftingService().getCpus();
-            book.gauge(StatisticsNames.network(StatisticsNames.CPUS, network), second, cpus.size());
-            book.gauge(StatisticsNames.network(StatisticsNames.BUSY_CPUS, network), second,
-                    cpus.stream().filter(cpu -> cpu.isBusy()).count());
-            book.gauge(StatisticsNames.network(StatisticsNames.CHANNELS, network), second,
-                    grid.getPathingService().getUsedChannels());
-            sampleStorage(second, network, grid);
-        });
+        if (pool != null && pool.grids() > 1 && pool.max() > 0) {
+            book.gauge(names.pool, second, 100 * pool.stored() / pool.max());
+        }
+        book.gauge(names.usage, second,
+                pool != null && pool.grids() > 1 ? pooledUsage(energy, pool) : energy.getAvgPowerUsage());
+        var cpus = grid.getCraftingService().getCpus();
+        if (cpus.isEmpty()) crafting.remove(network);
+        else crafting.put(network, grid);
+        pass.cpus.addAll(cpus);
+        book.gauge(names.cpus, second, cpus.size());
+        book.gauge(names.busyCpus, second, cpus.stream().filter(cpu -> cpu.isBusy()).count());
+        book.gauge(names.channels, second, grid.getPathingService().getUsedChannels());
+        sampleStorage(second, network, names, grid);
     }
 
     /**
@@ -378,21 +531,20 @@ public final class FederationStatistics {
         return pool.idle() > 0 ? pool.drain() * energy.getIdlePowerUsage() / pool.idle() : pool.drain() / pool.grids();
     }
 
-    private void sampleStorage(long second, NetworkId network, IGrid grid) {
+    private void sampleStorage(long second, NetworkId network, NetworkNames names, IGrid grid) {
         var reading = stored.get(network);
         boolean due = reading == null
                 || Math.floorMod(second + network.value().hashCode(), STORAGE_PERIOD_SECONDS) == 0;
         if (due) {
             var counter = nativeStock(grid);
             if (counter != null) {
-                reading = read(StatisticsNames.network(StatisticsNames.STOCK, network), second, counter, reading);
+                reading = read(names.stock, second, counter, reading);
                 stored.put(network, reading);
             }
         }
         if (reading == null || second - reading.second() > STORAGE_STALE_SECONDS) return;
-        reading.amounts().forEach((type, amount) -> book.gauge(StatisticsNames.stored(network, type), second, amount));
-        var name = StatisticsNames.network(StatisticsNames.STOCK, network);
-        reading.tracked().forEach((key, amount) -> book.keyGauge(name, key, second, amount));
+        reading.amounts().forEach((type, amount) -> book.gauge(names.stored(type), second, amount));
+        reading.tracked().forEach((key, amount) -> book.keyGauge(names.stock, key, second, amount));
     }
 
     private record Held(AEKey key, long amount) {

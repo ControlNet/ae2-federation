@@ -18,6 +18,7 @@ import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
+import space.controlnet.ae2federation.observability.statistics.FederationStatistics;
 import space.controlnet.ae2federation.observability.statistics.StatisticsBook;
 import space.controlnet.ae2federation.observability.statistics.StatisticsNames;
 import space.controlnet.ae2federation.observability.statistics.StatisticsRange;
@@ -181,6 +182,56 @@ public final class StatisticsGameTests {
                     "jobsCounted", "1", "jobFinished", "true"));
             fixture.close();
         });
+    }
+
+    /**
+     * A finished second is written over the ticks after it, so no tick writes every route and network at once: the
+     * second reads as finished only once all of it is written, and what moves meanwhile counts for the next second.
+     * The statistics run on a clock of the test's own.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true)
+    public static void statisticsWriteASecondOverTheNextTicks(GameTestHelper helper) {
+        var millis = new long[] {1_000_000_000_000L};
+        var statistics = new FederationStatistics(helper.getLevel(), () -> millis[0], new StatisticsBook<>(),
+                second -> { });
+        var iron = AEItemKey.of(Items.IRON_INGOT);
+        var from = new NetworkId(java.util.UUID.randomUUID());
+        var routes = new java.util.ArrayList<NetworkId>();
+        for (int route = 0; route < 3 * FederationStatistics.PASS_TICKS; route++) {
+            routes.add(new NetworkId(java.util.UUID.randomUUID()));
+        }
+        Runnable tick = () -> {
+            statistics.tickStarted();
+            statistics.tick();
+        };
+        // A whole second first: until one is finished, the statistics count the second before now as finished.
+        tick.run();
+        millis[0] += 1000;
+        for (int more = 0; more <= FederationStatistics.PASS_TICKS; more++) tick.run();
+        long first = statistics.nowSecond();
+        routes.forEach(to -> statistics.meter(from, to).add(iron, 3));
+        millis[0] += 1000;
+        tick.run();
+        helper.assertTrue(statistics.finishedSecond() < first, "The tick after a second writes only a slice of it");
+        routes.forEach(to -> statistics.meter(from, to).add(iron, 7));
+        int ticks = 1;
+        while (statistics.finishedSecond() < first && ticks < 100) {
+            tick.run();
+            ticks++;
+        }
+        helper.assertTrue(ticks <= FederationStatistics.PASS_TICKS,
+                "The second is written within " + FederationStatistics.PASS_TICKS + " ticks, not " + ticks);
+        var book = statistics.book();
+        helper.assertTrue(routes.stream().allMatch(to -> book.total(StatisticsNames.moved(from, to, ITEMS),
+                StatisticsRange.SECONDS, first) == 3d), "Each route moved three in the finished second");
+        millis[0] += 1000;
+        for (int more = 0; more <= FederationStatistics.PASS_TICKS; more++) tick.run();
+        helper.assertTrue(routes.stream().allMatch(to -> book.total(StatisticsNames.moved(from, to, ITEMS),
+                StatisticsRange.SECONDS, first + 1) == 10d), "What moved while it was written counts for the next one");
+        PolicyEvidence.write("statisticswriteasecondoverthenextticks", 4, Map.of("routes",
+                String.valueOf(routes.size()), "ticks", String.valueOf(ticks)));
+        helper.succeed();
     }
 
     /** The last day of statistics survives a save: timelines, the observed seconds and the "most moved" keys. */

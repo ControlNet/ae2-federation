@@ -1,5 +1,7 @@
 package space.controlnet.ae2federation.observability.statistics;
 
+import it.unimi.dsi.fastutil.objects.Object2LongMap;
+import it.unimi.dsi.fastutil.objects.Object2LongMaps;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,20 +36,45 @@ public final class TopKeys<K> {
 
     public void add(long second, K key, double amount) {
         if (!(amount > 0)) return;
+        for (var range : RANGES) add(point(range, second), key, amount);
+    }
+
+    /**
+     * Adds every key's amount in {@code amounts}, as {@link #add} does for each key in the map's order; each point
+     * is looked up once for the whole map.
+     */
+    public void addAll(long second, Object2LongMap<K> amounts) {
         for (var range : RANGES) {
-            int tier = range.ordinal();
-            long bucket = Math.floorDiv(second, range.seconds());
-            int slot = (int) Math.floorMod(bucket, (long) range.buckets());
-            var slots = points.get(tier);
-            var point = slots.get(slot);
-            if (point == null || buckets[tier][slot] != bucket) {
-                point = new HashMap<>();
-                slots.set(slot, point);
-                buckets[tier][slot] = bucket;
+            Map<K, double[]> point = null;
+            for (var entry : Object2LongMaps.fastIterable(amounts)) {
+                double amount = entry.getLongValue();
+                if (!(amount > 0)) continue;
+                if (point == null) point = point(range, second);
+                add(point, entry.getKey(), amount);
             }
-            point.computeIfAbsent(key, ignored -> new double[1])[0] += amount;
-            if (point.size() >= cap * 2) trim(point);
         }
+    }
+
+    private void add(Map<K, double[]> point, K key, double amount) {
+        point.computeIfAbsent(key, ignored -> new double[1])[0] += amount;
+        if (point.size() >= cap * 2) trim(point);
+    }
+
+    /** The range's point that holds {@code second}; a slot moving on to a new point reuses the old point's map. */
+    private Map<K, double[]> point(StatisticsRange range, long second) {
+        int tier = range.ordinal();
+        long bucket = Math.floorDiv(second, range.seconds());
+        int slot = (int) Math.floorMod(bucket, (long) range.buckets());
+        var slots = points.get(tier);
+        var point = slots.get(slot);
+        if (point == null) {
+            point = new HashMap<>();
+            slots.set(slot, point);
+        } else if (buckets[tier][slot] != bucket) {
+            point.clear();
+        }
+        buckets[tier][slot] = bucket;
+        return point;
     }
 
     private void trim(Map<K, double[]> point) {
