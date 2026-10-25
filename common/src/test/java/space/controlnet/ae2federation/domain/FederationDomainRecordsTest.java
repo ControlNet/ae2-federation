@@ -187,7 +187,7 @@ final class FederationDomainRecordsTest {
     }
 
     private static FederationDomainRegistry registry(FederationDomainRecords records) {
-        return new FederationDomainRegistry(FederationDomainRecomputeBudget.standard(), records);
+        return new FederationDomainRegistry(records);
     }
 
     /**

@@ -30,15 +30,15 @@ final class FederationDomainRegistryContractTest {
     }
 
     @Test
-    void productionRegistryIsIncrementalBudgetedAndFailClosed() throws IOException {
+    void productionRegistryIsIncrementalUnlimitedAndFailClosed() throws IOException {
         var registry = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/domain/FederationDomainRegistry.java"));
         var access = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/domain/FederationDomainRegistryAccess.java"));
-        assertTrue(registry.contains("FederationDomainRecomputeBudget"));
+        assertFalse(registry.contains("FederationDomainRecomputeBudget"), "a domain has no size limit");
         assertTrue(registry.contains("incomingFederation"));
         assertTrue(registry.contains("NON_RECIPROCAL_EDGE"));
-        assertTrue(registry.contains("BUDGET_EXHAUSTED"));
+        assertFalse(registry.contains("BUDGET_EXHAUSTED"));
         assertTrue(registry.contains("networkIndex"));
         assertTrue(registry.contains("isCurrent(FederationDomainReference"));
         assertTrue(access.contains("IdentityStatus.SETTLED"));

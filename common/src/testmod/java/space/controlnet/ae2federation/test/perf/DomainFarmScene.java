@@ -68,10 +68,7 @@ public final class DomainFarmScene implements BusScene {
     private static final int TOP_Y = 2 * LAYERS + 1;
     /** Relative height of the Switches, on the risers. */
     private static final int SWITCH_Y = TOP_Y + 1;
-    /**
-     * Relative height of the Routers' middle, two above the Switches: the plain cables run one block over them. Every
-     * Federation block of the domain counts against the registry's recompute budget of 4096 nodes.
-     */
+    /** Relative height of the Routers' middle when not lifted: two above the Switches, the plain cables one over them. */
     private static final int ROUTER_Y = SWITCH_Y + 2;
 
     private final GameTestHelper helper;
@@ -82,6 +79,8 @@ public final class DomainFarmScene implements BusScene {
     private final int blockDepth;
     private final int routers;
     private final int routerZ;
+    /** Relative height of the Routers' middle. */
+    private final int routerY;
     private final List<Runnable> placements = new ArrayList<>();
     private final List<BlockPos> placed = new ArrayList<>();
     /** Each network's riser top, in network order; the first is the main network's. */
@@ -107,8 +106,18 @@ public final class DomainFarmScene implements BusScene {
      * @param types     distinct item types the main network stores
      */
     public DomainFarmScene(GameTestHelper helper, int subnets, int busesEach, int types) {
+        this(helper, subnets, busesEach, types, 0);
+    }
+
+    /**
+     * @param lift blocks the Routers are raised by: each subdomain's plain cable runs that much longer down to its
+     *             Switch, which makes the domain larger with the same networks and buses
+     */
+    public DomainFarmScene(GameTestHelper helper, int subnets, int busesEach, int types, int lift) {
         if (busesEach % 2 != 0) throw new IllegalArgumentException("Buses come in pairs");
+        if (lift < 0) throw new IllegalArgumentException("The Routers cannot sit lower");
         this.helper = helper;
+        routerY = ROUTER_Y + lift;
         this.subnets = subnets;
         bulk = new BulkItemStorage(types, 1_000_000L);
         var pairs = busesEach / 2;
@@ -280,7 +289,7 @@ public final class DomainFarmScene implements BusScene {
         return routers;
     }
 
-    /** The domain's Router, Switch and Federation Cable blocks, which its recompute budget counts. */
+    /** The domain's Router, Switch and Federation Cable blocks: its nodes. */
     public int federationBlocks() {
         return federationBlocks;
     }
@@ -357,12 +366,12 @@ public final class DomainFarmScene implements BusScene {
             block(riser.above(), RouterRegistration.SWITCH.get().defaultBlockState());
         }
         // Over the farm from the Router's face, then down onto the subdomain's first Switch.
-        var face = origin.offset(x, ROUTER_Y, routerZ + step);
+        var face = origin.offset(x, routerY, routerZ + step);
         subdomainCables.add(face.offset(0, 0, step));
         for (var dz = face.getZ() + step; dz != origin.getZ() + z + step; dz += step) {
             block(new BlockPos(face.getX(), face.getY(), dz), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
         }
-        for (var y = SWITCH_Y + 1; y < ROUTER_Y; y++) {
+        for (var y = SWITCH_Y + 1; y < routerY; y++) {
             block(origin.offset(x, y, z), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
         }
     }
@@ -405,11 +414,11 @@ public final class DomainFarmScene implements BusScene {
             var x = router * PITCH;
             for (var dy = -1; dy <= 1; dy++) {
                 for (var dz = -1; dz <= 1; dz++) {
-                    block(origin.offset(x, ROUTER_Y + dy, routerZ + dz), RouterRegistration.ROUTER.get().defaultBlockState());
+                    block(origin.offset(x, routerY + dy, routerZ + dz), RouterRegistration.ROUTER.get().defaultBlockState());
                 }
             }
             if (router + 1 == routers) break;
-            var min = origin.offset(x + 1, ROUTER_Y - 1, routerZ - 1);
+            var min = origin.offset(x + 1, routerY - 1, routerZ - 1);
             var max = min.offset(PITCH - 2, 2, 2);
             for (var position : BlockPos.betweenClosed(min, max)) {
                 block(position.immutable(), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());

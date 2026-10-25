@@ -138,7 +138,7 @@ final class CableCapacityLimitTest {
     }
 
     private static FederationDomainRegistry registry() {
-        return new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        return new FederationDomainRegistry();
     }
 
     /** A cable linked to a Switch whose faces attach {@code count} distinct networks, all in one subdomain. */

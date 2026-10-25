@@ -40,7 +40,7 @@ public final class FederationDomainRegistryAccess {
 
     private static synchronized FederationDomainRegistry getLocked(MinecraftServer server) {
         var registry = REGISTRIES.computeIfAbsent(server, ignored -> {
-            var created = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard(),
+            var created = new FederationDomainRegistry(
                     space.controlnet.ae2federation.persistence.FederationDomainSavedData.get(server).records());
             AuthorityEpoch.advance();
             // Shared energy pools draw without asking Federation, so a topology change dissolves them at once.

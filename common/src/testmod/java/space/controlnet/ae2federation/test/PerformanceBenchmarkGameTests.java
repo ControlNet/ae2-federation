@@ -319,6 +319,17 @@ public final class PerformanceBenchmarkGameTests {
                 10);
     }
 
+    /**
+     * As {@link #perfBusesThousandSubnetsDomain}, with the Routers 52 blocks higher: the same networks and buses in a
+     * domain of about ten thousand Federation blocks, which has no size limit.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 12000, required = true, manualOnly = true)
+    public static void perfBusesThousandSubnetsLargeDomain(GameTestHelper helper) {
+        busFarm(helper, "perfbusesthousandsubnetslargedomain", new DomainFarmScene(helper, 1000, 10, BUS_TYPES, 52),
+                true, 1000, 10);
+    }
+
     private static void busFarm(GameTestHelper helper, String testId, BusFarmScene.Layout layout, int subnets,
             int busesEach) {
         busFarm(helper, testId, new BusFarmScene(helper, layout, subnets, busesEach, BUS_TYPES),

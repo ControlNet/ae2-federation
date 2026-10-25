@@ -45,7 +45,6 @@ public final class FederationDomainRegistry {
             .thenComparingLong(Candidate::sequence)
             .thenComparingInt(Candidate::component);
 
-    private final FederationDomainRecomputeBudget budget;
     private final Map<FederationDomainNodeId, FederationDomainNodeEvidence> nodes = new HashMap<>();
     private final Map<FederationDomainNodeId, Set<FederationDomainPortId>> incomingFederation = new HashMap<>();
     private final Map<FederationDomainNodeId, FederationDomainId> nodeToFederationDomain = new HashMap<>();
@@ -93,12 +92,11 @@ public final class FederationDomainRegistry {
     private Runnable mutationListener = () -> {
     };
 
-    public FederationDomainRegistry(FederationDomainRecomputeBudget budget) {
-        this(budget, new FederationDomainRecords());
+    public FederationDomainRegistry() {
+        this(new FederationDomainRecords());
     }
 
-    public FederationDomainRegistry(FederationDomainRecomputeBudget budget, FederationDomainRecords records) {
-        this.budget = budget;
+    public FederationDomainRegistry(FederationDomainRecords records) {
         this.records = records;
         physicalSequence = records.sequence();
     }
@@ -515,14 +513,8 @@ public final class FederationDomainRegistry {
             if (!nodes.containsKey(seed) || visited.contains(seed)) {
                 continue;
             }
-            // The budget bounds each component, so recomputing several changes together fails no domain that
-            // recomputing them one by one would keep.
-            var component = collectComponent(seed, visited, new int[2]);
-            if (component == null) {
-                exhaustBudget(affected, visited, previous);
-                return;
-            }
-            components.add(component);
+            // A domain has no size limit, as an AE2 Grid has none; the registry recomputes at most once per tick.
+            components.add(collectComponent(seed, visited));
         }
         // A component can reach a domain none of the seeds belonged to only through an edge that is already mutual, so
         // this is a safeguard: every domain a component overlaps is replaced with it.
@@ -679,19 +671,8 @@ public final class FederationDomainRegistry {
         return false;
     }
 
-    private void exhaustBudget(Set<FederationDomainNodeId> affected, Set<FederationDomainNodeId> visited,
-            Set<FederationDomainId> previous) {
-        AuthorityEpoch.advance();
-        visited.stream().map(nodeToFederationDomain::get).filter(Objects::nonNull).forEach(previous::add);
-        previous.forEach(this::removeFederationDomain);
-        affected.stream().filter(nodes::containsKey)
-                .forEach(node -> invalidations.put(node, FederationDomainInvalidationReason.BUDGET_EXHAUSTED));
-        visited.forEach(node -> invalidations.put(node, FederationDomainInvalidationReason.BUDGET_EXHAUSTED));
-        topologyRevision++;
-    }
-
-    /** Walks mutual links only; returns null when the budget runs out, so no partial component is ever installed. */
-    private Component collectComponent(FederationDomainNodeId seed, Set<FederationDomainNodeId> visited, int[] counters) {
+    /** Walks mutual links only. */
+    private Component collectComponent(FederationDomainNodeId seed, Set<FederationDomainNodeId> visited) {
         var queue = new ArrayDeque<FederationDomainNodeId>();
         var component = new TreeSet<FederationDomainNodeId>();
         var memberships = new LinkedHashMap<NetworkId, Set<FederationDomainSourceId>>();
@@ -703,14 +684,8 @@ public final class FederationDomainRegistry {
             if (!visited.add(current)) {
                 continue;
             }
-            if (++counters[0] > budget.maxNodeVisits()) {
-                return null;
-            }
             component.add(current);
             for (var entry : nodes.get(current).ports().entrySet()) {
-                if (++counters[1] > budget.maxPortVisits()) {
-                    return null;
-                }
                 if (entry.getValue() instanceof FederationDomainPortEvidence.Federation federation) {
                     if (linked(current, entry.getKey(), federation)) {
                         queue.addLast(federation.peer().node());
