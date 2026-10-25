@@ -273,6 +273,62 @@ public final class SharedEnergyGameTests {
         });
     }
 
+    /**
+     * A main network with a Bridge to each of three subnets carries three Federation energy links on its Grid, each of
+     * which reaches every subnet. The pool read from any of the four Grids is all four, with each Grid's figures counted
+     * once.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 800, required = true, manualOnly = true)
+    public static void energyPoolReadingManyBridges(GameTestHelper helper) {
+        var scene = new space.controlnet.ae2federation.test.perf.BusFarmScene(helper,
+                space.controlnet.ae2federation.test.perf.BusFarmScene.Layout.FEDERATION, 3, 2, 8);
+        var built = new boolean[1];
+        helper.succeedWhen(() -> {
+            if (!built[0]) {
+                helper.assertTrue(scene.build(), "Building the scene");
+                built[0] = true;
+            }
+            helper.assertTrue(scene.ready(), "Waiting for every subnet to share the main network's energy");
+            var grids = scene.grids();
+            helper.assertValueEqual(java.util.Set.copyOf(grids).size(), 4, "distinct Grids");
+            var services = java.util.Collections.newSetFromMap(
+                    new java.util.IdentityHashMap<appeng.me.service.EnergyService, Boolean>());
+            double stored = 0;
+            double max = 0;
+            double drain = 0;
+            double idle = 0;
+            for (var grid : grids) {
+                var service = (appeng.me.service.EnergyService) grid.getEnergyService();
+                services.add(service);
+                stored += service.getStoredPower();
+                max += service.getMaxStoredPower();
+                drain += service.getAvgPowerUsage();
+                idle += service.getIdlePowerUsage();
+            }
+            var mainLinks = ((appeng.me.service.EnergyService) grids.getFirst().getEnergyService())
+                    .getOverlayGridConnections().stream()
+                    .filter(space.controlnet.ae2federation.energy.FederationEnergyConnection.class::isInstance).count();
+            helper.assertTrue(mainLinks >= 3, "main Grid carries a Federation energy link per Bridge: " + mainLinks);
+            for (var grid : grids) {
+                var pool = space.controlnet.ae2federation.energy.EnergyPoolReading.measure(grid.getEnergyService());
+                helper.assertTrue(pool != null, "pool reading");
+                helper.assertValueEqual(pool.grids(), 4, "Grids in the pool");
+                helper.assertTrue(pool.services().equals(services), "pool members are the four Grids");
+                helper.assertTrue(close(pool.stored(), stored), "pool stored " + pool.stored() + " vs " + stored);
+                helper.assertTrue(close(pool.max(), max), "pool max " + pool.max() + " vs " + max);
+                helper.assertTrue(close(pool.drain(), drain), "pool drain " + pool.drain() + " vs " + drain);
+                helper.assertTrue(close(pool.idle(), idle), "pool idle " + pool.idle() + " vs " + idle);
+            }
+            scene.deleteRules();
+            scene.close();
+        });
+    }
+
+    private static boolean close(double actual, double expected) {
+        return Math.abs(actual - expected) <= 1e-9 * Math.max(1, Math.abs(expected));
+    }
+
     private static void runReady(GameTestHelper helper, java.util.function.Consumer<SharedEnergyFixture> assertions) {
         var fixture = new SharedEnergyFixture(helper);
         helper.succeedWhen(() -> {

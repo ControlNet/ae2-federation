@@ -144,6 +144,28 @@ final class IdentityClaimIndexTest {
     }
 
     @Test
+    void aMergedGridCarriesEachNetworkUntilItsNodesLeave() {
+        var registry = new IdentityClaimIndex<Object>();
+        var merged = grid();
+        var other = grid();
+        registry.add(merged, lineage(NETWORK_A, 1));
+        registry.add(merged, lineage(NETWORK_B, 2));
+        registry.add(merged, lineage(NETWORK_B, 3));
+        assertTrue(registry.carries(merged, NETWORK_A));
+        assertTrue(registry.carries(merged, NETWORK_B));
+        assertFalse(registry.carries(other, NETWORK_A), "A Grid without such a node does not carry the network");
+
+        registry.remove(merged, lineage(NETWORK_B, 2));
+        assertTrue(registry.carries(merged, NETWORK_B), "One remaining node still carries it");
+        registry.remove(merged, lineage(NETWORK_B, 3));
+        registry.add(other, lineage(NETWORK_B, 3));
+        assertFalse(registry.carries(merged, NETWORK_B), "After the split the network's nodes are on the other Grid");
+        assertTrue(registry.carries(other, NETWORK_B));
+        registry.release(merged);
+        assertFalse(registry.carries(merged, NETWORK_A), "A released Grid carries nothing");
+    }
+
+    @Test
     void unrelatedGridChangesKeepCachedSettlement() {
         var registry = new IdentityClaimIndex<Object>();
         var grid = grid();
@@ -172,6 +194,17 @@ final class IdentityClaimIndexTest {
         registry.add(reused, lineage(NETWORK_A, 1));
         assertEquals(IdentityStatus.SETTLED, registry.settle(reused, ignored -> { }).status(),
                 "Released claims must not leave stale copy evidence behind");
+    }
+
+    @Test
+    void liveGridsAreTheGridsWithClaims() {
+        var registry = new IdentityClaimIndex<Object>();
+        var kept = grid();
+        var released = grid();
+        registry.add(kept, lineage(NETWORK_A, 1));
+        registry.add(released, lineage(NETWORK_B, 2));
+        registry.release(released);
+        assertEquals(java.util.List.of(kept), registry.liveGrids());
     }
 
     private static NodeLineage lineage(NetworkId network, int node) {

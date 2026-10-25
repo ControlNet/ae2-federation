@@ -38,10 +38,13 @@ public final class ReturnSimulationGameTests {
                         add.invoke(ledger, executing, consumer, key, 8L);
                         var type = Class.forName("space.controlnet.ae2federation.crafting.projection.CraftingReturnRouter");
                         var constructor = type.getDeclaredConstructor(NetworkId.class, IGrid.class,
-                                CraftingReturnLedger.class, Function.class, space.controlnet.ae2federation.observability.statistics.FederationStatistics.class);
+                                CraftingReturnLedger.class, Function.class, java.util.function.Predicate.class,
+                                Function.class, space.controlnet.ae2federation.observability.statistics.FederationStatistics.class);
                         constructor.setAccessible(true);
                         router = (IStorageProvider) constructor.newInstance(executing, fixture.providerGrid(), ledger,
                                 (Function<NetworkId, IGrid>) ignored -> null,
+                                (java.util.function.Predicate<NetworkId>) ignored -> false,
+                                (Function<IActionSource, NetworkId>) ignored -> null,
                                 space.controlnet.ae2federation.observability.LevelObservabilityService.get(helper.getLevel()).statistics());
                     } catch (ReflectiveOperationException exception) { throw new IllegalStateException(exception); }
                     var service = fixture.providerGrid().getStorageService();

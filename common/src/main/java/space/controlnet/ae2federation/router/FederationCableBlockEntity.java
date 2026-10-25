@@ -11,7 +11,6 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -48,6 +47,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
 
     private final Map<Direction, CableFacePort> ports = new EnumMap<>(Direction.class);
     private boolean initialized;
+    /** Server only: what the beam shows must be synced, the capacity count and the unpowered state each. */
+    private boolean capacityDue;
+    private boolean powerDue;
     private boolean federationDomainDirty = true;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
     /** Set when the chunk unloads, so the removal that follows is not taken for a broken block. */
@@ -68,7 +70,6 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private long nextCapacityCheck;
     /** Whether this cable's domain is unpowered, as the server last checked it; its beam then shows red and thin. */
     private boolean unpowered;
-    private long nextPowerCheck;
     /**
      * The bundle segment holding this cable, null for an ordinary cable: on the server, as its registry last said; on a
      * client, as the server sent it. The model, outline and beam read it through {@link BundleView}.
@@ -81,8 +82,8 @@ public final class FederationCableBlockEntity extends BlockEntity {
     public FederationCableBlockEntity(BlockPos position, BlockState state) {
         super(RouterRegistration.FEDERATION_CABLE_BLOCK_ENTITY.get(), position, state);
         for (var face : Direction.values()) {
-            ports.put(face, new CableFacePort(position, face, "", () -> {
-            }, () -> !(level instanceof ServerLevel serverLevel) || BundleContacts.open(serverLevel, position, face)));
+            ports.put(face, new CableFacePort(position, face, "", this::wake,
+                    () -> !(level instanceof ServerLevel serverLevel) || BundleContacts.open(serverLevel, position, face)));
         }
     }
 
@@ -93,50 +94,83 @@ public final class FederationCableBlockEntity extends BlockEntity {
         GridHelper.onFirstTick(this, FederationCableBlockEntity::initialize);
     }
 
-    public static void serverTick(Level level, BlockPos position, BlockState state, FederationCableBlockEntity cable) {
-        var changed = cable.ports.values().stream().map(CableFacePort::tick).reduce(false, Boolean::logicalOr);
-        if (changed || cable.federationDomainDirty) {
-            cable.publishFederationDomainTopology();
-        }
-        if (level instanceof ServerLevel serverLevel) {
-            cable.syncCapacity(serverLevel);
-            cable.syncPower(serverLevel);
-        }
+    /** The cable has face or evidence work: it runs in the next binding tick ({@link FederationCableTicks}). */
+    private void wake() {
+        if (initialized && level instanceof ServerLevel serverLevel) FederationCableTicks.wake(serverLevel, this);
     }
 
-    /** Looks again whether the cable's domain is unpowered, as often as the count, and tells clients of a change. */
-    private void syncPower(ServerLevel serverLevel) {
-        long now = serverLevel.getGameTime();
-        if (now < nextPowerCheck || federationDomainNodeId == null) return;
-        nextPowerCheck = now + CAPACITY_CHECK_TICKS;
+    /** What the beam shows may have changed: sync both once the domains settle. */
+    void requestDisplaySync() {
+        if (!initialized || !(level instanceof ServerLevel serverLevel)) return;
+        capacityDue = true;
+        powerDue = true;
+        FederationCableTicks.syncDisplay(serverLevel, this);
+    }
+
+    /**
+     * Resolves the faces that must, and publishes the evidence when a peer changed or it is dirty. Returns whether work
+     * is left for the next tick.
+     */
+    /** Whether this cable is initialized in {@code serverLevel} and not removed, so it may work there. */
+    boolean live(ServerLevel serverLevel) {
+        return initialized && !isRemoved() && level == serverLevel;
+    }
+
+    boolean work(ServerLevel serverLevel) {
+        if (!live(serverLevel)) return false;
+        var changed = false;
+        for (var port : ports.values()) changed |= port.tick();
+        if (changed || federationDomainDirty) publishFederationDomainTopology();
+        if (federationDomainDirty) return true;
+        for (var port : ports.values()) {
+            if (port.dirty()) return true;
+        }
+        return false;
+    }
+
+    /** Syncs what the beam shows, once the domains settled. Returns whether some of it must wait for a later tick. */
+    boolean syncDisplay(ServerLevel serverLevel) {
+        if (!initialized || isRemoved() || level != serverLevel) return false;
+        if (capacityDue) capacityDue = !syncCapacity(serverLevel);
+        if (powerDue) powerDue = !syncPower(serverLevel);
+        return capacityDue || powerDue;
+    }
+
+    /** Looks again whether the cable's domain is unpowered and tells clients of a change. */
+    private boolean syncPower(ServerLevel serverLevel) {
         var registry = FederationDomainRegistryAccess.get(serverLevel);
+        if (federationDomainNodeId == null) return true;
+        if (registry.pending()) return false;
         boolean stopped = registry.federationDomainOf(federationDomainNodeId)
                 .filter(domain -> registry.unpowered(domain.federationDomainId())).isPresent();
-        if (stopped == unpowered) return;
+        if (stopped == unpowered) return true;
         unpowered = stopped;
         serverLevel.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        return true;
     }
 
-    /** Counts this cable again once its domain or the limit changed, and tells clients when the count differs. */
-    private void syncCapacity(ServerLevel serverLevel) {
+    /**
+     * Counts this cable again once its domain or the limit changed, and tells clients when the count differs. Returns
+     * whether the count is current; false while it must wait for its throttle or a pending recompute.
+     */
+    private boolean syncCapacity(ServerLevel serverLevel) {
         long revision = FederationDomainRegistryAccess.get(serverLevel).evidenceRevision();
         int factor = capacityFactor(serverLevel);
         int limit = CableCapacityLimit.capacity()
                 * (factor == FederationDomainNodeEvidence.UNLIMITED ? CableBeamStyle.UNLIMITED_SCALE : factor);
         boolean enforced = CableCapacityLimit.current(factor).isPresent();
         long now = serverLevel.getGameTime();
-        if (revision == capacityRevision && limit == capacity && enforced == capacityEnforced
-                || now < nextCapacityCheck) {
-            return;
-        }
+        if (revision == capacityRevision && limit == capacity && enforced == capacityEnforced) return true;
+        if (now < nextCapacityCheck || FederationDomainRegistryAccess.get(serverLevel).pending()) return false;
         capacityRevision = revision;
         nextCapacityCheck = now + CAPACITY_CHECK_TICKS;
         int units = CableCapacity.demand(serverLevel, worldPosition).map(CableCapacityCounter.Demand::units).orElse(0);
-        if (units == capacityUnits && limit == capacity && enforced == capacityEnforced) return;
+        if (units == capacityUnits && limit == capacity && enforced == capacityEnforced) return true;
         capacityUnits = units;
         capacity = limit;
         capacityEnforced = enforced;
         serverLevel.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        return true;
     }
 
     /** How many cables' capacity this cable carries: its bundle's multiple, or 1 when it is not bundled. */
@@ -157,6 +191,8 @@ public final class FederationCableBlockEntity extends BlockEntity {
         federationDomainDirty = true;
         capacityRevision = Long.MIN_VALUE;
         nextCapacityCheck = 0;
+        wake();
+        requestDisplaySync();
         if (level instanceof ServerLevel serverLevel) {
             serverLevel.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
         }
@@ -168,6 +204,8 @@ public final class FederationCableBlockEntity extends BlockEntity {
                 if (ports.get(face).revalidate()) {
                     publishFederationDomainTopology();
                 }
+                // The face resolves again next tick even when the peer looks the same now.
+                wake();
                 return;
             }
         }
@@ -194,6 +232,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
         bundleSegment = registeredSegment(serverLevel);
         federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
         ports.values().forEach(port -> port.initialize(serverLevel));
+        FederationCableTicks.register(serverLevel, this);
+        wake();
+        requestDisplaySync();
     }
 
     private @Nullable BundleSegment registeredSegment(ServerLevel serverLevel) {
@@ -222,6 +263,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
     }
 
     private void destroyPorts() {
+        if (level instanceof ServerLevel serverLevel) FederationCableTicks.forget(serverLevel, this);
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
             FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId, !unloading);
             FederationBindingRefresh.request(serverLevel);

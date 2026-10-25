@@ -271,8 +271,8 @@ public final class OperatingPowerGameTests {
                 }
                 case 2 -> {
                     helper.assertTrue(!scene.registry().unpowered(domain), "Waiting for the domain to run");
-                    // The service writes a second once the wall clock passes it, and a GameTest server runs its ticks
-                    // faster than that: the test writes each second itself, one tick apart. This one holds the 8000.
+                    // The test writes each second itself, one tick apart, ahead of the game time; the service does
+                    // not write those seconds again. This one holds the 8000.
                     lastSecond[0] = statistics.nowSecond();
                     statistics.finishSecond(lastSecond[0]);
                     phase[0] = 3;

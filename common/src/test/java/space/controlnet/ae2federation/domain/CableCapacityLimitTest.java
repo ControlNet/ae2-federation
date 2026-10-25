@@ -110,8 +110,35 @@ final class CableCapacityLimitTest {
         assertNotEquals(authority, AuthorityEpoch.current(), "and a held authorization through the authority epoch");
     }
 
+    @Test
+    void theCountJudgedIsTheCableDemandEvenWhenNoLimitIsEnforced() {
+        CableCapacityLimit.set(false, 8);
+        var registry = registry();
+        var networks = switchWith(registry, 5);
+        var domain = registry.federationDomainOf(node(0)).orElseThrow().federationDomainId();
+        assertEquals(CableCapacityCounter.count(registry.nodeEvidence(domain)), registry.capacityDemand(domain));
+        assertEquals(5, registry.capacityDemand(domain).get(node(0)).units());
+
+        // One network leaves: the next read counts again.
+        registry.upsertNode(switchEvidence(1, java.util.Arrays.copyOf(networks, 4)));
+        var after = registry.federationDomainOf(node(0)).orElseThrow().federationDomainId();
+        assertEquals(4, registry.capacityDemand(after).get(node(0)).units());
+    }
+
+    @Test
+    void evidenceIsPendingUntilTheNextRead() {
+        var registry = registry();
+        assertFalse(registry.pending());
+        var networks = switchWith(registry, 3);
+        assertTrue(registry.pending(), "a published node waits for the next read");
+        registry.federationDomainOf(node(0));
+        assertFalse(registry.pending(), "the read recomputed and judged it");
+        registry.upsertNode(switchEvidence(1, java.util.Arrays.copyOf(networks, 2)));
+        assertTrue(registry.pending());
+    }
+
     private static FederationDomainRegistry registry() {
-        return new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        return new FederationDomainRegistry();
     }
 
     /** A cable linked to a Switch whose faces attach {@code count} distinct networks, all in one subdomain. */

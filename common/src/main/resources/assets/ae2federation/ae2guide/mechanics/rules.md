@@ -99,8 +99,8 @@ into its own storage.
 With "B uses C's" Crafting on Enabled with re-export and "A uses B's" Crafting on, A's terminals list the patterns of
 C's <ItemLink id="ae2:pattern_provider" />s. A's crafting CPU pushes the ingredients straight to C's pattern
 providers, and the results come back to A; B needs no CPU. A's CPU takes the ingredients from A, or from B when "A uses
-B's" Storage is on. Leftovers such as byproducts stay on C, where A reaches them only through "B uses C's" Storage
-with re-export.
+B's" Storage is on. Leftovers such as byproducts come back to A too when C has no crafting CPU of its own; otherwise
+they stay on C, where A reaches them only through "B uses C's" Storage with re-export.
 
 ### ME power across the chain
 

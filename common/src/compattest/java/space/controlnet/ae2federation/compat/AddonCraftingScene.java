@@ -30,6 +30,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
+import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.policy.PolicyCapability;
@@ -54,6 +55,8 @@ final class AddonCraftingScene {
     static final BlockPos FIRST_CPU = BASE.west();
     /** The provider network's last cable. */
     static final BlockPos PROVIDER_CABLE = PROVIDER.west();
+    /** South of the consumer's ME Chest, touching only the consumer network. */
+    private static final BlockPos CONSUMER_OUTPUT_CHEST = BASE.south(2);
     private static final AEItemKey PLANKS = AEItemKey.of(Items.OAK_PLANKS);
     private static final AEItemKey STICKS = AEItemKey.of(Items.STICK);
     private static final AEItemKey COBBLESTONE = AEItemKey.of(Items.COBBLESTONE);
@@ -73,12 +76,17 @@ final class AddonCraftingScene {
             (entity, pattern) -> ((PatternContainer) entity).getTerminalPatternInventory().addItems(pattern).isEmpty();
     private java.util.function.BiConsumer<ICraftingPlan, ICraftingPlan> checkPlan = (plan, local) -> {
     };
+    private java.util.function.Consumer<net.minecraft.world.level.block.entity.BlockEntity> changeProviderAfterLink;
+    private boolean providerChanged;
     private boolean cpuOnCable;
     private boolean providerWithoutStorage;
     private boolean cancelAfterPush;
+    private boolean outputOnConsumer;
     private boolean lateByproduct;
     private boolean craftingOnly;
     private boolean disconnectAfterPush;
+    private boolean relinkAfterDisconnect;
+    private boolean mergeAfterPush;
     private long jobs = 2;
     private java.util.function.Consumer<GameTestHelper> placeStructure;
     private java.util.function.Consumer<GameTestHelper> placeConsumerCpu;
@@ -100,6 +108,11 @@ final class AddonCraftingScene {
     private final BlockPos assemblerPos = PROVIDER.east();
     private final BlockPos outputChestPos = PROVIDER.below();
     private int stage;
+    private long sweeps;
+    private String whileMerged;
+    /** Both networks' ids, read once confirmed: in a joined Grid neither is confirmed, yet they are the same. */
+    private space.controlnet.ae2federation.identity.NetworkId consumerNetwork;
+    private space.controlnet.ae2federation.identity.NetworkId providerNetwork;
     private boolean energyShared;
     private Future<ICraftingPlan> planFuture;
     private Future<ICraftingPlan> localPlanFuture;
@@ -215,6 +228,12 @@ final class AddonCraftingScene {
         return reorderingAfterwards(change, check);
     }
 
+    /** {@code check} sees the consumer CPU that ran the order once the job has finished. */
+    AddonCraftingScene checkingAfterJob(CpuCheck check) {
+        cpuCheck = check;
+        return this;
+    }
+
     /** Checks the consumer CPU that ran an order, the first being 1, against the provider network. */
     interface CpuCheck {
         void check(int order, appeng.api.networking.crafting.ICraftingCPU cpu, IGrid provider);
@@ -253,11 +272,14 @@ final class AddonCraftingScene {
         void collect(GameTestHelper helper, BlockPos position, MEStorage network);
     }
 
-    /** A chest standing in for a furnace: the test turns whatever cobblestone the provider pushed into stone. */
-    private record ChestMachine(String blockId) implements Machine {
-        @Override
-        public AEItemKey output() {
-            return STONE;
+    /**
+     * A chest standing in for a furnace: the test turns whatever cobblestone the provider pushed into stone, or into
+     * {@code outputPerInput} of another output kept in an {@code outputCell} on the provider network.
+     */
+    private record ChestMachine(String blockId, AEKey output, long outputPerInput, String outputCell)
+            implements Machine {
+        ChestMachine(String blockId) {
+            this(blockId, STONE, 1, null);
         }
 
         @Override
@@ -269,8 +291,15 @@ final class AddonCraftingScene {
             }
             if (pushed == 0) return;
             chest.clearContent();
-            network.insert(STONE, pushed, Actionable.MODULATE, IActionSource.empty());
+            network.insert(output, pushed * outputPerInput, Actionable.MODULATE, IActionSource.empty());
         }
+    }
+
+    /** The hand-run chest machine making a bucket of lava from each cobblestone, kept in a 1k fluid cell. */
+    static Machine lavaMachine() {
+        return new ChestMachine("minecraft:chest", appeng.api.stacks.AEFluidKey.of(
+                net.minecraft.world.level.material.Fluids.LAVA), appeng.api.stacks.AEFluidKey.AMOUNT_BUCKET,
+                "ae2:fluid_storage_cell_1k");
     }
 
     static Block block(String id) {
@@ -301,6 +330,17 @@ final class AddonCraftingScene {
     AddonCraftingScene preparingProvider(
             java.util.function.Consumer<net.minecraft.world.level.block.entity.BlockEntity> prepare) {
         prepareProvider = prepare;
+        return this;
+    }
+
+    /**
+     * Once the consumer already sees the provider's pattern, changes the provider as its player would, such as by
+     * switching a mode that makes it decode its patterns again: the consumer must then plan with the provider's new
+     * pattern objects, not the ones it saw first.
+     */
+    AddonCraftingScene changingProviderAfterLink(
+            java.util.function.Consumer<net.minecraft.world.level.block.entity.BlockEntity> change) {
+        changeProviderAfterLink = change;
         return this;
     }
 
@@ -348,12 +388,26 @@ final class AddonCraftingScene {
     }
 
     /**
-     * Cancels the consumer's job once the provider has pushed every input into the chest machine, then runs the
-     * machine: the late output must reach the consumer and only actual delivery settles the debt.
+     * Cancels the consumer's job once the provider has pushed every input into the machine, then runs the machine: the
+     * late output must reach the consumer and only actual delivery settles the debt. A real machine must take longer
+     * than a tick, so the job is still waiting when every input has gone out.
      */
     AddonCraftingScene cancellingAfterPush() {
-        if (!(machine instanceof ChestMachine)) throw new IllegalStateException("Only the chest machine can wait");
+        if (machine == null) throw new IllegalStateException("Only a processing machine can wait");
         cancelAfterPush = true;
+        return this;
+    }
+
+    /**
+     * The consumer gets an ME Chest of its own with the machine's output cell, so what it makes is stored on the
+     * consumer even when an item cell cannot hold it. The end then checks the return ledger as well: nothing owed, held
+     * or in transit, the job retired, and none of the output left on the provider network.
+     */
+    AddonCraftingScene outputStoredOnConsumer() {
+        if (machine == null || machine.outputCell() == null) {
+            throw new IllegalStateException("Only a machine with an output cell needs one on the consumer");
+        }
+        outputOnConsumer = true;
         return this;
     }
 
@@ -363,10 +417,37 @@ final class AddonCraftingScene {
      * for it and its debt stays owed, as a job waits for an output that went elsewhere.
      */
     AddonCraftingScene disconnectingAfterPush() {
-        if (!(machine instanceof ChestMachine)) throw new IllegalStateException("Only the chest machine can wait");
+        if (machine == null) throw new IllegalStateException("Only a processing machine can wait");
         disconnectAfterPush = true;
         // Apart from the consumer, the provider network still runs, as one with its own power does.
         bridge.powerOuter();
+        return this;
+    }
+
+    /**
+     * After {@link #disconnectingAfterPush()}, places the Bridge again instead of cancelling the job: the output held
+     * on the provider network while the networks were apart must reach the waiting job, and the return must settle.
+     * The held output's debt is also read back from the ledger's saved form while the networks are apart.
+     */
+    AddonCraftingScene relinkingAfterDisconnect() {
+        if (!disconnectAfterPush || !outputOnConsumer) {
+            throw new IllegalStateException("Relinking follows disconnectingAfterPush() with outputStoredOnConsumer()");
+        }
+        relinkAfterDisconnect = true;
+        return this;
+    }
+
+    /**
+     * Once the provider has pushed every input, removes only the Bridge part: the consumer's cable under it is fluix,
+     * so it joins the provider's cable and both networks become one AE2 Grid. The machine's output then reaches the
+     * consumer's CPU natively; the part is placed again, the Grids split, and the debt must have been settled by that
+     * delivery: output the provider network stores later stays there.
+     */
+    AddonCraftingScene mergingAfterPush() {
+        if (!outputOnConsumer) {
+            throw new IllegalStateException("Merging checks the return with outputStoredOnConsumer()");
+        }
+        mergeAfterPush = true;
         return this;
     }
 
@@ -399,6 +480,14 @@ final class AddonCraftingScene {
                     helper.setBlock(outputChestPos, appeng.core.definitions.AEBlocks.ME_CHEST.block());
                     helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(outputChestPos)
                             .setCell(new ItemStack(item(machine.outputCell())));
+                }
+                if (outputOnConsumer) {
+                    helper.setBlock(CONSUMER_OUTPUT_CHEST, appeng.core.definitions.AEBlocks.ME_CHEST.block());
+                    var chest = helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(
+                            CONSUMER_OUTPUT_CHEST);
+                    chest.setCell(new ItemStack(item(machine.outputCell())));
+                    // In the joined Grid the finished job stores its output on the consumer's cell, not the provider's.
+                    if (mergeAfterPush) chest.setPriority(1);
                 }
                 if (providerWithoutStorage) bridge.providerChest().setCell(ItemStack.EMPTY);
                 if (placeConsumerStorage != null) {
@@ -471,13 +560,28 @@ final class AddonCraftingScene {
                 helper.assertTrue(FederationDomainRegistryAccess.confirmedNetworkId(consumerGrid()).isPresent()
                         && FederationDomainRegistryAccess.confirmedNetworkId(bridge.outerGrid()).isPresent(),
                         "Waiting for both networks' identities");
+                consumerNetwork = bridge.mainNetwork();
+                providerNetwork = bridge.outerNetwork();
                 enableRules();
+                if (mergeAfterPush) fluixCableUnderBridge();
                 stage = 4;
                 helper.fail("Enabled the rules");
             }
             case 4 -> {
                 helper.assertTrue(consumerGrid().getCraftingService().isCraftable(output()),
                         "Waiting for the provider's pattern on the consumer");
+                if (changeProviderAfterLink != null) {
+                    var entity = helper.getLevel().getBlockEntity(helper.absolutePos(providerPos));
+                    if (!providerChanged) {
+                        changeProviderAfterLink.accept(entity);
+                        providerChanged = true;
+                        helper.fail("Changed the provider after the consumer saw its pattern");
+                    }
+                    var current = ((PatternProviderLogicHost) entity).getLogic().getAvailablePatterns();
+                    var seen = consumerGrid().getCraftingService().getCraftingFor(output());
+                    helper.assertTrue(current.stream().allMatch(pattern -> seen.stream().anyMatch(s -> s == pattern)),
+                            "Waiting for the consumer to see the changed provider's own pattern objects");
+                }
                 storeInputs("The consumer's chest must take the inputs");
                 begin();
                 stage = 5;
@@ -496,18 +600,28 @@ final class AddonCraftingScene {
                 helper.fail("Submitted the job");
             }
             case 6 -> {
-                if (!cancelAfterPush && !disconnectAfterPush) {
+                if (!cancelAfterPush && !disconnectAfterPush && !mergeAfterPush) {
                     stage = 9;
                     helper.fail("Running the job");
                 }
-                helper.assertValueEqual(inChest(assemblerPos, Items.COBBLESTONE), jobs,
-                        "Waiting for the provider to push every input");
+                if (machine instanceof ChestMachine) {
+                    helper.assertValueEqual(inChest(assemblerPos, Items.COBBLESTONE), jobs,
+                            "Waiting for the provider to push every input");
+                } else {
+                    // A real machine leaves no count to read; every accepted push is owed in the ledger.
+                    helper.assertValueEqual(owed(), requested(), "Waiting for the provider to push every input");
+                }
                 var busy = consumerGrid().getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy()).toList();
                 helper.assertValueEqual(busy.size(), 1, "The consumer's CPU must be running the job");
                 if (disconnectAfterPush) {
                     bridge.removeFirstBridge();
                     stage = 10;
                     helper.fail("Removed the Bridge");
+                }
+                if (mergeAfterPush) {
+                    bridge.removeFirstBridge();
+                    stage = 19;
+                    helper.fail("Removed only the Bridge part");
                 }
                 cancel(busy.getFirst());
                 stage = 7;
@@ -521,20 +635,101 @@ final class AddonCraftingScene {
                 helper.fail("Ran the machine with the networks apart");
             }
             case 11 -> {
-                helper.assertValueEqual(held(providerChest(), output()), jobs,
+                helper.assertValueEqual(held(providerOutput(), output()), requested(),
                         "The output stays on the provider network");
-                helper.assertValueEqual(held(consumerChest(), output()), 0L, "Nothing crosses the removed Bridge");
+                helper.assertValueEqual(held(consumerOutput(), output()), 0L, "Nothing crosses the removed Bridge");
                 var busy = consumerGrid().getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy()).toList();
                 helper.assertValueEqual(busy.size(), 1, "The consumer's job keeps waiting");
                 helper.assertValueEqual(CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(),
-                        bridge.mainNetwork(), output()), jobs, "The debt stays while the consumer still waits");
+                        bridge.mainNetwork(), output()), requested(), "The debt stays while the consumer still waits");
+                if (relinkAfterDisconnect) {
+                    var ledger = CraftingReturnLedger.get(helper.getLevel());
+                    helper.assertValueEqual(ledger.held(bridge.outerNetwork(), bridge.mainNetwork(), output()),
+                            requested(), "The output is held for the consumer");
+                    var registries = helper.getLevel().registryAccess();
+                    var restored = CraftingReturnLedger.load(ledger.save(new net.minecraft.nbt.CompoundTag(),
+                            registries), registries);
+                    helper.assertValueEqual(restored.owed(bridge.outerNetwork(), bridge.mainNetwork(), output()),
+                            requested(), "The saved ledger keeps the debt of " + output());
+                    helper.assertValueEqual(restored.held(bridge.outerNetwork(), bridge.mainNetwork(), output()),
+                            requested(), "The saved ledger keeps the held " + output());
+                    bridge.placeFirstBridge();
+                    stage = 18;
+                    helper.fail("Placed the Bridge again");
+                }
                 cancel(busy.getFirst());
+            }
+            case 18 -> {
+                if (!bridge.firstBridgeReady()) bridge.refreshFirstBridge();
+                helper.assertTrue(bridge.firstBridgeReady(), "Waiting for the Bridge to link the networks again");
+                stage = 9;
+                helper.fail("Linked the networks again");
+            }
+            case 19 -> {
+                helper.assertTrue(consumerGrid() == bridge.outerGrid(), "Waiting for the networks to become one Grid");
+                helper.assertTrue(busyCpu() != null, "Waiting for the joined Grid to list the busy CPU");
+                helper.assertFalse(CraftingProjectionService.get(helper.getLevel()).routes(bridge.outerGrid()),
+                        "Waiting for Federation to stop routing the joined Grid");
+                machine.collect(helper, assemblerPos, bridge.outerGrid().getStorageService().getInventory());
+                stage = 20;
+                helper.fail("Ran the machine in the joined Grid");
+            }
+            case 20 -> {
+                helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
+                        "Waiting for the CPU to take its output natively");
+                whileMerged = returns();
+                bridge.placeFirstBridge();
+                stage = 21;
+                helper.fail("Placed the Bridge part again");
+            }
+            case 21 -> {
+                helper.assertFalse(consumerGrid() == bridge.outerGrid(), "Waiting for the Grids to split");
+                if (!bridge.firstBridgeReady()) bridge.refreshFirstBridge();
+                helper.assertTrue(bridge.firstBridgeReady(), "Waiting for the Bridge to link the networks again");
+                helper.assertTrue(consumerGrid().getCraftingService().isCraftable(output()),
+                        "Waiting for the provider's pattern to come back");
+                sweeps = CraftingProjectionService.get(helper.getLevel()).ledgerSweeps();
+                stage = 22;
+                helper.fail("Split the Grids");
+            }
+            case 22 -> {
+                helper.assertTrue(CraftingProjectionService.get(helper.getLevel()).ledgerSweeps() - sweeps >= 3,
+                        "Letting three ledger sweeps pass");
+                var context = "; while merged: " + whileMerged + "; after the split: " + returns();
+                helper.assertValueEqual(held(consumerOutput(), output()), requested(),
+                        "The job's output reaches the consumer" + context);
+                helper.assertValueEqual(held(bridge.outerGrid().getStorageService().getInventory(), output()), 0L,
+                        "The provider network keeps none of it" + context);
+                // Unrelated output that a player's import bus stores on the provider network after the job.
+                helper.assertValueEqual(bridge.outerGrid().getStorageService().getInventory().insert(output(),
+                        machine.outputPerInput(), Actionable.MODULATE, IActionSource.empty()), machine.outputPerInput(),
+                        "The provider network stores a player's output");
+                sweeps = CraftingProjectionService.get(helper.getLevel()).ledgerSweeps();
+                stage = 23;
+                helper.fail("Stored a player's output on the provider network");
+            }
+            case 23 -> {
+                helper.assertTrue(CraftingProjectionService.get(helper.getLevel()).ledgerSweeps() - sweeps >= 3,
+                        "Letting three more ledger sweeps pass");
+                var context = "; while merged: " + whileMerged + "; now: " + returns();
+                var ledger = CraftingReturnLedger.get(helper.getLevel());
+                helper.assertValueEqual(owed(), 0L, "The native delivery settled the debt" + context);
+                helper.assertValueEqual(ledger.held(providerNetwork, consumerNetwork, output()), 0L,
+                        "Nothing is held for the consumer" + context);
+                helper.assertValueEqual(ledger.transit(providerNetwork, output()), 0L,
+                        "Nothing is in transit" + context);
+                helper.assertTrue(ledger.jobs(consumerNetwork).isEmpty(), "The finished job retires" + context);
+                helper.assertValueEqual(held(providerOutput(), output()), machine.outputPerInput(),
+                        "The player's output stays on the provider network" + context);
+                helper.assertValueEqual(held(consumerOutput(), output()), requested(),
+                        "The consumer keeps only its job's output" + context);
+                helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
+                        "The consumer's CPU is idle" + context);
             }
             case 7 -> {
                 helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
                         "The consumer's job must be cancelled");
-                helper.assertValueEqual(CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(),
-                        bridge.mainNetwork(), output()), jobs, "Cancellation preserves the dispatched output responsibility");
+                helper.assertValueEqual(owed(), requested(), "Cancellation preserves the dispatched output responsibility");
                 machine.collect(helper, assemblerPos, bridge.outerGrid().getStorageService().getInventory());
                 stage = 8;
                 helper.fail("Ran the machine after the cancel");
@@ -544,8 +739,10 @@ final class AddonCraftingScene {
                         bridge.mainNetwork(), output()), 0L, "Actual late delivery settles cancellation responsibility");
                 helper.assertValueEqual(held(providerChest(), output()), 0L,
                         "The provider retains none of the cancelled consumer's output");
-                helper.assertValueEqual(held(consumerChest(), output()), jobs, "Late output reaches the cancelled consumer");
+                helper.assertValueEqual(held(consumerOutput(), output()), requested(),
+                        "Late output reaches the cancelled consumer");
                 helper.assertValueEqual(held(consumerChest(), input()), 0L, "The pushed inputs are not given back twice");
+                if (outputOnConsumer) assertReturnsSettled();
             }
             case 17 -> {
                 helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
@@ -579,9 +776,15 @@ final class AddonCraftingScene {
                             "The consumer's own storage must hold everything made");
                 }
                 var made = held(consumerChest(), output()) + held(providerChest(), output())
-                        + (processing && machine.outputCell() != null ? held(outputChest(), output()) : 0);
+                        + (processing && machine.outputCell() != null ? held(outputChest(), output()) : 0)
+                        + (outputOnConsumer ? held(consumerOutput(), output()) : 0);
                 helper.assertValueEqual(made, requested() * tookOrders.size(),
                         "The job must store exactly what was requested");
+                if (outputOnConsumer) {
+                    helper.assertValueEqual(held(consumerOutput(), output()), requested() * tookOrders.size(),
+                            "Everything made is stored on the consumer");
+                    assertReturnsSettled();
+                }
                 for (var input : inputs().keySet()) {
                     helper.assertValueEqual(held(consumerChest(), input), 0L, "The consumer's inputs were used");
                 }
@@ -701,6 +904,65 @@ final class AddonCraftingScene {
             cpu.getClass().getMethod("cancelJob").invoke(cpu);
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException(cpu.getClass().getName() + " cannot cancel its job", exception);
+        }
+    }
+
+    /** Where the consumer stores the output: its own output chest, else its ME Chest. */
+    private MEStorage consumerOutput() {
+        if (!outputOnConsumer) return consumerChest();
+        return Objects.requireNonNull(helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(
+                CONSUMER_OUTPUT_CHEST).getOriginalCellInventory(0));
+    }
+
+    /** Where the provider network keeps the output: the machine's output cell, else its ME Chest. */
+    private MEStorage providerOutput() {
+        return machine != null && machine.outputCell() != null ? outputChest() : providerChest();
+    }
+
+    /** What the ledger says of the output, for failure messages. */
+    private String returns() {
+        var ledger = CraftingReturnLedger.get(helper.getLevel());
+        return "owed " + ledger.owed(providerNetwork, consumerNetwork, output()) + ", held "
+                + ledger.held(providerNetwork, consumerNetwork, output()) + ", transit "
+                + ledger.transit(providerNetwork, output()) + ", jobs " + ledger.jobs(consumerNetwork)
+                + ", on the provider network "
+                + held(bridge.outerGrid().getStorageService().getInventory(), output()) + ", on the consumer "
+                + held(consumerOutput(), output());
+    }
+
+    /**
+     * Dyes the consumer's cable under the Bridge fluix, as a player's cable often is. The Bridge part still covers that
+     * side, so the networks stay apart; removing only the part then joins them into one AE2 Grid.
+     */
+    private void fluixCableUnderBridge() {
+        var host = (appeng.api.parts.IPartHost) helper.getLevel().getBlockEntity(helper.absolutePos(BASE));
+        var cable = (appeng.parts.networking.CablePart) host.getPart(null);
+        helper.assertTrue(cable.changeColor(appeng.api.util.AEColor.TRANSPARENT, null),
+                "The cable under the Bridge takes fluix");
+    }
+
+    /** What the provider network still owes the consumer of the output. */
+    private long owed() {
+        return CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(), bridge.mainNetwork(), output());
+    }
+
+    /**
+     * The return is complete: nothing owed, held or in transit, the consumer's watched jobs retired, its CPUs idle and
+     * empty, and none of the output anywhere on the provider network.
+     */
+    private void assertReturnsSettled() {
+        var ledger = CraftingReturnLedger.get(helper.getLevel());
+        var factory = bridge.outerNetwork();
+        var consumer = bridge.mainNetwork();
+        helper.assertValueEqual(owed(), 0L, "Delivery settles the output's debt");
+        helper.assertValueEqual(ledger.held(factory, consumer, output()), 0L, "Nothing is held for the consumer");
+        helper.assertValueEqual(ledger.transit(factory, output()), 0L, "Nothing is in transit");
+        helper.assertValueEqual(held(bridge.outerGrid().getStorageService().getInventory(), output()), 0L,
+                "The provider network keeps none of the output");
+        helper.assertTrue(ledger.jobs(consumer).isEmpty(), "Waiting for the consumer's job to retire: " + ledger.jobs(consumer));
+        for (var cpu : consumerGrid().getCraftingService().getCpus()) {
+            helper.assertTrue(!cpu.isBusy() && (!(cpu instanceof appeng.me.cluster.implementations.CraftingCPUCluster
+                    cluster) || cluster.craftingLogic.getInventory().list.isEmpty()), "The consumer's CPU is idle and empty");
         }
     }
 

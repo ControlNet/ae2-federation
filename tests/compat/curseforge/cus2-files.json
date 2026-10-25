@@ -1,0 +1,41 @@
+{
+ "data": [
+  {
+   "id": 9299720,
+   "fileName": "Create Ultimate Selection 2 MC 1.21.1-12.9.0.zip",
+   "displayName": "Create Ultimate Selection 2 MC 1.21.1-12.9.0",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.21.1",
+    "NeoForge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": true,
+   "additionalFilesCount": 1,
+   "additionalServerPackFilesCount": 1,
+   "fileLength": 10233132,
+   "dateCreated": "2026-10-23T16:09:18.923Z"
+  },
+  {
+   "id": 9289228,
+   "fileName": "Create Ultimate Selection 2 MC 1.21.1-12.8.0.zip",
+   "displayName": "Create Ultimate Selection 2 MC 1.21.1-12.8.0",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.21.1",
+    "NeoForge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": true,
+   "additionalFilesCount": 1,
+   "additionalServerPackFilesCount": 1,
+   "fileLength": 10233107,
+   "dateCreated": "2026-10-22T16:00:08.58Z"
+  }
+ ],
+ "pagination": {
+  "index": 0,
+  "pageSize": 2,
+  "totalCount": 140
+ }
+}

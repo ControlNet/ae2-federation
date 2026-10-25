@@ -6,6 +6,7 @@ import space.controlnet.ae2federation.ae2.storage.NativeGridStateEvents;
 import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
 import space.controlnet.ae2federation.identity.NetworkIdentityGridService;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
+import space.controlnet.ae2federation.observability.statistics.FederationStatistics;
 
 public final class CommonStartup {
     private CommonStartup() {
@@ -15,6 +16,7 @@ public final class CommonStartup {
         GridServices.register(NetworkIdentityService.class, NetworkIdentityGridService.class);
         NativeGridStateEvents.register();
         space.controlnet.ae2federation.automation.ProgramEvents.register();
+        FederationStatistics.register();
         FederationDomainPolicyMenu.register();
         logger.info("AE2 Federation common startup complete");
     }

@@ -95,6 +95,17 @@ public final class IdentityClaimIndex<G> {
         return result;
     }
 
+    /** Whether a node of {@code grid} carries {@code networkId}, as each node of a merged Grid keeps its own. */
+    public boolean carries(G grid, NetworkId networkId) {
+        var grids = networkIndex.get(networkId);
+        return grids != null && grids.containsKey(grid);
+    }
+
+    /** The Grids that publish any lineage now, without copying their lineages as {@link #liveClaims} does. */
+    public java.util.List<G> liveGrids() {
+        return java.util.List.copyOf(liveClaims.keySet());
+    }
+
     public Map<G, Set<NodeLineage>> liveClaims() {
         var snapshot = new IdentityHashMap<G, Set<NodeLineage>>();
         liveClaims.forEach((grid, claims) -> snapshot.put(grid, Set.copyOf(claims.lineages)));

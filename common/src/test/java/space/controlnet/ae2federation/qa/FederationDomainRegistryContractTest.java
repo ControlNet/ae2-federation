@@ -30,15 +30,15 @@ final class FederationDomainRegistryContractTest {
     }
 
     @Test
-    void productionRegistryIsIncrementalBudgetedAndFailClosed() throws IOException {
+    void productionRegistryIsIncrementalUnlimitedAndFailClosed() throws IOException {
         var registry = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/domain/FederationDomainRegistry.java"));
         var access = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/domain/FederationDomainRegistryAccess.java"));
-        assertTrue(registry.contains("FederationDomainRecomputeBudget"));
+        assertFalse(registry.contains("FederationDomainRecomputeBudget"), "a domain has no size limit");
         assertTrue(registry.contains("incomingFederation"));
         assertTrue(registry.contains("NON_RECIPROCAL_EDGE"));
-        assertTrue(registry.contains("BUDGET_EXHAUSTED"));
+        assertFalse(registry.contains("BUDGET_EXHAUSTED"));
         assertTrue(registry.contains("networkIndex"));
         assertTrue(registry.contains("isCurrent(FederationDomainReference"));
         assertTrue(access.contains("IdentityStatus.SETTLED"));
@@ -71,8 +71,8 @@ final class FederationDomainRegistryContractTest {
     void routerIdentitySeedChecksLoadedNeighborBeforeLookup() throws IOException {
         var source = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/domain/port/RouterFacePort.java"));
-        var initialize = methodBody(source, "public void initialize", "public boolean tick");
-        assertLookupFollowsLoadedCheck(initialize, "neighborPosition");
+        var seeding = methodBody(source, "private void createNode", "private RouterPortBinding resolve");
+        assertLookupFollowsLoadedCheck(seeding, "level", "neighborPosition");
     }
 
     @Test
@@ -80,16 +80,16 @@ final class FederationDomainRegistryContractTest {
         var source = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/bridge/MultipartBridgePart.java"));
         var seeding = methodBody(source, "private void seedBoundaryNodes", "private void setStatus");
-        assertLookupFollowsLoadedCheck(seeding, "outerPosition");
+        assertLookupFollowsLoadedCheck(seeding, "serverLevel", "outerPosition");
     }
 
     private static String methodBody(String source, String start, String end) {
         return source.substring(source.indexOf(start), source.indexOf(end));
     }
 
-    private static void assertLookupFollowsLoadedCheck(String method, String position) {
-        var loadedCheck = method.indexOf("serverLevel.isLoaded(" + position + ")");
-        var lookup = method.indexOf("GridHelper.getExposedNode(serverLevel, " + position);
+    private static void assertLookupFollowsLoadedCheck(String method, String level, String position) {
+        var loadedCheck = method.indexOf(level + ".isLoaded(" + position + ")");
+        var lookup = method.indexOf("GridHelper.getExposedNode(" + level + ", " + position);
         assertTrue(loadedCheck >= 0);
         assertTrue(lookup > loadedCheck);
     }

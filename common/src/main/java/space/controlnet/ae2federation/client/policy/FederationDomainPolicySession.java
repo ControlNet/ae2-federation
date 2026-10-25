@@ -1154,6 +1154,12 @@ public final class FederationDomainPolicySession {
         return flowText;
     }
 
+    /** The statistics' game second now. */
+    public long statisticsSecond() {
+        return space.controlnet.ae2federation.observability.LevelObservabilityService.get(level).statistics()
+                .nowSecond();
+    }
+
     /**
      * The statistics page's figures for this domain's member networks as {@code request} asks, up to the last second
      * the server finished; an empty tag without a domain.

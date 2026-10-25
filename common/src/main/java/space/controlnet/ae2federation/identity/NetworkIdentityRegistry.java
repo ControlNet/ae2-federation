@@ -53,6 +53,11 @@ public final class NetworkIdentityRegistry extends SavedData {
         return claims.liveClaims();
     }
 
+    /** Each live Grid, without its lineages. */
+    public java.util.List<IGrid> liveGrids() {
+        return claims.liveGrids();
+    }
+
     public IdentityClaimIndex<IGrid> claimIndex() {
         return claims;
     }

@@ -442,9 +442,9 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     }
 
     /**
-     * The open page's figures, rebuilt when its request changes and otherwise every second for the two-minute range
-     * and every five for the longer ones, whose points change more slowly; the same tag in between, so nothing is
-     * resent.
+     * The open page's figures, rebuilt when its request changes and otherwise every game second for the two-minute
+     * range and every five for the longer ones, whose points change more slowly; the same tag in between, so nothing
+     * is resent.
      */
     private net.minecraft.nbt.Tag statisticsPayload() {
         var request = statisticsRequest;
@@ -453,7 +453,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             statisticsBuiltRequest = null;
             return statisticsPayload;
         }
-        long now = Math.floorDiv(System.currentTimeMillis(), 1000L);
+        long now = session.statisticsSecond();
         long period = Math.min(request.range().seconds(), 5);
         if (!request.equals(statisticsBuiltRequest) || now >= statisticsBuiltAt + period || now < statisticsBuiltAt) {
             statisticsPayload = session.statistics(request);

@@ -1,12 +1,14 @@
 package space.controlnet.ae2federation.mixin.client;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import guideme.document.LytRect;
 import guideme.document.block.LytParagraph;
 import guideme.internal.screen.GuideNavBar;
 import guideme.layout.LayoutContext;
 import guideme.navigation.NavigationNode;
 import guideme.navigation.NavigationTree;
-import guideme.ui.GuideUiHost;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -20,15 +22,13 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import space.controlnet.ae2federation.client.guide.NestedGuideNavRow;
 
 /**
  * Shows every level of the guide's navigation tree in GuideME's sidebar. GuideME builds rows for the roots and their
  * direct children only, and offers no hook for its sidebar, so our section pages would hide their pages. This builds
- * a row for each node at any depth; the row mixin folds and indents the deeper ones.
+ * a row for each node at any depth; the row mixin folds and indents the deeper ones. Verified against GuideME 21.1.1
+ * (the build) and 21.1.19, whose recreateRows, updateLayout and Row differ only in how a row's icon is read.
  */
 @Mixin(value = GuideNavBar.class, remap = false)
 public abstract class GuideNavBarMixin {
@@ -49,50 +49,58 @@ public abstract class GuideNavBarMixin {
     @Final
     private List<Object> rows;
 
-    @Shadow
-    @Final
-    private GuideUiHost screen;
-
     @Unique
     private final Map<LytParagraph, Integer> ae2federation$extraIndents = new IdentityHashMap<>();
 
     @Shadow
     protected abstract void updateLayout();
 
-    @Inject(method = "recreateRows", at = @At("HEAD"), cancellable = true)
-    private void ae2federation$recreateNestedRows(CallbackInfo callback) {
-        // Data Energistics nests GuideME's sidebar the same way; leave the rows to it, so its injections still run.
-        // Without our nesting, the other injections here and in the row mixin change nothing.
+    /**
+     * GuideME's own rows, with every injection of other mods, are built first; this then nests them and adds the
+     * levels below the second. Their rows are kept, so whatever another mod set on them stays.
+     */
+    @WrapMethod(method = "recreateRows")
+    private void ae2federation$recreateNestedRows(Operation<Void> original) {
+        original.call();
+        // Data Energistics nests GuideME's sidebar the same way; leave the rows to it. Without our nesting, the other
+        // hooks here and in the row mixin change nothing.
         var mods = ModList.get();
         if (mods != null && mods.isLoaded(ae2federation$DATA_ENERGISTICS)) {
             return;
         }
-        navTree = screen.getGuide().getNavigationTree();
+        var built = new IdentityHashMap<NavigationNode, NestedGuideNavRow>();
+        for (var row : rows) {
+            var nested = (NestedGuideNavRow) row;
+            built.put(nested.ae2federation$node(), nested);
+        }
         rows.clear();
         ae2federation$extraIndents.clear();
         for (var root : navTree.getRootNodes()) {
-            ae2federation$addRows(root, null, 0);
+            ae2federation$addRows(root, null, 0, built);
         }
         updateLayout();
-        callback.cancel();
     }
 
-    @Redirect(method = "updateLayout", at = @At(value = "INVOKE",
+    @WrapOperation(method = "updateLayout", at = @At(value = "INVOKE",
             target = "Lguideme/document/block/LytParagraph;layout(Lguideme/layout/LayoutContext;III)Lguideme/document/LytRect;"))
     private LytRect ae2federation$indentNestedRow(LytParagraph paragraph, LayoutContext context, int x, int y,
-            int width) {
+            int width, Operation<LytRect> original) {
         var extraIndent = ae2federation$extraIndents.getOrDefault(paragraph, 0);
-        return paragraph.layout(context, x + extraIndent, y, width - extraIndent);
+        return original.call(paragraph, context, x + extraIndent, y, width - extraIndent);
     }
 
     @Unique
-    private void ae2federation$addRows(NavigationNode node, @Nullable NestedGuideNavRow parent, int depth) {
-        var row = ae2federation$newRow(node, parent);
+    private void ae2federation$addRows(NavigationNode node, @Nullable NestedGuideNavRow parent, int depth,
+            Map<NavigationNode, NestedGuideNavRow> built) {
+        var row = built.get(node);
+        if (row == null) {
+            row = ae2federation$newRow(node, parent);
+        }
         row.ae2federation$nest(parent, depth, !node.children().isEmpty());
         ae2federation$extraIndents.put(row.ae2federation$paragraph(), row.ae2federation$extraIndent());
         rows.add(row);
         for (var child : node.children()) {
-            ae2federation$addRows(child, row, depth + 1);
+            ae2federation$addRows(child, row, depth + 1, built);
         }
     }
 

@@ -36,7 +36,7 @@ final class RealCraftingProviders {
             for (var state : access.ae2federation$globals()) {
                 globals++;
                 var provider = ((CraftingProviderStateAccess) state).ae2federation$provider();
-                if (!(provider instanceof PatternProjection)) providers.add(provider);
+                if (!PatternProjection.isProjection(provider)) providers.add(provider);
             }
         }
         ProjectionDiagnostics.discovered(nodes, globals, System.nanoTime() - started);

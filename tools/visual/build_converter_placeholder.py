@@ -1,6 +1,6 @@
-"""Write the temporary textures of the ME Federation Beam Converter and Beam Former: the Federation Pattern Provider's,
-recoloured, until the artist draws them. Amber for the converter, the creative purple for the creative one, cyan for
-the former; greys stay as they are. The ME Federation Quantum Cube takes the Router's standalone texture and its
+"""Write the temporary textures of the ME Federation Beam Converter: the Federation Pattern Provider's, recoloured,
+until the artist draws them. Amber for the converter, the creative purple for the creative one; greys stay as they
+are. The ME Federation Quantum Cube takes the Router's standalone texture and its
 connected-face tiles, recoloured violet. The ME Federation Automation Interface takes the Processing Endpoint's,
 recoloured green. The Creative Computing Device, itself a placeholder for testing, takes the Router's standalone
 texture, recoloured magenta.
@@ -12,7 +12,7 @@ from PIL import Image
 REPO = Path(__file__).resolve().parents[2]
 TEXTURES = REPO / 'common/src/main/resources/assets/ae2federation/textures/block'
 SOURCES = {'front': 'pattern_provider', 'side': 'pattern_provider_side', 'back': 'pattern_provider_back'}
-HUES = {'beam_converter': 36 / 360, 'creative_beam_converter': 290 / 360, 'beam_former': 190 / 360}
+HUES = {'beam_converter': 36 / 360, 'creative_beam_converter': 290 / 360}
 
 
 def recolour(image, hue):
@@ -52,4 +52,4 @@ folder = TEXTURES / 'creative_computing_device'
 folder.mkdir(exist_ok=True)
 image = Image.open(TEXTURES / 'router' / 'router.png').convert('RGBA')
 recolour(image, DEVICE_HUE).save(folder / 'creative_computing_device.png')
-print('Wrote temporary Beam Converter, Beam Former, Quantum Cube, Automation Interface and Computing Device textures.')
+print('Wrote temporary Beam Converter, Quantum Cube, Automation Interface and Computing Device textures.')

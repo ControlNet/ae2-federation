@@ -45,3 +45,4 @@ __pycache__/
 /docs/art/cable-flow-prototype/*.mp4
 /docs/art/cable-flow-prototype/artifact.json
 /docs/art/cable-flow-prototype/profiles.json
+/build/scratch.py

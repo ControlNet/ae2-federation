@@ -80,8 +80,9 @@ public final class NeoForgeEntrypoint {
         // Before AE2's own end-of-tick Grid ticks (NORMAL priority), which draw energy from the shared pools: like
         // AE2's Grid services, Federation's work runs once per server tick, after every level has ticked.
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, NeoForgeEntrypoint::onServerTickBindings);
-        NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTickStart);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTick);
+        // After AE2's end-of-tick Grid ticks, where each Grid's storage service reports its native mount changes.
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, NeoForgeEntrypoint::onServerTickNativeMounts);
     }
 
     private static void onArtifactPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
@@ -89,11 +90,13 @@ public final class NeoForgeEntrypoint {
     }
 
     /**
-     * Binding requests from the level ticks and from player actions or GameTests, then the beams and Quantum Cubes,
-     * whose links change the domains, then the domains' operating power, which may stop a domain, then each service's
-     * tick.
+     * First the Federation Cables that have work publish their evidence. Then binding requests from the level ticks and
+     * from player actions or GameTests, then the beams and Quantum Cubes, whose links change the domains, then the
+     * domains' operating power, which may stop a domain, then each service's tick. Last, the domains settle what is
+     * still pending, and the cables sync what their beams show from the settled domains.
      */
     private static void onServerTickBindings(ServerTickEvent.Post event) {
+        space.controlnet.ae2federation.router.FederationCableTicks.tickAll(event.getServer());
         FederationBindingRefresh.flushAll();
         BeamLinkService.tickAll(event.getServer());
         space.controlnet.ae2federation.quantum.QuantumLinkService.tickAll(event.getServer());
@@ -104,10 +107,12 @@ public final class NeoForgeEntrypoint {
         space.controlnet.ae2federation.automation.ProgramCrafting.tickAll(event.getServer());
         space.controlnet.ae2federation.automation.ProgramScheduler.tickAll(event.getServer());
         space.controlnet.ae2federation.automation.ProgramSync.tickAll(event.getServer());
+        FederationDomainRegistryAccess.settle(event.getServer());
+        space.controlnet.ae2federation.router.FederationCableTicks.afterSettle(event.getServer());
     }
 
-    private static void onServerTickStart(ServerTickEvent.Pre event) {
-        LevelObservabilityService.tickStartedAll();
+    private static void onServerTickNativeMounts(ServerTickEvent.Post event) {
+        StorageMountService.reconcileNativeMountChanges(event.getServer());
     }
 
     private static void onServerTick(ServerTickEvent.Post event) {
@@ -122,6 +127,8 @@ public final class NeoForgeEntrypoint {
             // needed them end. Each service itself goes when the server stops.
             FederationBindingRefresh.closeLevel(level);
             space.controlnet.ae2federation.router.DeviceStructureUpdater.closeLevel(level);
+            space.controlnet.ae2federation.router.FederationCableTicks.closeLevel(level);
+            space.controlnet.ae2federation.router.RouterTicks.closeLevel(level);
             BeamLinkService.closeLevel(level);
             space.controlnet.ae2federation.quantum.QuantumLinkService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
@@ -150,6 +157,8 @@ public final class NeoForgeEntrypoint {
         space.controlnet.ae2federation.automation.ProgramScheduler.closeServer(server);
         space.controlnet.ae2federation.automation.ProgramSync.closeServer(server);
         LevelObservabilityService.closeServer(server);
+        space.controlnet.ae2federation.router.FederationCableTicks.closeServer(server);
+        space.controlnet.ae2federation.router.RouterTicks.closeServer(server);
         space.controlnet.ae2federation.policy.PolicyService.closeServer(server);
         FederationDomainRegistryAccess.closeServer(server);
     }

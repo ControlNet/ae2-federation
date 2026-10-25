@@ -5,6 +5,5 @@ public enum FederationDomainInvalidationReason {
     SOURCE_UNLOADED,
     IDENTITY_UNSETTLED,
     NON_RECIPROCAL_EDGE,
-    BUDGET_EXHAUSTED,
     INVALID_BRIDGE
 }

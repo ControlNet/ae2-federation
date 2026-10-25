@@ -62,8 +62,10 @@ final class StorageMountContractTest {
         assertTrue(source("CommonStartup.java").contains("NativeGridStateEvents.register();"));
         assertTrue(mounts.contains("public MountGeneration mountGeneration"));
         assertTrue(mounts.contains("removedProviderCount++"));
-        assertTrue(federationDomains.contains("FederationDomainRegistryAccess.get(level).federationDomains()"));
-        assertTrue(federationDomains.contains("federationDomain.memberships().keySet()"));
+        // A rule's two networks pair only while they share a Federation Domain.
+        assertTrue(federationDomains.contains("configuredRules(PolicyCapability.STORAGE)"));
+        assertTrue(federationDomains.contains(
+                "registry.shareFederationDomain(key.consumerNetworkId(), key.providerNetworkId())"));
     }
 
     @Test

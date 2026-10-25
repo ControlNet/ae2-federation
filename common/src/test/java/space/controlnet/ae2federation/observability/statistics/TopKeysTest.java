@@ -55,6 +55,23 @@ class TopKeysTest {
     }
 
     @Test
+    void addingAMapAtOnceMatchesAddingEachKey() {
+        var each = new TopKeys<String>(4);
+        var all = new TopKeys<String>(4);
+        var random = new java.util.Random(7);
+        for (long second = 1000; second < 1400; second += 1 + random.nextInt(3)) {
+            var amounts = new it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap<String>();
+            int keys = random.nextInt(20);
+            for (int i = 0; i < keys; i++) amounts.addTo("key" + random.nextInt(30), random.nextInt(5));
+            for (var entry : amounts.object2LongEntrySet()) each.add(second, entry.getKey(), entry.getLongValue());
+            all.addAll(second, amounts);
+            for (var range : StatisticsRange.values()) {
+                assertEquals(each.read(range, second, 100), all.read(range, second, 100), range + " at " + second);
+            }
+        }
+    }
+
+    @Test
     void aKeysSeriesHoldsWhatItMovedInEachPoint() {
         var top = new TopKeys<String>(4);
         top.add(100, "iron", 3);

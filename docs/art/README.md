@@ -19,10 +19,11 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
   Federation Pattern Provider's textures, recoloured amber and the creative purple; the models are plain cubes with the
   front to the south, as the Provider's. The converter is a solid-cuboid body facing one way (1x1x2 up to 3x3x6) and
   has no connected-face geometry yet. Replace the PNGs and models, then delete the script.
-- **Temporary: the ME Federation Beam Former.** The same script writes `textures/block/beam_former/` (front, side, back)
-  from the Provider's textures, recoloured cyan; the model is a plain cube with the front (the beam's face) to the
-  south and the back (the cable's face) to the north. A former is a square 1x1, 2x2 or 3x3 body one block thick and has
-  no connected-face geometry yet.
+- **The ME Federation Beam Former: all three sizes drawn.** The artist's Blockbench projects
+  (`tools/blockbench/projects/{,large_,huge_}beam_emitter.bbmodel`, textures in `textures/block/beam_emitter/`) become
+  the 1x1 model, the four 2x2 member models and the nine 3x3 member models through
+  `tools/blockbench/export_beam_former_models.py`, with a multipart blockstate that picks each member's piece. Edit the
+  projects, then rerun the exporter; `tools/visual/validate_assets.py` fails on a stale export.
 - **Temporary: the ME Federation Quantum Cube.** The same script writes `textures/block/quantum_cube/` from the
   Router's standalone texture and its four connected-face tiles, recoloured violet; the standalone model is the Router's
   with that texture, and a formed cube uses the Router's connected-face geometry from those tiles. A cube is a solid

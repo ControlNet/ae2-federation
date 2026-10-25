@@ -10,6 +10,7 @@ import space.controlnet.ae2federation.domain.ObservedGrids;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyKey;
+import space.controlnet.ae2federation.policy.PolicyService;
 
 final class StorageFederationDomainObserver {
     private final ServerLevel level;
@@ -30,18 +31,15 @@ final class StorageFederationDomainObserver {
     Map<PolicyKey, StorageRelationship> relationships() {
         var loadedGrids = observed.confirmed();
         var relationships = new HashMap<PolicyKey, StorageRelationship>();
-        for (var federationDomain : FederationDomainRegistryAccess.get(level).federationDomains()) {
-            var members = federationDomain.memberships().keySet().stream().map(loadedGrids::get)
-                    .filter(java.util.Objects::nonNull).toList();
-            for (var consumer : members) {
-                for (var provider : members) {
-                    if (consumer != provider) {
-                        var key = new PolicyKey(FederationDomainRegistryAccess.confirmedNetworkId(consumer).orElseThrow(),
-                                FederationDomainRegistryAccess.confirmedNetworkId(provider).orElseThrow(),
-                                PolicyCapability.STORAGE);
-                        relationships.put(key, new StorageRelationship(key, consumer, provider));
-                    }
-                }
+        var registry = FederationDomainRegistryAccess.get(level);
+        // By rule: every two networks of a domain would be N(N-1) pairs, and only pairs with a rule link anything.
+        for (var rule : PolicyService.get(level).configuredRules(PolicyCapability.STORAGE)) {
+            var key = rule.key();
+            var consumer = loadedGrids.get(key.consumerNetworkId());
+            var provider = loadedGrids.get(key.providerNetworkId());
+            if (consumer != null && provider != null && consumer != provider
+                    && registry.shareFederationDomain(key.consumerNetworkId(), key.providerNetworkId())) {
+                relationships.put(key, new StorageRelationship(key, consumer, provider));
             }
         }
         return relationships;
@@ -52,12 +50,8 @@ final class StorageFederationDomainObserver {
     }
 
     Set<space.controlnet.ae2federation.domain.FederationDomainReference> references(StorageRelationship relationship) {
-        var registry = FederationDomainRegistryAccess.get(level);
-        var consumerFederationDomains = registry.federationdomainsFor(relationship.key().consumerNetworkId());
-        var providerFederationDomains = registry.federationdomainsFor(relationship.key().providerNetworkId());
-        return consumerFederationDomains.stream().filter(providerFederationDomains::contains).map(registry::federationDomain)
-                .flatMap(java.util.Optional::stream).map(space.controlnet.ae2federation.domain.FederationDomainSnapshot::reference)
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        return FederationDomainRegistryAccess.get(level).sharedFederationDomainReferences(
+                relationship.key().consumerNetworkId(), relationship.key().providerNetworkId());
     }
 
     long topologyRevision() {
@@ -70,9 +64,8 @@ final class StorageFederationDomainObserver {
         if (consumerId.isEmpty() || providerId.isEmpty()) {
             return false;
         }
-        var registry = FederationDomainRegistryAccess.get(level);
-        var providerFederationDomains = registry.federationdomainsFor(providerId.orElseThrow());
-        return registry.federationdomainsFor(consumerId.orElseThrow()).stream().anyMatch(providerFederationDomains::contains);
+        return FederationDomainRegistryAccess.get(level).shareFederationDomain(consumerId.orElseThrow(),
+                providerId.orElseThrow());
     }
 
     void clear() {

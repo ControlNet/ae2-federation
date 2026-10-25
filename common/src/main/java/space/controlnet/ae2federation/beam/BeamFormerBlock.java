@@ -125,16 +125,16 @@ public final class BeamFormerBlock extends BaseEntityBlock implements FormableDe
         return state.setValue(SIZE, Size.SMALL);
     }
 
-    /** The frame has gaps; retain neighbour faces behind them. Huge still uses the full cube. */
+    /** The frame has gaps; retain neighbour faces behind them. */
     @Override
     protected VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos position) {
-        return state.getValue(SIZE) == Size.HUGE ? Shapes.block() : Shapes.empty();
+        return Shapes.empty();
     }
 
-    /** The frame has gaps; keep its inset faces and joins bright. Huge still uses the full cube. */
+    /** The frame has gaps; keep its inset faces and joins bright. */
     @Override
     protected float getShadeBrightness(BlockState state, BlockGetter level, BlockPos position) {
-        return state.getValue(SIZE) == Size.HUGE ? super.getShadeBrightness(state, level, position) : 1.0F;
+        return 1.0F;
     }
 
     private Direction facing(BlockGetter level, DeviceStructure.Valid body) {

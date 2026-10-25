@@ -88,11 +88,6 @@ public final class LevelObservabilityService implements AutoCloseable {
         SERVICES.values().forEach(service -> service.subscriptions.closePlayer(playerId));
     }
 
-    /** Called as each server tick starts. */
-    public static synchronized void tickStartedAll() {
-        SERVICES.values().forEach(service -> service.statistics().tickStarted());
-    }
-
     public static synchronized void sweepAll() {
         SERVICES.values().forEach(LevelObservabilityService::sweep);
     }
@@ -110,7 +105,7 @@ public final class LevelObservabilityService implements AutoCloseable {
         if (statistics == null) {
             var data = space.controlnet.ae2federation.persistence.StatisticsSavedData.get(level);
             statistics = new space.controlnet.ae2federation.observability.statistics.FederationStatistics(level,
-                    System::currentTimeMillis, data.book(), data::changed);
+                    level::getGameTime, data.book(), data::changed);
         }
         return statistics;
     }

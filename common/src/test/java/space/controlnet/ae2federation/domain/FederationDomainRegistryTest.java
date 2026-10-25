@@ -20,7 +20,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void directBridgesRemainSeparateWhenTheyShareNativeNetworks() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var sources = java.util.stream.IntStream.range(0, 4)
                 .mapToObj(index -> new FederationDomainSourceId("bridge-" + index))
                 .toList();
@@ -34,7 +34,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void sharedDomainAnswersForSingleAndSeveralMemberships() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ab"), "test:dimension", NETWORK_A, NETWORK_B);
         registry.upsertDirectBridge(new FederationDomainSourceId("bridge-bc"), "test:dimension", NETWORK_B, NETWORK_C);
 
@@ -55,8 +55,45 @@ final class FederationDomainRegistryTest {
     }
 
     @Test
+    void sharedReferencesAreTheCommonDomainsAtTheirGeneration() {
+        var registry = new FederationDomainRegistry();
+        // B is in every domain, as a main network with one Bridge per subnet.
+        for (var index = 0; index < 50; index++) {
+            registry.upsertDirectBridge(new FederationDomainSourceId("bridge-b-" + index), "test:dimension", NETWORK_B,
+                    network(100 + index));
+        }
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ab-1"), "test:dimension", NETWORK_A, NETWORK_B);
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ab-2"), "test:dimension", NETWORK_A, NETWORK_B);
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ac"), "test:dimension", NETWORK_A, NETWORK_C);
+
+        for (var first : java.util.List.of(NETWORK_A, NETWORK_B, NETWORK_C, network(100), network(9))) {
+            for (var second : java.util.List.of(NETWORK_A, NETWORK_B, NETWORK_C, network(100), network(9))) {
+                var expected = shared(registry, first, second).stream().map(registry::federationDomain)
+                        .flatMap(java.util.Optional::stream).map(FederationDomainSnapshot::reference)
+                        .collect(java.util.stream.Collectors.toSet());
+                assertEquals(expected, registry.sharedFederationDomainReferences(first, second), first + " " + second);
+                assertEquals(!expected.isEmpty(), registry.shareFederationDomain(first, second), first + " " + second);
+                assertEquals(!expected.isEmpty(), registry.shareRunningFederationDomain(first, second),
+                        first + " " + second);
+            }
+        }
+        // A and B share two domains; A and C one. Stopping one of A and B's leaves them a running one.
+        var ab = registry.sharedFederationDomainReferences(NETWORK_A, NETWORK_B).stream()
+                .map(FederationDomainReference::federationDomainId).sorted().toList();
+        registry.setUnpowered(ab.getFirst(), true);
+        assertTrue(registry.shareRunningFederationDomain(NETWORK_B, NETWORK_A));
+        registry.setUnpowered(ab.getLast(), true);
+        assertFalse(registry.shareRunningFederationDomain(NETWORK_B, NETWORK_A));
+        assertTrue(registry.shareFederationDomain(NETWORK_B, NETWORK_A));
+        assertFalse(registry.shareOverCapacityFederationDomain(NETWORK_B, NETWORK_A));
+        assertTrue(registry.shareRunningFederationDomain(NETWORK_C, NETWORK_A));
+        assertEquals(2, registry.sharedFederationDomainReferences(NETWORK_A, NETWORK_B).size());
+        assertTrue(registry.sharedFederationDomainReferences(NETWORK_A, network(100)).isEmpty());
+    }
+
+    @Test
     void reciprocalTopologyMergesAndSplitsOnlyAffectedComponents() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var left = node(1);
         var right = node(2);
         registry.upsertNode(evidence(left, Map.of("east",
@@ -78,7 +115,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void membershipFreeNodeResolvesToTheDomainItsFederationPortJoins() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var member = node(1);
         var endpoint = node(2);
         registry.upsertNode(evidence(member, Map.of("east",
@@ -99,7 +136,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void redundantAttachmentsDeduplicateNetworkMembershipAndRetainSources() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var node = node(1);
         var ports = new LinkedHashMap<String, FederationDomainPortEvidence>();
         ports.put("north", nativePort(node, "north", NETWORK_A));
@@ -115,7 +152,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void partialUnloadInvalidatesMembershipWithoutInventingLoadedEvidence() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var left = node(1);
         var cable = node(2);
         var right = node(3);
@@ -140,7 +177,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void unloadedNodeRecordsAreBoundedToTheMostRecent() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var cap = FederationDomainRegistry.MAX_UNLOADED_INVALIDATIONS;
         for (var position = 0; position < cap + 10; position++) {
             registry.removeNode(node(position));
@@ -152,27 +189,32 @@ final class FederationDomainRegistryTest {
         assertEquals(FederationDomainInvalidationReason.SOURCE_UNLOADED, invalidations.get(node(cap + 9)));
     }
 
+    /** A domain has no size limit, as an AE2 Grid has none: ten thousand linked nodes form one domain. */
     @Test
-    void budgetExhaustionInvalidatesStaleReferencesImmediately() {
-        var registry = new FederationDomainRegistry(new FederationDomainRecomputeBudget(1, 6));
-        var left = node(1);
-        var right = node(2);
-        registry.upsertNode(evidence(left, Map.of(), NETWORK_A));
-        var stale = registry.snapshot().federationDomains().values().iterator().next().reference();
+    void aDomainOfTenThousandNodesForms() {
+        var registry = new FederationDomainRegistry();
+        var count = 10_000;
+        for (int index = 0; index < count; index++) {
+            var ports = new LinkedHashMap<String, FederationDomainPortEvidence>();
+            if (index > 0) {
+                ports.put("west", new FederationDomainPortEvidence.Federation(new FederationDomainPortId(node(index - 1), "east")));
+            }
+            if (index < count - 1) {
+                ports.put("east", new FederationDomainPortEvidence.Federation(new FederationDomainPortId(node(index + 1), "west")));
+            }
+            var network = index == 0 ? NETWORK_A : index == count - 1 ? NETWORK_C : null;
+            registry.upsertNode(network == null ? new FederationDomainNodeEvidence(node(index), ports)
+                    : evidence(node(index), ports, network));
+        }
 
-        registry.upsertNode(evidence(left, Map.of("east",
-                new FederationDomainPortEvidence.Federation(new FederationDomainPortId(right, "west"))), NETWORK_A));
-        registry.upsertNode(evidence(right, Map.of("west",
-                new FederationDomainPortEvidence.Federation(new FederationDomainPortId(left, "east"))), NETWORK_C));
-
-        assertFalse(registry.isCurrent(stale));
-        assertTrue(registry.federationdomainsFor(NETWORK_A).isEmpty());
-        assertTrue(registry.snapshot().invalidations().containsValue(FederationDomainInvalidationReason.BUDGET_EXHAUSTED));
+        assertTrue(registry.shareFederationDomain(NETWORK_A, NETWORK_C), "both ends share one domain");
+        assertEquals(count, registry.federationDomainOf(node(count / 2)).orElseThrow().nodes().size());
+        assertTrue(registry.snapshot().invalidations().isEmpty(), "no node is invalidated for the domain's size");
     }
 
     @Test
     void unsettledIdentityNeverCreatesConfirmedMembership() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var node = node(1);
 
         registry.upsertNode(new FederationDomainNodeEvidence(node, Map.of("north",
@@ -196,7 +238,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void removingADeadEndKeepsTheDomainCurrent() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var nodes = java.util.List.of(node(1), node(2), node(3));
         publishChain(registry, nodes, Map.of(node(1), NETWORK_A, node(3), NETWORK_B));
         var branch = node(4);
@@ -217,7 +259,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void aSplitKeepsTheIdAndGenerationOnTheSideThatKeepsEveryMember() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var nodes = java.util.stream.LongStream.rangeClosed(1, 6).mapToObj(FederationDomainRegistryTest::node).toList();
         publishChain(registry, nodes, Map.of(node(1), NETWORK_A));
         var domain = registry.federationDomainOf(node(1)).orElseThrow().reference();
@@ -235,7 +277,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void aMergeBumpsTheGenerationAndRetiresTheAbsorbedDomain() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         publishChain(registry, java.util.List.of(node(1), node(2), node(3)), Map.of(node(1), NETWORK_A));
         var survivor = registry.federationDomainOf(node(1)).orElseThrow().reference();
         var right = node(4);
@@ -256,7 +298,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void physicalIdsAreNeverReused() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var seen = new java.util.HashSet<FederationDomainId>();
         for (var round = 0; round < 3; round++) {
             registry.upsertNode(evidence(node(1), Map.of(), NETWORK_A));
@@ -268,7 +310,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void anUnchangedDirectBridgeKeepsItsReference() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var source = new FederationDomainSourceId("bridge");
         registry.upsertDirectBridge(source, "test:dimension", NETWORK_A, NETWORK_B);
         var reference = registry.federationDomain(FederationDomainId.direct(source)).orElseThrow().reference();
@@ -284,7 +326,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void aHalfPublishedEdgeKeepsTheRestOfTheDomain() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var left = node(1);
         var right = node(2);
         registry.upsertNode(evidence(left, Map.of("east", federation(right, "west")), NETWORK_A));
@@ -300,7 +342,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void anUnsettledPortWithholdsOnlyItsOwnMembership() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var left = node(1);
         var right = node(2);
         registry.upsertNode(evidence(left, Map.of("east", federation(right, "west"), "north",
@@ -315,7 +357,7 @@ final class FederationDomainRegistryTest {
     @Test
     void randomTopologyMatchesAFromScratchPartitionOfMutualLinks() {
         var random = new java.util.Random(20260930L);
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var networks = java.util.List.of(NETWORK_A, NETWORK_B, NETWORK_C);
         var published = new java.util.HashMap<FederationDomainNodeId, FederationDomainNodeEvidence>();
         var retired = new java.util.HashSet<FederationDomainId>();
@@ -365,7 +407,7 @@ final class FederationDomainRegistryTest {
     }
 
     private static void assertNewCableJoinsWithoutWithdrawingTheDomain(boolean existingSideFirst) {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         publishChain(registry, java.util.List.of(node(1), node(2), node(3)), Map.of(node(1), NETWORK_A, node(3), NETWORK_B));
         var domain = registry.federationDomainOf(node(2)).orElseThrow().reference();
         var branch = node(4);
@@ -445,7 +487,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void federationLinksJoinNodesOfDifferentDimensions() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var here = node(1);
         var there = node(OTHER_DIMENSION, 1);
         registry.upsertNode(evidence(here, Map.of("tunnel", federation(there, "tunnel")), NETWORK_A));
@@ -458,7 +500,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void partsOfOneBlockAreSeparateNodes() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var host = node(1);
         var north = new FederationDomainNodeId(host.dimension(), host.blockPosition(), "north");
         var south = new FederationDomainNodeId(host.dimension(), host.blockPosition(), "south");
@@ -488,7 +530,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void removingADimensionKeepsTheOthers() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var left = node(1);
         var right = node(2);
         var there = node(OTHER_DIMENSION, 1);
@@ -514,7 +556,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void removingADimensionSplitsTheDomainsItJoined() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var here = node(1);
         var there = node(OTHER_DIMENSION, 1);
         registry.upsertNode(evidence(here, Map.of("tunnel", federation(there, "tunnel")), NETWORK_A));
@@ -530,7 +572,7 @@ final class FederationDomainRegistryTest {
 
     @Test
     void removingADimensionDropsItsDiagnostics() {
-        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry();
         var here = node(1);
         var waiting = node(OTHER_DIMENSION, 1);
         var unloaded = node(OTHER_DIMENSION, 2);

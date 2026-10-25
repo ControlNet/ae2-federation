@@ -73,8 +73,9 @@ for path in (BASE / 'textures').rglob('*.png'):
     if ref.startswith(NS + 'block/eco_computation/'):
         continue
     meta = path.with_suffix('.png.mcmeta')
-    # The artist's 2x2 rings are modelled over two blocks, on a 32-pixel texture.
-    size = 64 if ref == NS + 'block/beam_emitter/large_light_emitter' else 32 if ref == NS + 'block/large_cable/large_cable' else 16
+    # The artist's 2x2 and 3x3 Beam Formers are modelled over two and three blocks, on 64- and 128-pixel sheets.
+    size = {NS + 'block/beam_emitter/large_light_emitter': 64, NS + 'block/beam_emitter/huge_light_emitter': 128,
+            NS + 'block/large_cable/large_cable': 32}.get(ref, 16)
     assert im.width == size, ref
     if meta.exists() and ref.startswith(NS + 'item/'):
         # The artist's animated item icons: every listed frame must exist in the strip.
@@ -106,7 +107,7 @@ with tempfile.TemporaryDirectory() as temp:
             assert target.read_bytes() == path.read_bytes(), ('stale generated asset', target)
 # Every size and connection mask selects exactly one model, including partially unloaded bodies.
 parts = json.loads((BASE / 'blockstates/beam_former.json').read_text())['multipart']
-assert len(parts) == 42
+assert len(parts) == 96
 
 
 def matches(condition, state):
@@ -133,12 +134,17 @@ for facing, (px, nx, py, ny, front, back) in quadrant_axes.items():
             state.update(facing=facing, size=size)
             selected = [part for part in parts if matches(part['when'], state)]
             assert len(selected) == 1, state
-            expected = 'beam_former_huge' if size == 'huge' else 'beam_former'
+            expected = 'beam_former'
             intact = (state[px] != state[nx] and state[py] != state[ny]
                       and state[front] == state[back] == 'false')
             if size == 'large' and intact:
                 expected = f"beam_former_large_{int(state[px] == 'false')}{int(state[py] == 'false')}"
+            # A 3x3 column: +only is 0, both is 1, -only is 2; no connection on an axis is a damaged body.
+            column = {('true', 'false'): 0, ('true', 'true'): 1, ('false', 'true'): 2}
+            if (size == 'huge' and (state[px], state[nx]) in column and (state[py], state[ny]) in column
+                    and state[front] == state[back] == 'false'):
+                expected = f"beam_former_huge_{column[state[px], state[nx]]}{column[state[py], state[ny]]}"
             assert selected[0]['apply']['model'] == NS + 'block/' + expected, (state, expected, selected)
 
-print(json.dumps({'passed': True, 'models': len(generated), 'beam_models': 6, 'beam_multipart_cases': len(parts), 'faces': faces_checked,
+print(json.dumps({'passed': True, 'models': len(generated), 'beam_models': 14, 'beam_multipart_cases': len(parts), 'faces': faces_checked,
                   'cable_geometry': 'code', 'reproducible': True, 'in_game_tested': False}, indent=2))

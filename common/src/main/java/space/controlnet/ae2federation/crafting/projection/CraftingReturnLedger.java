@@ -62,6 +62,12 @@ public final class CraftingReturnLedger extends SavedData {
     public record Job(UUID craftingId, String dimension, BlockPos cpu, JobEnd end, boolean nativeCpu) {
     }
 
+    /**
+     * The ledgers that owe anything, so a Grid's every insert into its CPUs can skip the lookup while none does. A
+     * ledger dropped while it still owed keeps counting: that only costs the lookup, never skips a debt.
+     */
+    private static final java.util.concurrent.atomic.AtomicInteger OWING = new java.util.concurrent.atomic.AtomicInteger();
+
     /** Executing network, then key, then consumer, in insertion order so returns are handed out deterministically. */
     private final Map<NetworkId, Map<AEKey, Map<NetworkId, Debt>>> owed = new LinkedHashMap<>();
     /** By consumer, its jobs seen at a push, by crafting id. */
@@ -84,6 +90,7 @@ public final class CraftingReturnLedger extends SavedData {
 
     void add(NetworkId executing, NetworkId consumer, AEKey key, long amount) {
         if (amount <= 0) return;
+        if (owed.isEmpty()) OWING.incrementAndGet();
         owed.computeIfAbsent(executing, ignored -> new LinkedHashMap<>())
                 .computeIfAbsent(key, ignored -> new LinkedHashMap<>())
                 .computeIfAbsent(consumer, ignored -> new Debt()).owed += amount;
@@ -118,6 +125,15 @@ public final class CraftingReturnLedger extends SavedData {
         return owed.containsKey(executing);
     }
 
+    boolean owesAnything() {
+        return !owed.isEmpty();
+    }
+
+    /** Whether any ledger owes anything. */
+    static boolean anyOwes() {
+        return OWING.get() > 0;
+    }
+
     /** Whether anything here is kept under {@code network}: debts either way, watched jobs or transit stock. */
     public boolean references(NetworkId network) {
         return owed.containsKey(network) || jobs.containsKey(network) || transit.containsKey(network)
@@ -133,6 +149,17 @@ public final class CraftingReturnLedger extends SavedData {
         var amounts = new LinkedHashMap<NetworkId, Long>();
         consumers.forEach((consumer, debt) -> amounts.put(consumer, debt.owed));
         return amounts;
+    }
+
+    /** Every debt of {@code key}, by executing network in the order it first owed, then by consumer in push order. */
+    List<Owed> debts(AEKey key) {
+        var debts = new java.util.ArrayList<Owed>();
+        owed.forEach((executing, keys) -> {
+            var consumers = keys.get(key);
+            if (consumers != null) consumers.forEach((consumer, debt) ->
+                    debts.add(new Owed(executing, consumer, key, debt.owed, debt.held)));
+        });
+        return debts;
     }
 
     /**
@@ -175,7 +202,10 @@ public final class CraftingReturnLedger extends SavedData {
         var consumers = keys == null ? null : keys.get(key);
         if (consumers == null || consumers.remove(consumer) == null) return;
         if (consumers.isEmpty()) keys.remove(key);
-        if (keys.isEmpty()) owed.remove(executing);
+        if (keys.isEmpty()) {
+            owed.remove(executing);
+            if (owed.isEmpty()) OWING.decrementAndGet();
+        }
         setDirty();
     }
 

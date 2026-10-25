@@ -8,9 +8,18 @@ final class CompatTestClasses {
     private CompatTestClasses() {
     }
 
+    static boolean includedInAll(String group) {
+        return !group.equals("quest-coverage") && !group.startsWith("playthrough-");
+    }
+
     static Map<String, Class<?>> groups() {
         var groups = new LinkedHashMap<String, Class<?>>();
         groups.put("core", CoreCompatGameTests.class);
+        groups.put("quest-coverage", QuestCoverageCompatGameTests.class);
+        groups.put("playthrough-topology", PlaythroughTopologyGameTests.class);
+        groups.put("playthrough-crafting", PlaythroughCraftingGameTests.class);
+        groups.put("playthrough-remainders", PlaythroughRemainderGameTests.class);
+        groups.put("playthrough-progression", PlaythroughProgressionGameTests.class);
         if (!System.getProperty("ae2federation.compat.transitRestartPhase", "").isBlank()) {
             groups.put("transit-restart", TransitRecoveryRestartGameTests.class);
         }
@@ -33,12 +42,15 @@ final class CompatTestClasses {
         groups.put("appflux-enderio", AppliedFluxEnderIOCompatGameTests.class);
         groups.put("appflux-industrialforegoing", AppliedFluxIndustrialForegoingCompatGameTests.class);
         groups.put("omnisequence", OmniSequenceCompatGameTests.class);
+        groups.put("appliedenhancements", AppliedEnhancementsCompatGameTests.class);
+        groups.put("aeallpattern", AEAllPatternCompatGameTests.class);
         groups.put("expandedae", ExpandedAECompatGameTests.class);
         groups.put("neoecoae", NeoEcoCompatGameTests.class);
         groups.put("neoecoae-computing", NeoEcoComputingCompatGameTests.class);
         groups.put("neoecoprototype", NeoEcoPrototypeCompatGameTests.class);
         groups.put("neoecoprototype-computing", NeoEcoPrototypeComputingCompatGameTests.class);
         groups.put("useless-mod", UselessModCompatGameTests.class);
+        // Spans several addons: each profile names its addon's tests by id (see the class).
         return groups;
     }
 }

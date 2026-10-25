@@ -1,0 +1,21 @@
+{
+ "data": [
+  {
+   "id": 9190182,
+   "fileName": "ServerFiles-8.3.zip",
+   "displayName": "ServerFiles-8.3.zip",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.21.1",
+    "NeoForge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": false,
+   "additionalFilesCount": 0,
+   "additionalServerPackFilesCount": 0,
+   "parentProjectFileId": 9190157,
+   "fileLength": 1239095516,
+   "dateCreated": "2026-10-15T11:36:41.197Z"
+  }
+ ]
+}
