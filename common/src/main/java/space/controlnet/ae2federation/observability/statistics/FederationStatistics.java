@@ -342,7 +342,9 @@ public final class FederationStatistics {
     public KeyCounter stock(NetworkId network) {
         var grid = grids.get(network);
         var counter = grid == null || grid.isEmpty() ? null : nativeStock(grid);
-        return counter == null ? new KeyCounter() : counter;
+        if (counter == null) return new KeyCounter();
+        counter.removeZeros();
+        return counter;
     }
 
     /**
@@ -550,27 +552,42 @@ public final class FederationStatistics {
     private record Held(AEKey key, long amount) {
     }
 
+    /** One resource type's total and its largest keys while a counter is read. */
+    private static final class TypeReading {
+        private double total;
+        private final PriorityQueue<Held> top = new PriorityQueue<>(Comparator.comparingLong(Held::amount));
+    }
+
     /** A reading of {@code counter}: its totals by resource type and the amounts of the keys tracked under {@code name}. */
     private StoredReading read(String name, long second, KeyCounter counter, StoredReading previous) {
-        var amounts = new HashMap<String, Double>();
-        var top = new HashMap<AEKeyType, PriorityQueue<Held>>();
+        // By type, named once at the end: a network can hold ten thousand keys.
+        var types = new IdentityHashMap<AEKeyType, TypeReading>();
+        AEKeyType lastType = null;
+        TypeReading last = null;
         for (var entry : counter) {
-            var key = entry.getKey();
             long amount = entry.getLongValue();
-            amounts.merge(key.getType().getId().toString(), (double) amount, Double::sum);
-            var queue = top.computeIfAbsent(key.getType(),
-                    ignored -> new PriorityQueue<>(Comparator.comparingLong(Held::amount)));
+            if (amount == 0) continue;
+            var key = entry.getKey();
+            var type = key.getType();
+            if (type != lastType) {
+                last = types.computeIfAbsent(type, ignored -> new TypeReading());
+                lastType = type;
+            }
+            last.total += amount;
+            var queue = last.top;
             if (queue.size() < TRACKED_TOP) queue.add(new Held(key, amount));
             else if (amount > queue.peek().amount()) {
                 queue.poll();
                 queue.add(new Held(key, amount));
             }
         }
+        var amounts = new HashMap<String, Double>();
+        types.forEach((type, reading) -> amounts.put(type.getId().toString(), reading.total));
         // A type the network held before and holds no more reads as 0, not as missing.
         if (previous != null) previous.amounts().keySet().forEach(type -> amounts.putIfAbsent(type, 0d));
         var chosen = new HashMap<AEKeyType, Set<AEKey>>();
-        top.forEach((type, queue) -> queue.forEach(held -> chosen.computeIfAbsent(type, ignored -> new HashSet<>())
-                .add(held.key())));
+        types.forEach((type, reading) -> reading.top.forEach(held -> chosen.computeIfAbsent(type,
+                ignored -> new HashSet<>()).add(held.key())));
         for (var key : book.pins(name)) {
             if (counter.get(key) > 0) chosen.computeIfAbsent(key.getType(), ignored -> new HashSet<>()).add(key);
         }
@@ -594,13 +611,12 @@ public final class FederationStatistics {
         return new StoredReading(second, amounts, tracked);
     }
 
-    /** What the network's own storage holds, or {@code null} when it cannot be read now. */
+    /** What the network's own storage holds, possibly with keys at 0, or {@code null} when it cannot be read now. */
     private KeyCounter nativeStock(IGrid grid) {
         try {
             var domain = provenance.discover(grid);
             var counter = new KeyCounter();
             for (var source : domain.sources()) source.storage().getAvailableStacks(counter);
-            counter.removeZeros();
             return counter;
         } catch (ProvenanceException unreadable) {
             return null;

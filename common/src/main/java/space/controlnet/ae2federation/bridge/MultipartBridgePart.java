@@ -314,14 +314,14 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
         lastPublished = published;
         if (candidate == null) {
             FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
-            reconcile(serverLevel, previous);
+            reconcile(serverLevel);
             return;
         }
         var mainId = FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid());
         var outerId = FederationDomainRegistryAccess.confirmedNetworkId(candidate.outerGrid());
         if (mainId.isEmpty() || outerId.isEmpty()) {
             FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
-            reconcile(serverLevel, previous);
+            reconcile(serverLevel);
             return;
         }
         FederationDomainRegistryAccess.get(serverLevel).upsertDirectBridge(federationDomainSource,
@@ -335,13 +335,11 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
     }
 
     /**
-     * After this Bridge stopped linking: at once when it linked before, so a redundant route that remains carries a held
-     * storage projection on in the same tick; otherwise (a Bridge not yet linked) with the tick's other requests.
+     * After this Bridge stopped linking, with the tick's other requests, as cables and routers do: a thousand Bridges
+     * that unload or are removed in one tick reconcile once, not once each. Until then a held storage projection, even
+     * one a redundant route still carries, fails closed.
      */
-    private static void reconcile(ServerLevel serverLevel, BridgeStatus previous) {
+    private static void reconcile(ServerLevel serverLevel) {
         FederationBindingRefresh.request(serverLevel);
-        if (previous.membershipCandidate().isPresent()) {
-            FederationBindingRefresh.flush(serverLevel);
-        }
     }
 }
