@@ -1,13 +1,13 @@
 name: Playthrough
 
-# The NAST modpack playthrough regressions (docs/compatibility/modpack-playthrough.md), timed on GitHub runners:
-# the 8-item machine regression once per machine path, and the default topology matrix.
+# The NAST modpack playthrough regressions (docs/compatibility/modpack-playthrough.md) on every push: the 8-item
+# machine regression once per machine path, and the default topology matrix. About 3 minutes with a warm cache.
 # Each server's start accepts the Minecraft EULA (https://aka.ms/MinecraftEULA) for these test runs.
 # Third-party jars are cached for this repository's runs only and never uploaded as artifacts; only logs and reports are.
 
 on:
   push:
-    branches: [feature/modpack-playthrough]
+    branches-ignore: [master]
   workflow_dispatch:
 
 permissions:
