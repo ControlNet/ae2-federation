@@ -231,22 +231,14 @@ public final class FederationDomainRegistry {
      */
     public boolean shareRunningFederationDomain(NetworkId first, NetworkId second) {
         flush();
-        var firstDomains = networkIndex.getOrDefault(first, Set.of());
-        var secondDomains = networkIndex.getOrDefault(second, Set.of());
-        for (var domain : firstDomains) {
-            if (!overCapacity.contains(domain) && !unpowered.contains(domain) && secondDomains.contains(domain)) return true;
-        }
-        return false;
+        return shareFederationDomain(first, second,
+                domain -> !overCapacity.contains(domain) && !unpowered.contains(domain));
     }
 
     /** Whether two networks share a domain over capacity: the cause named when they share no running one. */
     public boolean shareOverCapacityFederationDomain(NetworkId first, NetworkId second) {
         flush();
-        var secondDomains = networkIndex.getOrDefault(second, Set.of());
-        for (var domain : networkIndex.getOrDefault(first, Set.of())) {
-            if (overCapacity.contains(domain) && secondDomains.contains(domain)) return true;
-        }
-        return false;
+        return shareFederationDomain(first, second, overCapacity::contains);
     }
 
     /** Whether a domain has a Federation Cable over the capacity limit, and so stops as a whole. */
@@ -296,7 +288,44 @@ public final class FederationDomainRegistry {
         if (firstDomains.size() == 1 && secondDomains.size() == 1) {
             return sole(firstDomains).equals(sole(secondDomains));
         }
-        return !java.util.Collections.disjoint(firstDomains, secondDomains);
+        return shareFederationDomain(first, second, domain -> true);
+    }
+
+    /**
+     * Whether two networks share a domain that passes {@code filter}. Walks the smaller membership: a main network with
+     * a Bridge to each of many subnets is in many domains, each subnet in one. ({@code Collections.disjoint} walks its
+     * second argument whenever the first is a set, whatever their sizes.)
+     */
+    private boolean shareFederationDomain(NetworkId first, NetworkId second,
+            java.util.function.Predicate<FederationDomainId> filter) {
+        var firstDomains = networkIndex.getOrDefault(first, Set.of());
+        var secondDomains = networkIndex.getOrDefault(second, Set.of());
+        var smaller = firstDomains.size() <= secondDomains.size() ? firstDomains : secondDomains;
+        var larger = smaller == firstDomains ? secondDomains : firstDomains;
+        for (var domain : smaller) {
+            if (larger.contains(domain) && filter.test(domain)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * The current references of the domains both networks are members of. Walks the smaller membership and copies
+     * neither, so a main network with a Bridge to each of many subnets costs each subnet's lookup one domain.
+     */
+    public Set<FederationDomainReference> sharedFederationDomainReferences(NetworkId first, NetworkId second) {
+        flush();
+        var firstDomains = networkIndex.getOrDefault(first, Set.of());
+        var secondDomains = networkIndex.getOrDefault(second, Set.of());
+        var smaller = firstDomains.size() <= secondDomains.size() ? firstDomains : secondDomains;
+        var larger = smaller == firstDomains ? secondDomains : firstDomains;
+        List<FederationDomainReference> shared = null;
+        for (var id : smaller) {
+            var domain = larger.contains(id) ? federationDomains.get(id) : null;
+            if (domain == null) continue;
+            if (shared == null) shared = new ArrayList<>(smaller.size());
+            shared.add(domain.reference());
+        }
+        return shared == null ? Set.of() : Set.copyOf(shared);
     }
 
     /** The one id of a single-domain membership; the index's sorted sets give it without an iterator. */

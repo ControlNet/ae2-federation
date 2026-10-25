@@ -52,12 +52,8 @@ final class StorageFederationDomainObserver {
     }
 
     Set<space.controlnet.ae2federation.domain.FederationDomainReference> references(StorageRelationship relationship) {
-        var registry = FederationDomainRegistryAccess.get(level);
-        var consumerFederationDomains = registry.federationdomainsFor(relationship.key().consumerNetworkId());
-        var providerFederationDomains = registry.federationdomainsFor(relationship.key().providerNetworkId());
-        return consumerFederationDomains.stream().filter(providerFederationDomains::contains).map(registry::federationDomain)
-                .flatMap(java.util.Optional::stream).map(space.controlnet.ae2federation.domain.FederationDomainSnapshot::reference)
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        return FederationDomainRegistryAccess.get(level).sharedFederationDomainReferences(
+                relationship.key().consumerNetworkId(), relationship.key().providerNetworkId());
     }
 
     long topologyRevision() {
@@ -70,9 +66,8 @@ final class StorageFederationDomainObserver {
         if (consumerId.isEmpty() || providerId.isEmpty()) {
             return false;
         }
-        var registry = FederationDomainRegistryAccess.get(level);
-        var providerFederationDomains = registry.federationdomainsFor(providerId.orElseThrow());
-        return registry.federationdomainsFor(consumerId.orElseThrow()).stream().anyMatch(providerFederationDomains::contains);
+        return FederationDomainRegistryAccess.get(level).shareFederationDomain(consumerId.orElseThrow(),
+                providerId.orElseThrow());
     }
 
     void clear() {

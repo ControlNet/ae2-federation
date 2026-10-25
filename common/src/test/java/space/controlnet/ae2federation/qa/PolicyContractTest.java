@@ -58,7 +58,8 @@ final class PolicyContractTest {
         var registry = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/domain/FederationDomainRegistry.java"));
         assertTrue(registry.contains("var firstDomains = networkIndex.getOrDefault(first, Set.of());"));
-        assertTrue(registry.contains("Collections.disjoint(firstDomains, secondDomains)"));
+        // Walks the smaller membership, which Collections.disjoint does not when its first argument is a set.
+        assertTrue(registry.contains("for (var domain : smaller)"));
         assertFalse(activation.contains("getGrid() =="));
         assertTrue(script.contains("verifyTaskFourteenEvidence"));
         assertTrue(script.contains("federationTaskFourteenEvidenceSelfTest"));

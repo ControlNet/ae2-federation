@@ -65,3 +65,28 @@ All layouts moved ~2000 bus operations per tick (10 000 buses at AE2's 5-tick ra
    lists the main pool's 1000 peers.
 4. Teardown (removing 1000 Bridges with everything else in one tick): 57 s.
 Not covered: 1000 networks in ONE Switch/cable domain (`relationships()` pairs every member with every other).
+
+## Fixes for 1 and 2 (2026-10-25)
+JFR on the 1000-subnet run (`jcmd <game pid> JFR.start settings=profile dumponexit=true filename=...`, aggregate
+server-thread `jdk.ExecutionSample` stacks; `jfr print --json` is 5.8 GB for 4 minutes, stream the text output instead):
+13433 of 15072 server samples in storage `reconcileAll`, 10154 of them via `nativeMountsChanged`, 11071 in
+`federationdomainsFor`'s `Set.copyOf`, 1386 in `PolicyActivation.classify` -> `shareFederationDomain`.
+- `FederationDomainRegistry.sharedFederationDomainReferences` gives the storage and crafting observers the common
+  domains without copying, walking the smaller membership.
+- `shareFederationDomain` used `Collections.disjoint(first, second)`, which walks its SECOND argument whenever the first
+  is a set, whatever the sizes: (subnet, main) walked main's 1000 ids. The `share*` checks now walk the smaller set.
+- `nativeMountsChanged` only marks the service; `reconcileNativeMountChanges` runs once per tick from a LOWEST
+  `ServerTickEvent.Post` listener, after AE2's NORMAL Grid end ticks (Federation's own HIGH listener runs before them,
+  so draining there would be a tick late). `tick` also drains a leftover mark.
+Rule edits still reconcile everything (storage, crafting, energy), now O(networks) each.
+
+| 1000 x 10 Federation (one run each) | before | after |
+|---|---|---|
+| setup max tick | 149 s | 1.05 s |
+| setup | 156 s | 6.6 s |
+| editAll of 2000 rules | 290 ms | 115 ms |
+| one rule off / on | 193 / 167 ms | 42 / 26 ms |
+| teardown | 57 s | 8.3 s |
+After the fix the remaining Federation samples are mostly teardown and setup Bridge `setStatus` -> three
+`reconcileIfPresent`/`observeConnectedGrids` per Bridge (one full reconcile per Bridge change, point 4) and the
+statistics sample (point 3).

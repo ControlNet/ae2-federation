@@ -59,12 +59,8 @@ public final class CraftingFederationDomainObserver {
     }
 
     public Set<FederationDomainReference> references(CraftingRelationship relationship) {
-        var registry = FederationDomainRegistryAccess.get(level);
-        var consumer = registry.federationdomainsFor(relationship.key().consumerNetworkId());
-        var provider = registry.federationdomainsFor(relationship.key().providerNetworkId());
-        return consumer.stream().filter(provider::contains).map(registry::federationDomain)
-                .flatMap(java.util.Optional::stream).map(snapshot -> snapshot.reference())
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        return FederationDomainRegistryAccess.get(level).sharedFederationDomainReferences(
+                relationship.key().consumerNetworkId(), relationship.key().providerNetworkId());
     }
 
     public long topologyRevision() {

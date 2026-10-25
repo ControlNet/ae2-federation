@@ -55,6 +55,43 @@ final class FederationDomainRegistryTest {
     }
 
     @Test
+    void sharedReferencesAreTheCommonDomainsAtTheirGeneration() {
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        // B is in every domain, as a main network with one Bridge per subnet.
+        for (var index = 0; index < 50; index++) {
+            registry.upsertDirectBridge(new FederationDomainSourceId("bridge-b-" + index), "test:dimension", NETWORK_B,
+                    network(100 + index));
+        }
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ab-1"), "test:dimension", NETWORK_A, NETWORK_B);
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ab-2"), "test:dimension", NETWORK_A, NETWORK_B);
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ac"), "test:dimension", NETWORK_A, NETWORK_C);
+
+        for (var first : java.util.List.of(NETWORK_A, NETWORK_B, NETWORK_C, network(100), network(9))) {
+            for (var second : java.util.List.of(NETWORK_A, NETWORK_B, NETWORK_C, network(100), network(9))) {
+                var expected = shared(registry, first, second).stream().map(registry::federationDomain)
+                        .flatMap(java.util.Optional::stream).map(FederationDomainSnapshot::reference)
+                        .collect(java.util.stream.Collectors.toSet());
+                assertEquals(expected, registry.sharedFederationDomainReferences(first, second), first + " " + second);
+                assertEquals(!expected.isEmpty(), registry.shareFederationDomain(first, second), first + " " + second);
+                assertEquals(!expected.isEmpty(), registry.shareRunningFederationDomain(first, second),
+                        first + " " + second);
+            }
+        }
+        // A and B share two domains; A and C one. Stopping one of A and B's leaves them a running one.
+        var ab = registry.sharedFederationDomainReferences(NETWORK_A, NETWORK_B).stream()
+                .map(FederationDomainReference::federationDomainId).sorted().toList();
+        registry.setUnpowered(ab.getFirst(), true);
+        assertTrue(registry.shareRunningFederationDomain(NETWORK_B, NETWORK_A));
+        registry.setUnpowered(ab.getLast(), true);
+        assertFalse(registry.shareRunningFederationDomain(NETWORK_B, NETWORK_A));
+        assertTrue(registry.shareFederationDomain(NETWORK_B, NETWORK_A));
+        assertFalse(registry.shareOverCapacityFederationDomain(NETWORK_B, NETWORK_A));
+        assertTrue(registry.shareRunningFederationDomain(NETWORK_C, NETWORK_A));
+        assertEquals(2, registry.sharedFederationDomainReferences(NETWORK_A, NETWORK_B).size());
+        assertTrue(registry.sharedFederationDomainReferences(NETWORK_A, network(100)).isEmpty());
+    }
+
+    @Test
     void reciprocalTopologyMergesAndSplitsOnlyAffectedComponents() {
         var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
         var left = node(1);

@@ -77,6 +77,8 @@ public final class NeoForgeEntrypoint {
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, NeoForgeEntrypoint::onServerTickBindings);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTickStart);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTick);
+        // After AE2's end-of-tick Grid ticks, where each Grid's storage service reports its native mount changes.
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, NeoForgeEntrypoint::onServerTickNativeMounts);
     }
 
     private static void onArtifactPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
@@ -96,6 +98,10 @@ public final class NeoForgeEntrypoint {
         StorageMountService.tick(event.getServer());
         CraftingProjectionService.tick(event.getServer());
         EnergySharingService.tickAll();
+    }
+
+    private static void onServerTickNativeMounts(ServerTickEvent.Post event) {
+        StorageMountService.reconcileNativeMountChanges(event.getServer());
     }
 
     private static void onServerTickStart(ServerTickEvent.Pre event) {
