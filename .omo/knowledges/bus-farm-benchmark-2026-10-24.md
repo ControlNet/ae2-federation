@@ -223,7 +223,7 @@ AE2 rows have no Federation code in their path: their before/after difference is
 | 1000 networks, one domain | before | 6.79 s | 16.8 s | 3.7 ms | 4.2 ms | 15.7 ms | - | 2.01 s | 2.35 s | 2.21 s | 2.71 s | 2.26 s | 1.05 s |
 | 1000 networks, one domain | after | 313 ms | 1.7 s | 3.2 ms | 3.5 ms | 18.7 ms | - | 106 ms | 28.0 ms | 21.7 ms | 70.4 ms | 51.6 ms | 1.08 s |
 
-## Final systems table (2026-10-25, `final-systems-2026-10-25`, median of 3) - the reference result
+## Systems table before lazy Switch face nodes (2026-10-25, `final-systems-2026-10-25`, median of 3) - superseded below
 `perfdomainthousandnetworks` (no buses) was replaced: the one-domain system now runs the same workload as the others
 (`DomainFarmScene` builds BusFarm's subnet blocks; a Switch on every riser top, side-by-side risers merge into a 1x1x8
 body = one 8-network subdomain; 10x1000 blocks are 11 wide, so one network per Switch; Routers 3x3x1 at pitch 3
@@ -248,3 +248,32 @@ block entity ticks + statistics + energy reform ~6-10% of samples; not yet expla
 Product limit found: `FederationDomainRecomputeBudget.standard()` = 4096 node visits; a domain larger than that is
 dropped whole (`BUDGET_EXHAUSTED`, no networks link, no in-game message). The first layout (Routers 9 above the
 Switches) had ~4800 Federation blocks and never formed; the compact one has 3494.
+
+## Lazy Switch face nodes (06074081)
+Cause of the 187%: every Switch face created its AE2 boundary node up front, and a node is a Grid of its own until it
+connects. AE2's `TickHandler` ticks every Grid each level tick (about 2 ms per 1000 idle Grids), so the 1000x10 domain
+had 6006 Grids (1000 Switches x 5 empty faces + 1001 networks) against 1001 for Bridges. `RouterFacePort` now creates
+the node only while an AE2 node host (`AECapabilities.IN_WORLD_GRID_NODE_HOST`) is beside the face and no Federation
+port faces it (Routers/Switches offer a port on every face; Provider/Endpoint only on their front, where their AE2 node
+is not exposed), and destroys it when that ends. A `BlockCapabilityCache` on the neighbour's node host covers chunk
+loads/unloads; block updates still revalidate at once. Saved node data is kept until the node is created.
+NeoForge gotcha: a `BlockCapabilityCache` calls its listener only once per invalidation until `getCapability()` is
+read again, and an unloaded position reads as null without loading it, so the sync reads both caches every time.
+Tests: `switchfacenodefollowsneighbour`, `switchfacenodesurviveschunkreload` (Switch and cable on two sides of a
+nether chunk border, real unload/load plus a one-tick block entity reload). New benchmark metric `ae2Grids`.
+
+## Final systems table (2026-10-25, 06074081, `lazy-face-nodes-2026-10-25`, median of 3) - the reference result
+Same workloads and scenes as above; every bus ran at AE2's fastest rate (99.6-100.1%). The 10x1000 AE2 one network
+median is noisy (runs 9.7/6.6/7.0 ms), so for 10x1000 read the mean column; 1000x10 runs agree within ~1 ms.
+| workload | system | AE2 Grids | setup max tick | setup total | median | mean | max | median vs AE2 one network | mean vs AE2 one network | all rules | rule off | rule on | break tick | restore tick | teardown |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10x1000 | AE2 one network | 1 | 1.46 s | 4.7 s | 7.0 ms | 9.2 ms | 17.9 ms | 100% | 100% | - | - | - | - | - | 532 ms |
+| 10x1000 | AE2 subnets | 11 | 606 ms | 3.0 s | 8.7 ms | 9.5 ms | 16.1 ms | 124% | 103% | - | - | - | - | - | 309 ms |
+| 10x1000 | Federation Bridges | 11 | 593 ms | 3.1 s | 10.0 ms | 10.4 ms | 21.8 ms | 143% | 113% | 59.7 ms | 7.5 ms | 1.6 ms | - | - | 295 ms |
+| 10x1000 | Federation one domain | 11 | 631 ms | 2.9 s | 9.9 ms | 10.5 ms | 22.9 ms | 141% | 114% | 58.0 ms | 9.7 ms | 1.8 ms | 28.6 ms | 33.0 ms | 278 ms |
+| 1000x10 | AE2 one network | 1 | 672 ms | 6.7 s | 14.7 ms | 14.8 ms | 16.9 ms | 100% | 100% | - | - | - | - | - | 522 ms |
+| 1000x10 | AE2 subnets | 1001 | 1.45 s | 3.4 s | 16.8 ms | 17.5 ms | 34.4 ms | 114% | 118% | - | - | - | - | - | 393 ms |
+| 1000x10 | Federation Bridges | 1001 | 1.17 s | 3.4 s | 18.7 ms | 19.1 ms | 48.0 ms | 127% | 129% | 168 ms | 38.5 ms | 26.5 ms | - | - | 6.77 s |
+| 1000x10 | Federation one domain | 1001 | 341 ms | 3.0 s | 16.8 ms | 18.2 ms | 42.0 ms | 114% | 123% | 139 ms | 35.2 ms | 22.9 ms | 91.2 ms | 80.6 ms | 1.67 s |
+1000x10 one domain is now level with AE2 subnets on the median (16.8 ms both) and 4% above them on the mean; it was
+27.9 ms (187%) with 6006 Grids. Open: Bridge teardown 6.8 s; the 4096-node recompute budget drops larger domains whole.
