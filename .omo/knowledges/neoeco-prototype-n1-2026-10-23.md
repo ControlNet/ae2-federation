@@ -76,8 +76,11 @@ both mods share one artist. `tools/visual/build_eco_computation_placeholder.py` 
 `computation_recolor` sheets with purple (hue 210-300) turned Federation green 130, the ME interface cell of the side
 face painted over with the other column mirrored (lights too), L1's green tier lights kept; textures under
 `textures/block/eco_computation/l1/`, models `controller_l1_formed[_mirrored]` keep Prototype's geometry as parents.
-As with N4 vs C4, the change hardly shows: C1's front has no purple, and the side-face chip is under our interface.
-Check: `build/eco-n1-check/n1-art-check.png`.
+Prototype's mirrored model takes the `_switch` sheets for its base and its glass too, so texture references are
+mapped by sheet name (a hard-coded plain sheet on the mirrored glass showed the side-face cell where the coolant window
+belongs). N1 vs C1 then reads apart exactly as N4 vs C4 does: identical fronts, but the side face shows our light
+interface square instead of the host's dark ME interface. Check: `build/eco-n1-check/c-vs-n-check.png`
+(`run.sh compare`, scene `compare_scene.py`: C1, N1, C4, N4 in one world).
 
 Guide: the N1 page lives in its own pack `guide_neoecoprototype_computing`, required mods `neoecoprototype`,
 `neoecoae`, `neoecoprototype@1.4.0` (d3cfdbf0). `GuideExamplePacks` requirements may be `<mod ID>@<version>` (that

@@ -121,12 +121,22 @@ def prototype_l1(archive, l4_state):
                              mirror).save(out / f'controller_formed_light_a{mirror}.png')
     ours = 'ae2federation:block/eco_computation/l1/'
     folder = ASSETS / 'models/block/eco_computation'
-    for mirror, sheet in (('', ''), ('_mirrored', '_switch')):
-        model = json.loads(archive.read(f'assets/{PROTOTYPE.replace(":", "/models/", 1)}controller_l1_formed{mirror}.json'))
-        model['children']['base']['textures'].update({'base': ours + 'controller_formed' + sheet,
-                                                      'light': ours + 'controller_formed_light_a' + sheet,
-                                                      'screen': ours + 'screen_off'})
-        model['children']['glass']['textures']['base'] = ours + 'controller_formed'
+    sheets = ('controller_formed', 'controller_formed_switch', 'controller_formed_light_a',
+              'controller_formed_light_a_switch')
+    for mirror in ('', '_mirrored'):
+        text = archive.read(f'assets/neoecoprototype/models/block/computation_controller/controller_l1_formed{mirror}.json')
+        text = text.decode()
+        for sheet in sheets:
+            text = text.replace(f'"neoecoprototype:block/computation_recolor/controller_formed/{sheet}"',
+                                f'"{ours}{sheet}"')
+        model = json.loads(text)
+        # The base model's own sheet and the screen behind the screen light are Prototype's; ours replace them.
+        base = model['children']['base']
+        parent = json.loads(archive.read('assets/neoecoprototype/models/block/computation_controller/'
+                                         + base['parent'].rsplit('/', 1)[-1] + '.json'))
+        own = parent['textures']['base'].rsplit('/', 1)[-1]
+        base['textures'].setdefault('base', ours + own)
+        base['textures']['screen'] = ours + 'screen_off'
         (folder / f'controller_l1_formed{mirror}.json').write_text(json.dumps(model, indent=2) + '\n')
     (folder / 'controller_l1_off.json').write_text(json.dumps(
         {'parent': PROTOTYPE + 'controller_off_base',

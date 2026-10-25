@@ -17,7 +17,7 @@
     "glass": {
       "render_type": "translucent",
       "textures": {
-        "base": "ae2federation:block/eco_computation/l1/controller_formed"
+        "base": "ae2federation:block/eco_computation/l1/controller_formed_switch"
       },
       "elements": [
         {
