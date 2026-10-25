@@ -36,6 +36,8 @@ import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
  * Quantum Cube is one too, linking the fewer faces its block names ({@link CableLinkedBlock}).
  */
 public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHost {
+    /** Ticks between two looks of each Switch face without a node at its neighbour, missed events aside. */
+    private static final int VERIFY_TICKS = 100;
     private final Map<Direction, FederationPort> federationDomainPorts = new EnumMap<>(Direction.class);
     private final Map<Direction, RouterFacePort> facePorts = new EnumMap<>(Direction.class);
     private boolean initialized;
@@ -125,6 +127,10 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
     }
 
     public static void serverTick(Level level, BlockPos position, BlockState state, RouterBlockEntity router) {
+        // A slow sweep, spread over the Switches by position: a face without a node looks at its neighbour again.
+        if (Math.floorMod(level.getGameTime() + position.hashCode(), VERIFY_TICKS) == 0) {
+            router.facePorts.values().forEach(RouterFacePort::verifyIfNodeless);
+        }
         var changed = router.facePorts.values().stream().map(RouterFacePort::tick).reduce(false, Boolean::logicalOr);
         if (changed || router.federationDomainDirty) {
             router.publishFederationDomainTopology();
@@ -159,11 +165,18 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
         return facePorts.get(face).node();
     }
 
-    /** AE2 asks with a null side for a node not tied to a face; the nodes here all sit on faces. */
+    /**
+     * AE2 asks with a null side for a node not tied to a face; the nodes here all sit on faces. A Switch face asked
+     * while it has no node looks at its neighbour again on the next tick: an AE2 node asks every block beside it when
+     * it connects, so an AE2 block that appeared without telling this Switch still gets a face to connect to.
+     */
     @Nullable
     @Override
     public IGridNode getGridNode(@Nullable Direction face) {
-        return face == null ? null : boundaryNode(face);
+        if (face == null) return null;
+        var node = boundaryNode(face);
+        if (node == null) facePorts.get(face).verifyIfNodeless();
+        return node;
     }
 
     public Map<Direction, RouterPortBinding> bindings() {

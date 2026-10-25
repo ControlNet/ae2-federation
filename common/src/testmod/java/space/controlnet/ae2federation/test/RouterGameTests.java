@@ -541,6 +541,175 @@ public final class RouterGameTests {
     }
 
     /**
+     * An AE2 block placed and removed without block updates, as Mekanism's Cardboard Box and similar tools do (remove
+     * the block entity, then set the block with no neighbour update), still reaches the Switch face: NeoForge tells
+     * the face's capability cache when a block entity appears or goes.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void switchFaceNodeWithoutBlockUpdates(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeSwitch(CENTER);
+        var chest = helper.absolutePos(CENTER.west());
+        var level = helper.getLevel();
+        var phase = new int[1];
+        var start = helper.getTick();
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertTrue(helper.getTick() >= start + 3, "Waiting for the Switch's first ticks");
+                level.setBlock(chest, appeng.core.definitions.AEBlocks.ME_CHEST.block().defaultBlockState(),
+                        net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 1;
+                helper.fail("Waiting for the quietly placed chest to attach");
+            }
+            if (phase[0] == 1) {
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                        "A chest placed without block updates must attach");
+                level.removeBlockEntity(chest);
+                level.setBlock(chest, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),
+                        net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 2;
+                helper.fail("Waiting for the quietly removed chest to detach");
+            }
+            if (phase[0] == 2) {
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.DISCONNECTED,
+                        "A chest removed without block updates must detach");
+                helper.assertValueEqual(faceNodes(router), 0, "The face node must go with it");
+                level.setBlock(chest, appeng.core.definitions.AEBlocks.ME_CHEST.block().defaultBlockState(),
+                        net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 3;
+                helper.fail("Waiting for the chest to attach again");
+            }
+            helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                    "A chest put back without block updates must attach again");
+            RouterEvidence.write("switchfacenodewithoutblockupdates", 4, Map.of(
+                    "quietPlacement", "native", "quietRemoval", "disconnected", "nodesAfterRemoval", "0",
+                    "quietReplacement", "native"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A Federation Cable placed and removed without block updates still links and unlinks its neighbours: NeoForge
+     * tells their port caches when its block entity appears or goes.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void cableLinksWithoutBlockUpdates(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var west = new BlockPos(2, 2, 2);
+        var east = new BlockPos(6, 2, 2);
+        fixtures.placeSwitch(west);
+        fixtures.placeSwitch(east);
+        fixtures.placeNativeDevice(west, Direction.WEST);
+        fixtures.placeNativeDevice(east, Direction.EAST);
+        fixtures.placeFederationCable(west.east());
+        fixtures.placeFederationCable(west.east(3));
+        var middle = helper.absolutePos(west.east(2));
+        var level = helper.getLevel();
+        var cable = RouterRegistration.FEDERATION_CABLE.get().defaultBlockState();
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(level);
+            var left = network(helper, fixtures.router(west), Direction.WEST);
+            var right = network(helper, fixtures.router(east), Direction.EAST);
+            if (phase[0] == 0) {
+                level.setBlock(middle, cable, net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 1;
+                helper.fail("Waiting for the quietly placed cable to link");
+            }
+            if (phase[0] == 1) {
+                helper.assertTrue(registry.shareFederationDomain(left, right),
+                        "A cable placed without block updates must join the domain");
+                level.removeBlockEntity(middle);
+                level.setBlock(middle, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),
+                        net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 2;
+                helper.fail("Waiting for the quietly removed cable to unlink");
+            }
+            if (phase[0] == 2) {
+                helper.assertTrue(!registry.shareFederationDomain(left, right),
+                        "A cable removed without block updates must split the domain");
+                level.setBlock(middle, cable, net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+                phase[0] = 3;
+                helper.fail("Waiting for the cable to link again");
+            }
+            helper.assertTrue(registry.shareFederationDomain(left, right),
+                    "A cable put back without block updates must join the domain again");
+            RouterEvidence.write("cablelinkswithoutblockupdates", 3, Map.of(
+                    "quietPlacement", "linked", "quietRemoval", "split", "quietReplacement", "linked"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A Switch face that missed every event about the AE2 block beside it still gets its node: at once when AE2 (or
+     * anyone) asks the Switch for that face's node, and otherwise through the Switch's slow sweep. TEST-ONLY: the missed
+     * event is simulated by dropping the face's node and its pending work through reflection.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void switchFaceNodeRecoversMissedEvent(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeSwitch(CENTER);
+        fixtures.placeNativeDevice(CENTER, Direction.WEST);
+        var phase = new int[1];
+        var missedAt = new long[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                        "Waiting for the chest to attach");
+                missEvents(router, Direction.WEST);
+                // AE2 asks the blocks beside a node for theirs when it connects; the Switch must look again.
+                router.getGridNode(Direction.WEST);
+                phase[0] = 1;
+                helper.fail("Waiting for the asked face to recover");
+            }
+            if (phase[0] == 1) {
+                helper.assertValueEqual(faceNodes(router), 1, "The asked face must get its node back");
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                        "The asked face must attach again");
+                missEvents(router, Direction.WEST);
+                missedAt[0] = helper.getTick();
+                phase[0] = 2;
+                helper.fail("Waiting for the sweep");
+            }
+            helper.assertTrue(helper.getTick() <= missedAt[0] + 150, "The sweep must find the face within its period");
+            helper.assertValueEqual(faceNodes(router), 1, "Waiting for the sweep to give the face its node back");
+            helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                    "The swept face must attach again");
+            RouterEvidence.write("switchfacenoderecoversmissedevent", 4, Map.of(
+                    "askedRecovers", "native", "sweepRecovers", "native", "sweepWithinTicks", "150"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * TEST-ONLY: puts a Switch face in the state a missed event leaves it in, an AE2 block beside it but no node and no
+     * pending work, by destroying the node and clearing the face's flags through reflection.
+     */
+    private static void missEvents(space.controlnet.ae2federation.router.RouterBlockEntity router, Direction face) {
+        try {
+            var portsField = space.controlnet.ae2federation.router.RouterBlockEntity.class.getDeclaredField("facePorts");
+            portsField.setAccessible(true);
+            var port = ((java.util.Map<?, ?>) portsField.get(router)).get(face);
+            var type = port.getClass();
+            var nodeField = type.getDeclaredField("boundaryNode");
+            nodeField.setAccessible(true);
+            ((appeng.api.networking.IManagedGridNode) nodeField.get(port)).destroy();
+            nodeField.set(port, null);
+            var bindingField = type.getDeclaredField("binding");
+            bindingField.setAccessible(true);
+            bindingField.set(port, RouterPortBinding.Disconnected.INSTANCE);
+            var dirtyField = type.getDeclaredField("dirty");
+            dirtyField.setAccessible(true);
+            dirtyField.setBoolean(port, false);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("The test must reach the Switch face's state", exception);
+        }
+    }
+
+    /**
      * A Federation Cable does no work while nothing around it changes, as an AE2 cable does not tick: once its domain
      * settles, every cable sleeps. A third network joining wakes them, their capacity count follows, and they sleep again.
      * A new capacity number wakes them too, even while the limit is not enforced, as the beam still shows the load.

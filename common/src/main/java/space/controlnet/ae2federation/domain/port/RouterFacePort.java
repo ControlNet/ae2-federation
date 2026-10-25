@@ -71,6 +71,8 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private @Nullable BlockCapabilityCache<IInWorldGridNodeHost, @Nullable Void> nodeHostCache;
     private ServerLevel level;
     private boolean dirty = true;
+    /** Look at the neighbour without the caches on the next resolve, in case an event that changed it was missed. */
+    private boolean verify;
     private boolean alive;
 
     public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort,
@@ -136,6 +138,18 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         dirty = true;
     }
 
+    /**
+     * A Switch face without a node looks at its neighbour again on the next tick, without its caches. Something asked
+     * for the face's node, as an AE2 node does of every block beside it when it connects, or the Switch's slow sweep
+     * runs: either way an AE2 block placed by a path that told no one still gets its face node.
+     */
+    public void verifyIfNodeless() {
+        if (attachesNetworks && alive && boundaryNode == null) {
+            verify = true;
+            dirty = true;
+        }
+    }
+
     public void destroy() {
         binding = RouterPortBinding.Disconnected.INSTANCE;
         dirty = false;
@@ -197,7 +211,16 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         }
         var host = nodeHostCache.getCapability();
         var federationPort = federationCache.getCapability();
-        var wanted = host != null && federationPort == null && level.isLoaded(routerPosition.relative(face));
+        var neighborPosition = routerPosition.relative(face);
+        var loaded = level.isLoaded(neighborPosition);
+        if (verify) {
+            verify = false;
+            if (loaded) {
+                host = GridHelper.getNodeHost(level, neighborPosition);
+                federationPort = level.getCapability(FederationPortCapability.BLOCK, neighborPosition, face.getOpposite());
+            }
+        }
+        var wanted = host != null && federationPort == null && loaded;
         if (wanted && boundaryNode == null) {
             createNode();
         } else if (!wanted && boundaryNode != null) {
