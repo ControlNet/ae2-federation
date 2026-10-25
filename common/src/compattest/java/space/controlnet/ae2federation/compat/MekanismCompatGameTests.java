@@ -4,21 +4,37 @@ import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.storage.MEStorage;
+import appeng.core.definitions.AEBlocks;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.domain.port.RouterPortBinding;
+import space.controlnet.ae2federation.domain.port.RouterPortKind;
+import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.router.RouterBlockEntity;
+import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.test.router.RouterFixtures;
 
 /** Federation processing through Mekanism's own machines, powered as players power them. */
 @PrefixGameTestTemplate(false)
@@ -138,6 +154,135 @@ public final class MekanismCompatGameTests {
                 Direction.SOUTH);
         helper.assertTrue(energy != null, "The induction port must report its FE");
         return energy.getEnergyStored();
+    }
+
+    /**
+     * A player moves blocks around a Switch with Mekanism's Cardboard Box: the ME chest on its west face is boxed, so
+     * the face lets go of it and drops its node, then unboxed, so the face attaches it again; then the Switch itself is
+     * boxed and unboxed and attaches the chest once more.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 400)
+    public static void cardboardBoxBesideSwitch(GameTestHelper helper) {
+        var center = new BlockPos(6, 6, 6);
+        var chest = center.west();
+        var fixtures = new RouterFixtures(helper);
+        fixtures.placeSwitch(center);
+        fixtures.placeNativeDevice(center, Direction.WEST);
+        var player = FakePlayerFactory.getMinecraft(helper.getLevel());
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertValueEqual(westKind(fixtures, center), RouterPortKind.NATIVE_ME,
+                        "The Switch must attach the ME chest");
+                box(helper, player, chest);
+                phase[0] = 1;
+                helper.fail("Waiting for the Switch to let go of the boxed chest");
+            }
+            if (phase[0] == 1) {
+                helper.assertValueEqual(westKind(fixtures, center), RouterPortKind.DISCONNECTED,
+                        "A boxed chest must leave the Switch's face");
+                helper.assertTrue(fixtures.router(center).boundaryNode(Direction.WEST) == null,
+                        "The face's node must go with it");
+                unbox(helper, player, chest, AEBlocks.ME_CHEST.block());
+                phase[0] = 2;
+                helper.fail("Waiting for the unboxed chest to attach");
+            }
+            if (phase[0] == 2) {
+                helper.assertValueEqual(westKind(fixtures, center), RouterPortKind.NATIVE_ME,
+                        "An unboxed chest must attach again");
+                box(helper, player, center);
+                phase[0] = 3;
+                helper.fail("The Switch stays boxed for a tick");
+            }
+            if (phase[0] == 3) {
+                unbox(helper, player, center, RouterRegistration.SWITCH.get());
+                phase[0] = 4;
+                helper.fail("Waiting for the unboxed Switch to attach the chest");
+            }
+            helper.assertValueEqual(westKind(fixtures, center), RouterPortKind.NATIVE_ME,
+                    "An unboxed Switch must attach the chest beside it");
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A player boxes the middle Federation Cable between two Switches with Mekanism's Cardboard Box, which splits their
+     * networks' domain, and unboxes it, which joins them again.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 400)
+    public static void cardboardBoxFederationCable(GameTestHelper helper) {
+        var west = new BlockPos(2, 2, 2);
+        var east = new BlockPos(6, 2, 2);
+        var middle = west.east(2);
+        var fixtures = new RouterFixtures(helper);
+        fixtures.placeSwitch(west);
+        fixtures.placeSwitch(east);
+        fixtures.placeNativeDevice(west, Direction.WEST);
+        fixtures.placeNativeDevice(east, Direction.EAST);
+        for (int step = 1; step <= 3; step++) fixtures.placeFederationCable(west.east(step));
+        var player = FakePlayerFactory.getMinecraft(helper.getLevel());
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            var registry = FederationDomainRegistryAccess.get(helper.getLevel());
+            var left = network(helper, fixtures.router(west), Direction.WEST);
+            var right = network(helper, fixtures.router(east), Direction.EAST);
+            if (phase[0] == 0) {
+                helper.assertTrue(registry.shareFederationDomain(left, right), "The cable must join the two networks");
+                box(helper, player, middle);
+                phase[0] = 1;
+                helper.fail("Waiting for the domain to split");
+            }
+            if (phase[0] == 1) {
+                helper.assertTrue(!registry.shareFederationDomain(left, right), "A boxed cable must split the domain");
+                unbox(helper, player, middle, RouterRegistration.FEDERATION_CABLE.get());
+                phase[0] = 2;
+                helper.fail("Waiting for the unboxed cable to link");
+            }
+            helper.assertTrue(registry.shareFederationDomain(left, right), "An unboxed cable must join them again");
+            fixtures.close();
+        });
+    }
+
+    private static RouterPortKind westKind(RouterFixtures fixtures, BlockPos router) {
+        return fixtures.router(router).binding(Direction.WEST).kind();
+    }
+
+    /** Uses a Cardboard Box on {@code position}, as a player picks a block up with it. */
+    private static void box(GameTestHelper helper, ServerPlayer player, BlockPos position) {
+        player.setShiftKeyDown(false);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(AddonCraftingScene.item("mekanism:cardboard_box")));
+        var result = use(helper, player, position);
+        helper.assertTrue(result.consumesAction(), "The Cardboard Box must take " + helper.getBlockState(position)
+                + ": " + result);
+        helper.assertTrue(helper.getBlockState(position).is(AddonCraftingScene.block("mekanism:cardboard_box")),
+                "A Cardboard Box must stand at " + position + ", not " + helper.getBlockState(position));
+    }
+
+    /** Sneak-uses the box at {@code position} with an empty hand, as a player unpacks it, and expects {@code block}. */
+    private static void unbox(GameTestHelper helper, ServerPlayer player, BlockPos position, Block block) {
+        player.setShiftKeyDown(true);
+        player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        var result = use(helper, player, position);
+        helper.assertTrue(result.consumesAction(), "The Cardboard Box must unpack: " + result);
+        helper.assertTrue(helper.getBlockState(position).is(block),
+                "The box must leave " + block + " at " + position + ", not " + helper.getBlockState(position));
+    }
+
+    private static InteractionResult use(GameTestHelper helper, ServerPlayer player, BlockPos position) {
+        var absolute = helper.absolutePos(position);
+        var hit = new BlockHitResult(Vec3.atCenterOf(absolute).relative(Direction.UP, 0.5), Direction.UP, absolute,
+                false);
+        return player.gameMode.useItemOn(player, helper.getLevel(), player.getMainHandItem(), InteractionHand.MAIN_HAND,
+                hit);
+    }
+
+    /** The network attached to {@code router}'s {@code face}, once its identity has settled. */
+    private static NetworkId network(GameTestHelper helper, RouterBlockEntity router, Direction face) {
+        helper.assertTrue(router.binding(face) instanceof RouterPortBinding.Native,
+                "The Switch must attach the network on its " + face + " face");
+        var attachment = ((RouterPortBinding.Native) router.binding(face)).attachment();
+        return FederationDomainRegistryAccess.confirmedNetworkId(attachment.grid())
+                .orElseThrow(() -> new GameTestAssertException("Waiting for the network's identity to settle"));
     }
 
     /**

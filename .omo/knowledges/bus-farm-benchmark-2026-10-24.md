@@ -284,7 +284,7 @@ and re-runs its channel pathing over the whole Grid once on the next tick after 
 most once per tick. New benchmark `perfbusesthousandsubnetslargedomain`: the 1000x10 workload with the Routers lifted
 52 blocks (`DomainFarmScene` `lift`), 10 046 Federation blocks.
 
-## Final systems table (2026-10-25, 3bd89462, `unlimited-domain-2026-10-25`, median of 3) - the reference result
+## Systems table with ticking cables (2026-10-25, 3bd89462, `unlimited-domain-2026-10-25`, median of 3) - superseded below
 Every bus ran at AE2's fastest rate (99.8-100.2%). Runs agree within ~1 ms except where noted in the samples.
 | workload | system | Federation blocks | AE2 Grids | setup max tick | setup total | median | mean | max | median vs AE2 one network | mean vs AE2 one network | all rules | rule off | rule on | break tick | restore tick | teardown |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -303,3 +303,31 @@ blocks. Its steady tick is ~6.4 ms higher: JFR (`prof/large.jfr`) puts 23% of se
 in vanilla's per-block-entity `shouldTickBlocksAt`, i.e. the cost of 10 000 ticking cable block entities. Counting
 showed ports are NOT re-dirtied in the steady state (resolves after setup are a few dozen per tick); JFR's attribution
 of `Level.isLoaded` to `CableFacePort.resolve` was an inlining artefact. AE2 cable buses do not tick at all.
+
+## Final systems table (2026-10-25, 6d810eef, `safety-nets-2026-10-25`, median of 3) - the reference result
+Tickless Federation Cables (9938fdcd) plus the missed-event safety nets (6d810eef: Switch face re-check on
+`getGridNode` and a sweep every 100 ticks per Switch). Every bus ran at AE2's fastest rate (99.9-100.1%). This run
+was noisier than the previous one: AE2 one network itself read 15.1 ms on 1000x10 (13.7 before).
+| workload | system | Federation blocks | AE2 Grids | setup max tick | setup total | median | mean | max | median vs AE2 one network | mean vs AE2 one network | all rules | rule off | rule on | break tick | restore tick | teardown |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10x1000 | AE2 one network | - | 1 | 584 ms | 4.2 s | 9.6 ms | 10.1 ms | 14.3 ms | 100% | 100% | - | - | - | - | - | 628 ms |
+| 10x1000 | AE2 subnets | - | 11 | 563 ms | 2.8 s | 9.7 ms | 9.9 ms | 15.2 ms | 101% | 98% | - | - | - | - | - | 277 ms |
+| 10x1000 | Federation Bridges | - | 11 | 606 ms | 3.1 s | 10.7 ms | 11.2 ms | 22.9 ms | 111% | 111% | 61.8 ms | 8.1 ms | 1.8 ms | - | - | 290 ms |
+| 10x1000 | Federation one domain | 320 | 11 | 583 ms | 3.0 s | 10.5 ms | 11.4 ms | 24.6 ms | 109% | 113% | 55.8 ms | 9.1 ms | 1.6 ms | 30.1 ms | 27.2 ms | 270 ms |
+| 1000x10 | AE2 one network | - | 1 | 566 ms | 6.7 s | 15.1 ms | 15.5 ms | 21.4 ms | 100% | 100% | - | - | - | - | - | 546 ms |
+| 1000x10 | AE2 subnets | - | 1001 | 1.49 s | 3.6 s | 16.4 ms | 16.6 ms | 24.4 ms | 109% | 107% | - | - | - | - | - | 413 ms |
+| 1000x10 | Federation Bridges | - | 1001 | 1.07 s | 3.6 s | 18.0 ms | 18.7 ms | 45.3 ms | 119% | 121% | 160 ms | 40.3 ms | 27.4 ms | - | - | 6.84 s |
+| 1000x10 | Federation one domain | 3494 | 1001 | 482 ms | 3.1 s | 17.6 ms | 19.7 ms | 73.6 ms | 117% | 127% | 193 ms | 37.6 ms | 23.5 ms | 101 ms | 88.0 ms | 1.74 s |
+| 1000x10 | Federation one domain, 10k blocks | 10046 | 1001 | 384 ms | 3.6 s | 17.8 ms | 19.6 ms | 57.0 ms | 118% | 126% | 149 ms | 37.3 ms | 23.5 ms | 135 ms | 124 ms | 2.92 s |
+
+The 10k-block domain now costs what the 3494-block one does (166% -> 118%): its steady tick no longer grows with the
+number of cables. Sweep A/B on 1000x10 one domain (`sweep-on-2026-10-25` vs `sweep-off-2026-10-25`, sweep disabled
+locally and not committed): median/mean/max 16.2/17.3/41.7 ms on, 16.5/18.0/55.0 ms off, i.e. no measurable cost;
+the higher max ticks in the table above are machine noise. Still open: Bridge teardown 6.8 s.
+
+Mekanism Cardboard Box compat tests (`cardboardboxbesideswitch`, `cardboardboxfederationcable`, group
+`mekanism`): boxing is a plain right-click with the box (sneaking passes the click on and places the box item),
+unboxing is a sneak right-click with an empty hand; boxing sets the box with flags 35 (neighbour updates), unboxing uses
+`setBlockAndUpdate` then `loadWithComponents`. Use NeoForge's `FakePlayerFactory`: GameTestHelper's mock server
+player is in the player list, so Mekanism's login payloads (`mekanism:player_data`) throw on its mock connection.
+Run: `python3 tools/compat_run.py --accept-eula --tests cardboardboxbesideswitch,cardboardboxfederationcable mekanism`.
