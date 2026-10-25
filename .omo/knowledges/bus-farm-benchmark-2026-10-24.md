@@ -187,3 +187,19 @@ was per global evidence revision). ~1900 recomputes during setup.
 `domain-1k-settle` (median of 3): setup max tick 5.9 s -> 330 ms, setup recomputes ~1930 -> 6-11, setup 13.4 -> 1.8 s;
 rule edit / cable break / restore unchanged (22-28 ms, 75 ms, 55 ms); teardown 1.0 s. Bridge layout unchanged
 (`buses-1k-settle`: setup 1.06 s, rule 38/27 ms, teardown 6.8 s). Cable count display may lag one tick behind a change.
+
+## Final comparison (2026-10-25, a26344fd, `final-2026-10-25`, median of 3)
+Baselines: `buses-10k-full` (500b6cf2, median of 3) and `domain-1k-first` (46f0c187, one run). The AE2-only layouts
+also came out ~15% faster than in `buses-10k-full` (host load), so compare Federation against them in the same run.
+| metric | 1000 Bridges before | after | one domain before | after |
+|---|---|---|---|---|
+| setup max tick | 151.7 s | 1.03 s | 6.8 s | 0.31 s |
+| setup total | 158.8 s | 3.3 s | 16.8 s | 1.7 s |
+| all rules, one edit | 310 ms | 153 ms | 2.0 s | 106 ms |
+| one rule off / on | 200 / 171 ms | 40 / 27 ms | 2.35 / 2.21 s | 28 / 22 ms |
+| median / max tick | 19.5 / 99 ms | 17.3 / 48 ms | 3.7 / 16 ms | 3.2 / 19 ms |
+| teardown | 57.1 s | 6.7 s | 1.05 s | 1.08 s |
+| cable break / restore tick | - | - | 2.7 / 2.3 s | 70 / 52 ms |
+Same run, AE2 at 1000 subnets: direct setup max tick 1.44 s, median 15.2 ms; AE2 subnets (Storage Bus + Quartz
+Fiber) 1.45 s, median 16.0 ms, teardown 0.39 s. Federation bus rate 100.1% everywhere. Left: Bridge teardown 6.7 s
+(removals reconcile synchronously; deferring them on chunk unload is the open question).
