@@ -32,6 +32,8 @@
   "ae2federation.pack.guide_neoecoae.description": "AE2 联邦组网指南中搭配 Neo ECO AE Extension 的示例",
   "ae2federation.pack.guide_neoecoprototype": "AE2 联邦组网指南：Neo ECO Prototype 示例",
   "ae2federation.pack.guide_neoecoprototype.description": "AE2 联邦组网指南中搭配 Neo ECO Prototype 的示例",
+  "ae2federation.pack.guide_neoecoprototype_computing": "AE2 联邦组网指南：ECO - N1",
+  "ae2federation.pack.guide_neoecoprototype_computing.description": "AE2 联邦组网指南中搭配 Neo ECO Prototype 1.4.0 或更高版本的 ECO - N1",
   "ae2federation.pack.guide_omnisequence": "AE2 联邦组网指南：OmniSequence: Transfinite 示例",
   "ae2federation.pack.guide_omnisequence.description": "AE2 联邦组网指南中搭配 OmniSequence: Transfinite 的示例",
   "ae2federation.pack.guide_useless_mod": "AE2 联邦组网指南：UselessMod 示例",

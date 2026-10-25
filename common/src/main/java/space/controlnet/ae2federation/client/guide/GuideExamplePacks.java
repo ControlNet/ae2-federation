@@ -3,12 +3,17 @@ package space.controlnet.ae2federation.client.guide;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 
 /**
  * Guide examples that need other mods, each in a built-in resource pack under {@code resourcepacks/<id>}. A pack is
  * active only while every mod it requires is loaded, so its pages, their links and their scenes are absent from the
  * guide otherwise: GuideME has no filter of its own for that.
+ *
+ * <p>A requirement is a mod ID, or {@code <mod ID>@<version>} for that version of the mod or a later one.
  *
  * <p>Packs in one group are variants of the same example pages, each built with another mod's machine; they are listed
  * in order of preference, and only the first one whose mods are all loaded is active.
@@ -32,6 +37,8 @@ public final class GuideExamplePacks {
             new Pack("guide_data_energistics", List.of("data_energistics")),
             new Pack("guide_neoecoae", List.of("neoecoae")),
             new Pack("guide_neoecoprototype", List.of("neoecoprototype", "neoecoae")),
+            // N1 registers only beside Neo ECO Prototype 1.4.0 or later.
+            new Pack("guide_neoecoprototype_computing", List.of("neoecoprototype", "neoecoae", "neoecoprototype@1.4.0")),
             new Pack("guide_omnisequence", List.of("molecularmanipulator")),
             new Pack("guide_useless_mod", List.of("useless_mod")));
 
@@ -41,6 +48,16 @@ public final class GuideExamplePacks {
     /** The packs whose required mods are all loaded, keeping only the first such pack of each group. */
     public static List<Pack> active(Predicate<String> loaded) {
         return active(ALL, loaded);
+    }
+
+    /** Tests a requirement against each mod's loaded version, empty when the mod is not loaded. */
+    public static Predicate<String> requirements(Function<String, Optional<String>> versionOf) {
+        return requirement -> {
+            int at = requirement.indexOf('@');
+            var version = versionOf.apply(at < 0 ? requirement : requirement.substring(0, at));
+            return version.isPresent() && (at < 0 || new DefaultArtifactVersion(version.get())
+                    .compareTo(new DefaultArtifactVersion(requirement.substring(at + 1))) >= 0);
+        };
     }
 
     static List<Pack> active(List<Pack> packs, Predicate<String> loaded) {

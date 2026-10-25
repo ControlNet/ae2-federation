@@ -32,6 +32,8 @@
   "ae2federation.pack.guide_neoecoae.description": "AE2 Federation guide examples with Neo ECO AE Extension",
   "ae2federation.pack.guide_neoecoprototype": "AE2 Federation guide: Neo ECO Prototype examples",
   "ae2federation.pack.guide_neoecoprototype.description": "AE2 Federation guide examples with Neo ECO Prototype",
+  "ae2federation.pack.guide_neoecoprototype_computing": "AE2 Federation guide: ECO - N1",
+  "ae2federation.pack.guide_neoecoprototype_computing.description": "AE2 Federation guide: ECO - N1 on Neo ECO Prototype 1.4.0 or later",
   "ae2federation.pack.guide_omnisequence": "AE2 Federation guide: OmniSequence: Transfinite examples",
   "ae2federation.pack.guide_omnisequence.description": "AE2 Federation guide examples with OmniSequence: Transfinite",
   "ae2federation.pack.guide_useless_mod": "AE2 Federation guide: UselessMod examples",

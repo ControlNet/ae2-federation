@@ -1,0 +1,9 @@
+{
+  "pack": {
+    "description": {
+      "translate": "ae2federation.pack.guide_neoecoprototype_computing.description",
+      "fallback": "AE2 Federation guide: ECO - N1 on Neo ECO Prototype 1.4.0 or later"
+    },
+    "pack_format": 34
+  }
+}

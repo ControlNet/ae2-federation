@@ -54,7 +54,8 @@ final class GuideSceneCables {
         var scenes = new ArrayList<Scene>();
         var federation = ModList.get().getModFileById("ae2federation").getFile();
         read(federation.findResource("assets", "ae2federation", "ae2guide", "assets"), "core", scenes);
-        for (var pack : GuideExamplePacks.active(ModList.get()::isLoaded)) {
+        for (var pack : GuideExamplePacks.active(GuideExamplePacks.requirements(id -> ModList.get()
+                .getModContainerById(id).map(c -> c.getModInfo().getVersion().toString())))) {
             read(federation.findResource("resourcepacks", pack.id(), "assets", "ae2federation", "ae2guide", "assets"),
                     pack.id(), scenes);
         }
@@ -82,7 +83,11 @@ final class GuideSceneCables {
         helper.fail("Checked " + scene.name());
     }
 
+    /** A pack of pages without scenes has no {@code assets} directory. */
     private static void read(Path root, String source, List<Scene> scenes) {
+        if (!Files.isDirectory(root)) {
+            return;
+        }
         try (Stream<Path> files = Files.walk(root)) {
             for (var file : files.filter(path -> path.toString().endsWith(".snbt")).sorted().toList()) {
                 var name = source + ":" + root.relativize(file).toString().replace('\\', '/');

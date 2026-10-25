@@ -59,7 +59,8 @@ public final class NeoForgeClientEntrypoint {
         }
         var mod = net.neoforged.fml.ModList.get().getModContainerById("ae2federation").orElseThrow().getModInfo();
         for (var pack : space.controlnet.ae2federation.client.guide.GuideExamplePacks.active(
-                net.neoforged.fml.ModList.get()::isLoaded)) {
+                space.controlnet.ae2federation.client.guide.GuideExamplePacks.requirements(id -> net.neoforged.fml.ModList
+                        .get().getModContainerById(id).map(c -> c.getModInfo().getVersion().toString())))) {
             var root = mod.getOwningFile().getFile().findResource(pack.path());
             var id = "mod/ae2federation:" + pack.path();
             var created = net.minecraft.server.packs.repository.Pack.readMetaAndCreate(
