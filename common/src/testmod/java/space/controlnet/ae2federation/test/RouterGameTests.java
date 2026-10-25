@@ -541,6 +541,55 @@ public final class RouterGameTests {
     }
 
     /**
+     * A Switch has no block entity ticker, and once settled its work runs only for its turn of the slow sweep (once
+     * in 100 ticks) and for evidence comparisons after identity changes, which other tests in the batch cause every
+     * 20 ticks at most. An ME chest placed on another face wakes it, and it attaches the chest within a few ticks, not
+     * at its next sweep.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void switchSleepsWhileIdle(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeSwitch(CENTER);
+        fixtures.placeNativeDevice(CENTER, Direction.WEST);
+        helper.assertTrue(helper.getBlockState(CENTER).getTicker(helper.getLevel(), router.getType()) == null,
+                "A Switch must have no block entity ticker");
+        var phase = new int[1];
+        var watched = new long[3];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                        "The Switch must attach the ME chest");
+                helper.assertTrue(!space.controlnet.ae2federation.router.RouterTicks.awake(router),
+                        "Waiting for the settled Switch to sleep");
+                watched[0] = helper.getTick();
+                watched[1] = router.works();
+                phase[0] = 1;
+            }
+            if (phase[0] == 1) {
+                if (helper.getTick() < watched[0] + 100) helper.fail("Watching the idle Switch for 100 ticks");
+                long works = router.works() - watched[1];
+                helper.assertTrue(works <= 7, "An idle Switch must sleep, but it worked " + works + " times in 100 ticks");
+                watched[1] = works;
+                fixtures.placeNativeDevice(CENTER, Direction.EAST);
+                watched[2] = helper.getTick();
+                phase[0] = 2;
+                helper.fail("Waiting for the new chest to attach");
+            }
+            if (phase[0] == 2) {
+                boolean attached = router.binding(Direction.EAST).kind() == RouterPortKind.NATIVE_ME;
+                if (!attached && helper.getTick() <= watched[2] + 5) helper.fail("Waiting for the new chest to attach");
+                phase[0] = attached ? 3 : 4;
+            }
+            helper.assertTrue(phase[0] == 3, "A chest placed beside the sleeping Switch must wake it and attach within"
+                    + " 5 ticks");
+            RouterEvidence.write("switchsleepswhileidle", 3, Map.of("ticker", "none",
+                    "worksIn100IdleTicks", Long.toString(watched[1]), "newNeighbour", "native within 5 ticks"));
+            fixtures.close();
+        });
+    }
+
+    /**
      * An AE2 block placed and removed without block updates, as Mekanism's Cardboard Box and similar tools do (remove
      * the block entity, then set the block with no neighbour update), still reaches the Switch face: NeoForge tells
      * the face's capability cache when a block entity appears or goes.

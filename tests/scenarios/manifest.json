@@ -181,6 +181,7 @@
     {"id":"router.adjacent-federation","backend":"gametest","testId":"routeradjacentfederation","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"switch.face-node-follows-neighbour","backend":"gametest","testId":"switchfacenodefollowsneighbour","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"switch.face-node-survives-chunk-reload","backend":"gametest","testId":"switchfacenodesurviveschunkreload","structure":"ae2federation_test:harness_native_smoke","assertions":4},
+    {"id":"switch.sleeps-while-idle","backend":"gametest","testId":"switchsleepswhileidle","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"switch.face-node-without-block-updates","backend":"gametest","testId":"switchfacenodewithoutblockupdates","structure":"ae2federation_test:harness_native_smoke","assertions":4},
     {"id":"cable.links-without-block-updates","backend":"gametest","testId":"cablelinkswithoutblockupdates","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"switch.face-node-recovers-missed-event","backend":"gametest","testId":"switchfacenoderecoversmissedevent","structure":"ae2federation_test:harness_native_smoke","assertions":4},

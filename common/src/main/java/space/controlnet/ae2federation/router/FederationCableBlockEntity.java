@@ -111,8 +111,13 @@ public final class FederationCableBlockEntity extends BlockEntity {
      * Resolves the faces that must, and publishes the evidence when a peer changed or it is dirty. Returns whether work
      * is left for the next tick.
      */
+    /** Whether this cable is initialized in {@code serverLevel} and not removed, so it may work there. */
+    boolean live(ServerLevel serverLevel) {
+        return initialized && !isRemoved() && level == serverLevel;
+    }
+
     boolean work(ServerLevel serverLevel) {
-        if (!initialized || isRemoved() || level != serverLevel) return false;
+        if (!live(serverLevel)) return false;
         var changed = false;
         for (var port : ports.values()) changed |= port.tick();
         if (changed || federationDomainDirty) publishFederationDomainTopology();

@@ -125,6 +125,7 @@ public final class NeoForgeEntrypoint {
             FederationBindingRefresh.closeLevel(level);
             space.controlnet.ae2federation.router.DeviceStructureUpdater.closeLevel(level);
             space.controlnet.ae2federation.router.FederationCableTicks.closeLevel(level);
+            space.controlnet.ae2federation.router.RouterTicks.closeLevel(level);
             BeamLinkService.closeLevel(level);
             space.controlnet.ae2federation.quantum.QuantumLinkService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
@@ -150,6 +151,7 @@ public final class NeoForgeEntrypoint {
         space.controlnet.ae2federation.quantum.QuantumLinkService.closeServer(server);
         LevelObservabilityService.closeServer(server);
         space.controlnet.ae2federation.router.FederationCableTicks.closeServer(server);
+        space.controlnet.ae2federation.router.RouterTicks.closeServer(server);
         space.controlnet.ae2federation.policy.PolicyService.closeServer(server);
         FederationDomainRegistryAccess.closeServer(server);
     }

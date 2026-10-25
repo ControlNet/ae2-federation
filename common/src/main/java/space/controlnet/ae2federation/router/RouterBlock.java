@@ -14,7 +14,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -101,14 +100,6 @@ public final class RouterBlock extends BaseEntityBlock implements FormableDevice
     @Override
     public BlockEntity newBlockEntity(BlockPos position, BlockState state) {
         return new RouterBlockEntity(position, state);
-    }
-
-    @Nullable
-    @Override
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
-            BlockEntityType<T> type) {
-        return level.isClientSide() ? null
-                : createTickerHelper(type, blockEntityType(state), RouterBlockEntity::serverTick);
     }
 
     /** The Router's or the Switch's block entity type, whichever block {@code state} is. */

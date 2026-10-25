@@ -61,14 +61,17 @@ public final class FederationCableTicks {
 
     /**
      * Runs every awake cable's face and evidence work once. The batch is taken first, so a cable woken meanwhile works on
-     * the next tick; a cable with work left stays awake.
+     * the next tick; a cable with work left, or whose block entity Minecraft would not tick now, stays awake. A cable
+     * removed or unloaded meanwhile is dropped.
      */
     public static void tickAll(MinecraftServer server) {
         for (var level : List.copyOf(AWAKE.keySet())) {
             if (level.getServer() != server) continue;
             var batch = AWAKE.remove(level);
             for (var cable : batch) {
-                if (cable.work(level)) wake(level, cable);
+                if (!cable.live(level)) continue;
+                // Where Minecraft would not tick the block entity now, the work waits, as it would for a ticker.
+                if (!BlockEntityTicking.ticksAt(level, cable.getBlockPos()) || cable.work(level)) wake(level, cable);
             }
         }
     }

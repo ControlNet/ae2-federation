@@ -42,17 +42,17 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private static final IGridNodeListener<RouterFacePort> NODE_LISTENER = new IGridNodeListener<>() {
         @Override
         public void onSaveChanges(RouterFacePort owner, IGridNode node) {
-            owner.dirty = true;
+            owner.resolveLater();
         }
 
         @Override
         public void onInWorldConnectionChanged(RouterFacePort owner, IGridNode node) {
-            owner.dirty = true;
+            owner.resolveLater();
         }
 
         @Override
         public void onGridChanged(RouterFacePort owner, IGridNode node) {
-            owner.dirty = true;
+            owner.resolveLater();
         }
     };
 
@@ -65,6 +65,8 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     /** The node's data as saved, until its node is created; dropped when the face loses its neighbour. */
     private @Nullable CompoundTag savedNode;
     private final BooleanSupplier linking;
+    /** Asks the block this face belongs to for a tick, in which the face resolves. */
+    private final Runnable wake;
     private RouterPortBinding binding = RouterPortBinding.Disconnected.INSTANCE;
     private BlockCapabilityCache<FederationPort, Direction> federationCache;
     /** Tells the face when the neighbour's AE2 node host comes or goes, including when its chunk loads or unloads. */
@@ -76,9 +78,10 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private boolean alive;
 
     public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort,
-            boolean attachesNetworks, BooleanSupplier linking) {
+            boolean attachesNetworks, BooleanSupplier linking, Runnable wake) {
         this.routerPosition = routerPosition.immutable();
         this.linking = linking;
+        this.wake = wake;
         this.face = face;
         this.routerFederationDomainPort = routerFederationDomainPort;
         this.attachesNetworks = attachesNetworks;
@@ -89,7 +92,7 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         var neighborPosition = routerPosition.relative(face);
         alive = true;
         binding = RouterPortBinding.Disconnected.INSTANCE;
-        dirty = true;
+        resolveLater();
         federationCache = BlockCapabilityCache.create(FederationPortCapability.BLOCK, serverLevel, neighborPosition,
                 face.getOpposite(), () -> alive, this::recheck);
         if (attachesNetworks) {
@@ -120,7 +123,7 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         var resolved = resolve();
         var changed = !resolved.equals(binding);
         binding = resolved;
-        dirty = true;
+        resolveLater();
         return changed;
     }
 
@@ -130,12 +133,22 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
      * republish the whole domain although the link is the same; a changed neighbour block reaches {@link #revalidate()}.
      */
     private void recheck() {
-        dirty = true;
+        resolveLater();
     }
 
     /** Whether the block may link changed, as when its body forms or breaks: resolve again on the next tick. */
     public void markDirty() {
+        resolveLater();
+    }
+
+    /** Whether the face waits to resolve again. */
+    public boolean dirty() {
+        return dirty;
+    }
+
+    private void resolveLater() {
         dirty = true;
+        wake.run();
     }
 
     /**
@@ -146,7 +159,7 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     public void verifyIfNodeless() {
         if (attachesNetworks && alive && boundaryNode == null) {
             verify = true;
-            dirty = true;
+            resolveLater();
         }
     }
 
