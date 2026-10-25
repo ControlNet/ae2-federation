@@ -86,11 +86,13 @@ public final class NeoForgeEntrypoint {
     }
 
     /**
-     * Binding requests from the level ticks and from player actions or GameTests, then the beams and Quantum Cubes,
-     * whose links change the domains, then the domains' operating power, which may stop a domain, then each service's
-     * tick. Last, the domains settle what is still pending, so the next tick's cables read them without recomputing.
+     * First the Federation Cables that have work publish their evidence. Then binding requests from the level ticks and
+     * from player actions or GameTests, then the beams and Quantum Cubes, whose links change the domains, then the
+     * domains' operating power, which may stop a domain, then each service's tick. Last, the domains settle what is
+     * still pending, and the cables sync what their beams show from the settled domains.
      */
     private static void onServerTickBindings(ServerTickEvent.Post event) {
+        space.controlnet.ae2federation.router.FederationCableTicks.tickAll(event.getServer());
         FederationBindingRefresh.flushAll();
         BeamLinkService.tickAll(event.getServer());
         space.controlnet.ae2federation.quantum.QuantumLinkService.tickAll(event.getServer());
@@ -99,6 +101,7 @@ public final class NeoForgeEntrypoint {
         CraftingProjectionService.tick(event.getServer());
         EnergySharingService.tickAll();
         FederationDomainRegistryAccess.settle(event.getServer());
+        space.controlnet.ae2federation.router.FederationCableTicks.afterSettle(event.getServer());
     }
 
     private static void onServerTickNativeMounts(ServerTickEvent.Post event) {
@@ -121,6 +124,7 @@ public final class NeoForgeEntrypoint {
             // needed them end. Each service itself goes when the server stops.
             FederationBindingRefresh.closeLevel(level);
             space.controlnet.ae2federation.router.DeviceStructureUpdater.closeLevel(level);
+            space.controlnet.ae2federation.router.FederationCableTicks.closeLevel(level);
             BeamLinkService.closeLevel(level);
             space.controlnet.ae2federation.quantum.QuantumLinkService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
@@ -145,6 +149,7 @@ public final class NeoForgeEntrypoint {
         OperatingPowerService.closeServer(server);
         space.controlnet.ae2federation.quantum.QuantumLinkService.closeServer(server);
         LevelObservabilityService.closeServer(server);
+        space.controlnet.ae2federation.router.FederationCableTicks.closeServer(server);
         space.controlnet.ae2federation.policy.PolicyService.closeServer(server);
         FederationDomainRegistryAccess.closeServer(server);
     }

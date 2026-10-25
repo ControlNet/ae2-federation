@@ -541,6 +541,73 @@ public final class RouterGameTests {
     }
 
     /**
+     * A Federation Cable does no work while nothing around it changes, as an AE2 cable does not tick: once its domain
+     * settles, every cable sleeps. A third network joining wakes them, their capacity count follows, and they sleep again.
+     * A new capacity number wakes them too, even while the limit is not enforced, as the beam still shows the load.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void cableSleepsWhileIdle(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var west = new BlockPos(2, 2, 2);
+        var east = new BlockPos(6, 2, 2);
+        var cables = new BlockPos[] {west.east(), west.east(2), west.east(3)};
+        fixtures.placeSwitch(west);
+        fixtures.placeSwitch(east);
+        fixtures.placeNativeDevice(west, Direction.WEST);
+        fixtures.placeNativeDevice(east, Direction.EAST);
+        for (var cable : cables) fixtures.placeFederationCable(cable);
+        var phase = new int[1];
+        var load = new double[1];
+        // The capacity rule is global: the test changes it from what it finds and puts that back, also on a timeout.
+        var originalCapacity = space.controlnet.ae2federation.domain.CableCapacityLimit.capacity();
+        var originalEnforced = space.controlnet.ae2federation.domain.CableCapacityLimit.current().isPresent();
+        var changedCapacity = originalCapacity * 2 <= space.controlnet.ae2federation.domain.CableCapacityLimit.MAX_CAPACITY
+                ? originalCapacity * 2 : originalCapacity / 2;
+        Runnable restore = () -> space.controlnet.ae2federation.domain.CableCapacityLimit.set(originalEnforced,
+                originalCapacity);
+        var changedAt = new long[1];
+        helper.succeedWhen(() -> {
+            var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel());
+            var left = network(helper, fixtures.router(west), Direction.WEST);
+            var right = network(helper, fixtures.router(east), Direction.EAST);
+            helper.assertTrue(registry.shareFederationDomain(left, right), "Waiting for the domain");
+            for (var cable : cables) {
+                helper.assertTrue(!space.controlnet.ae2federation.router.FederationCableTicks.awake(
+                        helper.getBlockEntity(cable)), "Waiting for the cable at " + cable + " to sleep");
+            }
+            space.controlnet.ae2federation.router.FederationCableBlockEntity middle = helper.getBlockEntity(cables[1]);
+            if (phase[0] == 0) {
+                load[0] = middle.capacityLoad();
+                helper.assertTrue(load[0] > 0, "The cable has counted the networks it carries");
+                fixtures.placeNativeDevice(west, Direction.NORTH);
+                phase[0] = 1;
+                helper.fail("Waiting for the third network");
+            }
+            if (phase[0] == 1) {
+                helper.assertValueEqual(fixtures.router(west).binding(Direction.NORTH).kind(), RouterPortKind.NATIVE_ME,
+                        "The third network attaches");
+                helper.assertTrue(middle.capacityLoad() > load[0], "Waiting for the cable to count the third network");
+                load[0] = middle.capacityLoad();
+                space.controlnet.ae2federation.domain.CableCapacityLimit.set(false, changedCapacity);
+                changedAt[0] = helper.getTick();
+                phase[0] = 2;
+                helper.fail("Waiting for the new capacity number");
+            }
+            var shown = Math.abs(middle.capacityLoad() - load[0] * originalCapacity / changedCapacity) < 1e-9;
+            if (shown || helper.getTick() > changedAt[0] + 200) restore.run();
+            if (!shown && helper.getTick() > changedAt[0] + 200) {
+                throw new IllegalStateException("The sleeping cable never showed the new capacity");
+            }
+            helper.assertTrue(shown, "Waiting for the sleeping cable to show the new capacity");
+            RouterEvidence.write("cablesleepswhileidle", 6, Map.of(
+                    "domain", "formed", "asleep", "true", "thirdNetwork", "attached", "counted", "true",
+                    "asleepAgain", "true", "unenforcedCapacityShown", "true"));
+            fixtures.close();
+        });
+    }
+
+    /**
      * The settled network the Switch's east face attaches, after checking that it is the ME chest's network and that
      * no other face has a node.
      */
