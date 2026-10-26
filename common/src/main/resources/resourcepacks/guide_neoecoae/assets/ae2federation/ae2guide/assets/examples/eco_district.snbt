@@ -1,9 +1,7 @@
 {
     DataVersion: 3955,
-    size: [17, 4, 3],
+    size: [17, 3, 3],
     data: [
-        {pos: [5, 2, 2], state: "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
-        {pos: [5, 3, 2], state: "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
         {pos: [0, 0, 0], state: "neoecoae:crafting_casing{formed:true,invisible:false}"},
         {pos: [1, 0, 0], state: "neoecoae:crafting_parallel_core_l4{facing:north,formed:true}"},
         {pos: [2, 0, 0], state: "neoecoae:crafting_casing{formed:true,invisible:true}"},
@@ -110,8 +108,6 @@
     ],
     entities: [],
     palette: [
-        "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}",
-        "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}",
         "neoecoae:crafting_casing{formed:true,invisible:false}",
         "neoecoae:crafting_parallel_core_l4{facing:north,formed:true}",
         "neoecoae:crafting_casing{formed:true,invisible:true}",

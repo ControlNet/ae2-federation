@@ -14,7 +14,7 @@ navigation:
 
 * 网络A上： 一个已成形的ECO存储系统， 包括主机（<ItemLink id="neoecoae:storage_system_l4" />）、装着ECO存储矩阵（例如<ItemLink id="neoecoae:eco_item_storage_cell_16m" />）的驱动器（<ItemLink id="neoecoae:eco_drive" />）， 以及<ItemLink id="neoecoae:storage_interface" />； 一个已成形的ECO计算系统， 包括主机（<ItemLink id="neoecoae:computation_system_l4" />）、一个装着闪存晶阵（例如<ItemLink id="neoecoae:eco_computation_cell_l4" />）的驱动器（<ItemLink id="neoecoae:computation_drive" />）， 以及<ItemLink id="neoecoae:computation_interface" />； 一个合成终端； 电源。
 * 网络B上： 一个已成形的ECO合成系统， 包括主机（<ItemLink id="neoecoae:crafting_system_l4" />）、装着样板的<ItemLink id="neoecoae:crafting_pattern_bus" />， 以及<ItemLink id="neoecoae:crafting_interface" />。 它不需要自己的电源。
-* 一个<ItemLink id="ae2federation:switch" />， 以及两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
+* 一个<ItemLink id="ae2federation:switch" />。
 
 <GameScene zoom="2" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/eco_district.snbt" />
@@ -32,9 +32,6 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="6 1 2" max="17 2 3">
     网络A的线缆接着两个通讯接口， 还有一个合成终端和给两个网络供电的能源元件
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="5 2 2" max="6 4 3">
-    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="15" pitch="30" />
 </GameScene>

@@ -37,9 +37,7 @@
         {pos: [2, 2, 1], state: "neoecoprototype:simplify_storage_casing{classic_visible:true,invisible:true,formed:true}", nbt: {proxy: {p: -1}, visual: {}, id: "neoecoprototype:simplify_storage_casing"}},
         {pos: [3, 2, 1], state: "neoecoprototype:simplify_storage_casing{classic_visible:false,invisible:true,formed:true}", nbt: {proxy: {p: -1}, visual: {}, id: "neoecoprototype:simplify_storage_casing"}},
         {pos: [4, 2, 1], state: "neoecoprototype:simplify_storage_casing{classic_visible:false,invisible:true,formed:true}", nbt: {proxy: {p: -1}, visual: {}, id: "neoecoprototype:simplify_storage_casing"}},
-        {pos: [5, 2, 1], state: "neoecoprototype:superconductive_interface"},
-        {pos: [7, 2, 1], state: "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
-        {pos: [7, 3, 1], state: "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}}
+        {pos: [5, 2, 1], state: "neoecoprototype:superconductive_interface"}
     ],
     entities: [],
     palette: [
@@ -54,8 +52,6 @@
         "neoecoprototype:simplify_drive{cell_kind:item,facing:north,has_cell:true,formed:true}",
         "ae2:cable_bus{light_level:0,waterlogged:false}",
         "neoecoprototype:superconductive_interface",
-        "ae2federation:switch{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}",
-        "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}",
-        "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}"
+        "ae2federation:switch{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}"
     ]
 }

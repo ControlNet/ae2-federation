@@ -10,24 +10,21 @@ navigation:
 
 **目标**： 把库存放在一个仓库网络里， 再从几个独立工坊网络的终端里取用和存入。 每个网络保留自己的频道， 只有仓库需要电源。
 
-**需要**： 一个带存储和电源的仓库网络， 一个或多个带终端的工坊网络， 再加一个<ItemLink id="ae2federation:switch" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
+**需要**： 一个带存储和电源的仓库网络， 一个或多个带终端的工坊网络， 再加一个<ItemLink id="ae2federation:switch" />。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/shared_warehouse.snbt" />
-  <BoxAnnotation color="#5CA7CD" min="1 1 2" max="4 4 3">
+  <BoxAnnotation color="#5CA7CD" min="1 1 0" max="4 4 1">
     仓库： 驱动器， 以及给这里所有网络供电的能源元件
   </BoxAnnotation>
-  <BoxAnnotation color="#915dcd" min="3 0 2" max="4 1 3">
+  <BoxAnnotation color="#915dcd" min="3 0 0" max="4 1 1">
     工坊1： 一个终端， 靠仓库的电源运行
   </BoxAnnotation>
-  <BoxAnnotation color="#5ccd78" min="1 0 2" max="2 1 3">
+  <BoxAnnotation color="#5ccd78" min="1 0 0" max="2 1 1">
     工坊2： 一个终端， 靠仓库的电源运行
   </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="2 0 2" max="3 1 3">
+  <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
     交换机： 每个网络占一个面
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 2">
-    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

@@ -19,7 +19,7 @@ CPU; a <ItemLink id="ae2federation:switch" /> for each; a Quantum Network Bridge
 <ItemLink id="ae2:quantum_entangled_singularity" />s; two <ItemLink id="ae2:me_p2p_tunnel" />s; a
 <ItemLink id="ae2:memory_card" />; a <ItemLink id="ae2:quartz_fiber" />; ME cable and
 <ItemLink id="ae2federation:cable" />. For the factory: a network whose <ItemLink id="ae2:pattern_provider" /> and
-<ItemLink id="ae2:molecular_assembler" /> turn logs into planks, and an <ItemLink id="ae2federation:bridge" />; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
+<ItemLink id="ae2:molecular_assembler" /> turn logs into planks, and an <ItemLink id="ae2federation:bridge" />.
 
 In the Overworld:
 
@@ -45,9 +45,6 @@ In the Overworld:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="4.75 1.375 0.375" max="5 1.625 0.625">
     Quartz Fiber: passes the base's power to the carrier without joining the two networks
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="4 3 0" max="5 5 1">
-    Beam Converter: its FE runs the whole domain, the outpost's Switch included
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

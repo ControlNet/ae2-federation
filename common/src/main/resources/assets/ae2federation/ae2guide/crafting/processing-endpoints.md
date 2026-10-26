@@ -28,11 +28,8 @@ storage: the machines' network sees only the inputs of each job.
    block you clicked when placing them. Click Federation Cable (or a Switch or Router) to place them, or put the two fronts
    against each other. The Provider's other five faces join its own ME network like a normal pattern provider, and
    it uses one channel there.
-3. **Power the domain.** The Provider, the Endpoint and the cable between them run on FE: stand a
-   <ItemLink id="ae2federation:beam_converter" /> on the cable, as in [Getting Started](../getting-started.md). See
-   [Power](../mechanics/power.md).
-4. **Insert patterns.** Right-click the Provider and put encoded processing patterns in its nine slots.
-5. **Map each pattern.** Drag a pattern onto an Endpoint in the wiring graph, or click the pattern and then the
+3. **Insert patterns.** Right-click the Provider and put encoded processing patterns in its nine slots.
+4. **Map each pattern.** Drag a pattern onto an Endpoint in the wiring graph, or click the pattern and then the
    Endpoint. One pattern can go to several Endpoints and one Endpoint can take several patterns. Only mapped
    patterns can be requested.
 
@@ -48,9 +45,6 @@ A small example: the Provider's network processes through a furnace on a subnet 
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="2 0.3 0.3" max="4 0.7 0.7">
     Federation Cable
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
-    Beam Converter: its FE runs the Provider, the Endpoint and the cable
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="1 0 0" max="2 1 1">
     Processing Endpoint: front on the Federation Cable, top face on the machine subnet

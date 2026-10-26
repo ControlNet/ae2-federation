@@ -92,8 +92,7 @@ final class FederationJadeTextTest {
         for (var language : List.of("en_us", "zh_cn")) {
             JsonObject lang = JsonParser.parseString(Files.readString(LANG.resolve(language + ".json"))).getAsJsonObject();
             keys.forEach(key -> assertTrue(lang.has("ae2federation.jade." + key), language + " lacks " + key));
-            for (var uid : List.of("cable_capacity", "device", "endpoint", "pattern_provider",
-                    "beam_converter")) {
+            for (var uid : List.of("cable_capacity", "device", "endpoint", "pattern_provider")) {
                 assertTrue(lang.has("config.jade.plugin_ae2federation." + uid), language + " lacks Jade config " + uid);
             }
         }
