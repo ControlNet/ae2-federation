@@ -9,7 +9,7 @@ final class CompatTestClasses {
     }
 
     static boolean includedInAll(String group) {
-        return !group.equals("quest-coverage") && !group.startsWith("playthrough-");
+        return !group.equals("quest-coverage") && !group.startsWith("playthrough-") && !group.equals("cpu-route-spike");
     }
 
     static Map<String, Class<?>> groups() {
@@ -20,6 +20,7 @@ final class CompatTestClasses {
         groups.put("playthrough-crafting", PlaythroughCraftingGameTests.class);
         groups.put("playthrough-remainders", PlaythroughRemainderGameTests.class);
         groups.put("playthrough-progression", PlaythroughProgressionGameTests.class);
+        groups.put("cpu-route-spike", CpuRouteSpikeGameTests.class);
         if (!System.getProperty("ae2federation.compat.transitRestartPhase", "").isBlank()) {
             groups.put("transit-restart", TransitRecoveryRestartGameTests.class);
         }

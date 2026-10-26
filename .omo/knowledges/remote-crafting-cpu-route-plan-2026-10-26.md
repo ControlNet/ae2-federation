@@ -84,6 +84,9 @@ and the options considered: `remote-crafting-architecture-2026-10-26.md`.
 - Feed the ledger from events, and job cleanup from lifecycle events instead of `CraftingCpuLifecycle` reflection.
 - Apply the unknown-CPU policy (see the open decisions).
 - Take statistics from events.
+- Measured in [remote-crafting-dual-registration-spike-2026-10-26.md](remote-crafting-dual-registration-spike-2026-10-26.md):
+  outputs return to the provider's own Grid even with Neo ECO's job id, so the return router stays; C never hears of
+  pattern changes or removal without an explicit refresh or removal.
 
 ### P4. Delete the projection route
 

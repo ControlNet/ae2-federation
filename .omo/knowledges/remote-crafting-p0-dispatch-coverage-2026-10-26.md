@@ -55,8 +55,8 @@ The same holds on the previous pins (Neo ECO 21.2.10, DE 3.3.3, ExtendedAE 2.2.3
 - The Thunderbolt executor row reports 0 runs while the projection saw 7 pushes from it: the probe reads
   `BatchRunResult` counts that are 0 for those runs. Probe artefact, not a coverage gap.
 - Joined runs: 0 out of scope; scope-holds misses match pushes made before the join. Batch samples there are few.
-- Not measured yet: return ingress per CPU type, and a provider object registered on two grids at once (the main risk
-  of P3; spike with an AE2 provider and a Neo ECO workstation).
+- A provider object registered on two grids at once, and where its outputs return:
+  [remote-crafting-dual-registration-spike-2026-10-26.md](remote-crafting-dual-registration-spike-2026-10-26.md).
 
 ## Runner fix found on the way
 
