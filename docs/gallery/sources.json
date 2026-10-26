@@ -1,0 +1,422 @@
+{
+  "schema": 1,
+  "assembled": "2026-10-26",
+  "current_capture_commit": "545b4a3286d743f97609236e386c90876ca867a3",
+  "current_capture_version": "0.0.10-dev",
+  "minecraft": "1.21.1",
+  "neoforge": "21.1.250",
+  "ae2": "19.2.17",
+  "notes": [
+    "Raw sources under build/ are local ignored evidence, not required to view this gallery.",
+    "The teaser, five UI images and GuideME screenshot are byte-identical to the initial delivery.",
+    "UI scenarios use creative power and configured test patterns, names and traffic.",
+    "UI and GuideME images use lossless WebP; annotated studio renders use quality 94 WebP.",
+    "Connection diagrams omit power supplies and machine internals. AE2 Interfaces represent the ME networks.",
+    "Cable light reuses existing R/LITE and R/PLASMA study adapters; studio blending differs from the game.",
+    "Beam Former comparison shows device artwork at a common scale without active beams.",
+    "Quantum Cube and Beam Converter artwork is excluded."
+  ],
+  "images": [
+    {
+      "file": "teaser.webp",
+      "kind": "existing teaser",
+      "capture": "original; preserved byte-for-byte",
+      "source": "docs/teaser.webp",
+      "source_sha256": "d435ff5ec9c46e55159762d96e0ea827ea0eb539a22e5bd9e255d6a779a28c8c",
+      "crop": null,
+      "size": [
+        1494,
+        972
+      ],
+      "sha256": "d435ff5ec9c46e55159762d96e0ea827ea0eb539a22e5bd9e255d6a779a28c8c",
+      "bytes": 119632,
+      "encoding": "Original WebP, byte-for-byte copy"
+    },
+    {
+      "file": "network-overview.webp",
+      "size": [
+        1600,
+        1000
+      ],
+      "bytes": 127418,
+      "sha256": "a9d86f3c134154caf1c04f104b4af280008e0b2750d4d76d9aace2f0399c23b6",
+      "source": "build/gallery-rework-final/network-overview.png",
+      "source_sha256": "3add4a70f7c212378e1f0009ea46a9f5da8c56d4f739f9a2f6c7977f0218e605",
+      "kind": "annotated Blender connection diagram",
+      "composition": {
+        "script": "tools/visual/compose_gallery.py",
+        "script_sha256": "38877d052036554af35e7ab186f2b6dd8dd2c4e7468426b1c7e70cf48146d0d9",
+        "font": "DejaVu Sans / DejaVu Sans Bold"
+      },
+      "encoding": {
+        "format": "WebP",
+        "lossless": false,
+        "quality": 94,
+        "method": 6
+      },
+      "capture": "2026-10-26",
+      "crop": null
+    },
+    {
+      "file": "processing-installation.webp",
+      "size": [
+        1600,
+        1000
+      ],
+      "bytes": 133594,
+      "sha256": "a43c63945b191a379b94a8378b65b43d906d17ed88347eb0247e2b897322d034",
+      "source": "build/gallery-rework-final/processing-installation.png",
+      "source_sha256": "42bccf7746527256b33a80a922fb1857f2917493fa2c42c5abe42eefc5bdf678",
+      "kind": "annotated Blender connection diagram",
+      "composition": {
+        "script": "tools/visual/compose_gallery.py",
+        "script_sha256": "38877d052036554af35e7ab186f2b6dd8dd2c4e7468426b1c7e70cf48146d0d9",
+        "font": "DejaVu Sans / DejaVu Sans Bold"
+      },
+      "encoding": {
+        "format": "WebP",
+        "lossless": false,
+        "quality": 94,
+        "method": 6
+      },
+      "capture": "2026-10-26",
+      "crop": null
+    },
+    {
+      "file": "topology.webp",
+      "kind": "UI demonstration",
+      "capture": "2026-10-26",
+      "source": "build/gallery-20261026/ui-domains/screenshots/ui.showcase-domains/26_ui-showcase-domains.png",
+      "source_sha256": "fd84793e243a09ee7f34434a5771d760e0f91e2040148ee986fee80ec70ebe17",
+      "crop": null,
+      "size": [
+        1920,
+        1080
+      ],
+      "sha256": "65f2d0d538346bd22a1255865e68182d5a4b7242dc288ee9ae7c5131d86bd503",
+      "bytes": 53696,
+      "encoding": "Lossless WebP, method 6"
+    },
+    {
+      "file": "sharing-rules.webp",
+      "kind": "UI demonstration",
+      "capture": "2026-10-26",
+      "source": "build/gallery-20261026/ui-mapping/screenshots/ui.mapping/732_ui-showcase-pair.png",
+      "source_sha256": "eeb1fcd6d9cfab914f39cb7004527bc6e24821919c7a7e61a50719c4beb92e30",
+      "crop": null,
+      "size": [
+        1600,
+        960
+      ],
+      "sha256": "32011e20a9b99c2918c9294f0cc12ca85fb7ee912c912800d3901db66f5e3289",
+      "bytes": 42650,
+      "encoding": "Lossless WebP, method 6"
+    },
+    {
+      "file": "processing-mappings.webp",
+      "kind": "UI demonstration",
+      "capture": "2026-10-26",
+      "source": "build/gallery-20261026/ui-mapping/screenshots/ui.mapping/740_ui-showcase-processing.png",
+      "source_sha256": "06fbe2524141300753835debf403d2ada7cb7ce1d3958074964170dc1a816a75",
+      "crop": null,
+      "size": [
+        1600,
+        960
+      ],
+      "sha256": "b7f53de3e5bffd5be8f082aacdccc4f7b33738fedeeef2428eee8fb94d82c7c1",
+      "bytes": 32590,
+      "encoding": "Lossless WebP, method 6"
+    },
+    {
+      "file": "statistics-stock.webp",
+      "kind": "UI demonstration",
+      "capture": "2026-10-26",
+      "source": "build/gallery-20261026/ui-mapping/screenshots/ui.mapping/827_ui-showcase-statistics-stock-items.png",
+      "source_sha256": "e55c1c7213cc2e914d710dbabf78df53f92b625f0ae86b2c37eed3230ac2d325",
+      "crop": null,
+      "size": [
+        1600,
+        960
+      ],
+      "sha256": "580712751242a434b81e1637837e3ecfa483fb249f30ba097d1fa2ff8346321c",
+      "bytes": 48498,
+      "encoding": "Lossless WebP, method 6"
+    },
+    {
+      "file": "statistics-flow.webp",
+      "kind": "UI demonstration",
+      "capture": "2026-10-26",
+      "source": "build/gallery-20261026/ui-mapping/screenshots/ui.mapping/757_ui-showcase-statistics.png",
+      "source_sha256": "abdd30e02ee35ae0edb7b3a25b87b4ce145cb3c0929ba53c783ae2ea97c79707",
+      "crop": null,
+      "size": [
+        1600,
+        960
+      ],
+      "sha256": "be6fa358bea008e29a431eeddf8de0daf5deb9fb7dfb12aa76e5427b108ebb41",
+      "bytes": 58366,
+      "encoding": "Lossless WebP, method 6"
+    },
+    {
+      "file": "bundled-cable.webp",
+      "size": [
+        1600,
+        1000
+      ],
+      "bytes": 138516,
+      "sha256": "a6d8e822b4568e45657f546b3072d5b61998a6311d07cba4e9198056e0824d1d",
+      "source": "build/gallery-rework-final/bundled-cable.png",
+      "source_sha256": "d1ac520af5244117f7e8b2da4a9a4ade333c44aca433f15d61c85f5a661db20d",
+      "kind": "annotated Blender connection diagram",
+      "composition": {
+        "script": "tools/visual/compose_gallery.py",
+        "script_sha256": "38877d052036554af35e7ab186f2b6dd8dd2c4e7468426b1c7e70cf48146d0d9",
+        "font": "DejaVu Sans / DejaVu Sans Bold"
+      },
+      "encoding": {
+        "format": "WebP",
+        "lossless": false,
+        "quality": 94,
+        "method": 6
+      },
+      "capture": "2026-10-26",
+      "crop": null
+    },
+    {
+      "file": "beam-sizes.webp",
+      "size": [
+        1600,
+        1000
+      ],
+      "bytes": 133502,
+      "sha256": "9c9efc5b8723a98a2dfcb5a282c46c3a6e932fb8dece6602ba6a2e882a5a068c",
+      "source": "build/gallery-rework-final/beam-sizes.png",
+      "source_sha256": "cac5150f4b92435fc926465afd5757056ef170bd34a9865dc333962c345e685b",
+      "kind": "annotated Blender size comparison",
+      "composition": {
+        "script": "tools/visual/compose_gallery.py",
+        "script_sha256": "38877d052036554af35e7ab186f2b6dd8dd2c4e7468426b1c7e70cf48146d0d9",
+        "font": "DejaVu Sans / DejaVu Sans Bold"
+      },
+      "encoding": {
+        "format": "WebP",
+        "lossless": false,
+        "quality": 94,
+        "method": 6
+      },
+      "capture": "2026-10-26",
+      "crop": null
+    },
+    {
+      "file": "ingame-guide.webp",
+      "kind": "GuideME screenshot",
+      "capture": "2026-10-26",
+      "source": "build/gallery-20261026/guide-approved.png",
+      "source_sha256": "ecad086e8de53a28680eb21e470e27f82968c5a5b5bb50518afa3fdb4acc8f2e",
+      "crop": null,
+      "size": [
+        1920,
+        1080
+      ],
+      "sha256": "e57478141b5425e9e21a72e85c61da562a7e9ebdbf53e999c843b1d5a2eece31",
+      "bytes": 421530,
+      "encoding": "Lossless WebP, method 6"
+    },
+    {
+      "file": "overview-zh.webp",
+      "language": "zh",
+      "kind": "promotional overview / GuideME scene renders and actual UI crops",
+      "source": "build/promo/compose/zh.png",
+      "source_sha256": "d9f010f5674a824017334340bdb28dfddd4975f1f3e15995400e5ee5eb68e6b7",
+      "size": [
+        2400,
+        10752
+      ],
+      "bytes": 1543572,
+      "sha256": "f705a85aa85945e6c67b62470af74cd30d0f361768ce24f2db8644dca54608b1",
+      "encoding": {
+        "format": "WebP",
+        "quality": 94,
+        "method": 6,
+        "lossless": false
+      },
+      "capture": "2026-10-26",
+      "crop": null
+    },
+    {
+      "file": "overview-en.webp",
+      "language": "en",
+      "kind": "promotional overview / GuideME scene renders and actual UI crops",
+      "source": "build/promo/compose/en.png",
+      "source_sha256": "b36a71494873198c4140c8f3b1f8043fb88e0734efc9fe541e61d3718e412195",
+      "size": [
+        2400,
+        11166
+      ],
+      "bytes": 1666124,
+      "sha256": "0832448a82e987285cdceb9206beee847957b9da80400ff56f86dc1a0ce9eb30",
+      "encoding": {
+        "format": "WebP",
+        "quality": 94,
+        "method": 6,
+        "lossless": false
+      },
+      "capture": "2026-10-26",
+      "crop": null
+    }
+  ],
+  "studio_render": {
+    "images": {
+      "network-overview": {
+        "anchors": {
+          "left": [
+            299,
+            384
+          ],
+          "right": [
+            1301,
+            512
+          ],
+          "switch_left": [
+            445,
+            522
+          ],
+          "switch_right": [
+            1113,
+            607
+          ],
+          "cable": [
+            800,
+            522
+          ]
+        }
+      },
+      "processing-installation": {
+        "anchors": {
+          "left": [
+            299,
+            384
+          ],
+          "right": [
+            1301,
+            512
+          ],
+          "provider": [
+            445,
+            522
+          ],
+          "endpoint": [
+            1113,
+            607
+          ],
+          "cable": [
+            800,
+            522
+          ]
+        }
+      },
+      "bundled-cable": {
+        "anchors": {
+          "router": [
+            431,
+            526
+          ],
+          "bundle": [
+            753,
+            569
+          ],
+          "ring": [
+            800,
+            383
+          ]
+        }
+      },
+      "beam-sizes": {
+        "anchors": {
+          "1": [
+            288,
+            650
+          ],
+          "2": [
+            669,
+            689
+          ],
+          "3": [
+            1206,
+            746
+          ]
+        }
+      }
+    },
+    "resource_sha256": {
+      "assets/ae2federation/models/block/switch.json": "3ff0a46e4dd5f8b725625b7f1c51b455a10f639058221115d9606d6743b703d9",
+      "assets/minecraft/models/block/block.json": "3ef6c442f1ab55d2a57fa58e28bb831268159052659f12b453b637b31ded1da8",
+      "assets/ae2federation/textures/block/switch/switch.png": "7ae1c2b186778818e83dedc5432b56ba92389def831ea094dc944467a00d3d4d",
+      "assets/ae2/models/block/interface.json": "9145cf22f21c103f95a4fe377864edff5201c05c8831333dfe0518452e18261f",
+      "assets/minecraft/models/block/cube_all.json": "be3205d629ffb9e03834c3d1d083f8a2c62e9f9ae80820755129408634e9144a",
+      "assets/minecraft/models/block/cube.json": "3e4aacd02e816aeba38f83076596e18ded4cf49c01e17c62d1fce79850ffb84e",
+      "assets/ae2/textures/block/interface.png": "2840c05d823a47e52743176b97a313ba89d3085df2de33212e5f4cb28575a042",
+      "assets/ae2federation/textures/part/cable/dense/core_connected_1.png": "3f19bb100a2cab292e44737a8df2604f9ac6a4f73babdd1906d993817c3df381",
+      "assets/ae2federation/textures/part/cable/dense/core.png": "1b220d12f15562571f2bc41a83c3beada14ebb489141fda052eba07c77df83ef",
+      "assets/ae2federation/textures/part/cable/dense/line.png": "f01e141252a8c745724170508d29724d00e30a36f218064cbdc536eae6f3b607",
+      "assets/ae2federation/textures/part/cable/dense/collar.png": "9d25d60dc4f9013253e9b3f14d009a28a9a8d6f4786990091db84c3582656075",
+      "assets/ae2federation/blockstates/pattern_provider.json": "80d12f6fa64cd76926bd4f7b2095f378bef41b03d82b89e179295c99f023f759",
+      "assets/ae2federation/models/block/pattern_provider.json": "2e434c10ff3730d1f27301d0114c609cc9b82257982d13d283b9fe8c9fbcd62a",
+      "assets/ae2federation/textures/block/pattern_provider_back.png": "dceb41393e0a8fbca2c411cee74fa2b5a6c5e50799dd8093f16eb2a6453b9742",
+      "assets/ae2federation/textures/block/pattern_provider_side.png": "4c4ec737bccf96062ecbc1f014572d2172b9058eb12ac0f7b2651a36fb40fd91",
+      "assets/ae2federation/textures/block/pattern_provider.png": "1538eb91ca3c06764617b41cf496177c6977adfb9d07ef528fd3b2ceb4abeaa9",
+      "assets/ae2federation/blockstates/processing_endpoint.json": "e04e7c042cb15da18a9dd0a3a49f7023d00d738e1276329ad30654ea6ab12302",
+      "assets/ae2federation/models/block/processing_endpoint.json": "aee16fefec94605c3ea61a1ec3650c68c1fbaa09e683c81025ab5c3fd7431d23",
+      "assets/ae2federation/textures/block/processing_endpoint_back.png": "d20edf577a42ddf75b18ccc3619e852321cc3c29e41602805b4195f32dde1274",
+      "assets/ae2federation/textures/block/processing_endpoint_side.png": "767366769f4e8a3a0efbb29a72d082b1ab1a491c3b7fc0b1837f4e77397135d7",
+      "assets/ae2federation/textures/block/processing_endpoint.png": "df7ea25d9568e971c6c96514b17f59b51db112f081a26aeb03b03c17ef37603a",
+      "assets/ae2federation/models/block/router.json": "7318428f2e6e1710ac7f2ae7b9318af96c4b6e6a691f095da9af466c85b46d05",
+      "assets/ae2federation/textures/block/router/router_side_ver.png": "50e8938dc8450e098b3355d38f41e5e2c1b9804561eaa6e047d39774b3a0a5f4",
+      "assets/ae2federation/textures/block/router/router_base.png": "763b50493a2f31ec3e789ff40787ff1017bf9dfd83631cb1572d7821ce8d9e5e",
+      "assets/ae2federation/textures/block/router/router_corner.png": "51b1fedfb38b5ffa12abad2a6f24e430bc03052063fc1cfbf4b13c730b680974",
+      "assets/ae2federation/textures/block/router/router_side_hor.png": "a20cc285ee554208e6abe6396123245d764cf425b17382f4cce754bf539b7f21",
+      "assets/ae2federation/textures/block/large_cable/large_cable.png": "569f39edc90d0ef1fda7fa4dfd4deb1080ad5f39aed283790cd2c49c8a7f1a0e",
+      "assets/ae2federation/models/block/beam_former.json": "d4e48914b6de952ebabf51b0e921a5aa902e0bf89a9ef99b3647dfe94daa0471",
+      "assets/ae2federation/textures/block/beam_emitter/light_emitter_back.png": "c28f5e0403aef43fb070140468bad9f412fd9c0a5066e591309e573eccf05d44",
+      "assets/ae2federation/textures/block/beam_emitter/light_emitter_side.png": "531da995bad46f5b592b5f836f2b851fecadce3849a0761f68bd6aff92aabd7c",
+      "assets/ae2federation/textures/block/beam_emitter/light_emitter_front.png": "03e1689b8dae1419b33438c76942366ba901c535853fbdf3720e79af8c77e246",
+      "assets/ae2federation/models/block/beam_former_large_00.json": "f8567e404b3700a389be615fb408ba8bd018f076d066037b4e9cbd33d12478a0",
+      "assets/ae2federation/textures/block/beam_emitter/large_light_emitter.png": "5bb63dcc8aee614c2f67abe78eaa6b62336e9533a8a9e95b2dfd06ae96a13ed8",
+      "assets/ae2federation/models/block/beam_former_large_01.json": "69c802c6e6f5e1e9d23ca5d01a6544942e1229848098f049f2c5c476befff79e",
+      "assets/ae2federation/models/block/beam_former_large_10.json": "d2594c50d75f84cb60178840330c3e6495051f0d6869b6a4fc6d99fcd5ed72a1",
+      "assets/ae2federation/models/block/beam_former_large_11.json": "0a8dff5470ce8bc3c1a6078da320dc8a5e335d25433ea6ace7df3721c718bb26",
+      "assets/ae2federation/models/block/beam_former_huge_00.json": "841bb167d7b488fbd014a4f3815bfef0ce73264c9674fec7764933b89aa28680",
+      "assets/ae2federation/textures/block/beam_emitter/huge_light_emitter.png": "e4ede5260bf80987beaf16603d57aeb2ebd332617554899c017df695b6fb475c",
+      "assets/ae2federation/models/block/beam_former_huge_01.json": "b6878ec6bece8ae66e248010cca3ff4ba1568b28b03d7e791ac755a5004afd5c",
+      "assets/ae2federation/models/block/beam_former_huge_02.json": "5a0cf30552c9cea3e665019ef7d20908ba24ff5c3b2da8dd5a2b2a2d3492f7e9",
+      "assets/ae2federation/models/block/beam_former_huge_10.json": "8a403b6e18d035ff7f1aa095e1bf84aca0ea8d17e64c2ce8450f7bc5de720b95",
+      "assets/ae2federation/models/block/beam_former_huge_11.json": "20343e6d28881399ea0693a401704a437cd33233d4319c96ab6deac00b507bb4",
+      "assets/ae2federation/models/block/beam_former_huge_12.json": "e84cc780a0930bd1d9618897cc9be9758b951492dd36b90e406493dd4c02ca8c",
+      "assets/ae2federation/models/block/beam_former_huge_20.json": "f9acc9d48d78096cf22a920c9ed6ecfe79ac9a728a14bd54f6a0e549af632aa6",
+      "assets/ae2federation/models/block/beam_former_huge_21.json": "06c4aacc78065876825079f86ab7fb340e1563cfad0d68b4bfe13f6bd5738026",
+      "assets/ae2federation/models/block/beam_former_huge_22.json": "d29e69ddff258583367aaeea2616bbd654864f58540c685fb01b38af5605c69a"
+    },
+    "blender": "5.2.1 LTS",
+    "cable_source_sha256": {
+      "common/src/main/java/space/controlnet/ae2federation/client/FederationCableBuilder.java": "9710695e0ce06cbc381af5ff87b5ce816b4830b7a3f40cd7bde344fee64a1ec5",
+      "common/src/main/java/space/controlnet/ae2federation/router/CableCoreFaces.java": "167bd5fab52bc479a8d6e38d3c9f9592a5e6e5f123e96d91a6a57a1ce2abb6dd",
+      "common/src/main/java/space/controlnet/ae2federation/router/CableVisualConnections.java": "f86cb2fd35148ca1e7fea05741217d392dd43fdbc39b9fcd1628062762f103c1"
+    },
+    "tool_sha256": {
+      "tools/blender/gallery.py": "e038e854fa8feae7ab7e876562b3d510aa93b372f5bc97ea65b2abd0a0f083e5",
+      "tools/blender/cable_beams.py": "a1161c57669237281607a7f84908123570ec6b2193e1b0e264a28a4239875931",
+      "tools/blender/plasma_beam.py": "f074f2ef21fde4f622ce540fcdd137572193deebbbc639f03ffbb730b990f11c",
+      "tools/blender/bundle_beams.py": "9589f16d4ba7879443a69b5309a673d60c5a06accbccf572145e715edc7449ff",
+      "tools/multiblock/geometry.py": "9b685705fa13ddac169cf5f81551d53d51a827d8208922d3d89e1100b7ae6d62",
+      "tools/blockbench/export_beam_former_models.py": "42d50a18804289fc39616787ab19496f3e8e9c75678242cdca8a5b8640a6b9e3",
+      "tools/blockbench/projects/large_cable_straight.bbmodel": "65a5a2c6e1d50716130222acf0631e2fc21b2e5639c1c8924970b76998af3094"
+    },
+    "notes": "Connection diagrams; power and machine internals omitted. Cable light is a studio adaptation of the R/LITE and R/PLASMA study, not an in-game capture.",
+    "source_manifest": "build/gallery-rework-final/renders.json",
+    "visual_review": "Full-size and 800px-wide review: device identity, label anchors, text overlap, framing, relative scale and one clear topic per image."
+  },
+  "promotional_overviews": {
+    "sources": "promo-sources.json",
+    "notes": "Separate Chinese and English long posters, 2400 pixels wide (1200 CSS pixels at 2x). Scenes are guide example structures rendered by GuideME with Beam Converters removed; UI panels are crops of the gallery screenshots."
+  }
+}
