@@ -2,8 +2,6 @@
     DataVersion: 3955,
     size: [9, 7, 9],
     data: [
-        {pos: [4, 1, 0], state: "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
-        {pos: [4, 2, 0], state: "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
         {pos: [7, 0, 0], state: "ae2:molecular_assembler{powered:true}", nbt: {id: "ae2:molecular_assembler", visual: {}}},
         {pos: [6, 0, 0], state: "ae2:pattern_provider{push_direction:all}", nbt: {id: "ae2:pattern_provider", priority: 0, visual: {}}},
         {pos: [5, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsEast: 1, channelsWest: 1, connections: ["west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
@@ -360,8 +358,6 @@
     ],
     entities: [],
     palette: [
-        "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}",
-        "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}",
         "ae2:molecular_assembler{powered:true}",
         "ae2:pattern_provider{push_direction:all}",
         "ae2:cable_bus{light_level:0,waterlogged:false}",

@@ -25,8 +25,7 @@ Neo ECO AE Extension is installed.
 * on network B: a formed ECO crafting system, with its controller (<ItemLink id="neoecoae:crafting_system_l4" />),
   patterns in its <ItemLink id="neoecoae:crafting_pattern_bus" />es, and its
   <ItemLink id="neoecoae:crafting_interface" />. No power of its own.
-* a <ItemLink id="ae2federation:switch" />, and two <ItemLink id="ae2federation:beam_converter" /> blocks with FE from
-  another mod's generator.
+* a <ItemLink id="ae2federation:switch" />.
 
 <GameScene zoom="2" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/eco_district.snbt" />
@@ -44,9 +43,6 @@ Neo ECO AE Extension is installed.
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="6 1 2" max="17 2 3">
     Network A's cable on both interfaces, with a crafting terminal and the energy cell that powers both networks
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="5 2 2" max="6 4 3">
-    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="15" pitch="30" />
 </GameScene>

@@ -2,13 +2,14 @@ package space.controlnet.ae2federation.power;
 
 /**
  * The server's operating power rule: whether Federation domains need FE from a Beam Converter to run, and one multiplier
- * over every block's cost. The server configuration sets it when it loads; until then, and in tests, the defaults hold.
+ * over every block's cost. This release ships without the Beam Converter, so nothing turns the rule on and domains run
+ * on unlimited energy; tests may still set it.
  */
 public final class OperatingPowerRule {
     public static final double DEFAULT_MULTIPLIER = 1.0;
     public static final double MAX_MULTIPLIER = 64.0;
 
-    private static volatile boolean required = true;
+    private static volatile boolean required = false;
     private static volatile double multiplier = DEFAULT_MULTIPLIER;
 
     private OperatingPowerRule() {

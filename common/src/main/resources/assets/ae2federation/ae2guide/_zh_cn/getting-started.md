@@ -26,13 +26,13 @@ navigation:
 
 ## 2. 连接两个网络
 
-相邻的网络只需要一个联邦桥。 相距较远的网络用交换机和联邦线缆连接， 它们靠光束转换器提供的FE运行。 两种方式打开的都是同一个联邦界面。
+相邻的网络只需要一个联邦桥。 相距较远的网络用交换机和联邦线缆连接。 两种方式打开的都是同一个联邦界面。
 
 ### 两个网络紧挨着：联邦桥
 
 <RecipeFor id="ae2federation:bridge" />
 
-把<ItemLink id="ae2federation:bridge" />装在第一个网络的线缆上， 让它的外侧接触第二个网络的线缆或设备。 两者仍是各自独立的网络， 通过联邦桥为联邦连在一起。 联邦桥不消耗FE。
+把<ItemLink id="ae2federation:bridge" />装在第一个网络的线缆上， 让它的外侧接触第二个网络的线缆或设备。 两者仍是各自独立的网络， 通过联邦桥为联邦连在一起。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/bridge.snbt" />
@@ -48,17 +48,14 @@ navigation:
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
-### 两个网络相距较远：交换机、联邦线缆和光束转换器
+### 两个网络相距较远：交换机和联邦线缆
 
 <Row>
   <RecipeFor id="ae2federation:switch" />
   <RecipeFor id="ae2federation:cable" />
-  <RecipeFor id="ae2federation:beam_converter" />
 </Row>
 
 给每个网络放一个<ItemLink id="ae2federation:switch" />， 让这个网络的一根ME线缆接触它， 再用<ItemLink id="ae2federation:cable" />把交换机连起来。 交换机每个面接一个网络， 最多六个， 所以挨着同一个交换机的几个网络可以共用它。
-
-交换机和联邦线缆每刻消耗少量FE。 把两个<ItemLink id="ae2federation:beam_converter" />方块排成一列， 一端放在线缆上， 再用其他模组的发电机给它们输入FE； AE2本身不产出FE。 转换器有FE之前， 两个网络不会连通。 参见[能量](mechanics/power.md)。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/switch_cable.snbt" />
@@ -70,9 +67,6 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0.3 0.3" max="5 0.7 0.7">
     两个交换机之间的联邦线缆
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="4 1 0" max="5 3 1">
-    光束转换器， 两个方块： 下端放在线缆上， FE从其他任意面输入
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
     交换机： 一面接网络B的线缆， 另一面接联邦线缆

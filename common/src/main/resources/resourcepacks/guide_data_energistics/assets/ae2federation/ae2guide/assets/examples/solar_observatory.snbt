@@ -1,9 +1,7 @@
 {
     DataVersion: 3955,
-    size: [7, 3, 3],
+    size: [7, 2, 3],
     data: [
-        {pos: [3, 1, 1], state: "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
-        {pos: [3, 2, 1], state: "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}", nbt: {id: "ae2federation:beam_converter", stored: 12000.0d}},
         {pos: [3, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsSouth: 1, connections: ["south"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, north: {id: "ae2:crafting_terminal", visual: {missingChannel: 0b, powered: 1b}}}},
         {pos: [5, 0, 1], state: "ae2:energy_cell{fullness:4}", nbt: {id: "ae2:energy_cell", internalCurrentPower: 200000.0d}},
         {pos: [4, 0, 1], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:green_smart_cable", visual: {channelsEast: 0, channelsUp: 0, channelsWest: 0, connections: ["up", "west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
@@ -20,8 +18,6 @@
     ],
     entities: [],
     palette: [
-        "ae2federation:beam_converter{facing:down,formed:true,up:false,down:true,north:false,south:false,east:false,west:false}",
-        "ae2federation:beam_converter{facing:down,formed:true,up:true,down:false,north:false,south:false,east:false,west:false}",
         "ae2:cable_bus{light_level:0,waterlogged:false}",
         "ae2:energy_cell{fullness:4}",
         "ae2federation:switch{down:false,east:false,north:false,south:false,up:false,west:false,formed:true}",

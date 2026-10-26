@@ -17,7 +17,7 @@ observatory network with an <ItemLink id="data_energistics:astronomical_observat
 <ItemLink id="ae2:drive" /> holding a <ItemLink id="data_energistics:digital_storage_cell_1k" />; your main network with
 a crafting terminal; a <ItemLink id="ae2federation:switch" /> all three touch. Data Energistics' guide covers
 [the panels](data_energistics:items-blocks-machines/6.1_me_solar_panel.md) and
-[the Observatory](data_energistics:items-blocks-machines/6.12_astronomical_observatories.md); two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
+[the Observatory](data_energistics:items-blocks-machines/6.12_astronomical_observatories.md).
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/solar_observatory.snbt" />
@@ -32,9 +32,6 @@ a crafting terminal; a <ItemLink id="ae2federation:switch" /> all three touch. D
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 1" max="4 1 2">
     One Switch: each face joins the network it touches
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="3 1 1" max="4 3 2">
-    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

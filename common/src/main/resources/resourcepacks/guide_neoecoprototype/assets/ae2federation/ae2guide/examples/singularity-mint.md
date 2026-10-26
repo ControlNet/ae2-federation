@@ -22,8 +22,7 @@ because Neo ECO Prototype is installed.
   <ItemLink id="neoecoprototype:superconductive_interface" /> on the mint's cable. No energy cell besides the storage
   system's own.
 * two district networks with a terminal each. No power of their own.
-* a <ItemLink id="ae2federation:switch" />, and two <ItemLink id="ae2federation:beam_converter" /> blocks with FE from
-  another mod's generator.
+* a <ItemLink id="ae2federation:switch" />.
 
 <GameScene zoom="3" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/singularity_mint.snbt" />
@@ -35,9 +34,6 @@ because Neo ECO Prototype is installed.
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="7 1 1" max="8 2 2">
     Switch: one face per network
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="7 2 1" max="8 4 2">
-    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="8 1 1" max="9 2 2">
     District A: a terminal, running on the mint's power

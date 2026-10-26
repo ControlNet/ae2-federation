@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 在主网络上请求沙砾， 而粉碎圆石的一对Create粉碎轮待在它们自己的小网络里。 这一页出现， 是因为安装了Create。
 
-**需要**： 带合成CPU、合成终端并存有圆石的主网络； 一个<ItemLink id="ae2federation:pattern_provider" />； 一个<ItemLink id="ae2federation:processing_endpoint" />； <ItemLink id="ae2federation:cable" />； 两个<ItemLink id="create:crushing_wheel" />； 一个<ItemLink id="create:chute" />； 一个<ItemLink id="ae2:storage_bus" />； 驱动粉碎轮的旋转动力； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
+**需要**： 带合成CPU、合成终端并存有圆石的主网络； 一个<ItemLink id="ae2federation:pattern_provider" />； 一个<ItemLink id="ae2federation:processing_endpoint" />； <ItemLink id="ae2federation:cable" />； 两个<ItemLink id="create:crushing_wheel" />； 一个<ItemLink id="create:chute" />； 一个<ItemLink id="ae2:storage_bus" />； 驱动粉碎轮的旋转动力。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/create_crushing_wheels.snbt" />
@@ -31,9 +31,6 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="1 3 1" max="2 4 2">
     粉碎轮后面的传动杆， 接到你的旋转动力
-  </BoxAnnotation>
-  <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
-    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

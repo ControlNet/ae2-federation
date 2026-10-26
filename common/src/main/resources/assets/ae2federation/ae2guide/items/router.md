@@ -19,8 +19,8 @@ The Router ends cable segments, so that a [Federation domain](../mechanics/index
 <ItemLink id="ae2federation:cable" />, a <ItemLink id="ae2federation:switch" />, a Pattern Provider front or an
 Endpoint front. Federation Cable connects and branches by itself, so a domain needs Routers only for capacity.
 
-A Router's faces take Federation blocks only; ME networks join the domain through a Switch. Each Router block uses
-2 FE per tick ([Power](../mechanics/power.md)). Right-click a Router to open the Federation screen for its domain.
+A Router's faces take Federation blocks only; ME networks join the domain through a Switch.
+Right-click a Router to open the Federation screen for its domain.
 
 ## Ending segments
 

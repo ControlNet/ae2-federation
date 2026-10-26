@@ -56,9 +56,9 @@ A network counts as soon as it joins the domain, whatever its rules and power.
 
 Federation Cables joined to each other form a **segment**. Only a <ItemLink id="ae2federation:router" /> ends a
 segment, and a Router built from several blocks counts as one Router. A <ItemLink id="ae2federation:switch" /> sits
-inside its segment, and so does a [long-distance link](long-distance.md): a pair of P2P tunnels, Beam Formers or
-Quantum Cubes joins the cable on both sides into one segment. Each link counts as cable of its size, so a pair of P2P
-tunnels holds one cable's limit even between two Routers.
+inside its segment, and so does a [long-distance link](long-distance.md): a pair of P2P tunnels or Beam Formers
+joins the cable on both sides into one segment. Each link counts as cable of its size, so a pair of P2P tunnels holds
+one cable's limit even between two Routers.
 
 * A segment that touches **no Router or one Router** forms a **subdomain** with the networks on its Switches and the
   devices on it. It counts its subdomain only.
@@ -78,8 +78,7 @@ To get there:
 * **End the segment with a Router.** What stands behind a Router stops counting on a segment that touches only that
   Router.
 * **Bundle the trunk.** A segment between Routers counts the whole domain, so it fills first. Build it as a
-  [bundled cable](bundled-cables.md): a 2×2 bundle carries 48, and a 3×3 has no limit. A bundle needs a
-  [Beam Converter](../items/beam_converter.md) of its size.
+  [bundled cable](bundled-cables.md): a 2×2 bundle carries 48, and a 3×3 has no limit.
 
 ## Seeing the count
 
