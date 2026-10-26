@@ -56,6 +56,8 @@ and the options considered: `remote-crafting-architecture-2026-10-26.md`.
 - Known risk to measure: Neo ECO 21.2.10 itself injects into AE2's `CraftingCpuLogic.executeCrafting` (a cancellable
   inject in `Ae2CraftingCpuFastPathMixin`) and wraps its `pushPattern` call. So an AE2 CPU with Neo ECO installed may
   dispatch through Neo ECO code, not AE2's.
+- Result: [remote-crafting-p0-dispatch-coverage-2026-10-26.md](remote-crafting-p0-dispatch-coverage-2026-10-26.md).
+  Every push happened inside a crafting-service scope that named the right consumer.
 
 ### P1. Compat layer skeleton (no behaviour change)
 
