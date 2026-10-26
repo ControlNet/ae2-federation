@@ -71,6 +71,9 @@ JAR has no such record is not ready; the required manifest GameTests do not repl
 
 Write these into the player-facing release notes of the release they first ship in:
 
+- **0.0.9:** statistics use game time instead of wall-clock time. Old statistics history and pinned statistics
+  items are reset on upgrade; they are not migrated. Network rules, stored items and crafting patterns are not
+  part of this statistics reset.
 - **First release after 0.0.5:** the Federation Logic Processor (`ae2federation:federation_logic_processor`) is
   removed and replaced by the Nexus Processor and Nexus Core. It is not migrated and has no alias: Federation Logic
   Processors in inventories, chests or ME storage of an existing world may disappear or become invalid items when the
