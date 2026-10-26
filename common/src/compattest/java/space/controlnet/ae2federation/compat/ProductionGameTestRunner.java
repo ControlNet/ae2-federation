@@ -30,6 +30,7 @@ import net.minecraft.gametest.framework.TestFunction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.GameRules;
+import net.neoforged.fml.loading.FMLConfig;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
@@ -77,6 +78,9 @@ final class ProductionGameTestRunner {
                 .map(id -> id.toLowerCase(Locale.ROOT)).distinct().toList();
         var parallel = Math.max(1, Integer.getInteger("ae2federation.compat.parallel", 1));
         var runner = new ProductionGameTestRunner(requested, report, parallel);
+        // FML's config watcher can reload the freshly written server configuration after the server has started,
+        // which would turn the operating power requirement back on and stop every domain.
+        FMLConfig.updateConfig(FMLConfig.ConfigValue.DISABLE_CONFIG_WATCHER, true);
         NeoForge.EVENT_BUS.addListener(runner::onServerStarted);
         NeoForge.EVENT_BUS.addListener(runner::onServerTick);
         NeoForge.EVENT_BUS.addListener(runner::onServerStopping);

@@ -55,6 +55,10 @@ public final class FederationTestMod {
             // The GameTests and UI scenarios build domains without Beam Converters; the power tests and the topology
             // showcase turn the requirement on themselves.
             // Set once the server configuration has loaded, which would set it back.
+            // FML's config watcher can reload the freshly written server configuration after the server has started,
+            // which would turn the requirement back on and stop every domain; these runs never edit it by hand.
+            net.neoforged.fml.loading.FMLConfig.updateConfig(
+                    net.neoforged.fml.loading.FMLConfig.ConfigValue.DISABLE_CONFIG_WATCHER, true);
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
                     (net.neoforged.neoforge.event.server.ServerStartedEvent event) -> space.controlnet.ae2federation.power
                             .OperatingPowerRule.set(false, space.controlnet.ae2federation.power.OperatingPowerRule.DEFAULT_MULTIPLIER));
