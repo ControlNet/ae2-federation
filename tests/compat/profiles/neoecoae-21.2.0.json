@@ -1,0 +1,16 @@
+{
+  "name": "neoecoae-21.2.0",
+  "group": "addons",
+  "description": "Neo ECO AE Extension 21.2.0, whose getRequestedAmount leaves its CPUs out (fixed in 21.2.1), so remote results reach them only through Federation's fallback",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.20",
+    "ldlib2@2.2.44",
+    "neoecoae@21.2.0"
+  ],
+  "tests": [
+    "core",
+    "neoecoae"
+  ]
+}

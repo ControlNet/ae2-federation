@@ -5,9 +5,9 @@
   "neoforge": "21.1.250",
   "mods": [
     "ae2@19.2.18",
-    "guideme@21.1.19",
-    "ldlib2@2.2.41",
-    "useless-mod@2.4.5.10"
+    "guideme@21.1.20",
+    "ldlib2@2.2.44",
+    "useless-mod@2.4.6.2"
   ],
   "tests": [
     "core",

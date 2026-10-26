@@ -30,6 +30,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger;
 import space.controlnet.ae2federation.policy.PolicyCapability;
@@ -56,21 +57,29 @@ public final class UselessModCompatGameTests {
                 List.of("ae2:1k_crafting_storage"),
                 place -> place.setBlock(AddonCraftingScene.PROVIDER, furnace), AddonCraftingScene.PROVIDER,
                 entity -> entity != null && entity.getBlockState().is(furnace));
-        helper.succeedWhen(scene::tick);
+        helper.succeedWhen(() -> {
+            charge(helper, AddonCraftingScene.PROVIDER);
+            scene.tick();
+        });
     }
 
     /**
      * UselessMod's Smart Doubling merges a plan's runs of one pattern into a few larger pushes, but only for providers
      * that declare they take them, as the Advanced Alloy Furnace does. The furnace's projection on the consumer must
      * declare it too: the consumer's plan for eight crafts must be doubled as the provider network's own plan is, the
-     * furnace must take the larger push and the job must finish exactly.
+     * furnace must take the larger push and the job must finish exactly. Since Useless Mod 2.4.6 a crafting pattern
+     * costs the furnace 40,000 FE a craft, and the eight crafts of one push must fit its FE buffer at once: the
+     * furnace is upgraded to tier 3, whose 800,000 FE hold them, as a player does with its ingots.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void alloyFurnaceSmartDoubling(GameTestHelper helper) {
         var furnace = AddonCraftingScene.block(FURNACE);
         var scene = AddonCraftingScene.structure(helper, FURNACE,
                 List.of("ae2:1k_crafting_storage"),
-                place -> place.setBlock(AddonCraftingScene.PROVIDER, furnace), AddonCraftingScene.PROVIDER,
+                place -> {
+                    place.setBlock(AddonCraftingScene.PROVIDER, furnace);
+                    upgrade(place, AddonCraftingScene.PROVIDER, 3);
+                }, AddonCraftingScene.PROVIDER,
                 entity -> entity != null && entity.getBlockState().is(furnace))
                 .requesting(8)
                 .checkingPlan((plan, local) -> {
@@ -79,7 +88,10 @@ public final class UselessModCompatGameTests {
                     helper.assertTrue(doubled(plan), "The consumer's plan must be doubled as the provider network's "
                             + "is: " + plan.patternTimes());
                 });
-        helper.succeedWhen(scene::tick);
+        helper.succeedWhen(() -> {
+            charge(helper, AddonCraftingScene.PROVIDER);
+            scene.tick();
+        });
     }
 
     /** Whether Smart Doubling rewrote {@code plan}: its patterns are UselessMod's scaled copies. */
@@ -115,7 +127,10 @@ public final class UselessModCompatGameTests {
                                 "The furnace must take its pattern back"),
                         (order, cpu, provider) -> {
                         });
-        helper.succeedWhen(scene::tick);
+        helper.succeedWhen(() -> {
+            charge(helper, AddonCraftingScene.PROVIDER);
+            scene.tick();
+        });
     }
 
     /**
@@ -167,6 +182,7 @@ public final class UselessModCompatGameTests {
         }
 
         void run() {
+            charge(helper, FURNACE_POS);
             switch (stage) {
                 case 0 -> {
                     helper.assertTrue(chain.built(), "Waiting for the networks and Bridges: " + chain.readiness());
@@ -312,6 +328,27 @@ public final class UselessModCompatGameTests {
                     .orElseThrow();
             return PatternDetailsHelper.encodeCraftingPattern(recipe, items.toArray(ItemStack[]::new),
                     recipe.value().assemble(input, helper.getLevel().registryAccess()), false, false);
+        }
+    }
+
+    /**
+     * Fills the furnace's FE buffer, as a generator beside it would. Since Useless Mod 2.4.6 the furnace spends FE on
+     * crafting patterns too, and by default it draws none from its ME network.
+     */
+    private static void charge(GameTestHelper helper, BlockPos position) {
+        var energy = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(position),
+                null);
+        if (energy != null) energy.receiveEnergy(Integer.MAX_VALUE, false);
+    }
+
+    /** Upgrades the furnace to {@code tier}, as its ingots do when a player uses them on it. */
+    private static void upgrade(GameTestHelper helper, BlockPos position, int tier) {
+        var entity = helper.getLevel().getBlockEntity(helper.absolutePos(position));
+        try {
+            helper.assertTrue((boolean) entity.getClass().getMethod("tryUpgrade", int.class).invoke(entity, tier),
+                    "The furnace must take the upgrade to tier " + tier);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Useless Mod's furnace has no tryUpgrade(int)", exception);
         }
     }
 
