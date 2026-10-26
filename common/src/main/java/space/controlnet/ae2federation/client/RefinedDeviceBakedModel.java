@@ -11,7 +11,6 @@ import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.Material;
-import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
@@ -38,22 +37,20 @@ public final class RefinedDeviceBakedModel extends BakedModelWrapper<BakedModel>
 
     public static void bake(ModelEvent.ModifyBakingResult event) {
         RefinedDeviceAssets.reload();
-        wrap(event,PowerRegistration.BEAM_CONVERTER.get(),"beam_converter",true);
-        wrap(event,PowerRegistration.CREATIVE_BEAM_CONVERTER.get(),"creative_beam_converter",true);
-        wrap(event,QuantumRegistration.QUANTUM_CUBE.get(),"quantum_cube",false);
+        wrap(event,PowerRegistration.BEAM_CONVERTER.get(),true,false);
+        wrap(event,PowerRegistration.CREATIVE_BEAM_CONVERTER.get(),true,true);
+        wrap(event,QuantumRegistration.QUANTUM_CUBE.get(),false,false);
     }
-    private static void wrap(ModelEvent.ModifyBakingResult event,Block block,String name,boolean laser) {
-        var surface=event.getTextureGetter().apply(new Material(TextureAtlas.LOCATION_BLOCKS,RefinedDeviceAssets.SURFACE));
-        var emission=event.getTextureGetter().apply(new Material(TextureAtlas.LOCATION_BLOCKS,RefinedDeviceAssets.EMISSION));
+    private static void wrap(ModelEvent.ModifyBakingResult event,Block block,boolean laser,boolean creative) {
+        var surface=event.getTextureGetter().apply(new Material(TextureAtlas.LOCATION_BLOCKS,creative ? RefinedDeviceAssets.CREATIVE_SURFACE : RefinedDeviceAssets.SURFACE));
+        var emission=event.getTextureGetter().apply(new Material(TextureAtlas.LOCATION_BLOCKS,creative ? RefinedDeviceAssets.CREATIVE_EMISSION : RefinedDeviceAssets.EMISSION));
         var shapes=new Shapes(laser,surface,emission);
         for (var state:block.getStateDefinition().getPossibleStates()) {
+            if (!RouterBlock.formed(state)) continue;
             var key=BlockModelShaper.stateToModelLocation(state);
             var base=event.getModels().get(key);
             if (base!=null) event.getModels().put(key,new RefinedDeviceBakedModel(base,shapes));
         }
-        var item=new ModelResourceLocation(RefinedDeviceAssets.id(name),"inventory");
-        var base=event.getModels().get(item);
-        if (base!=null) event.getModels().put(item,new RefinedDeviceBakedModel(base,shapes));
     }
     @Override
     public ModelData getModelData(BlockAndTintGetter level,BlockPos pos,BlockState state,ModelData data) {
@@ -70,11 +67,13 @@ public final class RefinedDeviceBakedModel extends BakedModelWrapper<BakedModel>
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state,@Nullable Direction side,RandomSource random,
             ModelData data,@Nullable RenderType renderType) {
+        if (state==null || !RouterBlock.formed(state)) {
+            return super.getQuads(state,side,random,data,renderType);
+        }
         if (side!=null) return List.of();
         var key=data.get(MEMBER);
         if (key!=null) return shapes.members.computeIfAbsent(key,shapes::member);
-        if (state!=null && RouterBlock.formed(state)) return List.of();
-        return shapes.item;
+        return List.of();
     }
     @Override
     public ChunkRenderTypeSet getRenderTypes(BlockState state,RandomSource random,ModelData data) {
@@ -86,19 +85,8 @@ public final class RefinedDeviceBakedModel extends BakedModelWrapper<BakedModel>
         private final boolean laser;
         private final TextureAtlasSprite surface,emission;
         private final Map<Key,List<BakedQuad>> members=new ConcurrentHashMap<>();
-        private final List<BakedQuad> item;
         Shapes(boolean laser,TextureAtlasSprite surface,TextureAtlasSprite emission) {
             this.laser=laser; this.surface=surface; this.emission=emission;
-            var source=new ArrayList<>(RefinedDeviceAssets.mesh((laser ? "laser-" : "quantum-")+1));
-            if (!laser) {
-                for (var name:List.of("core-outer","core-inner","core-centre")) {
-                    for (var q:RefinedDeviceAssets.mesh(name)) source.add(new RefinedDeviceMesh.Quad(
-                            q.vertices().stream().map(v -> v.scale(.75)).toList()));
-                }
-            }
-            double scale=laser ? .46 : .30;
-            item=bake(source.stream().map(q -> new RefinedDeviceMesh.Quad(q.vertices().stream()
-                    .map(v -> v.scale(scale).move(.5,.5,.5)).toList())).toList());
         }
         List<BakedQuad> member(Key key) {
             return bake(RefinedDeviceMesh.cell(RefinedDeviceAssets.mesh((laser ? "laser-" : "quantum-")+key.section),

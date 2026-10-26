@@ -35,7 +35,7 @@ import space.controlnet.ae2federation.router.RouterRegistration;
 public final class RefinedDeviceScene {
     public static final String OUTPUT = "ae2federation.refinedDevice.out";
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final String WORLD = "refined-device-scene-v3";
+    private static final String WORLD = "refined-device-scene-v4";
     /** The flat world's first free layer. */
     private static final int Y = -60;
 
@@ -110,7 +110,13 @@ public final class RefinedDeviceScene {
             view("quantum-"+n,out,new Vec3(x+k+5,Y+k+3,13),new Vec3(x+k/2.0,Y+k/2.0,20+k/2.0));
         }
         view("vertical",out,new Vec3(39,Y+8,-7),new Vec3(34,Y+2,1));
-        view("items-unformed",out,new Vec3(34,Y+3,7),new Vec3(32,Y+.5,10));
+        view("items-unformed",out,new Vec3(35,Y+2.8,14),new Vec3(34.5,Y+.5,10.5));
+        view("converter-palettes",out,new Vec3(45,Y+4.5,10),new Vec3(41,Y+1,15));
+        STEPS.add(new Step("inventory-icons",10,() -> captureItems(minecraft,out)));
+        held("beam_converter",out);
+        held("creative_beam_converter",out);
+        held("quantum_cube",out);
+
         if (!reopen) {
             STEPS.add(new Step("remove-member",60,() -> server(level -> level.setBlock(new BlockPos(8,Y,20),
                     Blocks.AIR.defaultBlockState(),Block.UPDATE_ALL))));
@@ -137,6 +143,43 @@ public final class RefinedDeviceScene {
             minecraft.stop();
         }));
     }
+    private static void captureItems(Minecraft minecraft,Path out) {
+        for (var name:new String[]{"beam_converter","creative_beam_converter","quantum_cube"}) {
+            var id=net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("ae2federation",name);
+            var item=net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id);
+            try (var image=space.controlnet.ae2federation.test.art.ModLogoRenderer.render(minecraft,
+                    new net.minecraft.world.item.ItemStack(item),512)) {
+                int visible=0;
+                for (int y=0;y<image.getHeight();y++) for (int x=0;x<image.getWidth();x++) {
+                    if ((image.getPixelRGBA(x,y)>>>24)!=0) visible++;
+                }
+                if (visible<512) throw new IllegalStateException("Empty inventory capture: "+name);
+                Files.createDirectories(out);
+                image.writeToFile(out.resolve("inventory-"+name+".png"));
+            } catch (IOException exception) { throw new UncheckedIOException(exception); }
+        }
+    }
+
+    private static void held(String name,Path out) {
+        STEPS.add(new Step("hold "+name,30,() -> server(level -> {
+            var id=net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("ae2federation",name);
+            for (var player:level.getServer().getPlayerList().getPlayers()) {
+                player.setGameMode(GameType.CREATIVE);
+                player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+                        new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id)));
+            }
+        })));
+        STEPS.add(new Step("show hand "+name,20,() -> Minecraft.getInstance().options.hideGui=false));
+        STEPS.add(new Step("held capture "+name,5,() -> {
+            var minecraft=Minecraft.getInstance();
+            try (var image=Screenshot.takeScreenshot(minecraft.getMainRenderTarget())) {
+                image.writeToFile(out.resolve("held-"+name+".png"));
+            } catch (IOException exception) { throw new UncheckedIOException(exception); }
+            minecraft.options.hideGui=true;
+            server(level -> level.getServer().getPlayerList().getPlayers().forEach(player -> player.setGameMode(GameType.SPECTATOR)));
+        }));
+    }
+
     private static void view(String name, Path out, Vec3 eye, Vec3 target) {
         STEPS.add(new Step("camera " + name, 60, () -> server(level -> {
             var d = target.subtract(eye);
@@ -192,8 +235,17 @@ public final class RefinedDeviceScene {
         }
         level.setBlock(new BlockPos(32,Y,10),space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get()
                 .defaultBlockState(),Block.UPDATE_ALL);
-        level.setBlock(new BlockPos(34,Y,10),space.controlnet.ae2federation.quantum.QuantumRegistration.QUANTUM_CUBE.get()
+        level.setBlock(new BlockPos(34,Y,10),space.controlnet.ae2federation.power.PowerRegistration.CREATIVE_BEAM_CONVERTER.get()
                 .defaultBlockState(),Block.UPDATE_ALL);
+        level.setBlock(new BlockPos(36,Y,10),space.controlnet.ae2federation.quantum.QuantumRegistration.QUANTUM_CUBE.get()
+                .defaultBlockState(),Block.UPDATE_ALL);
+        for (int i=0;i<2;i++) {
+            var device=i==0 ? space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get()
+                    : space.controlnet.ae2federation.power.PowerRegistration.CREATIVE_BEAM_CONVERTER.get();
+            for (var p:BlockPos.betweenClosed(39+4*i,Y,14,40+4*i,Y+1,17)) level.setBlock(p,
+                    device.defaultBlockState().setValue(space.controlnet.ae2federation.power.BeamConverterBlock.FACING,
+                    net.minecraft.core.Direction.NORTH),Block.UPDATE_ALL);
+        }
     }
     private static void cable(ServerLevel level,BlockPos min,BlockPos max,int n) {
         for (var p:BlockPos.betweenClosed(min,max)) level.setBlock(p,RouterRegistration.FEDERATION_CABLE.get()

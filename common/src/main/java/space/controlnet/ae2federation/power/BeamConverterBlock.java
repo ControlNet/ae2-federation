@@ -68,22 +68,23 @@ public final class BeamConverterBlock extends BaseEntityBlock implements Formabl
     @Override
     protected net.minecraft.world.phys.shapes.VoxelShape getOcclusionShape(BlockState state,
             net.minecraft.world.level.BlockGetter level, BlockPos position) {
-        return net.minecraft.world.phys.shapes.Shapes.empty();
+        return RouterBlock.formed(state) ? net.minecraft.world.phys.shapes.Shapes.empty()
+                : super.getOcclusionShape(state, level, position);
     }
 
     @Override
     protected boolean propagatesSkylightDown(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos position) {
-        return true;
+        return RouterBlock.formed(state);
     }
 
     @Override
     protected int getLightBlock(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos position) {
-        return 0;
+        return RouterBlock.formed(state) ? 0 : super.getLightBlock(state, level, position);
     }
 
     @Override
     protected float getShadeBrightness(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos position) {
-        return 1.0F;
+        return RouterBlock.formed(state) ? 1.0F : super.getShadeBrightness(state, level, position);
     }
 
     @Override

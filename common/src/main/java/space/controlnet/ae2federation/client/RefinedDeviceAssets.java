@@ -14,6 +14,8 @@ import net.minecraft.resources.ResourceLocation;
 public final class RefinedDeviceAssets {
     public static final ResourceLocation SURFACE=id("block/refined_devices/surface");
     public static final ResourceLocation EMISSION=id("block/refined_devices/emission");
+    public static final ResourceLocation CREATIVE_SURFACE=id("block/refined_devices/creative_surface");
+    public static final ResourceLocation CREATIVE_EMISSION=id("block/refined_devices/creative_emission");
     public static final ResourceLocation SURFACE_FILE=id("textures/block/refined_devices/surface.png");
     public static final ResourceLocation EMISSION_FILE=id("textures/block/refined_devices/emission.png");
     private static volatile Map<String,List<RefinedDeviceMesh.Quad>> meshes=Map.of();

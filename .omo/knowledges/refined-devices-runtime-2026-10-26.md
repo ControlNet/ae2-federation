@@ -6,8 +6,8 @@ restricted input to the converter rear. Open laser A and full open Quantum frame
 - `RefinedDeviceBakedModel` imports exported Blender polygons, clips them to each member with interpolated UVs and
   caches BakedQuads. Static structure art stays in chunk meshes. `RefinedDeviceRenderer` draws only the moving core
   and carriers from the lowest member. `RefinedDeviceBody` derives dimensions from synchronized connection flags.
-- Three converter sizes (1x1x2, 2x2x4, 3x3x6), all six facings; Quantum edges 3,4,5. Unformed/item models are compact
-  versions. Construction/collision semantics remain full-volume multiblocks; openness is visual.
+- Three converter sizes (1x1x2, 2x2x4, 3x3x6), all six facings; Quantum edges 3,4,5. The initial unformed/item miniature approach was rejected; see `device-standalone-creative-2026-10-26.md`
+  for the native cube replacement and creative purple distinction. Construction/collision semantics remain full-volume multiblocks; openness is visual.
 - Atlas and exporter: `tools/visual/pack_device_atlas.py`, `tools/blender/export_refined_devices.py`. Actual shipped
   polygons and UVs come from the reviewed `.blend`. Nine JSON meshes plus surface/emission atlases are runtime data.
 - Export must explicitly exclude studio props. A first preview accidentally included the studio floor in the core;
@@ -27,7 +27,8 @@ restricted input to the converter rear. Open laser A and full open Quantum frame
   Testmod-only private flat world, real connections, vertical variants, cross-chunk large models, resource reload,
   break/reform, reopen. Earlier v2 scene had overlapping large converter fixtures; v3 separates rows and fails the
   client if the server formation report does not pass. Do not cite v1/v2 screenshots as final validation.
-- Detailed commands, expected signals and boundaries: `docs/art/refined-device-runtime.md`. No commit or PR created.
+- Detailed commands, expected signals and boundaries: `docs/art/refined-device-runtime.md`. Initial integration
+  committed as `95270da1`; no PR created.
 
 Final v3 first-run and reopened clients both reported `REFINED_DEVICE_SCENE_OK` and exited successfully.
 Evidence: `.omo/evidence/refined-devices-runtime-2026-10-26/verification.json`; screenshots in

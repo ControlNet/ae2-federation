@@ -1,9 +1,14 @@
 {
-  "parent": "minecraft:block/block",
+  "parent": "minecraft:block/cube",
   "textures": {
-    "particle": "ae2federation:part/cable/dense/collar",
+    "north": "ae2federation:block/quantum_cube/quantum",
+    "south": "ae2federation:block/quantum_cube/quantum",
+    "east": "ae2federation:block/quantum_cube/quantum",
+    "west": "ae2federation:block/quantum_cube/quantum",
+    "up": "ae2federation:block/quantum_cube/quantum",
+    "down": "ae2federation:block/quantum_cube/quantum",
+    "particle": "ae2federation:block/quantum_cube/quantum",
     "surface": "ae2federation:block/refined_devices/surface",
     "emission": "ae2federation:block/refined_devices/emission"
-  },
-  "elements": []
+  }
 }

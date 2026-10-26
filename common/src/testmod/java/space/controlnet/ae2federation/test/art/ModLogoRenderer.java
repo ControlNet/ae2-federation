@@ -58,17 +58,21 @@ public final class ModLogoRenderer {
         minecraft.stop();
     }
 
-    private static NativeImage render(Minecraft minecraft, ItemStack stack, int size) {
+    public static NativeImage render(Minecraft minecraft, ItemStack stack, int size) {
         var target = new TextureTarget(size, size, true, Minecraft.ON_OSX);
         var projection = RenderSystem.getProjectionMatrix();
         var sorting = RenderSystem.getVertexSorting();
+        var modelView = RenderSystem.getModelViewStack();
+        modelView.pushMatrix();
         try {
             target.setClearColor(0, 0, 0, 0);
             target.clear(Minecraft.ON_OSX);
             target.bindWrite(true);
-            // The GUI projection of one 16x16 slot, stretched over the whole target; the model view stays the GUI's.
+            // Establish the GUI transform explicitly so world-tick captures work as well as title-screen captures.
             RenderSystem.setProjectionMatrix(new Matrix4f().setOrtho(0, 16, 16, 0, 1000, ClientHooks.getGuiFarPlane()),
                     VertexSorting.ORTHOGRAPHIC_Z);
+            modelView.translation(0, 0, 10000F - ClientHooks.getGuiFarPlane());
+            RenderSystem.applyModelViewMatrix();
             Lighting.setupFor3DItems();
             var graphics = new GuiGraphics(minecraft, minecraft.renderBuffers().bufferSource());
             graphics.renderItem(stack, 0, 0);
@@ -80,6 +84,8 @@ public final class ModLogoRenderer {
             image.flipY();
             return image;
         } finally {
+            modelView.popMatrix();
+            RenderSystem.applyModelViewMatrix();
             RenderSystem.setProjectionMatrix(projection, sorting);
             target.destroyBuffers();
             minecraft.getMainRenderTarget().bindWrite(true);

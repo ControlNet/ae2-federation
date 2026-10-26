@@ -16,7 +16,8 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
   directly; the generator no longer writes them. Language files are independently maintained.
 - **ME Federation Beam Converter.** The open laser design from Blender is exported to `device_meshes/laser-{1,2,3}.json`
   and the shared pixel atlas in `textures/block/refined_devices/`. `RefinedDeviceBakedModel` clips its static geometry
-  into individual chunk members. The rear face alone accepts FE. See [runtime integration](refined-device-runtime.md).
+  into individual chunk members. Standalone blocks and inventory items have dedicated 16px native cube textures;
+  the creative variant uses purple accents and internal light. The rear face alone accepts FE. See [runtime integration](refined-device-runtime.md).
 - **The ME Federation Beam Former: all three sizes drawn.** The artist's Blockbench projects
   (`tools/blockbench/projects/{,large_,huge_}beam_emitter.bbmodel`, textures in `textures/block/beam_emitter/`) become
   the 1x1 model, the four 2x2 member models and the nine 3x3 member models through

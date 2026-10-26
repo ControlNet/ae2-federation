@@ -1,9 +1,14 @@
 {
-  "parent": "minecraft:block/block",
+  "parent": "minecraft:block/cube",
   "textures": {
-    "particle": "ae2federation:part/cable/dense/collar",
-    "surface": "ae2federation:block/refined_devices/surface",
-    "emission": "ae2federation:block/refined_devices/emission"
-  },
-  "elements": []
+    "north": "ae2federation:block/creative_beam_converter/back",
+    "south": "ae2federation:block/creative_beam_converter/front",
+    "east": "ae2federation:block/creative_beam_converter/side",
+    "west": "ae2federation:block/creative_beam_converter/side",
+    "up": "ae2federation:block/creative_beam_converter/top",
+    "down": "ae2federation:block/creative_beam_converter/top",
+    "particle": "ae2federation:block/creative_beam_converter/side",
+    "surface": "ae2federation:block/refined_devices/creative_surface",
+    "emission": "ae2federation:block/refined_devices/creative_emission"
+  }
 }

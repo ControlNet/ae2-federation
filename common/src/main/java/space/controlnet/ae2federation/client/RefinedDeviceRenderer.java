@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -58,7 +59,9 @@ public final class RefinedDeviceRenderer<T extends BlockEntity> implements Block
         }
         if (body.laser()) {
             var front=Vec3.atLowerCornerOf(body.facing().getNormal()).scale(body.section());
-            beam(stack,buffers,front,front.scale(-.75),body.section(),level.getGameTime(),partialTick,CableBeamStyle.fromLoad(0,false));
+            MultiBufferSource carrierBuffers=device.getBlockState().is(PowerRegistration.CREATIVE_BEAM_CONVERTER.get())
+                    ? type -> new CreativeCarrier(buffers.getBuffer(type)) : buffers;
+            beam(stack,carrierBuffers,front,front.scale(-.75),body.section(),level.getGameTime(),partialTick,CableBeamStyle.fromLoad(0,false));
         } else {
             // Each connected cable contributes one carrier; bundle non-owners contribute none.
             for (var face:Direction.values()) {
@@ -120,6 +123,20 @@ public final class RefinedDeviceRenderer<T extends BlockEntity> implements Block
         else CableFlowRenderer.emitBundle(stack,buffers,new BundleBeam(Direction.Axis.Z,3<<4,1,side),0,0,0,tick,partialTick,style,1);
         stack.popPose();
     }
+    /** Tint only the creative converter's internal carrier; connected Federation cables keep their own palette. */
+    private record CreativeCarrier(VertexConsumer delegate) implements VertexConsumer {
+        @Override public VertexConsumer addVertex(float x,float y,float z) { delegate.addVertex(x,y,z); return this; }
+        @Override public VertexConsumer setColor(int r,int g,int b,int a) {
+            int value=Math.max(r,Math.max(g,b));
+            delegate.setColor(value*190/255,value*128/255,value,a);
+            return this;
+        }
+        @Override public VertexConsumer setUv(float u,float v) { delegate.setUv(u,v); return this; }
+        @Override public VertexConsumer setUv1(int u,int v) { delegate.setUv1(u,v); return this; }
+        @Override public VertexConsumer setUv2(int u,int v) { delegate.setUv2(u,v); return this; }
+        @Override public VertexConsumer setNormal(float x,float y,float z) { delegate.setNormal(x,y,z); return this; }
+    }
+
     @Override public AABB getRenderBoundingBox(T device) {
         var body=body(device);
         return body==null ? new AABB(device.getBlockPos()) : new AABB(Vec3.atLowerCornerOf(body.min()),Vec3.atLowerCornerOf(body.max().offset(1,1,1)));
