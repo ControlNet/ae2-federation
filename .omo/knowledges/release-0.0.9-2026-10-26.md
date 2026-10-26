@@ -9,6 +9,10 @@
   build, platform preflight, all 16 isolated GameTest shards, GitHub, Modrinth and CurseForge publication.
 - [GitHub Release](https://github.com/ControlNet/ae2-federation/releases/tag/v0.0.9) published at 06:06:26 UTC.
   Replaced generated notes with `docs/releases/0.0.9.md` and verified the body by read-back.
+- Polished the English release notes with `ccf-humanization` at the owner's request, then updated the GitHub
+  release and verified that its body matches `docs/releases/0.0.9.md`. Replaced generic caveats with the actual
+  Neo ECO 21.2.10 benchmark setup (one L4 worker, 512 planks, 256 stick crafts); retained upgrade disclosures
+  and the full Creative ME Federation Beam Converter name.
 - [Modrinth version XiHS3aL5](https://modrinth.com/mod/ae2-federation/version/XiHS3aL5): uploaded and verified by CI.
   This host's unauthenticated project/version read returned HTTPError; CI's authenticated read-back passed.
 - [CurseForge file 9330451](https://www.curseforge.com/minecraft/mc-mods/ae2-federation/files/9330451): upload succeeded.
