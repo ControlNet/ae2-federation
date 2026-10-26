@@ -258,7 +258,10 @@ final class EndpointMachineScene {
                     helper.assertTrue(item instanceof appeng.api.parts.IPartItem<?>, localProviderId + " is not a part");
                     helper.assertTrue(PartHelper.setPart(level, helper.absolutePos(PROVIDER), null, null,
                             AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT)) != null
-                            && PartHelper.setPart(level, helper.absolutePos(PROVIDER), Direction.EAST, null,
+                            // Placed by a player, as in play: AE2 Crystal Science reads the placing player's
+                            // inventory when its Resonating Pattern Provider part goes on and fails without one.
+                            && PartHelper.setPart(level, helper.absolutePos(PROVIDER), Direction.EAST,
+                                    net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(level),
                                     (appeng.api.parts.IPartItem<?>) item) != null,
                             localProviderId + " must go on a cable at " + PROVIDER);
                 } else {

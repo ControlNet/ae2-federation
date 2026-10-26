@@ -135,9 +135,10 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `appflux-createaddition` | Applied Flux 2.1.5, Create 6.0.10, Create Crafts & Additions 1.7.2 | the Applied Flux group; the guide's Induction Card example with an Electric Motor beside the Provider's Endpoint turning a Millstone, its job waiting until the card goes in | 22/22 |
 | `appflux-enderio` | Applied Flux 2.1.5, Ender IO 8.2.12-beta | the Applied Flux group; the guide's Induction Card example with a SAG Mill on the Provider's Endpoint, fitted with a Basic Capacitor and pushing from its bottom, its job waiting until the card goes in | 22/22 |
 | `appflux-industrialforegoing` | Applied Flux 2.1.5, Industrial Foregoing 3.6.39, Titanium 4.0.50 | the Applied Flux group; the guide's Induction Card example with a Resourceful Furnace on the Provider's Endpoint, its output pushing from the bottom, its job waiting until the card goes in | 22/22 |
-| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras, MEGA Cells and Neo ECO Prototype | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 116/116 (2026-10-25) |
+| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras, MEGA Cells, Neo ECO Prototype and AE2 Crystal Science | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 129/129 (2026-10-26) |
 | `useless-mod` | UselessMod 2.4.5.10 | crafting through an Advanced Alloy Furnace, which holds the pattern and crafts it itself with no Molecular Assembler, while UselessMod's mixins wrap the consumer CPU's pushes; the guide's build, the furnace alone on a network with no storage, whose recipe leaves and returns when its pattern is taken out and put back (2026-10-08); Smart Doubling on the furnace, doubling its pattern in the consumer's plan as in the provider network's | 23/23 (2026-10-24) |
 | `useless-mod-addons` | the `addons-all` mods as of 2026-10-08 (Neo ECO AE Extension 21.2.0, no MEGA Cells or Neo ECO Prototype) plus AdvancedAE 1.6.12 and UselessMod 2.4.5.10, so its Advanced AE and ExtendedAE mixins apply; the only profile left on Neo ECO 21.2.0, whose `getRequestedAmount` bug the Federation fallback covers | their groups | 116/116 (2026-10-25) |
+| `ae2cs` | AE2 Crystal Science 1.2.1, AE2WTLib 19.5.1 | crafting through a projected Meteorite Pattern Provider, which crafts by itself, also with no storage on the provider network and with four Overclock Cards for 64 crafts; a Resonating Pattern sending each input to its own chest through the projection, as on one Grid; a Mirror Pattern Provider offering the pattern of the AE2 Pattern Provider it is bound to; an AE2 Pattern Provider pushing into a Crystal Pulverizer that runs on the shared AE power and exports its output back; an ME Ender Emitter joining both networks into one Grid without cables, the consumer then ordering through it; an Endpoint in Local mode under the Meteorite (block and part), Basic and Resonating (block and part) Pattern Providers | 33/33 (2026-10-26) |
 | `recipe-viewers` | JEI 19.57.0.449, Jade 15.10.6, AE2 JEI Integration 1.2.1 | core only, with AE2 Federation's Jade plugin loaded on the server beside AE2's own (2026-10-13) | 19/19 |
 
 ## Modpack profiles
@@ -260,6 +261,15 @@ The addon planner tests found three more, all fixed on dev:
 
 Other findings, all upstream behaviour:
 
+- **AE2 Crystal Science 1.2.1** does not start without AE2WTLib, which its mod metadata does not list: its AE2 plugin
+  loads `de.mari_023.ae2wtlib.api.gui.Icon` while it constructs. The `ae2cs` profile includes AE2WTLib.
+- **AE2 Crystal Science's Resonating Pattern Provider part** throws when it is placed without a player, as AE2's
+  `PartHelper.setPart` places parts: its cable bus mixin looks for a Resonating Memory Card in the placing player's
+  inventory. The tests place provider parts as a player.
+- **AE2 Crystal Science's Resonating Pattern** that names targets for some inputs and leaves the rest to the provider's
+  sides never pushes, with or without AE2 Federation: after taking the routed inputs out, it tries each remaining
+  input on the side's machine, including the ones now at zero, and a zero insert reads as "does not fit". A pattern
+  whose every input has a target pushes, and `resonatingRouting` uses one.
 - **Neo ECO Prototype 1.3.2** did not start without MEGA Cells, which it lists as optional, with or without AE2
   Federation: `SimplifySingularityCellItem` reads `ae2:singularity` while items register, and its `ae2` dependency has
   no load order, so its items can register before AE2's (`Trying to access unbound value: ResourceKey[minecraft:item /

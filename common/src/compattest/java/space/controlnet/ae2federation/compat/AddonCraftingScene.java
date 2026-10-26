@@ -50,7 +50,7 @@ import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
  * through the cable beside them. The consumer's CPU crafts four sticks with the provider's pattern.
  */
 final class AddonCraftingScene {
-    private static final BlockPos BASE = new BlockPos(5, 3, 5);
+    static final BlockPos BASE = new BlockPos(5, 3, 5);
     /** Where the provider stands: east of the provider network's last cable, which is west of it. */
     static final BlockPos PROVIDER = BASE.east(2).north();
     /** The consumer's first CPU block, west of its cable; the others run on west from it. */
@@ -90,6 +90,7 @@ final class AddonCraftingScene {
     private boolean relinkAfterDisconnect;
     private boolean mergeAfterPush;
     private boolean joinBeforeOrder;
+    private java.util.function.Consumer<GameTestHelper> joiner;
     private BiFunction<IGrid, ICraftingPlan, ICraftingSubmitResult> submit = (grid, plan) ->
             grid.getCraftingService().submitJob(plan, null, null, true, IActionSource.empty());
     private long submittedTick;
@@ -490,6 +491,13 @@ final class AddonCraftingScene {
         return this;
     }
 
+    /** As {@link #joinedBeforeOrder()}, with {@code join} joining the networks instead of a fluix cable. */
+    AddonCraftingScene joinedBeforeOrder(java.util.function.Consumer<GameTestHelper> join) {
+        joinBeforeOrder = true;
+        joiner = join;
+        return this;
+    }
+
     /** Submits the first order's plan to the consumer's grid as {@code submitter} does, such as an addon's menu. */
     AddonCraftingScene submittingWith(BiFunction<IGrid, ICraftingPlan, ICraftingSubmitResult> submitter) {
         submit = submitter;
@@ -608,7 +616,8 @@ final class AddonCraftingScene {
                 consumerNetwork = bridge.mainNetwork();
                 providerNetwork = bridge.outerNetwork();
                 if (joinBeforeOrder) {
-                    fluixCableUnderBridge();
+                    if (joiner != null) joiner.accept(helper);
+                    else fluixCableUnderBridge();
                     bridge.removeFirstBridge();
                 } else {
                     enableRules();

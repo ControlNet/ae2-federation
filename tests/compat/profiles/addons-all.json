@@ -21,7 +21,8 @@
     "data-energistics@3.3.3",
     "extendedae-plus@1.6.3",
     "appliedenhancements@1.1.0",
-    "omnisequence@2.0.7"
+    "omnisequence@2.0.7",
+    "ae2cs@1.2.1"
   ],
   "tests": [
     "core",
@@ -35,6 +36,7 @@
     "neoecoae",
     "megacells",
     "neoecoprototype",
-    "appliedenhancements"
+    "appliedenhancements",
+    "ae2cs"
   ]
 }

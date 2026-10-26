@@ -41,6 +41,13 @@
     "url": "https://cdn.modrinth.com/data/XxWD5pD3/versions/KDnFUmMm/appliedenergistics2-19.2.18.jar",
     "sha512": "39bc4cf733a4321631e2637a1a6dfd3527135fdac1b572534e6fd1f9eab7a6dd92d56c5fa066263c95149c9b20cabdd1fd3dff80bea515381b1d2d754cad26c3"
   },
+  "ae2cs@1.2.1": {
+    "name": "ae2cs",
+    "version": "1.2.1",
+    "file": "ae2cs-1.21.1-1.2.1.jar",
+    "url": "https://cdn.modrinth.com/data/uJ9afomy/versions/taIhgdOA/ae2cs-1.21.1-1.2.1.jar",
+    "sha512": "62909ad42aa6b2f726984ec9552621e2ad01a425050a69fef6fc8d816ede33395aaecb63de2db9f8216286c011b804b9eaeaafa851e7ef39e9743f810459b72f"
+  },
   "ae2extras@0": {
     "name": "ae2extras",
     "file": "ae2extras-neoforge-1.21.1-0.jar",
