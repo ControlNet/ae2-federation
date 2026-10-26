@@ -56,9 +56,22 @@ second after the path clears. A link holds while both ends are loaded; the chunk
 
 Look at a former with Jade to see its beam: linked and how long, blocked and where, or why it has no partner.
 
-## Capacity
+## Capacity and power
 
 A linked pair counts as cable of its square for [network capacity](../mechanics/capacity.md): a single pair carries one
 cable's limit, a 2×2 pair six cables', and a 3×3 pair has no limit. The beam shows its load like a cable's.
+
+The domain pays for each linked pair once, by its square and length, on top of its other blocks:
+2 × (the square's blocks) × L^1.05 FE per tick, L being the blocks between the fronts (at least 2).
+
+| Pair | Blocks between | FE per tick |
+|---|---|---|
+| 1×1 | 16 | 37 |
+| 1×1 | 64 | 158 |
+| 2×2 | 64 | 630 |
+| 3×3 | 64 | 1,418 |
+
+The former blocks themselves cost nothing. A linked pair also counts as cable of its square when the domain's
+[Beam Converters](beam_converter.md) are sized: a 3×3 pair needs a 3×3 converter.
 
 <RecipeFor id="ae2federation:beam_former" />

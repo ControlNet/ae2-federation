@@ -13,7 +13,7 @@ processing pattern stays on your main network, and no rule or shared storage is 
 
 **You need:** your main network with a crafting CPU, a crafting terminal and cobblestone in storage; a
 <ItemLink id="ae2federation:pattern_provider" />; one <ItemLink id="ae2federation:processing_endpoint" />, furnace,
-hopper and <ItemLink id="ae2:storage_bus" /> per furnace; <ItemLink id="ae2federation:cable" />.
+hopper and <ItemLink id="ae2:storage_bus" /> per furnace; <ItemLink id="ae2federation:cable" />; two <ItemLink id="ae2federation:beam_converter" /> blocks, with FE from another mod's generator.
 
 <GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/endpoint_furnaces.snbt" />
@@ -40,6 +40,9 @@ hopper and <ItemLink id="ae2:storage_bus" /> per furnace; <ItemLink id="ae2feder
   </BoxAnnotation>
   <BoxAnnotation color="#cdc35c" min="4 1 0" max="6 4 1">
     Second furnace subnet
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="7 1 0" max="8 3 1">
+    Beam Converter: FE for the Federation blocks, piped in from a generator
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

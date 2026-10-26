@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 一个工坊网络已经有装着样板的<ItemLink id="ae2:pattern_provider" />和<ItemLink id="ae2:molecular_assembler" />。 在不搬动样板、不合并网络的前提下， 从你的主网络向它下单。
 
-**需要**： 按AE2常规方式搭好的工坊网络（网络B）， 它不需要自己的电源； 带合成CPU、合成终端、存储和电源的主网络（网络A）； 每个网络一个<ItemLink id="ae2federation:switch" />， 中间用<ItemLink id="ae2federation:cable" />相连， 两个网络挨着的话也可以用一个<ItemLink id="ae2federation:bridge" />。
+**需要**： 按AE2常规方式搭好的工坊网络（网络B）， 它不需要自己的电源； 带合成CPU、合成终端、存储和电源的主网络（网络A）； 每个网络一个<ItemLink id="ae2federation:switch" />， 中间用<ItemLink id="ae2federation:cable" />相连， 两个网络挨着的话也可以用一个<ItemLink id="ae2federation:bridge" />； 两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/remote_assembly.snbt" />
@@ -22,6 +22,9 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 3 1">
     网络B： 装着样板的样板供应器， 旁边是分子装配室
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="5 1 0" max="6 3 1">
+    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

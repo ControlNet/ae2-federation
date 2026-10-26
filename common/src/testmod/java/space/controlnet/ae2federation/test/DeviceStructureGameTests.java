@@ -172,7 +172,7 @@ public final class DeviceStructureGameTests {
     }
 
     /**
-     * Building on an unformed body: right-clicking an unformed Router or Switch with a block in hand
+     * Building on an unformed body: right-clicking an unformed Router, Switch or Beam Converter with a block in hand
      * places the block, as on any other block. Only an empty hand asks why the body has not formed.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
@@ -180,24 +180,32 @@ public final class DeviceStructureGameTests {
     public static void deviceStructurePlacesOnUnformed(GameTestHelper helper) {
         var routerL = List.of(BASE.offset(0, 0, 6), BASE.offset(1, 0, 6), BASE.offset(0, 1, 6));
         var switchL = List.of(BASE.offset(4, 0, 6), BASE.offset(5, 0, 6), BASE.offset(4, 1, 6));
+        var converter = BASE.offset(8, 0, 6);
         place(helper, routerL, RouterRegistration.ROUTER.get());
         place(helper, switchL, RouterRegistration.SWITCH.get());
+        helper.setBlock(converter, space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get());
         var player = MockServerPlayers.inLevel(helper);
         var done = new boolean[1];
         helper.succeedWhen(() -> {
             if (!done[0]) {
                 assertUnformed(helper, routerL, "Router L");
                 assertUnformed(helper, switchL, "Switch L");
+                helper.assertTrue(!RouterBlock.formed(helper.getBlockState(converter)), "a single converter is unformed");
                 use(helper, player, routerL.get(1), RouterRegistration.ROUTER_ITEM.get().getDefaultInstance());
                 use(helper, player, switchL.get(1), RouterRegistration.SWITCH_ITEM.get().getDefaultInstance());
+                use(helper, player, converter,
+                        space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER_ITEM.get().getDefaultInstance());
                 done[0] = true;
             }
             helper.assertTrue(helper.getBlockState(routerL.get(1).above()).is(RouterRegistration.ROUTER.get()),
                     "a Router placed on an unformed Router");
             helper.assertTrue(helper.getBlockState(switchL.get(1).above()).is(RouterRegistration.SWITCH.get()),
                     "a Switch placed on an unformed Switch");
-            RouterEvidence.write("devicestructureplacesonunformed", 2, Map.of(
-                    "router", "placed", "switch", "placed"));
+            helper.assertTrue(helper.getBlockState(converter.above())
+                    .is(space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get()),
+                    "a converter placed on an unformed converter");
+            RouterEvidence.write("devicestructureplacesonunformed", 3, Map.of(
+                    "router", "placed", "switch", "placed", "converter", "placed"));
         });
     }
 

@@ -404,6 +404,11 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .server("showcase: map patterns many-to-many", TaskThirtyThreeShowcaseFixture::mapDevices)
                 .waitUntilServer("showcase: mappings installed", TaskThirtyThreeShowcaseFixture::mapped)
                 .waitUntilServer("showcase: the domain holds all eight networks", TaskThirtyThreeShowcaseFixture::domainComplete)
+                .server("showcase: a Beam Converter on the middle cable", TaskThirtyThreeShowcaseFixture::placeConverter)
+                .serverTicks(4)
+                .waitUntilServer("showcase: the converter joins the domain, which now needs power",
+                        TaskThirtyThreeShowcaseFixture::converterJoined)
+                .waitUntilServer("showcase: the domain runs on its converter", TaskThirtyThreeShowcaseFixture::converterRuns)
                 // The domain gained members, so the open workspace is out of date: reopen it, as a player would.
                 .closeScreen()
                 .server("showcase: open the Router workspace", TaskThirtyThreeWorldFixture::openRouter)
@@ -423,6 +428,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                                 (System.nanoTime() - FRAME_TIMING[0]) / PERF_FRAMES))
                 .check("showcase: five Endpoint nodes, four beside the network that maps them", context ->
                         context.all(".graph-node-endpoint").size() == 5)
+                .waitUntil("showcase: the corner gauge shows the converter's buffer, running", context ->
+                        context.el("#graph_power").isVisible() && context.el("#graph_power_value").text().matches("\\d+%"))
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-topology")
                 .check("showcase: quartz beads drift along the shared-energy links", context ->
@@ -576,13 +583,34 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .teardown("restore English after the Chinese guide shot", TaskThirtyThreeScenarioSupport::restoreEnglish);
         guideStatisticsShot(scenario, "guide-statistics-zh_cn");
         TaskThirtyThreeScenarioSupport.selectLanguage(scenario, "en_us");
-        // This release has no Federation power: the topology draws no gauge and Statistics has no Federation power card.
-        scenario.server("showcase: open the Router workspace without Federation power", TaskThirtyThreeWorldFixture::openRouter)
+        // Without its converter the domain cannot pay its use and stops: the gauge reads empty and red.
+        scenario.server("showcase: remove the Beam Converter", TaskThirtyThreeShowcaseFixture::removeConverter)
+                .waitUntilServer("showcase: the domain stops without power", TaskThirtyThreeShowcaseFixture::domainUnpowered)
+                .server("showcase: open the stopped Router workspace", TaskThirtyThreeWorldFixture::openRouter)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().awaitElement("#domain_graph")
-                .waitUntil("showcase: no corner gauge", context -> !context.el("#graph_power").isVisible())
+                .waitUntil("showcase: the corner gauge reads empty", context ->
+                        context.el("#graph_power").isVisible() && context.el("#graph_power_value").text().equals("0%"))
+                .click("#graph_fit").frames(3)
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-topology-unpowered")
+                .closeScreen();
+        // With the rule off the topology draws nothing of power, and Federation power's card cannot be opened.
+        scenario.server("showcase: turn the power rule off", TaskThirtyThreeShowcaseFixture::powerOff)
+                .server("showcase: open the Router workspace without the power rule", TaskThirtyThreeWorldFixture::openRouter)
+                .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
+                .awaitModularUI().awaitElement("#domain_graph")
+                .waitUntil("showcase: no corner gauge without the power rule", context -> !context.el("#graph_power").isVisible())
                 .click("#tab_statistics").frames(2)
-                .check("showcase: no Federation power card", context -> context.all("#stats_card_fedpower").isEmpty())
+                .click("#stats_card_power")
+                .waitUntil("showcase: power figures arrive without the power rule", context -> statisticsFor("power;"))
+                .click("#stats_card_fedpower").frames(10)
+                .step("showcase: Federation power's card does not open", context -> {
+                    if (!statisticsFor("power;")) {
+                        throw new IllegalStateException("Federation power opened without the rule: "
+                                + space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownRequest());
+                    }
+                })
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-statistics-power-off")
                 .closeScreen();

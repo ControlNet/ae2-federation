@@ -1,0 +1,9 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "ae2federation:block/quantum_cube"
+      }
+    }
+  ]
+}

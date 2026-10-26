@@ -30,11 +30,13 @@ Federation Cable links Switches, Routers, Federation Pattern Providers and Proce
 [Federation domain](../mechanics/index.md). It connects on every side to another Federation Cable, to any face of a
 <ItemLink id="ae2federation:switch" /> or <ItemLink id="ae2federation:router" />, and to the front of a <ItemLink id="ae2federation:pattern_provider" />,
 <ItemLink id="ae2federation:processing_endpoint" /> or <ItemLink id="ae2federation:federation_p2p_tunnel" />. It also joins the back of a
-<ItemLink id="ae2federation:beam_former" />. A cable shows an arm toward every face it joins, and none toward a
+<ItemLink id="ae2federation:beam_former" />, the front of a <ItemLink id="ae2federation:beam_converter" /> and the centre of a
+<ItemLink id="ae2federation:quantum_cube" /> face. A cable shows an arm toward every face it joins, and none toward a
 device that is not formed.
 
 Federation Cable stays outside ME networks: ME cables and devices do not attach to it, and it carries no channels.
-It has no length limit. The pulses inside it are decoration; **Show live flow** in the Federation screen shows real traffic.
+Each cable uses 0.5 FE per tick from the domain's Beam Converter; see [Power](../mechanics/power.md). It has no length
+limit. The pulses inside it are decoration; **Show live flow** in the Federation screen shows real traffic.
 Each cable counts the networks, Endpoints and Pattern Providers it carries; see [Network Capacity](../mechanics/capacity.md). A wrench turns a block of Federation Cables into one
 [bundled cable](../mechanics/bundled-cables.md) that carries more.
 

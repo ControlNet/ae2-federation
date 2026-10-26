@@ -27,6 +27,9 @@ without a name is shown by a six-digit tag, such as "Network 082A5C"; click **Re
   see it, in your current dimension, and several highlights can run at once.
 * **Show live flow** draws what really moved over each link in the last five seconds as moving dots. The pulses inside
   Federation Cable are decoration.
+* **Federation power.** A corner gauge shows how full the domain's Beam Converters are: green while the domain runs,
+  yellow while it uses more FE than comes in, red once it has stopped. A stopped domain's screen turns dark red. See
+  [Power](power.md).
 
 ## Processing
 
@@ -36,4 +39,4 @@ provider sends to which Endpoint. See [Crafting Across Networks](../crafting/ind
 ## Statistics
 
 The Statistics tab charts the domain's networks over the last 24 hours: ME power, stored items, what moved between
-them, crafting, CPUs and channels. [Statistics](statistics.md) explains each chart.
+them, crafting, CPUs, channels and Federation power. [Statistics](statistics.md) explains each chart.

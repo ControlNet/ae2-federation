@@ -14,7 +14,7 @@ navigation:
 
 * 造币厂上： 一个已成形的L1存储系统， 包括主机（<ItemLink id="neoecoprototype:simplify_storage_controller" />）、驱动器（<ItemLink id="neoecoprototype:simplify_drive" />）和接口； 一个<ItemLink id="neoecoprototype:simplify_singularity_cell" />， 装在其中一个驱动器里； 造币厂线缆上的一个<ItemLink id="neoecoprototype:superconductive_interface" />。 除了存储系统自带的能量元件， 不需要别的能源元件。
 * 两个街区网络， 各有一个终端。 它们不需要自己的电源。
-* 一个<ItemLink id="ae2federation:switch" />。
+* 一个<ItemLink id="ae2federation:switch" />， 以及两个<ItemLink id="ae2federation:beam_converter" />方块， 用其他模组的发电机输入FE。
 
 <GameScene zoom="3" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/singularity_mint.snbt" />
@@ -26,6 +26,9 @@ navigation:
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="7 1 1" max="8 2 2">
     交换机： 每个网络占一个面
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="7 2 1" max="8 4 2">
+    光束转换器： 为联邦方块提供FE， 从发电机输入
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="8 1 1" max="9 2 2">
     街区A： 一个终端， 靠造币厂的电源运行

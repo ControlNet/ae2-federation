@@ -17,7 +17,7 @@ final class PlaythroughTopology {
             "path", List.of("projection", "federation-provider", "local-endpoint"),
             "capacity", List.of("normal", "at-limit", "over-limit"),
             "networks", List.of("2", "3", "4", "5", "6"),
-            "join", List.of("router-switch", "multi-hop", "bundle-2x2", "bundle-3x3", "beam", "p2p", "bridge", "router"),
+            "join", List.of("router-switch", "multi-hop", "bundle-2x2", "bundle-3x3", "beam", "p2p", "quantum", "bridge", "router"),
             "power", List.of("WEST", "EAST", "NORTH"),
             "splitPatterns", List.of("false", "true"),
             "extraCpus", List.of("false", "true"));

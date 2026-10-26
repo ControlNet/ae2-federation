@@ -56,10 +56,11 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
         this.connections = connections;
     }
 
-    /** Wraps every connected blockstate model of the Router and the Switch once they are baked. */
+    /** Wraps every connected blockstate model of the Router, the Switch and the Quantum Cube once they are baked. */
     public static void bake(ModelEvent.ModifyBakingResult event) {
         bake(event, RouterRegistration.ROUTER.get(), Device.ROUTER);
         bake(event, RouterRegistration.SWITCH.get(), Device.SWITCH);
+        bake(event, space.controlnet.ae2federation.quantum.QuantumRegistration.QUANTUM_CUBE.get(), Device.QUANTUM_CUBE);
     }
 
     private static void bake(ModelEvent.ModifyBakingResult event, net.minecraft.world.level.block.Block block,

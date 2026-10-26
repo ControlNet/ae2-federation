@@ -70,7 +70,8 @@ Sneak to place a single ordinary cable instead.
 * A bundle joins ordinary Federation Cables only through a <ItemLink id="ae2federation:router" />: run both into
   it. Two bundles side by side stay separate.
 * A bundle connects only to device faces that take Federation cable and are built of enough blocks: a Router or
-  <ItemLink id="ae2federation:switch" /> face or a <ItemLink id="ae2federation:beam_former" />'s back.
+  <ItemLink id="ae2federation:switch" /> face, a <ItemLink id="ae2federation:beam_former" />'s back, a
+  <ItemLink id="ae2federation:beam_converter" />'s front or a <ItemLink id="ae2federation:quantum_cube" />'s face centre.
   Its **end face** connects when one device covers all of it: a 2×2 bundle needs a 2×2 Router face.
 * A **side** connects to a device that covers the side's full width: a 2×2 bundle's side connects to a Router face
   1×2 across it, but not to a single Router block.
