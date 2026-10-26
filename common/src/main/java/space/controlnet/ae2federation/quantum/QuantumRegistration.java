@@ -27,7 +27,7 @@ public final class QuantumRegistration {
             Registries.DATA_COMPONENT_TYPE, MOD_ID);
 
     public static final DeferredBlock<QuantumCubeBlock> QUANTUM_CUBE = BLOCKS.registerBlock("quantum_cube",
-            QuantumCubeBlock::new, BlockBehaviour.Properties.of().strength(4.0F).sound(SoundType.METAL));
+            QuantumCubeBlock::new, BlockBehaviour.Properties.of().strength(4.0F).sound(SoundType.METAL).noOcclusion());
     public static final DeferredItem<BlockItem> QUANTUM_CUBE_ITEM = ITEMS.registerSimpleBlockItem(QUANTUM_CUBE,
             new Item.Properties());
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<QuantumCubeBlockEntity>>

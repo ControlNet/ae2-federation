@@ -41,6 +41,10 @@ public final class FederationTestMod {
                 && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
             space.controlnet.ae2federation.test.client.DeviceStructureScene.register();
         }
+        if (System.getProperty(space.controlnet.ae2federation.test.client.RefinedDeviceScene.OUTPUT) != null
+                && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
+            space.controlnet.ae2federation.test.client.RefinedDeviceScene.register();
+        }
         if (System.getProperty("ae2federation.beamPreview.out") != null
                 && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
             space.controlnet.ae2federation.test.client.CableBeamNativePreview.register();

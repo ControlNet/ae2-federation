@@ -28,7 +28,7 @@ import space.controlnet.ae2federation.test.world.MockServerPlayers;
 /**
  * A Beam Converter forms only at a converter's size, whichever way its blocks face, and then faces one way along its
  * length; a wrench turns a formed body end for end. Formed, it links Federation cable through its front alone and takes
- * FE through every other face.
+ * FE only through its rear exterior face.
  */
 @PrefixGameTestTemplate(false)
 public final class BeamConverterGameTests {
@@ -75,6 +75,12 @@ public final class BeamConverterGameTests {
             for (var cells : formed) {
                 for (var cell : cells) {
                     helper.assertTrue(RouterBlock.formed(helper.getBlockState(cell)), "converter member " + cell + " forms");
+                    for (var face : Direction.values()) {
+                        var input = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK,
+                                helper.absolutePos(cell), face);
+                        boolean rear = face == Direction.WEST && cell.getX() == cells.getFirst().getX();
+                        helper.assertTrue((input != null) == rear, "rear-only FE on " + cell + " / " + face);
+                    }
                 }
             }
             for (var cells : unbuildable) {
@@ -101,7 +107,7 @@ public final class BeamConverterGameTests {
 
     /**
      * A 1x1x2 converter facing east, its back to the west: a cable at its front joins its domain, cables at its side
-     * and back do not. FE enters through the side, not the front.
+     * and back do not. FE enters only through the back.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 300, required = true, manualOnly = true)
@@ -134,15 +140,21 @@ public final class BeamConverterGameTests {
             }
             helper.assertTrue(level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(front),
                     Direction.EAST) == null, "the front takes no FE");
-            var side = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(front), Direction.UP);
-            helper.assertTrue(side != null, "a side takes FE");
+            helper.assertTrue(level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(front), Direction.UP)
+                    == null, "a side takes no FE");
+            helper.assertTrue(level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(front), Direction.WEST)
+                    == null, "an interior rear-facing member takes no FE");
+            helper.assertTrue(level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(back), null)
+                    == null, "unsided access cannot bypass the rear port");
+            var side = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(back), Direction.WEST);
+            helper.assertTrue(side != null, "the rear takes FE");
             if (inserted[0] < 0) inserted[0] = side.receiveEnergy(1000, false);
-            helper.assertValueEqual(inserted[0], 1000, "FE accepted by the side");
-            var body = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(back), Direction.UP);
+            helper.assertValueEqual(inserted[0], 1000, "FE accepted by the rear");
+            var body = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(back), Direction.WEST);
             helper.assertValueEqual(body.getEnergyStored(), 1000, "the body holds what it took in");
             RouterEvidence.write("beamconverterlinksthroughitsfront", 6, Map.of(
                     "formed", "1x1x2", "front", "linked", "sideAndBack", "unlinked", "frontFe", "none",
-                    "sideFe", "accepted", "stored", "1000"));
+                    "rearFe", "accepted", "stored", "1000"));
             fixtures.close();
         });
     }
@@ -171,15 +183,19 @@ public final class BeamConverterGameTests {
         var player = MockServerPlayers.inLevel(helper);
         player.setItemInHand(InteractionHand.MAIN_HAND, AEItems.CERTUS_QUARTZ_WRENCH.stack());
         var phase = new int[1];
+        var oldInput = new net.neoforged.neoforge.energy.IEnergyStorage[1];
         helper.succeedWhen(() -> {
             if (phase[0] == 0) {
                 helper.assertTrue(linked(helper, east.east(), converterNode), "Waiting for the east cable to link");
+                oldInput[0] = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(west), Direction.WEST);
+                helper.assertTrue(oldInput[0] != null, "the original rear accepts FE");
                 use(helper, player, west, Direction.UP);
                 use(helper, player, single, Direction.UP);
                 phase[0] = 1;
                 throw new net.minecraft.gametest.framework.GameTestAssertException("Waiting for the turned body to link");
             }
             assertFacing(helper, List.of(east, west), Direction.WEST, "the wrench turned the body");
+            helper.assertValueEqual(oldInput[0].receiveEnergy(100, false), 0, "a cached old rear interface rejects FE after rotation");
             helper.assertValueEqual(helper.getBlockState(single).getValue(BeamConverterBlock.FACING), Direction.NORTH,
                     "an unformed block keeps its facing");
             helper.assertTrue(linked(helper, west.west(), converterNode), "the west cable links the turned body");
@@ -218,7 +234,7 @@ public final class BeamConverterGameTests {
     }
 
     /**
-     * A 2x2x4 converter is one buffer of sixteen blocks: FE through one block's side fills the whole body, every block reads
+     * A 2x2x4 converter is one buffer of sixteen blocks: FE through one rear block fills the whole body, every block reads
      * the body's total, and each block keeps an equal share, which a block broken out of the body takes with it.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
@@ -238,8 +254,8 @@ public final class BeamConverterGameTests {
                     helper.assertTrue(RouterBlock.formed(helper.getBlockState(cell)), "Waiting for the converter to form");
                 }
             }
-            var input = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(fed), Direction.UP);
-            var reader = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(other), Direction.UP);
+            var input = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(fed), Direction.WEST);
+            var reader = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(cells.get(1)), Direction.WEST);
             if (accepted[0] < 0) accepted[0] = input.receiveEnergy(100_000, false);
             helper.assertValueEqual(accepted[0], 100_000, "one block takes in more than its own 16000 FE");
             if (accepted[1] < 0) {
@@ -260,6 +276,48 @@ public final class BeamConverterGameTests {
             RouterEvidence.write("beamconverterbodysharesonebuffer", 6, Map.of(
                     "accepted", "100000 through one block", "read", "100000 from another", "capacity", "256000",
                     "share", "6250 each", "topUp", "156000", "broken", "16000 kept per block"));
+        });
+    }
+
+    /** All three sizes expose their complete rear plane in all six orientations. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void beamConverterRearPortsEveryOrientation(GameTestHelper helper) {
+        record Body(List<BlockPos> cells, Direction facing) { }
+        var bodies = new ArrayList<Body>();
+        for (int n = 1; n <= 3; n++) {
+            for (var facing : Direction.values()) {
+                int i = facing.get3DDataValue();
+                var min = new BlockPos(2 + (i % 3) * 10, 2 + (n - 1) * 8, 2 + (i / 3) * 10);
+                var axis = facing.getAxis();
+                var cells = box(min, axis == Direction.Axis.X ? 2*n : n,
+                        axis == Direction.Axis.Y ? 2*n : n, axis == Direction.Axis.Z ? 2*n : n);
+                cells.forEach(cell -> place(helper, cell, facing));
+                bodies.add(new Body(cells, facing));
+            }
+        }
+        helper.succeedWhen(() -> {
+            for (var body : bodies) {
+                assertFacing(helper, body.cells(), body.facing(), "all orientations form");
+                var rear = body.facing().getOpposite();
+                var axis = rear.getAxis();
+                int boundary = rear.getAxisDirection() == Direction.AxisDirection.NEGATIVE
+                        ? body.cells().getFirst().get(axis) : body.cells().getLast().get(axis);
+                for (var cell : body.cells()) {
+                    for (var face : Direction.values()) {
+                        var input = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK,
+                                helper.absolutePos(cell), face);
+                        boolean allowed = face == rear && cell.get(axis) == boundary;
+                        helper.assertTrue((input != null) == allowed, "rear plane at " + cell + " / " + face);
+                        if (input != null) {
+                            helper.assertValueEqual(input.receiveEnergy(100, true), 100, "rear receives in simulation");
+                            helper.assertValueEqual(input.getEnergyStored(), 0, "simulation does not fill the buffer");
+                        }
+                    }
+                }
+            }
+            RouterEvidence.write("beamconverterrearportseveryorientation", 18,
+                    Map.of("sizes", "1,2,3", "orientations", "all six", "FE", "rear exterior only"));
         });
     }
 

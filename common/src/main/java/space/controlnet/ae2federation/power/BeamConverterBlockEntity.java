@@ -17,14 +17,14 @@ import space.controlnet.ae2federation.router.RouterBlockEntity;
 
 /**
  * One block of a Beam Converter: a node of its domain that links through its front and to the rest of its body, and an
- * equal share of its body's buffer, {@link #CAPACITY} FE per block. A formed body is one buffer: FE entering any face
- * but the front fills the whole body, and every block reads the body's total. The domain's converters pool their
+ * equal share of its body's buffer, {@link #CAPACITY} FE per block. A formed body is one buffer: FE entering the rear
+ * exterior face fills the whole body, and every block reads the body's total. The domain's converters pool their
  * buffers ({@link PowerLedger}); a block broken out of its body takes its share with it.
  */
 public final class BeamConverterBlockEntity extends RouterBlockEntity {
     public static final double CAPACITY = 16_000;
 
-    private final IEnergyStorage energy = new Input();
+    private final java.util.Map<Direction, IEnergyStorage> inputs = new java.util.EnumMap<>(Direction.class);
     private double stored;
     /** FE taken in since the operating power service last read it. */
     private double input;
@@ -47,10 +47,16 @@ public final class BeamConverterBlockEntity extends RouterBlockEntity {
         return face != null && BeamConverterBlock.faces(getBlockState(), face) ? super.federationDomainPort(face) : null;
     }
 
-    /** The FE input on {@code side}: every face but the front. */
+    /** FE is exposed only on the formed body's rear exterior surface. Unsided queries cannot bypass it. */
     @Nullable
     public IEnergyStorage energy(@Nullable Direction side) {
-        return side == getBlockState().getValue(BeamConverterBlock.FACING) ? null : energy;
+        return acceptsEnergy(side) ? inputs.computeIfAbsent(side, Input::new) : null;
+    }
+
+    private boolean acceptsEnergy(@Nullable Direction side) {
+        var state = getBlockState();
+        return RouterBlock.formed(state) && side == facing().getOpposite()
+                && (RouterBlock.connections(state) & 1 << side.get3DDataValue()) == 0;
     }
 
     public boolean creative() {
@@ -132,6 +138,9 @@ public final class BeamConverterBlockEntity extends RouterBlockEntity {
     }
 
     private final class Input implements IEnergyStorage {
+        private final Direction side;
+
+        Input(Direction side) { this.side = side; }
         @Override
         public int receiveEnergy(int toReceive, boolean simulate) {
             if (!canReceive() || toReceive <= 0) return 0;
@@ -174,7 +183,7 @@ public final class BeamConverterBlockEntity extends RouterBlockEntity {
 
         @Override
         public boolean canReceive() {
-            return !creative() && RouterBlock.formed(getBlockState());
+            return !isRemoved() && !creative() && acceptsEnergy(side);
         }
     }
 }

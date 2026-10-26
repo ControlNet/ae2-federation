@@ -25,10 +25,10 @@ public final class PowerRegistration {
 
     public static final DeferredBlock<BeamConverterBlock> BEAM_CONVERTER = BLOCKS.registerBlock("beam_converter",
             properties -> new BeamConverterBlock(false, properties),
-            BlockBehaviour.Properties.of().strength(4.0F).sound(SoundType.METAL));
+            BlockBehaviour.Properties.of().strength(4.0F).sound(SoundType.METAL).noOcclusion());
     public static final DeferredBlock<BeamConverterBlock> CREATIVE_BEAM_CONVERTER = BLOCKS.registerBlock(
             "creative_beam_converter", properties -> new BeamConverterBlock(true, properties),
-            BlockBehaviour.Properties.of().strength(4.0F).sound(SoundType.METAL));
+            BlockBehaviour.Properties.of().strength(4.0F).sound(SoundType.METAL).noOcclusion());
     public static final DeferredItem<BlockItem> BEAM_CONVERTER_ITEM = ITEMS.registerSimpleBlockItem(BEAM_CONVERTER,
             new Item.Properties());
     public static final DeferredItem<BlockItem> CREATIVE_BEAM_CONVERTER_ITEM = ITEMS.registerSimpleBlockItem(

@@ -178,6 +178,19 @@ def prepareStructureSceneClientOptions = tasks.register('prepareStructureSceneCl
     }
 }
 
+def prepareRefinedDeviceClientOptions = tasks.register('prepareRefinedDeviceClientOptions') {
+    def optionsFile = layout.projectDirectory.file('run-refined-devices/options.txt')
+    outputs.file(optionsFile)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def file = optionsFile.asFile
+        file.parentFile.mkdirs()
+        file.setText('onboardAccessibility:false\npauseOnLostFocus:false\nrenderDistance:8\nfov:0.0\n',
+                StandardCharsets.UTF_8.name())
+    }
+}
+
 // GuideME preview: -PguideLanguage=zh_cn picks the language the pages open in.
 def prepareGuideClientOptions = tasks.register('prepareGuideClientOptions') {
     def optionsFile = layout.projectDirectory.file('run-guide/options.txt')
@@ -322,6 +335,16 @@ neoForge {
                     .getOrElse('build/multiblock-devices/ingame')).absolutePath)
             logLevel = org.slf4j.event.Level.INFO
             taskBefore(prepareStructureSceneClientOptions)
+        }
+        refinedDeviceClient {
+            client()
+            gameDirectory = project.file('run-refined-devices')
+            sourceSet = testmod
+            programArguments.addAll('--width', '1600', '--height', '960')
+            systemProperty('ae2federation.refinedDevice.out', rootProject.file(providers.gradleProperty('refinedDeviceOut')
+                    .getOrElse('build/refined-devices-ingame')).absolutePath)
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareRefinedDeviceClientOptions)
         }
         beamPreviewClient {
             client()

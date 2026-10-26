@@ -95,7 +95,7 @@ public final class OperatingPowerGameTests {
                 }
                 case 4 -> {
                     waited[0]++;
-                    scene.insert(back, Direction.UP, 5);
+                    scene.insert(back, Direction.EAST, 5);
                     helper.assertTrue(!scene.registry().unpowered(domain), "Waiting for input above use to run it");
                     if (waited[0] <= PowerLedger.RESTART_TICKS) early.append(" restart after ").append(waited[0]);
                     OperatingPowerRule.set(false, OperatingPowerRule.DEFAULT_MULTIPLIER);
@@ -155,7 +155,7 @@ public final class OperatingPowerGameTests {
                             && reading.converters().stream().noneMatch(converter -> converter.matches()),
                             "the converter is listed as not matching");
                     var stored = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK,
-                            helper.absolutePos(SWITCH.east(3)), Direction.EAST).getEnergyStored();
+                            helper.absolutePos(SWITCH.east(6)), Direction.EAST).getEnergyStored();
                     helper.assertValueEqual(stored, 16000, "a converter that does not match is not drawn on");
                     scene.creative(SWITCH.east(1).above(), Direction.DOWN);
                     scene.creative(SWITCH.east(1).above(2), Direction.DOWN);

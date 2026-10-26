@@ -3,7 +3,8 @@
 Status: the rule, the ME Federation Beam Converter, the power service, the red beam, the topology gauge, Jade, the
 guide page and the statistics metric are implemented on `dev` (2026-10-17). Design
 decisions: [operating power idea](../archive/ideas/federation-operating-power.md); plan: `.omo/plans/beam-converter.md`.
-The converter's textures are temporary (the Pattern Provider's, recoloured) until the artist delivers.
+The converter uses the textured open laser design exported from Blender, in all three body sizes.
+FE input is restricted to the formed body's rear exterior plane; side, front, interior and unsided queries expose no FE input.
 
 ## Behavior
 
@@ -21,7 +22,7 @@ The converter's textures are temporary (the Pattern Provider's, recoloured) unti
   not form until their bundles are buildable again (2026-10-17). The size alone gives the axis. Other shapes do not form (`WRONG_SHAPE`). Forming turns every member toward one end of the axis
   (`FormableDevice.forming`): the end most members face, else the one end touching Federation cable, else the positive
   end. A wrench (`c:tools/wrench`) on a formed body turns all members end for end with neighbour updates; they then
-  vote for the new facing. An unformed block's facing is ignored, and a cable draws no joint to it. The front links Federation like a Switch face; FE enters every other face. A formed body is
+  vote for the new facing. An unformed block's facing is ignored, and a cable draws no joint to it. The front links Federation like a Switch face; FE enters only the rear exterior face. A formed body is
   one buffer of 16,000 FE per block: FE entering any block fills the whole body, every block's FE capability reads the
   body's total, and each block saves an equal share in its NBT, so a block broken out takes its share. Recipe
   `CEC / ELE / CEC` (Federation Cable, Energy Acceptor, Nexus Core), one per craft.

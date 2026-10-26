@@ -1,7 +1,9 @@
 {
-  "parent": "ae2federation:block/router",
+  "parent": "minecraft:block/block",
   "textures": {
-    "0": "ae2federation:block/quantum_cube/quantum_cube",
-    "particle": "ae2federation:block/quantum_cube/quantum_cube"
-  }
+    "particle": "ae2federation:part/cable/dense/collar",
+    "surface": "ae2federation:block/refined_devices/surface",
+    "emission": "ae2federation:block/refined_devices/emission"
+  },
+  "elements": []
 }

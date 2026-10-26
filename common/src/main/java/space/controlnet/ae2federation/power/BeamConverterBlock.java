@@ -41,7 +41,7 @@ import space.controlnet.ae2federation.router.RouterBlockEntity;
  * Router's do, and the body must be exactly M x N across its front and 2·max(M, N) long, M x N being a cable
  * cross-section ({@link BeamConverterShape}), whichever way its blocks face. Formed, all its blocks face one end of its
  * length ({@link #forming}), and a wrench turns it end for end; an unformed block's facing means nothing. Only the
- * front links to Federation cable; every other face takes FE. The creative converter follows the same rules and never
+ * front links to Federation cable; only the rear exterior face takes FE. The creative converter follows the same rules and never
  * runs out.
  */
 public final class BeamConverterBlock extends BaseEntityBlock implements FormableDevice, CableLinkedBlock {
@@ -62,6 +62,28 @@ public final class BeamConverterBlock extends BaseEntityBlock implements Formabl
 
     public boolean creative() {
         return creative;
+    }
+
+    /** The open device mesh must not hide neighbours or cast a solid cuboid shadow. */
+    @Override
+    protected net.minecraft.world.phys.shapes.VoxelShape getOcclusionShape(BlockState state,
+            net.minecraft.world.level.BlockGetter level, BlockPos position) {
+        return net.minecraft.world.phys.shapes.Shapes.empty();
+    }
+
+    @Override
+    protected boolean propagatesSkylightDown(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos position) {
+        return true;
+    }
+
+    @Override
+    protected int getLightBlock(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos position) {
+        return 0;
+    }
+
+    @Override
+    protected float getShadeBrightness(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos position) {
+        return 1.0F;
     }
 
     @Override

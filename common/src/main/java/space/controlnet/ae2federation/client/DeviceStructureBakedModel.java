@@ -60,7 +60,6 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
     public static void bake(ModelEvent.ModifyBakingResult event) {
         bake(event, RouterRegistration.ROUTER.get(), Device.ROUTER);
         bake(event, RouterRegistration.SWITCH.get(), Device.SWITCH);
-        bake(event, space.controlnet.ae2federation.quantum.QuantumRegistration.QUANTUM_CUBE.get(), Device.QUANTUM_CUBE);
     }
 
     private static void bake(ModelEvent.ModifyBakingResult event, net.minecraft.world.level.block.Block block,

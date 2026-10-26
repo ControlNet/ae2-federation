@@ -219,6 +219,7 @@
     {"id":"power.converter-shapes","backend":"gametest","testId":"beamconvertershapes","structure":"ae2federation_test:scale_36_empty","assertions":11},
     {"id":"power.converter-turns-with-a-wrench","backend":"gametest","testId":"beamconverterturnswithawrench","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"power.converter-links-through-front","backend":"gametest","testId":"beamconverterlinksthroughitsfront","structure":"ae2federation_test:harness_native_smoke","assertions":6},
+    {"id":"power.converter-rear-orientations","backend":"gametest","testId":"beamconverterrearportseveryorientation","structure":"ae2federation_test:scale_36_empty","assertions":18},
     {"id":"power.converter-body-shares-one-buffer","backend":"gametest","testId":"beamconverterbodysharesonebuffer","structure":"ae2federation_test:scale_36_empty","assertions":6},
     {"id":"beam.former-shapes","backend":"gametest","testId":"beamformershapes","structure":"ae2federation_test:scale_36_empty","assertions":10},
     {"id":"beam.former-links-through-back","backend":"gametest","testId":"beamformerlinksthroughitsback","structure":"ae2federation_test:harness_native_smoke","assertions":5},

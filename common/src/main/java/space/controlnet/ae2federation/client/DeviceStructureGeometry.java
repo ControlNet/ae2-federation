@@ -39,7 +39,7 @@ public final class DeviceStructureGeometry {
     }
 
     public enum Device {
-        ROUTER, SWITCH, QUANTUM_CUBE;
+        ROUTER, SWITCH;
 
         /** The device's name in texture paths. */
         public String id() {

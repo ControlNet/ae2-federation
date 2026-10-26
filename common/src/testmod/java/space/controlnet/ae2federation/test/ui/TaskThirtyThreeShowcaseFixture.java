@@ -446,7 +446,7 @@ final class TaskThirtyThreeShowcaseFixture {
         }
         space.controlnet.ae2federation.power.OperatingPowerRule.set(true,
                 space.controlnet.ae2federation.power.OperatingPowerRule.DEFAULT_MULTIPLIER);
-        feeding = state.converter.get(0);
+        feeding = state.converter.getLast();
         if (!feederRegistered) {
             feederRegistered = true;
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(TaskThirtyThreeShowcaseFixture::feedConverter);

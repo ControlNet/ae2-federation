@@ -14,22 +14,17 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
   edit the approved source/version selection or the generator, then regenerate. The Router, Pattern Provider, Processing
   Endpoint and Bridge models and textures are drawn by hand in Blockbench (artist update, 2026-10-07) and edited
   directly; the generator no longer writes them. Language files are independently maintained.
-- **Temporary: the ME Federation Beam Converter.** Until the artist draws it, `tools/visual/build_converter_placeholder.py`
-  writes `textures/block/beam_converter/` and `textures/block/creative_beam_converter/` (front, side, back) from the
-  Federation Pattern Provider's textures, recoloured amber and the creative purple; the models are plain cubes with the
-  front to the south, as the Provider's. The converter is a solid-cuboid body facing one way (1x1x2 up to 3x3x6) and
-  has no connected-face geometry yet. Replace the PNGs and models, then delete the script.
+- **ME Federation Beam Converter.** The open laser design from Blender is exported to `device_meshes/laser-{1,2,3}.json`
+  and the shared pixel atlas in `textures/block/refined_devices/`. `RefinedDeviceBakedModel` clips its static geometry
+  into individual chunk members. The rear face alone accepts FE. See [runtime integration](refined-device-runtime.md).
 - **The ME Federation Beam Former: all three sizes drawn.** The artist's Blockbench projects
   (`tools/blockbench/projects/{,large_,huge_}beam_emitter.bbmodel`, textures in `textures/block/beam_emitter/`) become
   the 1x1 model, the four 2x2 member models and the nine 3x3 member models through
   `tools/blockbench/export_beam_former_models.py`, with a multipart blockstate that picks each member's piece. Edit the
   projects, then rerun the exporter; `tools/visual/validate_assets.py` fails on a stale export.
-- **Temporary: the ME Federation Quantum Cube.** The same script writes `textures/block/quantum_cube/` from the
-  Router's standalone texture and its four connected-face tiles, recoloured violet; the standalone model is the Router's
-  with that texture, and a formed cube uses the Router's connected-face geometry from those tiles. A cube is a solid
-  3x3x3, 4x4x4 or 5x5x5 body that links cable only inside each face's centre, so the art may mark the centre apart from
-  the one-block border. `DeviceStructureGeometryTest` checks that the temporary tiles shape like the Router's; replace
-  that check with the prototype's parity once the artist's tiles arrive.
+- **ME Federation Quantum Cube.** Three open frame sizes use the same source teal pixel artwork, with a dynamic
+  22/12-fragment core. The static geometry lives in chunk meshes and only the core and carriers use a block entity
+  renderer. Old violet placeholder tiles and their generator have been retired.
 - `tools/visual/pixi.toml` and `pixi.lock`: approved development environment (Python/Pillow/fontTools). The optional game
   inspection tools use PortableMC and python-xlib in the same environment. None is a runtime mod dependency.
 - `tools/visual/build_canvas_font.py`: cuts the topology canvas's Chinese font, `font/canvas_cjk.ttf`, from Droid Sans

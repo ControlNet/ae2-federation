@@ -26,7 +26,7 @@ storage, crafting, processing or power until it has FE again.
 <GameScene zoom="4.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/beam_converter.snbt" />
   <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
-    A 1×1×2 Beam Converter: its front faces down onto the cable. FE goes in through any other face
+    A 1×1×2 Beam Converter: its front faces down onto the cable. FE goes in through the rear (upper) face
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="5 0 0" max="8 2 1">
     Network A
@@ -66,7 +66,7 @@ a Federation cable. Right-click a formed converter with a wrench to turn it end 
 
 ## Power
 
-A converter is one buffer of 16,000 FE per block. Pipe FE into any face but the front, with any mod's cables or
+A converter is one buffer of 16,000 FE per block. Pipe FE into the rear exterior face, with any mod's cables or
 generators: one cable fills the whole converter. A domain adds up the buffers of all its matching converters and draws
 its use from them in proportion to what each holds.
 
