@@ -37,4 +37,18 @@ final class EffectiveStorageAuthorityTest {
 
         assertFalse(all.intersect(allowNothing).permitsAll(PolicyOperation.VIEW));
     }
+
+    @Test
+    void aUnionIsAllWhereEitherSideIsAll() {
+        var all = new EffectiveStorageAuthority(Set.of(PolicyOperation.VIEW, PolicyOperation.INSERT),
+                PolicyFilter.allowAll());
+        var listed = new EffectiveStorageAuthority(Set.of(PolicyOperation.VIEW, PolicyOperation.EXTRACT),
+                new PolicyFilter(PolicyFilterMode.ALLOW_LIST, Set.of()));
+        var union = all.union(listed);
+
+        assertTrue(union.permitsAll(PolicyOperation.VIEW));
+        assertTrue(union.permitsAll(PolicyOperation.INSERT));
+        assertFalse(union.permitsAll(PolicyOperation.EXTRACT));
+        assertFalse(union.permitsAll(PolicyOperation.SUPPLY));
+    }
 }

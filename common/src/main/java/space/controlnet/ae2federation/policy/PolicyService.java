@@ -91,6 +91,14 @@ public final class PolicyService {
         return data.configured(key);
     }
 
+    /**
+     * The configured rules of {@code capability}, enabled or not: what the binding services pair networks by, instead of
+     * every two members of a domain.
+     */
+    public java.util.List<PolicyRecord.Configured> configuredRules(PolicyCapability capability) {
+        return data.configuredRules(capability);
+    }
+
     public PolicyRevision revision(PolicyKey key) {
         return data.revision(key);
     }

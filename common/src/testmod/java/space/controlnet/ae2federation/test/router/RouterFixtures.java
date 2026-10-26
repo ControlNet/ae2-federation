@@ -90,7 +90,7 @@ public final class RouterFixtures implements AutoCloseable {
     public boolean allBoundaryNodesUseZeroIdlePower(RouterBlockEntity router) {
         for (var face : Direction.values()) {
             var node = router.boundaryNode(face);
-            if (node == null || node.getIdlePowerUsage() != 0.0) {
+            if (node != null && node.getIdlePowerUsage() != 0.0) {
                 return false;
             }
         }

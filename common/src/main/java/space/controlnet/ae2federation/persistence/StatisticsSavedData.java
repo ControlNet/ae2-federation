@@ -24,7 +24,8 @@ import space.controlnet.ae2federation.observability.statistics.TopKeys;
  */
 public final class StatisticsSavedData extends SavedData {
     private static final String DATA_NAME = "ae2federation_statistics";
-    private static final int FORMAT = 2;
+    /** Format 3 numbers game seconds; an older book numbered wall-clock seconds and is not loaded. */
+    private static final int FORMAT = 3;
     private static final StatisticsRange[] RANGES = StatisticsRange.values();
 
     private final StatisticsBook<AEKey> book;

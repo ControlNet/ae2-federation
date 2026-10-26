@@ -35,6 +35,26 @@ final class PolicyStoreTest {
     }
 
     @Test
+    void listsTheConfiguredRulesOfOneCapabilityWithoutDeletedOnes() {
+        // Given
+        var store = new PolicyStore();
+        var crafting = new PolicyKey(NETWORK_C, NETWORK_A, PolicyCapability.CRAFTING);
+        store.edit(new PolicyEdit(A_USES_B, PolicyRevision.NONE, storageRule(true)));
+        var off = accepted(store.edit(new PolicyEdit(B_USES_A, PolicyRevision.NONE, storageRule(false))));
+        store.edit(new PolicyEdit(crafting, PolicyRevision.NONE, PolicyRule.enabled(Set.of(PolicyOperation.REQUEST))));
+
+        // When
+        store.delete(new PolicyDelete(crafting, store.revision(crafting)));
+
+        // Then
+        assertEquals(Set.of(A_USES_B, B_USES_A), store.configuredRules(PolicyCapability.STORAGE).stream()
+                .map(PolicyRecord.Configured::key).collect(java.util.stream.Collectors.toSet()));
+        assertTrue(store.configuredRules(PolicyCapability.STORAGE).contains(off));
+        assertTrue(store.configuredRules(PolicyCapability.CRAFTING).isEmpty());
+        assertTrue(store.configuredRules(PolicyCapability.ME_POWER).isEmpty());
+    }
+
+    @Test
     void advancesAuthoritativeRevisionOnlyForAcceptedEdits() {
         // Given
         var store = new PolicyStore();

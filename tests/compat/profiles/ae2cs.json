@@ -1,0 +1,17 @@
+{
+  "name": "ae2cs",
+  "group": "addons",
+  "description": "AE2 Crystal Science, which needs AE2WTLib though it does not declare it: Meteorite, Resonating and Mirror Pattern Providers, Ender Emitter, Crystal Pulverizer",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "ae2wtlib@19.5.1",
+    "ae2cs@1.2.1"
+  ],
+  "tests": [
+    "core",
+    "ae2cs"
+  ]
+}

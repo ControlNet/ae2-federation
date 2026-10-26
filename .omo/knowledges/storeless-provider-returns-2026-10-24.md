@@ -28,4 +28,8 @@ providers when C had no storage:
 can store (AE2 ends the job, stone + gravel wait in the provider, both arrive once the consumer's cell returns),
 provider network with its own CPU keeps the byproduct. Fixture: `ejectIntoProvider`, `inProviderReturns`,
 `placeProviderCpu`, `planOnProvider`. `ReturnCoverageGameTests` fluid tests now expect late buckets straight in the
-consumer, not held. Two consumers sharing one provider is not covered by a GameTest (rule: latest pusher wins).
+consumer, not held. `sharedProviderByproductToLastPusher` (chain fixture: consumer and source with CPUs both order
+stone through the middle's provider; the middle has no CPU and no cell) checks the latest-pusher rule both ways: the
+gravel goes to the source, then to the consumer after it orders again. Mutation check: picking the earliest pusher fails
+it. Chain fixture helpers: `placeMiddleMachine`, `middleMachineReady`, `takeMiddleCell`, `shareMiddle`,
+`ejectIntoMiddle`, `inMiddleReturns`, `inMiddleMachine`.

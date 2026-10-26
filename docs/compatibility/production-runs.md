@@ -121,8 +121,9 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `ae2-wcwt` | AE2 WCWT 1.3.10, AE2WTLib 19.5.1 | core only | 19/19 |
 | `aeallpattern` | AE All Pattern 0.2.6 | its routing planner planning the seed loop with a remote pattern; planning only, since AE2's CPU stalls on its loop plans even when everything is local | 20/20 (2026-10-24) |
 | `appliedenhancements` | Applied Enhancements 1.1.0 | its Aelis planner, switched on in its config, planning the seed loop with a remote pattern and an AE2 CPU running it | 20/20 (2026-10-24) |
-| `neoecoae` | Neo ECO AE Extension 21.2.9 | crafting with a crafting system, with an AE2 CPU and with a computation system as the consumer's only CPU; the guide's district, with the storage and computation systems on the consumer and the crafting system on a provider with no storage, whose recipes leave and return when a casing is broken and put back; sharing a storage system's ECO cell, which also leaves and returns when a casing is broken and put back; Neo ECO's planner with cycle planning on, planning the seed loop with a remote pattern, and a computation system running it | 31/31 (2026-10-24) |
-| `neoecoprototype` | Neo ECO Prototype 1.3.9, Neo ECO AE Extension 21.2.9 | the Neo ECO group on 21.2.9; the same scenes with the addon's L1 storage, F1 crafting and C1 computation systems and L1 cells, the C1 system as the consumer's only CPU; crafting and processing through the L1 Pattern Provider, a processor order going into the L1 Processor Assembler (which since 1.3.9 takes processor recipes only); an Endpoint in Local mode under the L1 Pattern Provider, as a block and as a part; an Energized Superconductive Interface as the only power source, powering two other networks over ME power until one network's power rule is switched off; the guide's singularity mint, an L1 Singularity Cell in an L1 storage system on a network powered only by that interface, read by two districts through Storage rules, its singularities leaving both when the cell is taken out and returning when it is put back | 42/42 (2026-10-24) |
+| `neoecoae` | Neo ECO AE Extension 21.2.10 | crafting with a crafting system, with an AE2 CPU and with a computation system as the consumer's only CPU; the guide's district, with the storage and computation systems on the consumer and the crafting system on a provider with no storage, whose recipes leave and return when a casing is broken and put back; sharing a storage system's ECO cell, which also leaves and returns when a casing is broken and put back; Neo ECO's planner with cycle planning on, planning the seed loop with a remote pattern, and a computation system running it; Neo ECO's smart doubling, a computation system pushing a projected AE2 Pattern Provider's sixteen runs in fewer, scaled pushes as it does on the provider's own network, every output returned, and accepting a Federation Pattern Provider's Lane on its own network; a computation system crafting 256 times with a projected crafting system in batches, about as fast as with both networks joined into one Grid, also for an exact order; a projected Large Integrated Working Station taking its 64 crafts in one batch | 42/42 (2026-10-25) |
+| `neoecoae-advanced-ae` | Neo ECO AE Extension 21.2.10, AdvancedAE 1.6.12, GeckoLib 4.9.3 | the AdvancedAE and Neo ECO groups together; Neo ECO's smart doubling through a projected Advanced Pattern Provider, sixteen runs in fewer, scaled pushes as on the provider's own network, every output returned | 37/37 (2026-10-25) |
+| `neoecoprototype` | Neo ECO Prototype 1.4.0, Neo ECO AE Extension 21.2.10 | the Neo ECO group on 21.2.10; the same scenes with the addon's L1 storage, F1 crafting and C1 computation systems and L1 cells, the C1 system as the consumer's only CPU; crafting and processing through the L1 Pattern Provider, a processor order going into the L1 Processor Assembler (which since 1.3.9 takes processor recipes only); an Endpoint in Local mode under the L1 Pattern Provider, as a block and as a part; an Energized Superconductive Interface as the only power source, powering two other networks over ME power until one network's power rule is switched off; the guide's singularity mint, an L1 Singularity Cell in an L1 storage system on a network powered only by that interface, read by two districts through Storage rules, its singularities leaving both when the cell is taken out and returning when it is put back | 53/53 (2026-10-25) |
 | `omnisequence` | OmniSequence: Transfinite 2.0.7, ExtendedAE, Applied Enhancements 1.1.0 | the ExtendedAE group; the Applied Enhancements group; a Transfinite Compute Nexus as the only CPU, its order planned by Aelis, including a cancelled job and the Bridge removed after the push; crafting inside a Molecular Sequence Rewrite Array; a Matter Fabrication Well's Pattern Assembly serving a remote order, whose recipe leaves and returns when a casing is broken and put back | 39/39 (2026-10-24) |
 | `advanced-ae` | AdvancedAE 1.6.12, GeckoLib 4.9.3 | crafting and processing through the Advanced Pattern Provider; an Endpoint in Local mode under it, as a block and as a part; a lone Quantum Computer Core as the only CPU, including a cancelled job and the Bridge removed after the push; a formed 7x7x7 Quantum Computer on a Router running two orders at once from two other networks, one needing both in turn; the Nexus Press and the Quantum Press both made from the Engineering and Logic Presses, told apart by the middle input | 29/29 |
 | `megacells` | MEGA Cells 4.11.0 | processing through the MEGA Pattern Provider; an Endpoint in Local mode under it; crafting with a MEGA 1M Crafting Storage CPU; sharing MEGA item, bulk and fluid cells | 25/25 |
@@ -134,9 +135,10 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `appflux-createaddition` | Applied Flux 2.1.5, Create 6.0.10, Create Crafts & Additions 1.7.2 | the Applied Flux group; the guide's Induction Card example with an Electric Motor beside the Provider's Endpoint turning a Millstone, its job waiting until the card goes in | 22/22 |
 | `appflux-enderio` | Applied Flux 2.1.5, Ender IO 8.2.12-beta | the Applied Flux group; the guide's Induction Card example with a SAG Mill on the Provider's Endpoint, fitted with a Basic Capacitor and pushing from its bottom, its job waiting until the card goes in | 22/22 |
 | `appflux-industrialforegoing` | Applied Flux 2.1.5, Industrial Foregoing 3.6.39, Titanium 4.0.50 | the Applied Flux group; the guide's Induction Card example with a Resourceful Furnace on the Provider's Endpoint, its output pushing from the bottom, its job waiting until the card goes in | 22/22 |
-| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras, MEGA Cells and Neo ECO Prototype | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 102/102 (2026-10-24) |
+| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras, MEGA Cells, Neo ECO Prototype and AE2 Crystal Science | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 129/129 (2026-10-26) |
 | `useless-mod` | UselessMod 2.4.5.10 | crafting through an Advanced Alloy Furnace, which holds the pattern and crafts it itself with no Molecular Assembler, while UselessMod's mixins wrap the consumer CPU's pushes; the guide's build, the furnace alone on a network with no storage, whose recipe leaves and returns when its pattern is taken out and put back (2026-10-08); Smart Doubling on the furnace, doubling its pattern in the consumer's plan as in the provider network's | 23/23 (2026-10-24) |
-| `useless-mod-addons` | the `addons-all` mods as of 2026-10-08 (Neo ECO AE Extension 21.2.0, no MEGA Cells or Neo ECO Prototype) plus AdvancedAE 1.6.12 and UselessMod 2.4.5.10, so its Advanced AE and ExtendedAE mixins apply; the only profile left on Neo ECO 21.2.0, whose `getRequestedAmount` bug the Federation fallback covers | their groups | 100/100 (2026-10-24) |
+| `useless-mod-addons` | the `addons-all` mods as of 2026-10-08 (Neo ECO AE Extension 21.2.0, no MEGA Cells or Neo ECO Prototype) plus AdvancedAE 1.6.12 and UselessMod 2.4.5.10, so its Advanced AE and ExtendedAE mixins apply; the only profile left on Neo ECO 21.2.0, whose `getRequestedAmount` bug the Federation fallback covers | their groups | 116/116 (2026-10-25) |
+| `ae2cs` | AE2 Crystal Science 1.2.1, AE2WTLib 19.5.1 | crafting through a projected Meteorite Pattern Provider, which crafts by itself, also with no storage on the provider network and with four Overclock Cards for 64 crafts; a Resonating Pattern sending each input to its own chest through the projection, as on one Grid; a Mirror Pattern Provider offering the pattern of the AE2 Pattern Provider it is bound to; an AE2 Pattern Provider pushing into a Crystal Pulverizer that runs on the shared AE power and exports its output back; an ME Ender Emitter joining both networks into one Grid without cables, the consumer then ordering through it; an Endpoint in Local mode under the Meteorite (block and part), Basic and Resonating (block and part) Pattern Providers | 33/33 (2026-10-26) |
 | `recipe-viewers` | JEI 19.57.0.449, Jade 15.10.6, AE2 JEI Integration 1.2.1 | core only, with AE2 Federation's Jade plugin loaded on the server beside AE2's own (2026-10-13) | 19/19 |
 
 ## Modpack profiles
@@ -221,7 +223,7 @@ The interaction tests found four more, all fixed on dev:
   blocking modes, but lanes built theirs with AE2's, so Smart blocking refused the same pattern and let others in.
   Lanes now build their targets through ExpandedAE's when it is loaded. `smartBlockingLane` checks Smart and Default.
 
-The addon planner tests found two more, both fixed on dev:
+The addon planner tests found three more, all fixed on dev:
 
 - **Patterns an addon marked after linking did not reach the consumer.** A projection compared the provider's
   patterns by equality, and ExtendedAE-Plus' Smart Doubling marks newly decoded pattern objects that are equal to the
@@ -233,9 +235,41 @@ The addon planner tests found two more, both fixed on dev:
   real provider's add-on marker interfaces, those with no methods, so an add-on treats it as the real provider; pushes
   still go through the projection to the real provider. Only UselessMod, Thunderbolt and Applied Enhancements read that
   marker, and all three push through AE2's provider interface. `alloyFurnaceSmartDoubling` checks this.
+- **Neo ECO's smart doubling skipped projected patterns.** A Neo ECO CPU pushes many runs of a processing pattern as
+  one scaled pattern only to providers whose logic it recognises: AE2's or AdvancedAE's provider logic, or what a
+  public `getLogic()` returns. A projection had neither, so its runs went one push each. A projection of a plain AE2
+  Pattern Provider, a Federation Pattern Provider's Lane or an Advanced Pattern Provider now shows that logic through
+  `getLogic()`; Neo ECO only reads it and still pushes through the projection, so the return ledger owes the scaled
+  outputs. Other logic stays hidden, because Neo ECO pushes into AE2LT's overloaded provider and OmniSequence's batch
+  providers directly. `computationSystemSmartDoubling` and `advPatternProviderSmartDoubling` check the projections
+  (16 runs in 5 pushes each) and `laneSmartDoubling` a Lane.
+- **A projected Neo ECO crafting system crafted one recipe at a time.** Its pattern bus takes many crafts as one batch
+  only on Neo ECO's crafting fast path, which Neo ECO's CPU offers to providers that are its
+  `ECOFastPathDispatchProvider`. A projection was not, so each craft went alone and held the worker's only thread for
+  10 ticks: 256 crafts took about 2600 ticks instead of 92. Neo ECO's Large Integrated Working Station likewise takes
+  batches only through its `ECOParallelCraftingProvider` interface, and a projected one took one craft per push. A
+  projection of such a provider now has the same interface: the real provider prepares or takes the batch and the
+  hand-over goes through the projection, which owes the batch's outputs. The real provider never gets the CPU's job
+  id, because with one Neo ECO returns the outputs only to that job's CPU on its own network; without one they are
+  stored there and the return router brings them back. Neo ECO's exact batches need the job id, so a projection does
+  not offer them, and an exact order falls back to ordinary batches. `craftingSystemThroughput` checks the batches
+  (256 crafts in 9 pushes, 96 ticks) against `craftingSystemThroughputJoined` (92 ticks), `craftingSystemExactOrder`
+  the same with an exact order, and `largeWorkstationBatching` the workstation (64 crafts in 1 push, 108 ticks;
+  joined 107). The exact order goes straight to the computation system, as Neo ECO's crafting menu sends it: through
+  AE2's `submitJob`, AE2 Lightning Tech's Thunderbolt Core refuses every plan that is not AE2's own unless one of its
+  CPUs takes it.
 
 Other findings, all upstream behaviour:
 
+- **AE2 Crystal Science 1.2.1** does not start without AE2WTLib, which its mod metadata does not list: its AE2 plugin
+  loads `de.mari_023.ae2wtlib.api.gui.Icon` while it constructs. The `ae2cs` profile includes AE2WTLib.
+- **AE2 Crystal Science's Resonating Pattern Provider part** throws when it is placed without a player, as AE2's
+  `PartHelper.setPart` places parts: its cable bus mixin looks for a Resonating Memory Card in the placing player's
+  inventory. The tests place provider parts as a player.
+- **AE2 Crystal Science's Resonating Pattern** that names targets for some inputs and leaves the rest to the provider's
+  sides never pushes, with or without AE2 Federation: after taking the routed inputs out, it tries each remaining
+  input on the side's machine, including the ones now at zero, and a zero insert reads as "does not fit". A pattern
+  whose every input has a target pushes, and `resonatingRouting` uses one.
 - **Neo ECO Prototype 1.3.2** did not start without MEGA Cells, which it lists as optional, with or without AE2
   Federation: `SimplifySingularityCellItem` reads `ae2:singularity` while items register, and its `ae2` dependency has
   no load order, so its items can register before AE2's (`Trying to access unbound value: ResourceKey[minecraft:item /
@@ -299,10 +333,65 @@ A server that keeps running more than 30 seconds after writing its report is sto
 behind. Each run directory, including `server-console.log` and `compat-report.json`, is under
 `neoforge-1.21.1/build/compat/runs/<profile>`. In CI, the `Compatibility` workflow runs one job per profile and
 summarises the reports in the job summary. Modpack profiles run there on release and hotfix branches, weekly, and when
-the workflow is dispatched with `modpacks`. Weekly, and when the workflow is dispatched with `latest`, a separate job
-also runs each modpack on its newest release. That job caches nothing, frees runner disk space only when it has a new
-pack to download, and leaves the pins as they are. To run only the newest releases:
+the workflow is dispatched with `modpacks`. A separate `Newest modpacks` workflow runs each modpack on its newest
+release, weekly and on demand, so a pack update fails there and not in `Compatibility`. It caches nothing, frees runner
+disk space only when it has a new pack to download, and leaves the pins as they are:
 
 ```bash
-gh workflow run compat.yml --ref dev -f groups=none -f latest=true
+gh workflow run latest-modpacks.yml --ref dev
 ```
+
+## Historical addon versions
+
+The single-version profiles above are not minimum-version declarations.
+[`minimum-versions.md`](minimum-versions.md#optional-addon-version-investigation-2026-10-25)
+separates Federation adapter boundaries, upstream dependency/ABI problems and
+historical fixture limitations. The pinned historical matrix is
+[`tests/compat/version-boundaries.json`](../../tests/compat/version-boundaries.json).
+
+```bash
+python3 tools/compat_versions.py --list
+python3 tools/compat_versions.py --accept-eula -j 3 -p 4 \
+  advanced-1.5.0-full neoeco-21.2.0-full extended-2.2.42 plus-1.6.3 \
+  --output neoforge-1.21.1/build/addon-version-check
+python3 tools/compat_versions.py --accept-eula --no-build --bare \
+  advanced-0.6.0 extended-2.0.1 plus-1.4.0 mega-4.0.2 \
+  --output neoforge-1.21.1/build/addon-version-check-bare
+```
+
+The positive selection runs packaged production Federation and compatibility-test
+JARs in ordinary dedicated servers. The bare selection removes both JARs to
+attribute startup failures. `--no-build` requires the two previously built JARs.
+Each case records resolved dependencies, artifact hashes, outcomes, and its
+server directory. Downloads use the existing compatibility cache; worlds are
+fresh experiment worlds, not user saves.
+
+The complete historical matrix deliberately contains failing versions and loader
+controls. Its expected overall exit status is **1**, not a green acceptance run.
+For the positive selection above, expect **34/34**, **42/42**, **33/33** and
+**41/41**, respectively, and exit **0**. For the four bare historical versions,
+expect upstream startup crashes and exit **1**. A server process exiting zero
+without `compat-report.json` is not a passing compatibility test.
+
+The archived [machine-readable evidence](../../tests/compat/version-boundaries-evidence.json)
+records the actual production and fixture hashes separately. Historical fixtures
+span three snapshots; do not assume the latest rebuilt fixture has byte-for-byte
+identity with every archived run. Each run retains its exact resolved mod tuple
+and report/log hashes.
+
+To reproduce the adjacent AdvancedAE boundary and the old ECO CPU generation:
+
+```bash
+python3 tools/compat_versions.py --accept-eula -j 2 -p 8 \
+  advanced-1.1.13-full neoeco-beta4-without-new-planner-fixture \
+  --output neoforge-1.21.1/build/addon-boundary-recheck
+python3 tools/compat_versions.py --accept-eula --no-build --bare \
+  advanced-1.1.12-matched-gecko \
+  --output neoforge-1.21.1/build/addon-boundary-recheck-bare
+```
+
+The archived positive results are **34/34** and **41/41** (exit **0**).
+The adjacent bare AdvancedAE control crashes on duplicate
+`advanced_ae:quantum_computer` menu registration (exit **1**). ECO's omitted
+planner-ownership check uses a newer test-only method; its omission is not a
+claim that old ECO has a production startup failure.

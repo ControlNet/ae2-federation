@@ -45,7 +45,6 @@ public final class FederationDomainRegistry {
             .thenComparingLong(Candidate::sequence)
             .thenComparingInt(Candidate::component);
 
-    private final FederationDomainRecomputeBudget budget;
     private final Map<FederationDomainNodeId, FederationDomainNodeEvidence> nodes = new HashMap<>();
     private final Map<FederationDomainNodeId, Set<FederationDomainPortId>> incomingFederation = new HashMap<>();
     private final Map<FederationDomainNodeId, FederationDomainId> nodeToFederationDomain = new HashMap<>();
@@ -81,6 +80,9 @@ public final class FederationDomainRegistry {
     private final Set<FederationDomainNodeId> capacityNodes = new HashSet<>();
     /** Domains installed since they were last judged against the capacity limit. */
     private final Set<FederationDomainId> capacityDomains = new HashSet<>();
+    /** Each domain's cable demand as last judged: current after every flush, so a cable's lookup counts nothing. */
+    private final Map<FederationDomainId, Map<FederationDomainNodeId, CableCapacityCounter.Demand>> capacityCounts =
+            new HashMap<>();
     /** The limit the verdicts were judged with; null before the first judgement. */
     private java.util.OptionalInt judgedLimit;
 
@@ -90,12 +92,11 @@ public final class FederationDomainRegistry {
     private Runnable mutationListener = () -> {
     };
 
-    public FederationDomainRegistry(FederationDomainRecomputeBudget budget) {
-        this(budget, new FederationDomainRecords());
+    public FederationDomainRegistry() {
+        this(new FederationDomainRecords());
     }
 
-    public FederationDomainRegistry(FederationDomainRecomputeBudget budget, FederationDomainRecords records) {
-        this.budget = budget;
+    public FederationDomainRegistry(FederationDomainRecords records) {
         this.records = records;
         physicalSequence = records.sequence();
     }
@@ -231,22 +232,14 @@ public final class FederationDomainRegistry {
      */
     public boolean shareRunningFederationDomain(NetworkId first, NetworkId second) {
         flush();
-        var firstDomains = networkIndex.getOrDefault(first, Set.of());
-        var secondDomains = networkIndex.getOrDefault(second, Set.of());
-        for (var domain : firstDomains) {
-            if (!overCapacity.contains(domain) && !unpowered.contains(domain) && secondDomains.contains(domain)) return true;
-        }
-        return false;
+        return shareFederationDomain(first, second,
+                domain -> !overCapacity.contains(domain) && !unpowered.contains(domain));
     }
 
     /** Whether two networks share a domain over capacity: the cause named when they share no running one. */
     public boolean shareOverCapacityFederationDomain(NetworkId first, NetworkId second) {
         flush();
-        var secondDomains = networkIndex.getOrDefault(second, Set.of());
-        for (var domain : networkIndex.getOrDefault(first, Set.of())) {
-            if (overCapacity.contains(domain) && secondDomains.contains(domain)) return true;
-        }
-        return false;
+        return shareFederationDomain(first, second, overCapacity::contains);
     }
 
     /** Whether a domain has a Federation Cable over the capacity limit, and so stops as a whole. */
@@ -296,7 +289,44 @@ public final class FederationDomainRegistry {
         if (firstDomains.size() == 1 && secondDomains.size() == 1) {
             return sole(firstDomains).equals(sole(secondDomains));
         }
-        return !java.util.Collections.disjoint(firstDomains, secondDomains);
+        return shareFederationDomain(first, second, domain -> true);
+    }
+
+    /**
+     * Whether two networks share a domain that passes {@code filter}. Walks the smaller membership: a main network with
+     * a Bridge to each of many subnets is in many domains, each subnet in one. ({@code Collections.disjoint} walks its
+     * second argument whenever the first is a set, whatever their sizes.)
+     */
+    private boolean shareFederationDomain(NetworkId first, NetworkId second,
+            java.util.function.Predicate<FederationDomainId> filter) {
+        var firstDomains = networkIndex.getOrDefault(first, Set.of());
+        var secondDomains = networkIndex.getOrDefault(second, Set.of());
+        var smaller = firstDomains.size() <= secondDomains.size() ? firstDomains : secondDomains;
+        var larger = smaller == firstDomains ? secondDomains : firstDomains;
+        for (var domain : smaller) {
+            if (larger.contains(domain) && filter.test(domain)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * The current references of the domains both networks are members of. Walks the smaller membership and copies
+     * neither, so a main network with a Bridge to each of many subnets costs each subnet's lookup one domain.
+     */
+    public Set<FederationDomainReference> sharedFederationDomainReferences(NetworkId first, NetworkId second) {
+        flush();
+        var firstDomains = networkIndex.getOrDefault(first, Set.of());
+        var secondDomains = networkIndex.getOrDefault(second, Set.of());
+        var smaller = firstDomains.size() <= secondDomains.size() ? firstDomains : secondDomains;
+        var larger = smaller == firstDomains ? secondDomains : firstDomains;
+        List<FederationDomainReference> shared = null;
+        for (var id : smaller) {
+            var domain = larger.contains(id) ? federationDomains.get(id) : null;
+            if (domain == null) continue;
+            if (shared == null) shared = new ArrayList<>(smaller.size());
+            shared.add(domain.reference());
+        }
+        return shared == null ? Set.of() : Set.copyOf(shared);
     }
 
     /** The one id of a single-domain membership; the index's sorted sets give it without an iterator. */
@@ -405,9 +435,15 @@ public final class FederationDomainRegistry {
         boolean changed = false;
         for (var federationDomainId : capacityDomains) {
             var domain = federationDomains.get(federationDomainId);
-            boolean over = domain != null && limit.isPresent() && CableCapacityCounter.count(evidenceOf(domain))
-                    .entrySet().stream().anyMatch(entry -> CableCapacityLimit.current(
-                            nodes.get(entry.getKey()).capacityFactor()).stream()
+            // Counted with or without a limit: the cables show the count either way.
+            var counts = domain == null ? null : CableCapacityCounter.count(evidenceOf(domain));
+            if (counts == null) {
+                capacityCounts.remove(federationDomainId);
+            } else {
+                capacityCounts.put(federationDomainId, counts);
+            }
+            boolean over = counts != null && limit.isPresent() && counts.entrySet().stream()
+                    .anyMatch(entry -> CableCapacityLimit.current(nodes.get(entry.getKey()).capacityFactor()).stream()
                             .anyMatch(cap -> entry.getValue().units() > cap));
             changed |= over ? overCapacity.add(federationDomainId) : overCapacity.remove(federationDomainId);
         }
@@ -416,6 +452,30 @@ public final class FederationDomainRegistry {
             topologyRevision++;
             AuthorityEpoch.advance();
         }
+    }
+
+    /**
+     * The demand of each cable, P2P tunnel and other counting node of the domain, as {@link CableCapacityCounter}
+     * counts it; empty for a domain that does not exist.
+     */
+    public Map<FederationDomainNodeId, CableCapacityCounter.Demand> capacityDemand(FederationDomainId federationDomainId) {
+        flush();
+        return capacityCounts.getOrDefault(federationDomainId, Map.of());
+    }
+
+    /**
+     * Whether evidence changed since the domains were last recomputed and judged; the next read does both. A caller that
+     * only shows the domain, such as a cable's count, waits for a settled registry instead of recomputing it between
+     * two block entities' changes.
+     */
+    public boolean pending() {
+        return !pendingSeeds.isEmpty() || !capacityNodes.isEmpty() || !capacityDomains.isEmpty()
+                || !federationDomains.isEmpty() && !CableCapacityLimit.current().equals(judgedLimit);
+    }
+
+    /** Recomputes and judges pending changes now, as the next read would. */
+    public void settle() {
+        if (pending()) flush();
     }
 
     /** How many times changed components were recomputed, for diagnostics and benchmarks. */
@@ -453,14 +513,8 @@ public final class FederationDomainRegistry {
             if (!nodes.containsKey(seed) || visited.contains(seed)) {
                 continue;
             }
-            // The budget bounds each component, so recomputing several changes together fails no domain that
-            // recomputing them one by one would keep.
-            var component = collectComponent(seed, visited, new int[2]);
-            if (component == null) {
-                exhaustBudget(affected, visited, previous);
-                return;
-            }
-            components.add(component);
+            // A domain has no size limit, as an AE2 Grid has none; the registry recomputes at most once per tick.
+            components.add(collectComponent(seed, visited));
         }
         // A component can reach a domain none of the seeds belonged to only through an edge that is already mutual, so
         // this is a safeguard: every domain a component overlaps is replaced with it.
@@ -617,19 +671,8 @@ public final class FederationDomainRegistry {
         return false;
     }
 
-    private void exhaustBudget(Set<FederationDomainNodeId> affected, Set<FederationDomainNodeId> visited,
-            Set<FederationDomainId> previous) {
-        AuthorityEpoch.advance();
-        visited.stream().map(nodeToFederationDomain::get).filter(Objects::nonNull).forEach(previous::add);
-        previous.forEach(this::removeFederationDomain);
-        affected.stream().filter(nodes::containsKey)
-                .forEach(node -> invalidations.put(node, FederationDomainInvalidationReason.BUDGET_EXHAUSTED));
-        visited.forEach(node -> invalidations.put(node, FederationDomainInvalidationReason.BUDGET_EXHAUSTED));
-        topologyRevision++;
-    }
-
-    /** Walks mutual links only; returns null when the budget runs out, so no partial component is ever installed. */
-    private Component collectComponent(FederationDomainNodeId seed, Set<FederationDomainNodeId> visited, int[] counters) {
+    /** Walks mutual links only. */
+    private Component collectComponent(FederationDomainNodeId seed, Set<FederationDomainNodeId> visited) {
         var queue = new ArrayDeque<FederationDomainNodeId>();
         var component = new TreeSet<FederationDomainNodeId>();
         var memberships = new LinkedHashMap<NetworkId, Set<FederationDomainSourceId>>();
@@ -641,14 +684,8 @@ public final class FederationDomainRegistry {
             if (!visited.add(current)) {
                 continue;
             }
-            if (++counters[0] > budget.maxNodeVisits()) {
-                return null;
-            }
             component.add(current);
             for (var entry : nodes.get(current).ports().entrySet()) {
-                if (++counters[1] > budget.maxPortVisits()) {
-                    return null;
-                }
                 if (entry.getValue() instanceof FederationDomainPortEvidence.Federation federation) {
                     if (linked(current, entry.getKey(), federation)) {
                         queue.addLast(federation.peer().node());

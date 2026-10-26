@@ -8,7 +8,11 @@ import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.networking.crafting.ICraftingSimulationRequester;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.GenericStack;
 import appeng.api.storage.MEStorage;
+import appeng.block.crafting.PatternProviderBlock;
+import appeng.block.crafting.PushDirection;
 import appeng.blockentity.crafting.PatternProviderBlockEntity;
 import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
@@ -27,6 +31,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
@@ -56,6 +63,8 @@ public final class ProjectionChainFixture implements AutoCloseable {
     public static final int CONSUMER = 0;
     public static final int MIDDLE = 1;
     public static final int SOURCE = 2;
+    /** The middle's hand-run machine from {@link #placeMiddleMachine()}: a plain chest above its provider. */
+    private static final BlockPos MIDDLE_MACHINE = provider(FACES.get(MIDDLE)).above();
 
     private final GameTestHelper helper;
     private final RouterFixtures routers;
@@ -139,6 +148,71 @@ public final class ProjectionChainFixture implements AutoCloseable {
         crafting(CONSUMER, SOURCE, RuleMode.ENABLED);
         crafting(SOURCE, CONSUMER, RuleMode.ENABLED);
         CraftingProjectionService.get(helper.getLevel()).observeFederationDomainMembers(grids());
+    }
+
+    /** Consumer and source both use the middle's crafting, with no storage rule. */
+    public void shareMiddle() {
+        craftingOnly(CONSUMER, MIDDLE, RuleMode.ENABLED);
+        craftingOnly(SOURCE, MIDDLE, RuleMode.ENABLED);
+        CraftingProjectionService.get(helper.getLevel()).observeFederationDomainMembers(grids());
+    }
+
+    /**
+     * Gives the middle, which has no CPU, a pattern provider pushing up into a plain chest, a machine the test runs by
+     * hand with {@link #ejectIntoMiddle}. Call it once the fixture is {@link #ready()}.
+     */
+    public void placeMiddleMachine() {
+        var face = FACES.get(MIDDLE);
+        place(provider(face), AEBlocks.PATTERN_PROVIDER.block().defaultBlockState()
+                .setValue(PatternProviderBlock.PUSH_DIRECTION, PushDirection.UP), face);
+        helper.setBlock(MIDDLE_MACHINE, Blocks.CHEST);
+    }
+
+    /**
+     * True once the middle's provider is on the middle's Grid and crafts stone from cobblestone; installs that
+     * processing pattern the first time the provider is there.
+     */
+    public boolean middleMachineReady() {
+        var face = FACES.get(MIDDLE);
+        if (providerEntity(face).getMainNode().getGrid() != grid(MIDDLE)) return false;
+        if (providerEntity(face).getLogic().getAvailablePatterns().isEmpty()) install(face, stonePattern());
+        return canCraft(MIDDLE, PatternProjectionFixture.stone());
+    }
+
+    /** Takes the cell out of the middle's chest, so the middle has pattern providers and no storage. */
+    public void takeMiddleCell() {
+        chest(FACES.get(MIDDLE)).setCell(ItemStack.EMPTY);
+    }
+
+    /** What the middle's hand-run machine holds: the inputs its provider pushed into it. */
+    public long inMiddleMachine(net.minecraft.world.item.Item item) {
+        var machine = helper.<ChestBlockEntity>getBlockEntity(MIDDLE_MACHINE);
+        long count = 0;
+        for (int slot = 0; slot < machine.getContainerSize(); slot++) {
+            if (machine.getItem(slot).is(item)) count += machine.getItem(slot).getCount();
+        }
+        return count;
+    }
+
+    /**
+     * Runs the middle's machine: empties it, and puts {@code amount} of {@code output} into the provider's return
+     * inventory, as a machine ejecting into it does. AE2's provider then hands it to the middle with itself as source.
+     */
+    public void ejectIntoMiddle(AEKey output, long amount) {
+        helper.<ChestBlockEntity>getBlockEntity(MIDDLE_MACHINE).clearContent();
+        helper.assertValueEqual(providerEntity(FACES.get(MIDDLE)).getLogic().getReturnInv().insert(output, amount,
+                Actionable.MODULATE, IActionSource.empty()), amount, "The provider's return inventory must take it");
+    }
+
+    /** What the middle's provider still holds to give back of {@code what}; it cannot be extracted from. */
+    public long inMiddleReturns(AEKey what) {
+        var returns = providerEntity(FACES.get(MIDDLE)).getLogic().getReturnInv();
+        long amount = 0;
+        for (int slot = 0; slot < returns.size(); slot++) {
+            var stack = returns.getStack(slot);
+            if (stack != null && stack.what().equals(what)) amount += stack.amount();
+        }
+        return amount;
     }
 
     /** {@code executing}'s providers projected onto {@code consumer}'s Grid. */
@@ -281,7 +355,11 @@ public final class ProjectionChainFixture implements AutoCloseable {
     }
 
     private void place(BlockPos position, net.minecraft.world.level.block.Block block, Direction face) {
-        helper.setBlock(position, block);
+        place(position, block.defaultBlockState(), face);
+    }
+
+    private void place(BlockPos position, BlockState state, Direction face) {
+        helper.setBlock(position, state);
         var entity = helper.getLevel().getBlockEntity(helper.absolutePos(position));
         var networkId = network(FACES.indexOf(face));
         if (entity instanceof appeng.blockentity.grid.AENetworkedBlockEntity networked) {
@@ -322,6 +400,12 @@ public final class ProjectionChainFixture implements AutoCloseable {
         var items = NonNullList.withSize(9, ItemStack.EMPTY);
         items.set(0, new ItemStack(Items.OAK_LOG));
         return encode(items);
+    }
+
+    private static ItemStack stonePattern() {
+        return PatternDetailsHelper.encodeProcessingPattern(
+                List.of(new GenericStack(PatternProjectionFixture.cobblestone(), 1)),
+                List.of(new GenericStack(PatternProjectionFixture.stone(), 1)));
     }
 
     private ItemStack encode(NonNullList<ItemStack> items) {

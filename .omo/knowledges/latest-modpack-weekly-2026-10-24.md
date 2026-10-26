@@ -2,8 +2,10 @@
 
 `tools/compat_run.py --latest <profile>` runs a modpack profile on the pack's newest CurseForge release instead of its
 pinned server zip. `tools/compat_run.py latest --group modpacks` only compares pins with the newest releases (no
-download). The weekly `Compatibility` run (and a dispatch with `latest: true`) runs it in a separate `latest` job that
-reports only: it never edits pins, commits, or opens issues.
+download). The `Newest modpacks` workflow (`.github/workflows/latest-modpacks.yml`, weekly and on dispatch) runs it
+apart from `Compatibility`, so a pack update shows as its own red run. It reports only: it never edits pins, commits,
+or opens issues. An empty `workflow_dispatch` string input falls back to its default, which is why the first version
+(a `latest` job inside compat.yml) needed a `groups=none` value; the separate workflow removed both.
 
 ## CurseForge without a key
 

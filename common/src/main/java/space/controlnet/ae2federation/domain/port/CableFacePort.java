@@ -96,6 +96,11 @@ public final class CableFacePort {
         dirty = false;
     }
 
+    /** Whether the port must resolve on its owner's next tick. */
+    public boolean dirty() {
+        return dirty && active;
+    }
+
     public @Nullable FederationPort peer() {
         return peer;
     }

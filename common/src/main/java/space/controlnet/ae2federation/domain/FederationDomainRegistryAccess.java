@@ -40,7 +40,7 @@ public final class FederationDomainRegistryAccess {
 
     private static synchronized FederationDomainRegistry getLocked(MinecraftServer server) {
         var registry = REGISTRIES.computeIfAbsent(server, ignored -> {
-            var created = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard(),
+            var created = new FederationDomainRegistry(
                     space.controlnet.ae2federation.persistence.FederationDomainSavedData.get(server).records());
             AuthorityEpoch.advance();
             // Shared energy pools draw without asking Federation, so a topology change dissolves them at once.
@@ -49,6 +49,18 @@ public final class FederationDomainRegistryAccess {
         });
         last = new LastRegistry(server, registry);
         return registry;
+    }
+
+    /**
+     * Recomputes and judges what the tick changed, once, if the server has a registry: cables wait for this instead of
+     * recomputing their domain between two block entities' changes ({@link FederationDomainRegistry#pending}).
+     */
+    public static void settle(MinecraftServer server) {
+        FederationDomainRegistry registry;
+        synchronized (FederationDomainRegistryAccess.class) {
+            registry = REGISTRIES.get(server);
+        }
+        if (registry != null) registry.settle();
     }
 
     /** Takes the closing level's nodes and Bridges out of its server's registry; the other dimensions keep theirs. */
@@ -64,7 +76,6 @@ public final class FederationDomainRegistryAccess {
         last = null;
         AuthorityEpoch.advance();
         REGISTRIES.remove(server);
-        CableCapacity.clear();
     }
 
     /** Removes a node that unloaded, or one whose block was broken, which then no longer anchors its domain's id. */

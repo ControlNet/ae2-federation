@@ -41,6 +41,13 @@
     "url": "https://cdn.modrinth.com/data/XxWD5pD3/versions/KDnFUmMm/appliedenergistics2-19.2.18.jar",
     "sha512": "39bc4cf733a4321631e2637a1a6dfd3527135fdac1b572534e6fd1f9eab7a6dd92d56c5fa066263c95149c9b20cabdd1fd3dff80bea515381b1d2d754cad26c3"
   },
+  "ae2cs@1.2.1": {
+    "name": "ae2cs",
+    "version": "1.2.1",
+    "file": "ae2cs-1.21.1-1.2.1.jar",
+    "url": "https://cdn.modrinth.com/data/uJ9afomy/versions/taIhgdOA/ae2cs-1.21.1-1.2.1.jar",
+    "sha512": "62909ad42aa6b2f726984ec9552621e2ad01a425050a69fef6fc8d816ede33395aaecb63de2db9f8216286c011b804b9eaeaafa851e7ef39e9743f810459b72f"
+  },
   "ae2extras@0": {
     "name": "ae2extras",
     "file": "ae2extras-neoforge-1.21.1-0.jar",
@@ -230,12 +237,26 @@
     "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/26GPFo2j/neoecoae-21.2.9.jar",
     "sha512": "3527f1b0e15b3f5d50a1257072da72a8fd86fce3fb55572a679979f03b23c21d634099f31331c250a962a92d94e4c4b65d9191d16ef056c9e05c2e1205c80a7f"
   },
+  "neoecoae@21.2.10": {
+    "name": "neoecoae",
+    "version": "21.2.10",
+    "file": "neoecoae-21.2.10.jar",
+    "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/kzNgvnUI/neoecoae-21.2.10.jar",
+    "sha512": "44f964081db0de864b28d92d48a7f71cd98bb90744ea5459cd87994102646c94a4cc1a61cdff46bcd06676bab402f457f3259676403d20a1fb5e917dfce33ac3"
+  },
   "neoecoprototype@1.3.9": {
     "name": "neoecoprototype",
     "version": "1.3.9",
     "file": "neoecoprototype-1.3.9.jar",
     "url": "https://github.com/reliqwq/NeoECOPrototype/releases/download/v1.3.9/neoecoprototype-1.3.9.jar",
     "sha512": "419c820d0d2ccb51eb2f70123a2a96a90e9770c41f63d813eb833231891c662ec234dbd1a43b1526ecf1f5d319085592bc5f8a265eb34eaf5ef41bf35da23109"
+  },
+  "neoecoprototype@1.4.0": {
+    "name": "neoecoprototype",
+    "version": "1.4.0",
+    "file": "neoecoprototype-1.4.0.jar",
+    "url": "https://cdn.modrinth.com/data/3HO3APHb/versions/YY1JqK65/neoecoprototype-1.4.0.jar",
+    "sha512": "8c7828dba94895b9c8913626861f4abd16a1d439cfefa26a1410989520187f201b31aa28bba86680d8a7d3d2817842e751f5068f4d8a2b2a71944e018d2baebc"
   },
   "omnisequence@2.0.7": {
     "name": "omnisequence",

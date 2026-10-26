@@ -237,9 +237,8 @@ public final class DeviceStructureGameTests {
                     "The body's inner face links through Federation");
             helper.assertValueEqual(second.binding(Direction.WEST).kind(), RouterPortKind.FEDERATION,
                     "The body's inner face links through Federation");
-            helper.assertTrue(first.boundaryNode(Direction.EAST).getConnections().isEmpty()
-                    && second.boundaryNode(Direction.WEST).getConnections().isEmpty(),
-                    "Inner faces must not join a native Grid");
+            helper.assertTrue(first.boundaryNode(Direction.EAST) == null && second.boundaryNode(Direction.WEST) == null,
+                    "Inner faces must have no node, so no native Grid");
             var left = first.binding(Direction.WEST);
             var right = second.binding(Direction.EAST);
             helper.assertTrue(left instanceof RouterPortBinding.Native && right instanceof RouterPortBinding.Native,
@@ -272,7 +271,7 @@ public final class DeviceStructureGameTests {
             for (var side : Direction.values()) {
                 var neighbor = member.relative(side);
                 if (members.contains(neighbor)) {
-                    helper.assertTrue(router.boundaryNode(side).getConnections().isEmpty(),
+                    helper.assertTrue(router.boundaryNode(side) == null,
                             member + " must not join a native Grid with the body member on its " + side.getName());
                 }
             }

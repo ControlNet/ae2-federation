@@ -65,6 +65,13 @@ class PatternProjectionTest {
         assertSame(projection, projection.registered());
     }
 
+    @Test
+    void projectionHidesTheLogicOfOtherProviders() {
+        var projection = new PatternProjection(new MarkedProvider(), (p, d, c, i) -> () -> {});
+        assertEquals(null, projection.shownLogic());
+        assertFalse(projection.registered() instanceof ProjectedProviderLogic);
+    }
+
     /** An add-on's mark on its providers: an interface with no methods. */
     interface Marker {
     }

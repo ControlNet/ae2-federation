@@ -20,15 +20,27 @@ public final class EffectiveStorageAuthority {
                             operation -> PolicyFilter.allowAll())));
 
     private final Map<PolicyOperation, PolicyFilter> filters;
+    /** A bit per operation permitted for every resource: every storage operation asks, so it is one bit test. */
+    private final int permittedForAll;
 
     public EffectiveStorageAuthority(Set<PolicyOperation> operations, PolicyFilter filter) {
         var entries = new EnumMap<PolicyOperation, PolicyFilter>(PolicyOperation.class);
         operations.forEach(operation -> entries.put(operation, Objects.requireNonNull(filter)));
         filters = canonical(entries);
+        permittedForAll = permittedForAll(filters);
     }
 
     private EffectiveStorageAuthority(Map<PolicyOperation, PolicyFilter> filters) {
         this.filters = canonical(filters);
+        permittedForAll = permittedForAll(this.filters);
+    }
+
+    private static int permittedForAll(Map<PolicyOperation, PolicyFilter> filters) {
+        int bits = 0;
+        for (var entry : filters.entrySet()) {
+            if (entry.getValue().mode() == PolicyFilterMode.ALL) bits |= 1 << entry.getKey().ordinal();
+        }
+        return bits;
     }
 
     public static EffectiveStorageAuthority empty() {
@@ -62,8 +74,7 @@ public final class EffectiveStorageAuthority {
 
     /** Whether {@code operation} is permitted for every resource, so a caller may skip the per-resource check. */
     public boolean permitsAll(PolicyOperation operation) {
-        var filter = filters.get(operation);
-        return filter != null && filter.mode() == PolicyFilterMode.ALL;
+        return (permittedForAll & 1 << operation.ordinal()) != 0;
     }
 
     public EffectiveStorageAuthority intersect(EffectiveStorageAuthority other) {

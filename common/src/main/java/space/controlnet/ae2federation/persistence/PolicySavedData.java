@@ -5,6 +5,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
+import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyDelete;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyKey;
@@ -52,6 +53,10 @@ public final class PolicySavedData extends SavedData {
 
     public Optional<PolicyRecord.Configured> configured(PolicyKey key) {
         return store.configured(key);
+    }
+
+    public java.util.List<PolicyRecord.Configured> configuredRules(PolicyCapability capability) {
+        return store.configuredRules(capability);
     }
 
     public PolicyRevision revision(PolicyKey key) {

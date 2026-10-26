@@ -61,9 +61,10 @@ a `tab_x` / `page_x` pair and a `PAGES` entry. Screen data rides LDLib2 `stringS
 - Code: `observability/statistics/` (`StatisticsRange`, `Timeline`, `TopKeys`, `StatisticsBook`, `StatisticsNames`,
   `FederationStatistics`) and `persistence/StatisticsSavedData` (overworld SavedData `ae2federation_statistics`).
   `LevelObservabilityService.sweep()` ticks it.
-- Four ranges, one tier each: 2 min @1 s, 10 min @5 s, 1 h @1 min, 24 h @10 min (144 points). Wall-clock seconds,
-  so a stopped or paused server shows as a gap. The book also records which seconds were observed. A counter's point
-  is its sum divided by the observed seconds in it. A point with no observed second is `NaN` (drawn as a gap).
+- Four ranges, one tier each: 2 min @1 s, 10 min @5 s, 1 h @1 min, 24 h @10 min (144 points). Game seconds since
+  2026-10-25 (see "Game time" below); before that wall-clock seconds. The book also records which seconds were
+  observed. A counter's point is its sum divided by the observed seconds in it. A point with no observed second is
+  `NaN` (drawn as a gap).
 - History is saved with the world, 24 h of it. Doubles are stored as raw long bits. Ranking keys go into one AEKey
   table (`toTagGeneric`), and a key that no longer loads is dropped. Rankings keep their top 16 keys per point.
 - Hooks:
@@ -88,9 +89,11 @@ a `tab_x` / `page_x` pair and a `PAGES` entry. Screen data rides LDLib2 `stringS
 
 ## Pitfall: GameTest time
 
-A GameTest server runs ticks faster than the wall clock: 1200 ticks took about 1.4 s. A test cannot wait for
-`tick()` to finish seconds. Instead it calls `finishSecond(++second)` itself on every retry, and reads the 1 h range
-so that all of its seconds fall in one window.
+Superseded by "Game time" below. With wall-clock seconds a GameTest server ran ticks faster than the clock (1200 ticks
+in about 1.4 s), so tests called `finishSecond(++second)` themselves. With game seconds a test can wait for the
+service's own seconds (`finishedSecond()`). A test that still writes seconds ahead of the game time writes no second
+twice, because `tick()` never writes a second at or below `finishedSecond` again; on the shared service, live recording
+then resumes only once the game time passes the seconds the test wrote (`operatingPowerFeedsStatistics` does this).
 
 ## Phase 2: the page (2026-10-14)
 
@@ -138,10 +141,9 @@ so that all of its seconds fall in one window.
   not observable.
 - Power use in a shared pool: `EnergyService.getAvgPowerUsage()` counts the drain on the service whose cells supplied
   it (`extractProviderPower`). The pool's total drain is right; the split by idle draw is an estimate.
-- Lag versus pause: `SecondClock` takes tick starts (`ServerTickEvent.Pre`) and ends (`Post`). A gap of more than 1 s
-  between one tick's end and the next tick's start means no tick ran (paused singleplayer, stopped clock), so the
-  seconds stay unobserved. The seconds a long tick spans are observed. Before this, a stall of more than a second
-  left "no record" holes.
+- (Removed 2026-10-25 with the move to game time.) Lag versus pause: `SecondClock` took tick starts
+  (`ServerTickEvent.Pre`) and ends (`Post`); a gap of more than 1 s between ticks meant no tick ran, so those seconds
+  stayed unobserved, while the seconds a long tick spanned were observed.
 - `StatisticsSavedData` FORMAT 2 adds `keyGauges` and `pins` (keys go through the shared key table). A FORMAT 1 save
   loads as an empty book (pre-alpha: no save compatibility).
 - Payload benchmarks measure the median of 20 builds after 200 warm-up builds. With 20 warm-ups, moved-by-item read
@@ -153,3 +155,15 @@ so that all of its seconds fall in one window.
 - UI scenario `ui.mapping` alone takes about 170 s; run it on its own (the full `federationUiTest` set hits the 240 s
   client cap). Do not run two UI clients at once: they share the run directory, and the second one finds blocks the
   first placed ("Showcase Provider position must be empty").
+
+## Game time (2026-10-25)
+
+- The clock is the overworld's `level.getGameTime()`; one statistics second is `SharedConstants.TICKS_PER_SECOND`
+  (20) ticks. Wall-clock seconds made rates per real second while ME power is AE/t, so a 10 TPS server showed half
+  the throughput; and paused/stopped time needed `SecondClock` to tell idle gaps from long ticks.
+- Game time only advances while the world ticks (frozen with `/tick freeze`, faster with `/tick sprint`), is the same
+  for every dimension (`DerivedLevelData` delegates to the overworld) and is saved with the world, so restarts and
+  pauses leave no gap. `SecondClock`, `tickStarted()` and the `ServerTickEvent.Pre` hook are gone.
+- `StatisticsSavedData` FORMAT 3: bucket numbers are game seconds; a FORMAT 2 (wall-clock) book loads empty.
+- The menu holder's payload refresh cadence uses the same game second
+  (`FederationDomainPolicySession.statisticsSecond`).

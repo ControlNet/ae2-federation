@@ -30,6 +30,7 @@ import net.minecraft.gametest.framework.TestFunction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.GameRules;
+import net.neoforged.fml.loading.FMLConfig;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
@@ -68,7 +69,7 @@ final class ProductionGameTestRunner {
         this.parallel = parallel;
     }
 
-    /** Starts the run when {@code ae2federation.compat.tests} names tests or groups; {@code all} selects every test. */
+    /** Starts the run when {@code ae2federation.compat.tests} names tests or groups; {@code all} excludes opt-in groups. */
     static void registerIfRequested() {
         var selection = System.getProperty("ae2federation.compat.tests", "").trim();
         if (selection.isEmpty()) return;
@@ -77,6 +78,9 @@ final class ProductionGameTestRunner {
                 .map(id -> id.toLowerCase(Locale.ROOT)).distinct().toList();
         var parallel = Math.max(1, Integer.getInteger("ae2federation.compat.parallel", 1));
         var runner = new ProductionGameTestRunner(requested, report, parallel);
+        // FML's config watcher can reload the freshly written server configuration after the server has started,
+        // which would turn the operating power requirement back on and stop every domain.
+        FMLConfig.updateConfig(FMLConfig.ConfigValue.DISABLE_CONFIG_WATCHER, true);
         NeoForge.EVENT_BUS.addListener(runner::onServerStarted);
         NeoForge.EVENT_BUS.addListener(runner::onServerTick);
         NeoForge.EVENT_BUS.addListener(runner::onServerStopping);
@@ -196,7 +200,9 @@ final class ProductionGameTestRunner {
         }
         var wanted = new ArrayList<String>();
         for (var id : requested) {
-            if (id.equals("all")) wanted.addAll(byName.keySet());
+            if (id.equals("all")) byGroup.forEach((group, names) -> {
+                if (CompatTestClasses.includedInAll(group)) wanted.addAll(names);
+            });
             else if (byGroup.containsKey(id)) wanted.addAll(byGroup.get(id));
             else wanted.add(id);
         }

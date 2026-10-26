@@ -7,17 +7,22 @@ import appeng.core.definitions.AEParts;
 import appeng.api.storage.IStorageProvider;
 import appeng.api.storage.MEStorage;
 import appeng.me.cluster.IAEMultiBlock;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.observability.statistics.StatisticsNames;
+import space.controlnet.ae2federation.observability.statistics.StatisticsRange;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
@@ -126,6 +131,308 @@ public final class NeoEcoCompatGameTests {
                 .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
                 .craftingOnly().outputStoredOnConsumer().cancellingAfterPush();
         helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * Neo ECO's smart doubling: its CPU pushes many runs of a processing pattern as one scaled batch, to the providers
+     * it recognises; here through a projected AE2 Pattern Provider ({@link #smartDoubling}).
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemSmartDoubling(GameTestHelper helper) {
+        helper.succeedWhen(smartDoubling(helper, "ae2:pattern_provider")::tick);
+    }
+
+    /**
+     * The consumer's ECO CPU orders sixteen stone through a projection of {@code providerId} on the provider network:
+     * Neo ECO must batch to that provider on its own network, batch through the projection too, and every scaled
+     * push's output must come back.
+     */
+    static AddonCraftingScene smartDoubling(GameTestHelper helper, String providerId) {
+        var scene = new AddonCraftingScene(helper, providerId, "minecraft:chest", List.of(), true)
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().requesting(16);
+        return scene.checkingAfterJob((order, cpu, provider) -> {
+            var bridge = scene.bridge();
+            var consumer = scene.consumerGrid();
+            var stone = appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.STONE);
+            var pattern = consumer.getCraftingService().getCraftingFor(stone).iterator().next();
+            var real = NeoEcoScaledDispatch.providers(provider, pattern);
+            var projected = NeoEcoScaledDispatch.providers(consumer, pattern);
+            helper.assertTrue(real.size() == 1 && projected.size() == 1,
+                    "One provider on each network: real " + real + ", projected " + projected);
+            boolean local = NeoEcoScaledDispatch.wouldScale(pattern, real.getFirst(), helper.getLevel());
+            boolean remote = NeoEcoScaledDispatch.wouldScale(pattern, projected.getFirst(), helper.getLevel());
+            var statistics = space.controlnet.ae2federation.observability.LevelObservabilityService
+                    .get(helper.getLevel()).statistics();
+            long now = statistics.nowSecond();
+            statistics.finishSecond(now);
+            double pushes = statistics.book().total(StatisticsNames.pair(StatisticsNames.PUSHED,
+                    bridge.mainNetwork(), bridge.outerNetwork()), StatisticsRange.MINUTES, now);
+            var observed = providerId + ": Neo ECO batches to the real provider: " + local + ", to the projection: "
+                    + remote + "; pushes through the projection for 16 runs: " + pushes;
+            helper.assertTrue(local, "Neo ECO must batch to the provider on its own network. " + observed);
+            helper.assertTrue(remote, "Neo ECO must batch through the projection as it does locally. " + observed);
+            helper.assertTrue(pushes < 16, "The projection must carry fewer, larger pushes. " + observed);
+            helper.assertValueEqual(space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger
+                    .get(helper.getLevel()).owed(bridge.outerNetwork(), bridge.mainNetwork(), stone), 0L,
+                    "The scaled pushes' outputs must all be returned");
+            com.mojang.logging.LogUtils.getLogger().info("Smart doubling: {}", observed);
+        });
+    }
+
+    /**
+     * Neo ECO's smart doubling to a Federation Pattern Provider's Lane on the CPU's own network: a Lane is AE2 provider
+     * logic, so Neo ECO must batch to it as to a plain AE2 Pattern Provider.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 2400)
+    public static void laneSmartDoubling(GameTestHelper helper) {
+        var provider = new java.util.concurrent.atomic.AtomicReference<
+                space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity>();
+        var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace()).requesting(4)
+                .preparingProvider(provider::set)
+                .checkingPlan(plan -> {
+                    var lanes = provider.get();
+                    helper.assertTrue(lanes.laneCount() > 0, "The provider must have a Lane for the Endpoint");
+                    for (int lane = 0; lane < lanes.laneCount(); lane++) {
+                        for (var pattern : lanes.lane(lane).getAvailablePatterns()) {
+                            helper.assertTrue(NeoEcoScaledDispatch.wouldScale(pattern, lanes.lane(lane),
+                                    helper.getLevel()), "Neo ECO must batch to Lane " + lane);
+                        }
+                    }
+                });
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** How many planks the throughput scenes turn into sticks: two make four, in 256 crafts. */
+    private static final long THROUGHPUT_PLANKS = 512;
+    /**
+     * The most game ticks the projected job may take: with the same batches as on one network it takes about 100
+     * (2026-10-25); one craft at a time takes 10 ticks a craft per worker, about 2600 here.
+     */
+    private static final long THROUGHPUT_TICKS = 300;
+
+    /**
+     * The consumer's computation system crafts sticks with the provider's crafting system through Federation: Neo ECO
+     * must send the crafts in batches through the projection, as on one network
+     * ({@link #craftingSystemThroughputJoined}), and every batch's output must come back.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 2400)
+    public static void craftingSystemThroughput(GameTestHelper helper) {
+        helper.succeedWhen(throughput(helper, false)::tick);
+    }
+
+    /** As {@link #craftingSystemThroughput}, with both networks joined into one Grid: the time to match. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 2400)
+    public static void craftingSystemThroughputJoined(GameTestHelper helper) {
+        helper.succeedWhen(throughput(helper, true)::tick);
+    }
+
+    static AddonCraftingScene throughput(GameTestHelper helper, boolean joined) {
+        var scene = computationOrdering(helper, Tier.L4).requesting(THROUGHPUT_PLANKS);
+        if (joined) scene.joinedBeforeOrder();
+        return scene.checkingAfterJob(batches(helper, scene, joined, appeng.api.stacks.AEItemKey.of(
+                net.minecraft.world.item.Items.STICK), THROUGHPUT_PLANKS / 2, THROUGHPUT_TICKS, "fast path true"));
+    }
+
+    /**
+     * As {@link #craftingSystemThroughput}, submitted as Neo ECO's exact plan straight to the computation system, as
+     * Neo ECO's crafting menu submits exact orders: the projection offers no exact batches, so Neo ECO must fall back to
+     * the ordinary batches.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 2400)
+    public static void craftingSystemExactOrder(GameTestHelper helper) {
+        var scene = computationOrdering(helper, Tier.L4).requesting(THROUGHPUT_PLANKS).submittingWith((grid, plan) -> {
+            var cpu = grid.getCraftingService().getCpus().stream()
+                    .filter(candidate -> candidate.getClass().getName().equals(ECO_CPU))
+                    .findFirst().orElseThrow(() -> new IllegalStateException("The consumer has no ECO CPU"));
+            try {
+                var exact = Class.forName("cn.dancingsnow.neoecoae.crafting.adapter.ae2.ECOExactCraftingPlan")
+                        .getConstructor(appeng.api.networking.crafting.ICraftingPlan.class,
+                                java.math.BigInteger.class)
+                        .newInstance(plan, java.math.BigInteger.valueOf(plan.bytes()));
+                var cluster = cpu.getClass().getMethod("getCluster").invoke(cpu);
+                return (appeng.api.networking.crafting.ICraftingSubmitResult) cluster.getClass()
+                        .getMethod("submitJob", appeng.api.networking.IGrid.class,
+                                appeng.api.networking.crafting.ICraftingPlan.class,
+                                appeng.api.networking.security.IActionSource.class,
+                                appeng.api.networking.crafting.ICraftingRequester.class)
+                        .invoke(cluster, grid, exact, appeng.api.networking.security.IActionSource.empty(), null);
+            } catch (ReflectiveOperationException exception) {
+                throw new IllegalStateException("Neo ECO's exact submission is not available", exception);
+            }
+        });
+        var sticks = appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.STICK);
+        helper.succeedWhen(scene.checkingAfterJob(batches(helper, scene, false, sticks, THROUGHPUT_PLANKS / 2,
+                THROUGHPUT_TICKS, "fast path true"))::tick);
+    }
+
+    private static final String ECO_CPU = "cn.dancingsnow.neoecoae.crafting.execution.ECOCraftingCPU";
+
+    /** How many crafts the workstation scenes order: one batch within the workstation's normal limit of 256. */
+    private static final long WORKSTATION_CRAFTS = 64;
+    /** The most game ticks the projected workstation job may take. */
+    private static final long WORKSTATION_TICKS = 300;
+
+    /**
+     * The consumer's computation system orders energized crystals from the provider's Large Integrated Working Station
+     * through Federation: Neo ECO must send the crafts in batches through the projection, as on one network
+     * ({@link #largeWorkstationBatchingJoined}), and every batch's output must come back.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 2400)
+    public static void largeWorkstationBatching(GameTestHelper helper) {
+        helper.succeedWhen(largeWorkstation(helper, false)::tick);
+    }
+
+    /** As {@link #largeWorkstationBatching}, with both networks joined into one Grid: the time to match. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 2400)
+    public static void largeWorkstationBatchingJoined(GameTestHelper helper) {
+        helper.succeedWhen(largeWorkstation(helper, true)::tick);
+    }
+
+    static AddonCraftingScene largeWorkstation(GameTestHelper helper, boolean joined) {
+        var scene = AddonCraftingScene.processingStructure(helper, "neoecoae:large_integrated_working_station",
+                        List.of(), new EnergizedCrystal(), NeoEcoCompatGameTests::placeLargeWorkstation,
+                        AddonCraftingScene.PROVIDER,
+                        entity -> entity instanceof IAEMultiBlock<?> part && part.getCluster() != null)
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4),
+                        () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().requesting(WORKSTATION_CRAFTS);
+        if (joined) scene.joinedBeforeOrder();
+        return scene.checkingAfterJob(batches(helper, scene, joined, EnergizedCrystal.CRYSTAL, WORKSTATION_CRAFTS,
+                WORKSTATION_TICKS, "parallel true"));
+    }
+
+    /**
+     * Logs how long the job took, the pushes through a projection and which batch paths Neo ECO takes; through
+     * Federation, Neo ECO must take the projection on {@code path} and send {@code crafts} in batches within
+     * {@code maxTicks}, and the ledger must be settled.
+     */
+    private static AddonCraftingScene.CpuCheck batches(GameTestHelper helper, AddonCraftingScene scene, boolean joined,
+            appeng.api.stacks.AEKey output, long crafts, long maxTicks, String path) {
+        return (order, cpu, provider) -> {
+            var consumer = scene.consumerGrid();
+            var pattern = consumer.getCraftingService().getCraftingFor(output).iterator().next();
+            var paths = NeoEcoScaledDispatch.providers(consumer, pattern).stream()
+                    .map(each -> each.getClass().getSimpleName() + ": " + NeoEcoScaledDispatch.batchPaths(each))
+                    .toList();
+            var pushes = 0.0;
+            if (!joined) {
+                var statistics = space.controlnet.ae2federation.observability.LevelObservabilityService
+                        .get(helper.getLevel()).statistics();
+                long now = statistics.nowSecond();
+                statistics.finishSecond(now);
+                pushes = statistics.book().total(StatisticsNames.pair(StatisticsNames.PUSHED,
+                        scene.bridge().mainNetwork(), scene.bridge().outerNetwork()), StatisticsRange.MINUTES, now);
+            }
+            var observed = (joined ? "joined" : "Federation") + ": " + crafts + " crafts of " + output + " in "
+                    + scene.jobTicks() + " ticks, " + pushes + " pushes through a projection; " + paths;
+            com.mojang.logging.LogUtils.getLogger().info("Neo ECO batches ({})", observed);
+            if (joined) return;
+            helper.assertTrue(paths.size() == 1 && paths.getFirst().contains(path),
+                    "Neo ECO must take the projection on its batch path (" + path + "). " + observed);
+            helper.assertTrue(pushes > 0 && pushes < crafts / 4,
+                    "The crafts must cross the projection in batches. " + observed);
+            helper.assertTrue(scene.jobTicks() <= maxTicks,
+                    "The job must take about as long as on one network. " + observed);
+            helper.assertValueEqual(space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger
+                    .get(helper.getLevel()).owed(scene.bridge().outerNetwork(), scene.bridge().mainNetwork(), output),
+                    0L, "Every batch's output must be returned. " + observed);
+        };
+    }
+
+    /**
+     * The Large Integrated Working Station's recipe for energized crystals: four charged certus quartz, four
+     * energized crystal dust and 250 mB of water make eight. The workstation runs it itself and stores the crystals.
+     */
+    private record EnergizedCrystal() implements AddonCraftingScene.Machine {
+        static final appeng.api.stacks.AEItemKey CRYSTAL = item("neoecoae:energized_crystal");
+
+        private static appeng.api.stacks.AEItemKey item(String id) {
+            return appeng.api.stacks.AEItemKey.of(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                    net.minecraft.resources.ResourceLocation.parse(id)));
+        }
+
+        @Override
+        public String blockId() {
+            return "neoecoae:large_integrated_working_station_interface";
+        }
+
+        @Override
+        public Map<appeng.api.stacks.AEItemKey, Long> inputs() {
+            return Map.of(appeng.api.stacks.AEItemKey.of(appeng.core.definitions.AEItems.CERTUS_QUARTZ_CRYSTAL_CHARGED),
+                    4L, item("neoecoae:energized_crystal_dust"), 4L);
+        }
+
+        @Override
+        public Map<appeng.api.stacks.AEKey, Long> otherInputs() {
+            return Map.of(appeng.api.stacks.AEFluidKey.of(net.minecraft.world.level.material.Fluids.WATER), 250L);
+        }
+
+        @Override
+        public String inputCell() {
+            return "ae2:fluid_storage_cell_4k";
+        }
+
+        @Override
+        public appeng.api.stacks.AEKey output() {
+            return CRYSTAL;
+        }
+
+        @Override
+        public long outputPerInput() {
+            return 8;
+        }
+
+        @Override
+        public void collect(GameTestHelper helper, BlockPos position, MEStorage network) {
+        }
+    }
+
+    /**
+     * Neo ECO's Large Integrated Working Station with its interface at {@link AddonCraftingScene#PROVIDER}, towards the
+     * provider network's cable in the west: the blocks Neo ECO's own auto-build places around its controller, which
+     * stands behind and above the interface, formed as that auto-build forms them.
+     */
+    static void placeLargeWorkstation(GameTestHelper helper) {
+        var controller = AddonCraftingScene.PROVIDER.east().above();
+        var interfaceId = "neoecoae:large_integrated_working_station_interface";
+        try {
+            var definition = Class.forName("cn.dancingsnow.neoecoae.all.NEMultiBlocks")
+                    .getField("LARGE_INTEGRATED_WORKING_STATION").get(null);
+            Method preview = null;
+            for (var method : Class.forName("cn.dancingsnow.neoecoae.multiblock.placement.MultiBlockPlacementService")
+                    .getMethods()) {
+                if (method.getName().equals("preview")) preview = method;
+            }
+            for (var direction : Direction.Plane.HORIZONTAL) {
+                var state = facing(Tier.L4, "integrated_working_station", direction);
+                var plan = preview.invoke(null, helper.getLevel(), helper.absolutePos(controller), state, definition, 1,
+                        false);
+                var planned = (List<?>) plan.getClass().getMethod("getAllBlocks").invoke(plan);
+                var placements = new ArrayList<Map.Entry<BlockPos, BlockState>>();
+                boolean interfaceAtProvider = false;
+                for (var block : planned) {
+                    var at = (BlockPos) block.getClass().getMethod("worldPos").invoke(block);
+                    var target = (BlockState) block.getClass().getMethod("targetState").invoke(block);
+                    placements.add(Map.entry(at, target));
+                    interfaceAtProvider |= at.equals(helper.absolutePos(AddonCraftingScene.PROVIDER))
+                            && BuiltInRegistries.BLOCK.getKey(target.getBlock()).toString().equals(interfaceId);
+                }
+                if (!interfaceAtProvider) continue;
+                // The plan's positions are absolute.
+                for (var placement : placements) {
+                    helper.getLevel().setBlock(placement.getKey(), placement.getValue(), Block.UPDATE_ALL);
+                }
+                helper.setBlock(controller, state);
+                // As Neo ECO's auto-build does once it has placed the blocks.
+                var entity = helper.getBlockEntity(controller);
+                entity.getClass().getMethod("rebuildMultiblock").invoke(entity);
+                return;
+            }
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Neo ECO's multiblock placement is not available", exception);
+        }
+        throw new IllegalStateException("No facing puts the workstation's interface at the provider");
     }
 
     static AddonCraftingScene computationOrdering(GameTestHelper helper, Tier tier) {

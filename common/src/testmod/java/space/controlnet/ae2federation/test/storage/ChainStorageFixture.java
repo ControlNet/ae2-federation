@@ -104,7 +104,10 @@ public final class ChainStorageFixture implements AutoCloseable {
         var registry = FederationDomainRegistryAccess.get(helper.getLevel());
         return registry.federationdomainsFor(a()).size() == 2 && registry.federationdomainsFor(b()).size() == 2
                 && registry.federationdomainsFor(c()).size() == 2 && registry.federationdomainsFor(d()).size() == 2
-                && registry.snapshot().federationDomains().size() >= 4;
+                && registry.snapshot().federationDomains().size() >= 4
+                // And Federation has reconciled the Bridges' links: a Bridge's reconciliation waits for the end of
+                // its tick.
+                && !space.controlnet.ae2federation.domain.FederationBindingRefresh.pending(helper.getLevel());
     }
 
     public String readiness() {

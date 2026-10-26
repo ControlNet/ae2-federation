@@ -2,6 +2,9 @@ package space.controlnet.ae2federation.test;
 
 import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixture.cobblestone;
 import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixture.stone;
+import static space.controlnet.ae2federation.test.crafting.ProjectionChainFixture.CONSUMER;
+import static space.controlnet.ae2federation.test.crafting.ProjectionChainFixture.MIDDLE;
+import static space.controlnet.ae2federation.test.crafting.ProjectionChainFixture.SOURCE;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.crafting.ICraftingPlan;
@@ -15,6 +18,7 @@ import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.policy.RuleMode;
 import space.controlnet.ae2federation.test.crafting.PatternProjectionFixture;
+import space.controlnet.ae2federation.test.crafting.ProjectionChainFixture;
 
 /**
  * What a provider network's machine gives back through its pattern provider beyond what a consumer's CPU waits for:
@@ -184,6 +188,89 @@ public final class StorelessProviderReturnGameTests {
                     "The gravel stays with the provider network, whose own job was running");
             helper.assertValueEqual(fixture.held(fixture.consumerChest(), gravel()), 0L, "The consumer gets no gravel");
         });
+    }
+
+    /**
+     * Two networks with CPUs (the chain fixture's consumer and source) order stone through the same provider of a third
+     * network that has no CPU and no storage (the middle). The gravel the machine gives back beyond both stones goes to
+     * the network that pushed to the provider last: the source, then, after the consumer orders again, the consumer.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1200)
+    public static void sharedProviderByproductToLastPusher(GameTestHelper helper) {
+        var fixture = new ProjectionChainFixture(helper);
+        var stage = new int[1];
+        helper.succeedWhen(() -> {
+            helper.assertTrue(stage[0] > 0 || fixture.ready(), "Waiting for the three networks and their providers");
+            if (stage[0] == 0) {
+                fixture.placeMiddleMachine();
+                fixture.takeMiddleCell();
+                fixture.shareMiddle();
+                fixture.putIn(CONSUMER, cobblestone(), 2);
+                fixture.putIn(SOURCE, cobblestone(), 1);
+                stage[0] = 1;
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(fixture.middleMachineReady(), "Waiting for the middle's provider");
+                helper.assertTrue(fixture.canCraft(CONSUMER, stone()) && fixture.canCraft(SOURCE, stone()),
+                        "Waiting for the middle's provider on the consumer and the source");
+                helper.assertValueEqual(fixture.cpuCount(MIDDLE), 0L, "The middle has no CPU");
+                fixture.begin(CONSUMER, stone(), 1);
+                stage[0] = 2;
+            }
+            if (stage[0] == 2 || stage[0] == 4 || stage[0] == 7) {
+                helper.assertTrue(fixture.planReady(), "Waiting for the plan");
+                helper.assertTrue(fixture.submit(), "The ordering network's own CPU must take the job");
+                stage[0]++;
+            }
+            if (stage[0] == 3) {
+                helper.assertValueEqual(fixture.inMiddleMachine(Items.COBBLESTONE), 1L, "Waiting for the consumer's push");
+                fixture.begin(SOURCE, stone(), 1);
+                stage[0] = 4;
+            }
+            if (stage[0] == 5) {
+                helper.assertValueEqual(fixture.inMiddleMachine(Items.COBBLESTONE), 2L, "Waiting for the source's push");
+                helper.assertValueEqual(fixture.owed(MIDDLE, CONSUMER, stone()), 1L, "The middle owes the consumer");
+                helper.assertValueEqual(fixture.owed(MIDDLE, SOURCE, stone()), 1L, "The middle owes the source");
+                fixture.ejectIntoMiddle(gravel(), 1);
+                fixture.ejectIntoMiddle(stone(), 2);
+                stage[0] = 6;
+            }
+            if (stage[0] == 6) {
+                assertGivenBack(helper, fixture);
+                helper.assertValueEqual(fixture.amount(SOURCE, gravel()), 1L,
+                        "The gravel goes to the source, which pushed last");
+                helper.assertValueEqual(fixture.amount(CONSUMER, gravel()), 0L, "The consumer gets no gravel yet");
+                helper.assertValueEqual(fixture.amount(CONSUMER, stone()), 1L, "The consumer stores its stone");
+                helper.assertValueEqual(fixture.amount(SOURCE, stone()), 1L, "The source stores its stone");
+                fixture.begin(CONSUMER, stone(), 1);
+                stage[0] = 7;
+            }
+            if (stage[0] == 8) {
+                helper.assertValueEqual(fixture.inMiddleMachine(Items.COBBLESTONE), 1L,
+                        "Waiting for the consumer's second push");
+                fixture.ejectIntoMiddle(gravel(), 1);
+                fixture.ejectIntoMiddle(stone(), 1);
+                stage[0] = 9;
+            }
+            helper.assertValueEqual(stage[0], 9, "Waiting for the consumer's second order");
+            assertGivenBack(helper, fixture);
+            helper.assertValueEqual(fixture.amount(CONSUMER, gravel()), 1L,
+                    "The second gravel goes to the consumer, which pushed last now");
+            helper.assertValueEqual(fixture.amount(SOURCE, gravel()), 1L, "The source keeps only the first gravel");
+            helper.assertValueEqual(fixture.amount(CONSUMER, stone()), 2L, "The consumer stores its second stone");
+            fixture.close();
+        });
+    }
+
+    /** Waits until the middle's provider gave everything back and both ordering networks' jobs finished. */
+    private static void assertGivenBack(GameTestHelper helper, ProjectionChainFixture fixture) {
+        helper.assertValueEqual(fixture.inMiddleReturns(gravel()) + fixture.inMiddleReturns(stone()), 0L,
+                "Waiting for the middle's provider to give back");
+        helper.assertValueEqual(fixture.busyCpus(CONSUMER) + fixture.busyCpus(SOURCE), 0L,
+                "Waiting for the jobs to finish");
+        helper.assertValueEqual(fixture.owed(MIDDLE, CONSUMER, stone()) + fixture.owed(MIDDLE, SOURCE, stone()), 0L,
+                "Every stone was handed back");
     }
 
     /**
