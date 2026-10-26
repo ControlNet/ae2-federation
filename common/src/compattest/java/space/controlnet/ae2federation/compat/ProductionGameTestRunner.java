@@ -38,6 +38,7 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.gametest.GameTestHooks;
 import org.slf4j.Logger;
+import space.controlnet.ae2federation.compat.probe.DispatchProbe;
 import space.controlnet.ae2federation.power.OperatingPowerRule;
 
 /**
@@ -243,5 +244,6 @@ final class ProductionGameTestRunner {
         } catch (IOException exception) {
             LOGGER.error("AE2F_COMPAT_REPORT_FAILED {}", report, exception);
         }
+        DispatchProbe.write(report.toAbsolutePath().getParent());
     }
 }

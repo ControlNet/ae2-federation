@@ -1,0 +1,25 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "space.controlnet.ae2federation.compat.mixin",
+  "plugin": "space.controlnet.ae2federation.compat.mixin.CompatMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "GameTestSequenceFailureMixin",
+    "probe.AdvancedAeCpuProbe",
+    "probe.Ae2CpuLogicProbe",
+    "probe.CraftingServiceScopeProbe",
+    "probe.DataEnergisticsBatchWitness",
+    "probe.DataEnergisticsCommitProbe",
+    "probe.DataEnergisticsParticipantScope",
+    "probe.LightningTechCpuProbe",
+    "probe.NeoEcoCpuProbe",
+    "probe.NeoEcoFacadeProbe",
+    "probe.PatternProjectionWitness",
+    "probe.PatternProviderLogicWitness",
+    "probe.ThunderboltBatchProbe"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

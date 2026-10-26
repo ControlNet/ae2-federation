@@ -90,7 +90,8 @@ final class AddonCraftingScene {
     private boolean disconnectAfterPush;
     private boolean relinkAfterDisconnect;
     private boolean mergeAfterPush;
-    private boolean joinBeforeOrder;
+    // A whole run can order joined, so the dispatch probe sees each addon's own native dispatch for comparison.
+    private boolean joinBeforeOrder = Boolean.getBoolean("ae2federation.compat.joinBeforeOrder");
     private java.util.function.Consumer<GameTestHelper> joiner;
     private BiFunction<IGrid, ICraftingPlan, ICraftingSubmitResult> submit = (grid, plan) ->
             grid.getCraftingService().submitJob(plan, null, null, true, IActionSource.empty());

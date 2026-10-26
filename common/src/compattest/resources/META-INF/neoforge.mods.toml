@@ -8,6 +8,10 @@ version="${mod_version}"
 displayName="AE2 Federation Compatibility Tests"
 description='''Test-only: runs AE2 Federation GameTests inside a production server beside other mods. Never shipped.'''
 
+# The dispatch probes among these mixins apply only with -Dae2federation.dispatchProbe=true.
+[[mixins]]
+config="ae2federation_compat.mixins.json"
+
 [[dependencies.ae2federation_compat]]
 modId="ae2federation"
 type="required"
