@@ -1,0 +1,4141 @@
+{
+  "description": "Pinned real-addon version-boundary experiments. A failed test is evidence to classify, not automatically a version floor.",
+  "cases": [
+    {
+      "name": "baseline-current",
+      "base": "base-latest",
+      "note": "Control: current production artifact without optional addons",
+      "tests": [
+        "core"
+      ]
+    },
+    {
+      "name": "advanced-0.6.0",
+      "base": "advanced-ae",
+      "note": "Oldest observed Modrinth listing; CurseForge additionally exposes 0.2 and other earlier versions",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "0.6.0-1.21.1",
+          "file": "AdvancedAE-0.6.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/lYdrtKpI/AdvancedAE-0.6.0-1.21.1.jar",
+          "sha512": "96c135bc6fc32462b57d6be4ca297dbf3ec86758544a7599e6d17239302bfe57ed9c12734afaf965aa9ca179e5e8312bd98613be6f3dd976b273947acf7355f9"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.6.12",
+      "base": "advanced-ae",
+      "note": "Current newest AdvancedAE control",
+      "tests": [
+        "core",
+        "advanced-ae"
+      ]
+    },
+    {
+      "name": "extended-2.0.1",
+      "base": "extendedae",
+      "note": "Oldest Modrinth 1.21.1 ExtendedAE; no later-only matrix/guide requirements",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "version": "1.21.1-2.0.1-neoforge",
+          "file": "ExtendedAE-1.21-2.0.1-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/JiOqfoFM/versions/gOnTv6Fx/ExtendedAE-1.21-2.0.1-neoforge.jar",
+          "sha512": "96736498a806de198da754af7ee5cac2570cdb2aa9f8adba321fe33d8e3619a045961988ef79b9116900a8014bcff7c168e5b97b66e1734f317268652135e5cc"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ],
+      "add": [
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "extended-2.2.39",
+      "base": "extendedae",
+      "note": "Current ExtendedAE control",
+      "tests": [
+        "core",
+        "extendedae"
+      ]
+    },
+    {
+      "name": "plus-1.4.0",
+      "base": "extendedae-plus",
+      "note": "Oldest Modrinth Plus; smart doubling and accelerator",
+      "replace": {
+        "extendedae-plus": {
+          "name": "extendedae-plus",
+          "version": "1.21.1-1.4.0",
+          "file": "extendedae_plus-1.21.1-1.4.0.jar",
+          "url": "https://cdn.modrinth.com/data/xr109llC/versions/aGPfKe8V/extendedae_plus-1.21.1-1.4.0.jar",
+          "sha512": "ec6a60560e035e7460fa640d471e53ff9f08ce9af26d1a181b32f100ee252ea68dbb8de8bfcd2ee6db9f47caee90b0c8e812befdd2b28926f12c947403be19d8"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "acceleratedCpuCrafting",
+        "smartDoublingProcessing",
+        "smartDoublingTurnedOnLater",
+        "smartDoublingEndpoint"
+      ]
+    },
+    {
+      "name": "plus-1.6.3",
+      "base": "extendedae-plus",
+      "note": "Current Plus control",
+      "tests": [
+        "core",
+        "extendedae",
+        "extendedae-plus"
+      ]
+    },
+    {
+      "name": "neoeco-1.0.0",
+      "base": "neoecoae",
+      "note": "Oldest Neo ECO; old namespace and structure may differ",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "1.0.0",
+          "file": "neoecoae-1.0.0.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/fk6J0mSI/neoecoae-1.0.0.jar",
+          "sha512": "f9f0b15a9d0cd1fb1ce1dcbce0350e150d545e3e225bafc57ed3d312fa947e7f9ec138bae81575e9315fb4961eb295e8818184ea097c902795e6584ad6bf5feb"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "craftingSystemCrafting",
+        "computationSystemOrdering",
+        "computationSystemCancel",
+        "storageSystemStorage"
+      ]
+    },
+    {
+      "name": "neoeco-21.1.1",
+      "base": "neoecoae",
+      "note": "CPU lifecycle API-generation comparison",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.1.1",
+          "file": "neoecoae-21.1.1.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/gWMhHBje/neoecoae-21.1.1.jar",
+          "sha512": "7787072aa99851779324af6f556afb17dac41d36db02bc6c46707b5b429b28598b1524f1f91c18cdf5fcf9c33f0801f739a3a5c531ef694fc132ce577fd05852"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "craftingSystemCrafting",
+        "computationSystemOrdering",
+        "computationSystemCancel",
+        "computationSystemDisconnect",
+        "computationSystemFluidReturn",
+        "computationCompletedLifecycle",
+        "storageSystemStorage"
+      ]
+    },
+    {
+      "name": "neoeco-21.2.0",
+      "base": "neoecoae",
+      "note": "CPU lifecycle API-generation comparison",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.0",
+          "file": "neoecoae-21.2.0.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/cyNfBT7v/neoecoae-21.2.0.jar",
+          "sha512": "420c4442cffa4a96d76efac21490bb17b8ce2cdb4477b3d87f5b0bb0d55cdb011d1ab1da59daea5c7ee7e4f559db5e7a3515fa64045b7e57ee126054abae83cb"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "craftingSystemCrafting",
+        "computationSystemOrdering",
+        "computationSystemCancel",
+        "computationSystemDisconnect",
+        "computationSystemFluidReturn",
+        "computationCompletedLifecycle",
+        "storageSystemStorage"
+      ]
+    },
+    {
+      "name": "neoeco-21.2.1",
+      "base": "neoecoae",
+      "note": "CPU lifecycle API-generation comparison",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.1",
+          "file": "neoecoae-21.2.1.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/p9oqETs4/neoecoae-21.2.1.jar",
+          "sha512": "1dc456f640878e88782b86d2deb21d074449e2b5a10c7c2ed1402aa3fa20913ef05b86d0d388b59e19b6b67d60f3e1dc323db3e562b3d95e8c56d79a0bf11323"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "craftingSystemCrafting",
+        "computationSystemOrdering",
+        "computationSystemCancel",
+        "computationSystemDisconnect",
+        "computationSystemFluidReturn",
+        "computationCompletedLifecycle",
+        "storageSystemStorage"
+      ]
+    },
+    {
+      "name": "neoeco-21.2.9",
+      "base": "neoecoae",
+      "note": "CPU lifecycle API-generation comparison",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.9",
+          "file": "neoecoae-21.2.9.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/26GPFo2j/neoecoae-21.2.9.jar",
+          "sha512": "3527f1b0e15b3f5d50a1257072da72a8fd86fce3fb55572a679979f03b23c21d634099f31331c250a962a92d94e4c4b65d9191d16ef056c9e05c2e1205c80a7f"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "craftingSystemCrafting",
+        "computationSystemOrdering",
+        "computationSystemCancel",
+        "computationSystemDisconnect",
+        "computationSystemFluidReturn",
+        "computationCompletedLifecycle",
+        "storageSystemStorage"
+      ]
+    },
+    {
+      "name": "neoeco-21.2.10",
+      "base": "neoecoae",
+      "note": "Current newest Neo ECO including batch APIs",
+      "tests": [
+        "core",
+        "neoecoae"
+      ]
+    },
+    {
+      "name": "lightning-1.0.0",
+      "base": "ae2-lightning-tech",
+      "note": "Oldest Lightning Tech; before independent CPU generations",
+      "replace": {
+        "ae2-lightning-tech": {
+          "name": "ae2-lightning-tech",
+          "version": "1.0.0",
+          "file": "ae2lt-1.0.0.jar",
+          "url": "https://cdn.modrinth.com/data/ArHeh5Fz/versions/24sppfGm/ae2lt-1.0.0.jar",
+          "sha512": "3d10cf0e558c7a8667b9caf92b30e66b8ff54ef41cf9a94635e6c985965450d70df2307fe8f475e073acdb7a01bfba710a7cfc544b5d902cf3c053652cb6386f"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "overloadedPatternProviderCrafting",
+        "overloadedPatternProviderProcessing",
+        "endpointLocalOverloadedPatternProvider"
+      ],
+      "remove": [
+        "thunderbolt-core"
+      ]
+    },
+    {
+      "name": "lightning-2.1.1",
+      "base": "ae2-lightning-tech",
+      "note": "Current stable Lightning Tech control",
+      "tests": [
+        "core",
+        "ae2-lightning-tech"
+      ]
+    },
+    {
+      "name": "mega-4.0.2",
+      "base": "megacells",
+      "note": "Oldest 1.21.1 MEGA Cells",
+      "replace": {
+        "megacells": {
+          "name": "megacells",
+          "version": "4.0.2",
+          "file": "megacells-4.0.2.jar",
+          "url": "https://cdn.modrinth.com/data/jjuIRIVr/versions/QBZorwdy/megacells-4.0.2.jar",
+          "sha512": "720011eaeafa6274a455c349866ee6e6440d3bbac151c91ed6cbeb49bddef32e1610aa4106b2eda8337b57b218a2e84f722f11e58bb46bb7f1b0ae09cecbc9a9"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "megacells"
+      ]
+    },
+    {
+      "name": "mega-4.11.0",
+      "base": "megacells",
+      "note": "Newest MEGA Cells control",
+      "tests": [
+        "core",
+        "megacells"
+      ]
+    },
+    {
+      "name": "flux-2.1.4",
+      "base": "appflux",
+      "note": "Oldest Modrinth 1.21.1 Applied Flux",
+      "replace": {
+        "appflux": {
+          "name": "appflux",
+          "version": "1.21-2.1.4-neoforge",
+          "file": "AppliedFlux-1.21-2.1.4-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/oMgZ004U/versions/sD979rMC/AppliedFlux-1.21-2.1.4-neoforge.jar",
+          "sha512": "5dc7119bf192ee798b65dea7f28e279b74ef371a8e59f5147518dd7cddfcc3d45fd6161ce48815ff07f756a3226819f0ca03f62c8549dfe4d8ecc6191f70bd64"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "appflux"
+      ]
+    },
+    {
+      "name": "flux-2.1.5",
+      "base": "appflux",
+      "note": "Newest Applied Flux control",
+      "tests": [
+        "core",
+        "appflux"
+      ]
+    },
+    {
+      "name": "expanded-old",
+      "base": "base-latest",
+      "note": "Dedicated smart/default blocking target-cache adapter",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "version": "2.0.0-NEO",
+          "file": "expandedae-2.0.0.jar",
+          "url": "https://cdn.modrinth.com/data/ayN3DZKb/versions/8kw48SOJ/expandedae-2.0.0.jar",
+          "sha512": "4350fa3e9383a90a50fabc43dea6fb5c41fc261f95b443cc433a30cc58462d80f2c1aa50395c7e0d99f0342428b1515fc148200b33b5aefbcfb008e4981ad469"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "expanded-new",
+      "base": "base-latest",
+      "note": "Dedicated smart/default blocking target-cache adapter",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "version": "2.1.1",
+          "file": "expandedae-2.1.1.jar",
+          "url": "https://cdn.modrinth.com/data/ayN3DZKb/versions/Iw2gl7Lb/expandedae-2.1.1.jar",
+          "sha512": "5d6b0c7430d6f1f2bdb2cb38832ee27d0b28402d16171a9fe746d0275ba54c288405b64b9ad269c010aadd729e82ddeb61b9550c0361c6e1ece2c0bdc77a4b23"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "jade-15.1.6",
+      "base": "base-latest",
+      "note": "Server-side Jade plugin load at oldest 1.21.1-listed release; client HUD untested",
+      "tests": [
+        "core"
+      ],
+      "add": [
+        {
+          "name": "jade",
+          "version": "15.1.6+neoforge",
+          "file": "Jade-1.21-NeoForge-15.1.6.jar",
+          "url": "https://cdn.modrinth.com/data/nvQzSEkH/versions/eNY0Rg8n/Jade-1.21-NeoForge-15.1.6.jar",
+          "sha512": "2d5e33c66e249c93e5d82b31e4efa321eee7dd78fa7ba1545840d98bd20044218d6496e8bdb1886caf694f9cefed905b29c2f1a0ccbe7c86101d7552af985235"
+        }
+      ]
+    },
+    {
+      "name": "extended-2.0.0",
+      "base": "extendedae",
+      "note": "CurseForge catalog endpoint, not Modrinth-only history",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.0.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5616/813/ExtendedAE-1.21-2.0.0-neoforge.jar",
+          "sha512": "cfc41877a74db343ab3081ccc062f8b3799665174be0c43f37af5c9175003de3a1f5eb17eea62c1af7a22ddff32c8bce63cba1b9f00fd7d79e9524a2ce8331da",
+          "version": "2.0.0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ],
+      "add": [
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "extended-2.2.42",
+      "base": "extendedae",
+      "note": "CurseForge catalog endpoint, not Modrinth-only history",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.42-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9305/327/ExtendedAE-1.21-2.2.42-neoforge.jar",
+          "sha512": "1e995681500fb8748ffa62375632eeddafad0fcd62934394a66c793f5f491f204ca91a8a784debcb71666e419507b7fb815c309c6b0e21d27f423e4a4a88ecdd",
+          "version": "2.2.42"
+        }
+      },
+      "tests": [
+        "core",
+        "extendedae"
+      ]
+    },
+    {
+      "name": "advanced-0.2",
+      "base": "advanced-ae",
+      "note": "Earliest CurseForge AdvancedAE; requires ExtendedAE itself",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "file": "AdvancedAE-0.2-1.21.1.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5654/552/AdvancedAE-0.2-1.21.1.jar",
+          "sha512": "5b2237cf37b5f3050dbdc07e964e632305cf0000f5fee1c71521ef946fea0382a62b369e6424b48d95ba8432575fa96e035925298eb43bb8442a5df4ddbcee1e",
+          "version": "0.2-1.21.1"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        },
+        {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.39-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9044/672/ExtendedAE-1.21-2.2.39-neoforge.jar",
+          "sha512": "02d2f37e22361ef521536d3cc96350763271c03e41ed8e6ba970decd7620d4a34930486c5c5fb16ae35b77930340a77199d17194cba953d757fd987e12b4d6a1",
+          "version": "2.2.39"
+        }
+      ]
+    },
+    {
+      "name": "plus-1.4.0-fix",
+      "base": "extendedae-plus",
+      "note": "Oldest CurseForge Plus corrected build",
+      "replace": {
+        "extendedae-plus": {
+          "name": "extendedae-plus",
+          "file": "extendedae_plus-1.21.1-1.4.0-fix.jar",
+          "url": "https://mediafilez.forgecdn.net/files/6975/434/extendedae_plus-1.21.1-1.4.0-fix.jar",
+          "sha512": "33ddb856ad9ee519052977e51b0e0713dcdbf4ba9c308e27c4b0396f6c7f3ecf6c5a91a24c042c4882e73f1a27b3ed1b37644483a63948799e2cc28b410b5582",
+          "version": "1.21.1-1.4.0-fix"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "acceleratedCpuCrafting",
+        "smartDoublingProcessing",
+        "smartDoublingTurnedOnLater",
+        "smartDoublingEndpoint"
+      ]
+    },
+    {
+      "name": "lightning-2.0.9",
+      "base": "ae2-lightning-tech",
+      "note": "Historical matching Thunderbolt1.x tuple; avoid invalid2.x pairing",
+      "replace": {
+        "ae2-lightning-tech": {
+          "name": "ae2-lightning-tech",
+          "version": "2.0.9",
+          "file": "ae2lt-2.0.9.jar",
+          "url": "https://cdn.modrinth.com/data/ArHeh5Fz/versions/TVxBklYH/ae2lt-2.0.9.jar",
+          "sha512": "8a2a4c65d3b467c72f0c4a4be2ef2af9b6d92347ad982280e2e46f406d0ced5b3fe1e51a62f0ca0275e87ae167eb9a87de54091a2b472570d63bb88fe5a9882e"
+        },
+        "thunderbolt-core": {
+          "name": "thunderbolt-core",
+          "version": "1.0.6",
+          "file": "thunderbolt-1.0.6.jar",
+          "url": "https://cdn.modrinth.com/data/M5jhzZXH/versions/EpKQ3ID1/thunderbolt-1.0.6.jar",
+          "sha512": "a6d91f3bdd86f86e032bddeddf647918b02b7eb0da8c79edef53401d56eaa767c5fe6a897ce9e7edd447cacb0f6802731f21666752b5288fc26221d1a84cba4c"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "overloadedPatternProviderCrafting",
+        "overloadedPatternProviderProcessing",
+        "endpointLocalOverloadedPatternProvider",
+        "pigmeePatternProviderCrafting",
+        "mentalMathUnitCrafting",
+        "mentalMathUnitCancel",
+        "mentalMathUnitDisconnected"
+      ]
+    },
+    {
+      "name": "lightning-2.1.2-beta4",
+      "base": "ae2-lightning-tech",
+      "note": "Latest beta requires Thunderbolt2.0.3-beta3 and LDLib2>=2.2.42",
+      "replace": {
+        "ae2-lightning-tech": {
+          "name": "ae2-lightning-tech",
+          "version": "2.1.2-beta4",
+          "file": "ae2lt-2.1.2-beta4.jar",
+          "url": "https://cdn.modrinth.com/data/ArHeh5Fz/versions/KYzEhdFY/ae2lt-2.1.2-beta4.jar",
+          "sha512": "845ca6a5a92b70d2e9bdc74fa93c4ec8ba65cc86dbf26f76c7bc80e98fe581f2f94ecfd2ad857182cf6c9ef27d7e9517096074e6d2d48963edc0aa39c24192fb"
+        },
+        "thunderbolt-core": {
+          "name": "thunderbolt-core",
+          "version": "2.0.3-beta3",
+          "file": "thunderbolt-2.0.3-beta3.jar",
+          "url": "https://cdn.modrinth.com/data/M5jhzZXH/versions/QIXXn4rt/thunderbolt-2.0.3-beta3.jar",
+          "sha512": "e5523e5202d50964875367bd7bca2eb008747849b4f9559609a2c88efb7e7dc542c859d7309fe6cad927915174969c422c63ccb56c157bc00915c6158dfc9da8"
+        },
+        "ldlib": {
+          "name": "ldlib",
+          "version": "mc1.21.1-2.2.44-neoforge",
+          "file": "ldlib2-neoforge-1.21.1-2.2.44-all.jar",
+          "url": "https://cdn.modrinth.com/data/B1CBVXHX/versions/s7Uru4V0/ldlib2-neoforge-1.21.1-2.2.44-all.jar",
+          "sha512": "232e7e5ffcadbcd660894c055d7f53443c7b9105658229875b936a8c5eb8587f3ed9ef51b2897084709d4cd2873172ee4e34101e1e8c88aade1d837c63c67883"
+        }
+      },
+      "tests": [
+        "core",
+        "ae2-lightning-tech"
+      ]
+    },
+    {
+      "name": "expanded-2.1.2",
+      "base": "base-latest",
+      "note": "Locate five-argument target-cache ABI and smart-blocking onset",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "file": "expandedae-2.1.2.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8873/191/expandedae-2.1.2.jar",
+          "sha512": "ab75c09ceb07ae5fcbf12499b18b1f2476787d38ecaeff7a0cd395b48ebb2ab2f095fd7c27883e714867987f4d95ef34d071528d5c40568c4e5f259ac51393c7",
+          "version": "2.1.2"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "expanded-2.1.3",
+      "base": "base-latest",
+      "note": "Locate five-argument target-cache ABI and smart-blocking onset",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "file": "expandedae-2.1.3.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8907/643/expandedae-2.1.3.jar",
+          "sha512": "4f7ea8245fa1c9d08bc70c528c4f36e85542b6dbd2d01bd6833a4b46a35e261600c29048022033847ae4fb1497413cf002516b8ce4892e19a2d22c7247017930",
+          "version": "2.1.3"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "expanded-2.1.4",
+      "base": "base-latest",
+      "note": "Locate five-argument target-cache ABI and smart-blocking onset",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "file": "expandedae-2.1.4.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9021/958/expandedae-2.1.4.jar",
+          "sha512": "6ce8d087deffe520e1263d08faef6f657103a50f11709921651a3a9b8831483d39bb3b2328ec033246bb0cbfe68d7d82d044a6938488502d69d4258e4abcea96",
+          "version": "2.1.4"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "flux-2.0.0",
+      "base": "appflux",
+      "note": "Full CurseForge history endpoint",
+      "replace": {
+        "appflux": {
+          "name": "appflux",
+          "file": "AppliedFlux-1.21-2.0.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/830/AppliedFlux-1.21-2.0.0-neoforge.jar",
+          "sha512": "20936ad2c3d31e00494a07d7c9d9f857377d799f2857c5e63741421c1434f417cd1711024a365b7d0407ff630fdd4a92e43bd15afd1eb0fe93f89b61e61a0e5d",
+          "version": "AppliedFlux-1.21-2.0.0-neoforge.jar"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "appflux"
+      ]
+    },
+    {
+      "name": "flux-2.1.7",
+      "base": "appflux",
+      "note": "Full CurseForge history endpoint",
+      "replace": {
+        "appflux": {
+          "name": "appflux",
+          "file": "AppliedFlux-1.21-2.1.7-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9288/549/AppliedFlux-1.21-2.1.7-neoforge.jar",
+          "sha512": "16c4d427826fe3aa221a99b59fcb8c3d1ae4434d1c33442529916bbd5489340bb4f8111bc331ab6d03d7bfebbc6f8c1aa9c37b5de8625ff94905b497e93895a5",
+          "version": "2.1.7"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "appflux"
+      ]
+    },
+    {
+      "name": "allpattern-0.2.1",
+      "base": "aeallpattern",
+      "note": "Optional custom route planner; missing old-only activation is not production failure",
+      "replace": {
+        "aeallpattern": {
+          "name": "aeallpattern",
+          "file": "aeallpattern-1.21.1-neoforge-0.2.1.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8798/864/aeallpattern-1.21.1-neoforge-0.2.1.jar",
+          "sha512": "9f6bc2fcea150f7b9f4a9bea0625b455550d5ca5e4cccac54db01823de50b25bae1545663a61a986add7bbc4ecc6315b51f07781f2b448be62341f01be61cc67",
+          "version": "0.2.1"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "aeallpattern"
+      ]
+    },
+    {
+      "name": "allpattern-0.2.6",
+      "base": "aeallpattern",
+      "note": "Optional custom route planner; missing old-only activation is not production failure",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "aeallpattern"
+      ]
+    },
+    {
+      "name": "enhancements-1.0.0",
+      "base": "appliedenhancements",
+      "note": "Planner generation comparison (Aelis versus newer MAX_FAST)",
+      "replace": {
+        "appliedenhancements": {
+          "name": "appliedenhancements",
+          "file": "appliedenhancements-1.0.0.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8718/558/appliedenhancements-1.0.0.jar",
+          "sha512": "84f11496262cd3028632d442447269ad96696d46a912ba7f58d8bbfdbafb44b95d8b3a9a30d7c4370615d86899068b6b3149ef969ae9436c469f7252e95d2a83",
+          "version": "1.0.0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "appliedenhancements"
+      ]
+    },
+    {
+      "name": "enhancements-1.1.0",
+      "base": "appliedenhancements",
+      "note": "Planner generation comparison (Aelis versus newer MAX_FAST)",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "appliedenhancements"
+      ]
+    },
+    {
+      "name": "enhancements-1.1.4",
+      "base": "appliedenhancements",
+      "note": "Planner generation comparison (Aelis versus newer MAX_FAST)",
+      "replace": {
+        "appliedenhancements": {
+          "name": "appliedenhancements",
+          "file": "appliedenhancements-1.1.4.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9297/305/appliedenhancements-1.1.4.jar",
+          "sha512": "d73f5dca1fcac8879a0c016daf751cb9b1ac2082787a8313877a3751c8b6d4563bd73b2e4b1e926b930735abb9fa822c4d48f8131ea636bb96c6b051ee8e95ee",
+          "version": "1.1.4"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "appliedenhancements"
+      ]
+    },
+    {
+      "name": "data-1.0.0",
+      "base": "data-energistics",
+      "note": "Adaptive provider and custom CPU/planner coverage where available",
+      "replace": {
+        "data-energistics": {
+          "name": "data-energistics",
+          "file": "data_energistics-1.21.1-1.0.0.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8203/941/data_energistics-1.21.1-1.0.0.jar",
+          "sha512": "f50860e1a56b8fe03f5b97064c9fd6538a3524f79b65617811824a029929e031c58475f224f48c015302b5756b788e77b6f976035f6c8c545890e44fc9e32e4b",
+          "version": "1.0.0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "adaptivePatternProviderCrafting",
+        "adaptivePatternProviderProcessing"
+      ]
+    },
+    {
+      "name": "data-3.3.3",
+      "base": "data-energistics",
+      "note": "Adaptive provider and custom CPU/planner coverage where available",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "data-energistics"
+      ]
+    },
+    {
+      "name": "data-3.3.5",
+      "base": "data-energistics",
+      "note": "Adaptive provider and custom CPU/planner coverage where available",
+      "replace": {
+        "data-energistics": {
+          "name": "data-energistics",
+          "file": "data_energistics-1.21.1-3.3.5.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9095/664/data_energistics-1.21.1-3.3.5.jar",
+          "sha512": "08828754faf99dafb16d448d7fa1d37428bf6b6f5a6492e9a21850b43d7536386f834ccad685f60e365bd03edf27cd85e45bf0eb4951237dedff1a1981d6017f",
+          "version": "3.3.5"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "data-energistics"
+      ]
+    },
+    {
+      "name": "prototype-1.0.0",
+      "base": "neoecoprototype",
+      "note": "Historical Prototype with current Neo ECO; upstream ABI pairing checked if failing",
+      "replace": {
+        "neoecoprototype": {
+          "name": "neoecoprototype",
+          "file": "neoecoprototype-1.0.0.jar",
+          "url": "https://github.com/reliqwq/NeoECOPrototype/releases/download/v1.0.0/neoecoprototype-1.0.0.jar",
+          "sha512": "dabfa232ab6d848c215fe282f7e5b2671a49f845888320773b8bba244cc44d911285f2b722aa1d3b8c09345a5cabae5a04cf43b902740dc75701d8275f787b0f",
+          "version": "v1.0.0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "neoecoprototype"
+      ]
+    },
+    {
+      "name": "prototype-1.4.0",
+      "base": "neoecoprototype",
+      "note": "Historical Prototype with current Neo ECO; upstream ABI pairing checked if failing",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "neoecoprototype"
+      ]
+    },
+    {
+      "name": "prototype-1.4.1",
+      "base": "neoecoprototype",
+      "note": "Historical Prototype with current Neo ECO; upstream ABI pairing checked if failing",
+      "replace": {
+        "neoecoprototype": {
+          "name": "neoecoprototype",
+          "file": "neoecoprototype-1.4.1.jar",
+          "url": "https://github.com/reliqwq/NeoECOPrototype/releases/download/v1.4.1/neoecoprototype-1.4.1.jar",
+          "sha512": "df8a5c7290a69d762983510c9a40f7045bd5075ec69a4d031da5eafca3dddf6576e23aa0957e608d9110a69dd901c8acc07726d1235a8abce679447e2d414eac",
+          "version": "v1.4.1"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "neoecoprototype"
+      ]
+    },
+    {
+      "name": "omni-1.3.0",
+      "base": "omnisequence",
+      "note": "Oldest renamed release/current/newest; planner-companion version drift classified separately",
+      "replace": {
+        "omnisequence": {
+          "name": "omnisequence",
+          "file": "omnisequence-transfinite-1.3.0.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8504/859/omnisequence-transfinite-1.3.0.jar",
+          "sha512": "0e42b84b7077488d8f22289891f1d6a6e4e7c905dee6d07f3eeceac4e02195cd19da08c8d74d385832a0b58348dfa92d31e43adf25e60e8fdabcfa8213592d79",
+          "version": "omnisequence-transfinite-1.3.0.jar"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "omnisequence"
+      ]
+    },
+    {
+      "name": "omni-2.0.7",
+      "base": "omnisequence",
+      "note": "Oldest renamed release/current/newest; planner-companion version drift classified separately",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "omnisequence"
+      ]
+    },
+    {
+      "name": "omni-2.0.9",
+      "base": "omnisequence",
+      "note": "Oldest renamed release/current/newest; planner-companion version drift classified separately",
+      "replace": {
+        "omnisequence": {
+          "name": "omnisequence",
+          "file": "omnisequence-transfinite-2.0.9.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9168/904/omnisequence-transfinite-2.0.9.jar",
+          "sha512": "59baf53c8dcd1c730d2105dabd536eeb3dacda1eeca5636215a427a12eac0a908fce8f5398e5452666bbf335f7147dd7a4d3b3d892ea6814b11d738a4e4ea73a",
+          "version": "omnisequence-transfinite-2.0.9.jar"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "omnisequence"
+      ]
+    },
+    {
+      "name": "pattern-disk-0.2.1",
+      "base": "ae2-pattern-disk",
+      "note": "Pattern provider runtime across released disk generations",
+      "replace": {
+        "ae2-pattern-disk": {
+          "name": "ae2-pattern-disk",
+          "file": "ae2_pattern_disk-0.2.1.jar",
+          "url": "https://github.com/xingluo01/AE2-Pattern-Disk/releases/download/v0.2.1/ae2_pattern_disk-0.2.1.jar",
+          "sha512": "885824067d8fe62efe3897dc3ed4e8f0e542681672b4ea4212da377237d2ec054fdc8387a3e6415365347595355598165bcce2ede8246ffdc21b0f404e3c9f3b",
+          "version": "v0.2.1"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "ae2-pattern-disk"
+      ]
+    },
+    {
+      "name": "pattern-disk-0.8.0",
+      "base": "ae2-pattern-disk",
+      "note": "Pattern provider runtime across released disk generations",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "ae2-pattern-disk"
+      ]
+    },
+    {
+      "name": "pattern-disk-0.9.4",
+      "base": "ae2-pattern-disk",
+      "note": "Pattern provider runtime across released disk generations",
+      "replace": {
+        "ae2-pattern-disk": {
+          "name": "ae2-pattern-disk",
+          "file": "ae2_pattern_disk-0.9.4.jar",
+          "url": "https://github.com/xingluo01/AE2-Pattern-Disk/releases/download/v0.9.4/ae2_pattern_disk-0.9.4.jar",
+          "sha512": "5910ffebf78e49a24bd27f3d9dc64f592d0df984e24792b33de056c9a5b00771418310523edf036b608feaddff9935dded2b3fc4b4fa08c8274153c674594efa",
+          "version": "v0.9.4"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "ae2-pattern-disk"
+      ]
+    },
+    {
+      "name": "useless-2.4.5.9",
+      "base": "useless-mod",
+      "note": "Generic addon marker propagation and scaled pattern plans",
+      "replace": {
+        "useless-mod": {
+          "name": "useless-mod",
+          "file": "useless_mod-1.21.1-2.4.5.9.jar",
+          "url": "https://github.com/SorrowMist/UselessMod/releases/download/1.21.1-2.4.5.9/useless_mod-1.21.1-2.4.5.9.jar",
+          "sha512": "4440e24f1d2f492acab4e910bc0b34520c545f9407c998bd5d371327a8a2a455e27cf3ba8ff6d417297983e29f512c6a313ab70d920e62f306fe4afbb3873ea5",
+          "version": "1.21.1-2.4.5.9"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "useless-mod"
+      ]
+    },
+    {
+      "name": "useless-2.4.5.10",
+      "base": "useless-mod",
+      "note": "Generic addon marker propagation and scaled pattern plans",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "useless-mod"
+      ]
+    },
+    {
+      "name": "useless-2.4.6",
+      "base": "useless-mod",
+      "note": "Generic addon marker propagation and scaled pattern plans",
+      "replace": {
+        "useless-mod": {
+          "name": "useless-mod",
+          "file": "useless_mod-1.21.1-2.4.6.jar",
+          "url": "https://github.com/SorrowMist/UselessMod/releases/download/1.21.1-2.4.6/useless_mod-1.21.1-2.4.6.jar",
+          "sha512": "124f12fbde1375e443b1e7eb9e67a9878faedc12bbe89affb6dacf21afc5b972518c076d0f7936af9dd7cf701299ea0c3b47c2a5a4ad623790772c216784cf72",
+          "version": "1.21.1-2.4.6"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "useless-mod"
+      ]
+    },
+    {
+      "name": "reject-prototype141-neo2129",
+      "base": "neoecoprototype",
+      "note": "Expected loader rejection: Prototype1.4.1 requires Neo ECO>=21.2.10",
+      "replace": {
+        "neoecoprototype": {
+          "name": "neoecoprototype",
+          "file": "neoecoprototype-1.4.1.jar",
+          "url": "https://github.com/reliqwq/NeoECOPrototype/releases/download/v1.4.1/neoecoprototype-1.4.1.jar",
+          "sha512": "df8a5c7290a69d762983510c9a40f7045bd5075ec69a4d031da5eafca3dddf6576e23aa0957e608d9110a69dd901c8acc07726d1235a8abce679447e2d414eac",
+          "version": "v1.4.1"
+        },
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.9",
+          "file": "neoecoae-21.2.9.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/26GPFo2j/neoecoae-21.2.9.jar",
+          "sha512": "3527f1b0e15b3f5d50a1257072da72a8fd86fce3fb55572a679979f03b23c21d634099f31331c250a962a92d94e4c4b65d9191d16ef056c9e05c2e1205c80a7f"
+        }
+      },
+      "tests": [
+        "remoteCrafting"
+      ]
+    },
+    {
+      "name": "reject-neo21210-ld234",
+      "base": "neoecoae",
+      "note": "Expected loader rejection: Neo ECO21.2.10 requires LDLib2>=2.2.40",
+      "replace": {
+        "ldlib": {
+          "name": "ldlib",
+          "version": "mc1.21.1-2.2.34-neoforge",
+          "file": "ldlib2-neoforge-1.21.1-2.2.34-all.jar",
+          "url": "https://cdn.modrinth.com/data/B1CBVXHX/versions/2b5Glhuv/ldlib2-neoforge-1.21.1-2.2.34-all.jar",
+          "sha512": "1dd4ca1b03606688bcbf28671a086cfcc9eb40c1b4bde7e9eed95a294bae6bed843576724dc1851ca6e242d8ae70071ae5236586528553d74ac5c81246b119b9"
+        }
+      },
+      "tests": [
+        "remoteCrafting"
+      ]
+    },
+    {
+      "name": "reject-lt212b4-ld241",
+      "base": "ae2-lightning-tech",
+      "note": "Expected loader rejection: newest Lightning Tech requires LDLib2>=2.2.42",
+      "replace": {
+        "ae2-lightning-tech": {
+          "name": "ae2-lightning-tech",
+          "version": "2.1.2-beta4",
+          "file": "ae2lt-2.1.2-beta4.jar",
+          "url": "https://cdn.modrinth.com/data/ArHeh5Fz/versions/KYzEhdFY/ae2lt-2.1.2-beta4.jar",
+          "sha512": "845ca6a5a92b70d2e9bdc74fa93c4ec8ba65cc86dbf26f76c7bc80e98fe581f2f94ecfd2ad857182cf6c9ef27d7e9517096074e6d2d48963edc0aa39c24192fb"
+        },
+        "thunderbolt-core": {
+          "name": "thunderbolt-core",
+          "version": "2.0.3-beta3",
+          "file": "thunderbolt-2.0.3-beta3.jar",
+          "url": "https://cdn.modrinth.com/data/M5jhzZXH/versions/QIXXn4rt/thunderbolt-2.0.3-beta3.jar",
+          "sha512": "e5523e5202d50964875367bd7bca2eb008747849b4f9559609a2c88efb7e7dc542c859d7309fe6cad927915174969c422c63ccb56c157bc00915c6158dfc9da8"
+        }
+      },
+      "tests": [
+        "remoteCrafting"
+      ]
+    },
+    {
+      "name": "reject-lt212b4-thunderbolt201",
+      "base": "ae2-lightning-tech",
+      "note": "Expected loader rejection: newest Lightning Tech requires Thunderbolt>=2.0.3-beta3",
+      "replace": {
+        "ae2-lightning-tech": {
+          "name": "ae2-lightning-tech",
+          "version": "2.1.2-beta4",
+          "file": "ae2lt-2.1.2-beta4.jar",
+          "url": "https://cdn.modrinth.com/data/ArHeh5Fz/versions/KYzEhdFY/ae2lt-2.1.2-beta4.jar",
+          "sha512": "845ca6a5a92b70d2e9bdc74fa93c4ec8ba65cc86dbf26f76c7bc80e98fe581f2f94ecfd2ad857182cf6c9ef27d7e9517096074e6d2d48963edc0aa39c24192fb"
+        },
+        "ldlib": {
+          "name": "ldlib",
+          "version": "mc1.21.1-2.2.44-neoforge",
+          "file": "ldlib2-neoforge-1.21.1-2.2.44-all.jar",
+          "url": "https://cdn.modrinth.com/data/B1CBVXHX/versions/s7Uru4V0/ldlib2-neoforge-1.21.1-2.2.44-all.jar",
+          "sha512": "232e7e5ffcadbcd660894c055d7f53443c7b9105658229875b936a8c5eb8587f3ed9ef51b2897084709d4cd2873172ee4e34101e1e8c88aade1d837c63c67883"
+        }
+      },
+      "tests": [
+        "remoteCrafting"
+      ]
+    },
+    {
+      "name": "reject-data335-ae219217",
+      "base": "data-energistics",
+      "note": "Expected loader rejection: Data3.3.5 requires AE2>=19.2.18",
+      "replace": {
+        "data-energistics": {
+          "name": "data-energistics",
+          "file": "data_energistics-1.21.1-3.3.5.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9095/664/data_energistics-1.21.1-3.3.5.jar",
+          "sha512": "08828754faf99dafb16d448d7fa1d37428bf6b6f5a6492e9a21850b43d7536386f834ccad685f60e365bd03edf27cd85e45bf0eb4951237dedff1a1981d6017f",
+          "version": "3.3.5"
+        },
+        "ae2": {
+          "name": "ae2",
+          "version": "19.2.17",
+          "file": "appliedenergistics2-19.2.17.jar",
+          "url": "https://cdn.modrinth.com/data/XxWD5pD3/versions/kfyIqgJ6/appliedenergistics2-19.2.17.jar",
+          "sha512": "55edfd948366aff620881e0625e48c333a2cb847e73249bc0b588efbc4b86709992a8ffbca97ea387e270df4186fe7f74ee2f27b739f1c952e932becfb9dea33"
+        }
+      },
+      "tests": [
+        "remoteCrafting"
+      ]
+    },
+    {
+      "name": "neoeco-current-advanced-current",
+      "base": "neoecoae-advanced-ae",
+      "note": "Neo ECO scaled dispatch through the explicitly exposed AdvancedAE provider logic",
+      "tests": [
+        "core",
+        "neoecoae-advanced-ae"
+      ]
+    },
+    {
+      "name": "extended-2.0.1-ae21929",
+      "base": "extendedae",
+      "note": "Old ExtendedAE paired with Federation AE2 minimum; AE2WTLib may itself impose newer AE2",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "version": "1.21.1-2.0.1-neoforge",
+          "file": "ExtendedAE-1.21-2.0.1-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/JiOqfoFM/versions/gOnTv6Fx/ExtendedAE-1.21-2.0.1-neoforge.jar",
+          "sha512": "96736498a806de198da754af7ee5cac2570cdb2aa9f8adba321fe33d8e3619a045961988ef79b9116900a8014bcff7c168e5b97b66e1734f317268652135e5cc"
+        },
+        "ae2": {
+          "name": "ae2",
+          "version": "19.2.9",
+          "file": "appliedenergistics2-19.2.9.jar",
+          "url": "https://cdn.modrinth.com/data/XxWD5pD3/versions/DUSBnYm0/appliedenergistics2-19.2.9.jar",
+          "sha512": "e7977a4bc3259e656a365d3bac83e6f5c23de0a487f02942693f9f69cb8654a13c7104066f77b3ff58546d92ee32a2f28a8a945d7c0ae373519df0c445852603"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ],
+      "add": [
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "mega-4.0.2-ae21929",
+      "base": "megacells",
+      "note": "Check oldest MEGA on minimum AE2 before inferring a hard minimum",
+      "replace": {
+        "megacells": {
+          "name": "megacells",
+          "version": "4.0.2",
+          "file": "megacells-4.0.2.jar",
+          "url": "https://cdn.modrinth.com/data/jjuIRIVr/versions/QBZorwdy/megacells-4.0.2.jar",
+          "sha512": "720011eaeafa6274a455c349866ee6e6440d3bbac151c91ed6cbeb49bddef32e1610aa4106b2eda8337b57b218a2e84f722f11e58bb46bb7f1b0ae09cecbc9a9"
+        },
+        "ae2": {
+          "name": "ae2",
+          "version": "19.2.9",
+          "file": "appliedenergistics2-19.2.9.jar",
+          "url": "https://cdn.modrinth.com/data/XxWD5pD3/versions/DUSBnYm0/appliedenergistics2-19.2.9.jar",
+          "sha512": "e7977a4bc3259e656a365d3bac83e6f5c23de0a487f02942693f9f69cb8654a13c7104066f77b3ff58546d92ee32a2f28a8a945d7c0ae373519df0c445852603"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "megacells"
+      ]
+    },
+    {
+      "name": "neoeco-21.1.1-ld234",
+      "base": "neoecoae",
+      "note": "Separate Neo ECO old CPU generation from LDLib2 dependency drift",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.1.1",
+          "file": "neoecoae-21.1.1.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/gWMhHBje/neoecoae-21.1.1.jar",
+          "sha512": "7787072aa99851779324af6f556afb17dac41d36db02bc6c46707b5b429b28598b1524f1f91c18cdf5fcf9c33f0801f739a3a5c531ef694fc132ce577fd05852"
+        },
+        "ldlib": {
+          "name": "ldlib",
+          "version": "mc1.21.1-2.2.34-neoforge",
+          "file": "ldlib2-neoforge-1.21.1-2.2.34-all.jar",
+          "url": "https://cdn.modrinth.com/data/B1CBVXHX/versions/2b5Glhuv/ldlib2-neoforge-1.21.1-2.2.34-all.jar",
+          "sha512": "1dd4ca1b03606688bcbf28671a086cfcc9eb40c1b4bde7e9eed95a294bae6bed843576724dc1851ca6e242d8ae70071ae5236586528553d74ac5c81246b119b9"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "craftingSystemCrafting",
+        "computationSystemOrdering",
+        "computationSystemCancel",
+        "computationSystemDisconnect",
+        "computationSystemFluidReturn",
+        "computationCompletedLifecycle",
+        "storageSystemStorage"
+      ]
+    },
+    {
+      "name": "advanced-0.6.1",
+      "base": "advanced-ae",
+      "note": "Search historical dedicated-server and CPU compatibility boundary",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "0.6.1-1.21.1",
+          "file": "AdvancedAE-0.6.1-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/Jinl5ahF/AdvancedAE-0.6.1-1.21.1.jar",
+          "sha512": "b8423006e2e46a48a9fa58e57185dcbbcf069ddd9a3a11100d62c16ed129411679708613d5394ffdfa36ddba690ab3e9ef0ee728cfde54f35f5d8f358a53a5ac"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.0.0",
+      "base": "advanced-ae",
+      "note": "Search historical dedicated-server and CPU compatibility boundary",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.0.0-1.21.1",
+          "file": "AdvancedAE-1.0.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/96GxGQ5G/AdvancedAE-1.0.0-1.21.1.jar",
+          "sha512": "3c30ab968e33c080739d6605986b3e8ce539166abf5ffe314f4438c053a94414c622a00579830c529dd0279e3b0f7c6026bd92b63a60b534f18a12eb0d205168"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.0.13",
+      "base": "advanced-ae",
+      "note": "Search historical dedicated-server and CPU compatibility boundary",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.0.13-1.21.1",
+          "file": "AdvancedAE-1.0.13-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/pAQkcomY/AdvancedAE-1.0.13-1.21.1.jar",
+          "sha512": "8218916705050317a54379af0401f15d5092a6d6813131f9dc00b20d7a1e95e7ac8fe756b87f19e3ee4499df2ba7ebf91842fc128aff101eeb3c363365176f5d"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "mega-4.4.0",
+      "base": "megacells",
+      "note": "Search upstream AE2 ABI compatibility transition",
+      "replace": {
+        "megacells": {
+          "name": "megacells",
+          "version": "4.4.0",
+          "file": "megacells-4.4.0.jar",
+          "url": "https://cdn.modrinth.com/data/jjuIRIVr/versions/VekxOvrc/megacells-4.4.0.jar",
+          "sha512": "076177e58fa79c980e13dedb2fcd660520e0f0b0cf2a94e50f0b31ede4c77bd13c10a8add147d4450e4d86d8a23fe75a446a271e08ebc744b7ce3132e8e2c2ce"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "megacells"
+      ]
+    },
+    {
+      "name": "mega-4.6.0",
+      "base": "megacells",
+      "note": "Search upstream AE2 ABI compatibility transition",
+      "replace": {
+        "megacells": {
+          "name": "megacells",
+          "version": "4.6.0",
+          "file": "megacells-4.6.0.jar",
+          "url": "https://cdn.modrinth.com/data/jjuIRIVr/versions/COAexxHz/megacells-4.6.0.jar",
+          "sha512": "a98f956ae385f015728cbdbbd8b0a889fdd587ceb514a18b85d39558199371e67c2b2c23a4357fb28a64d5f4cba7b7f0a0be8bc047ee8c7324b73164567013a3"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "megacells"
+      ]
+    },
+    {
+      "name": "mega-4.8.0",
+      "base": "megacells",
+      "note": "Search upstream AE2 ABI compatibility transition",
+      "replace": {
+        "megacells": {
+          "name": "megacells",
+          "version": "4.8.0",
+          "file": "megacells-4.8.0.jar",
+          "url": "https://cdn.modrinth.com/data/jjuIRIVr/versions/PMtwcujp/megacells-4.8.0.jar",
+          "sha512": "f1af1b01493c26ed3cb7c95c8ae0315d51542fbaa6f702a3eb422143fe1a7072f3d369cae24e95425ba461f4cbf3d0277af36b9ac3e3134eb8176ddcf3e98005"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "megacells"
+      ]
+    },
+    {
+      "name": "neoeco-21.1.1-no-lifecycle",
+      "base": "neoecoae",
+      "note": "Exclude unsupported old CPU lifecycle audit: its empty observation list otherwise aborts sibling tests",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.1.1",
+          "file": "neoecoae-21.1.1.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/gWMhHBje/neoecoae-21.1.1.jar",
+          "sha512": "7787072aa99851779324af6f556afb17dac41d36db02bc6c46707b5b429b28598b1524f1f91c18cdf5fcf9c33f0801f739a3a5c531ef694fc132ce577fd05852"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "craftingSystemCrafting",
+        "computationSystemOrdering",
+        "computationSystemCancel",
+        "computationSystemDisconnect",
+        "computationSystemFluidReturn",
+        "storageSystemStorage"
+      ]
+    },
+    {
+      "name": "neoeco-21.2.0-full",
+      "base": "neoecoae",
+      "note": "Verify complete existing feature suite on first stable new CPU/batch API generation",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.0",
+          "file": "neoecoae-21.2.0.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/cyNfBT7v/neoecoae-21.2.0.jar",
+          "sha512": "420c4442cffa4a96d76efac21490bb17b8ce2cdb4477b3d87f5b0bb0d55cdb011d1ab1da59daea5c7ee7e4f559db5e7a3515fa64045b7e57ee126054abae83cb"
+        }
+      },
+      "tests": [
+        "core",
+        "neoecoae"
+      ]
+    },
+    {
+      "name": "neoeco-21.2.9-full",
+      "base": "neoecoae",
+      "note": "Adjacent complete suite below Prototype 1.4.1 upstream minimum",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.9",
+          "file": "neoecoae-21.2.9.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/26GPFo2j/neoecoae-21.2.9.jar",
+          "sha512": "3527f1b0e15b3f5d50a1257072da72a8fd86fce3fb55572a679979f03b23c21d634099f31331c250a962a92d94e4c4b65d9191d16ef056c9e05c2e1205c80a7f"
+        }
+      },
+      "tests": [
+        "core",
+        "neoecoae"
+      ]
+    },
+    {
+      "name": "expanded-old-with-advanced",
+      "base": "base-latest",
+      "note": "Supply old ExpandedAE unguarded AdvancedAE class link before judging target-cache compatibility",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "version": "2.0.0-NEO",
+          "file": "expandedae-2.0.0.jar",
+          "url": "https://cdn.modrinth.com/data/ayN3DZKb/versions/8kw48SOJ/expandedae-2.0.0.jar",
+          "sha512": "4350fa3e9383a90a50fabc43dea6fb5c41fc261f95b443cc433a30cc58462d80f2c1aa50395c7e0d99f0342428b1515fc148200b33b5aefbcfb008e4981ad469"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        },
+        {
+          "name": "advancedae",
+          "version": "1.6.12-1.21.1",
+          "file": "AdvancedAE-1.6.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+          "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+        },
+        {
+          "name": "geckolib",
+          "version": "4.9.3",
+          "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+          "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
+        }
+      ]
+    },
+    {
+      "name": "expanded-new-with-advanced",
+      "base": "base-latest",
+      "note": "Supply old ExpandedAE unguarded AdvancedAE class link before judging target-cache compatibility",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "version": "2.1.1",
+          "file": "expandedae-2.1.1.jar",
+          "url": "https://cdn.modrinth.com/data/ayN3DZKb/versions/Iw2gl7Lb/expandedae-2.1.1.jar",
+          "sha512": "5d6b0c7430d6f1f2bdb2cb38832ee27d0b28402d16171a9fe746d0275ba54c288405b64b9ad269c010aadd729e82ddeb61b9550c0361c6e1ece2c0bdc77a4b23"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        },
+        {
+          "name": "advancedae",
+          "version": "1.6.12-1.21.1",
+          "file": "AdvancedAE-1.6.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+          "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+        },
+        {
+          "name": "geckolib",
+          "version": "4.9.3",
+          "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+          "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
+        }
+      ]
+    },
+    {
+      "name": "extended-2.0.1-ae21929-embedded-api",
+      "base": "extendedae",
+      "note": "Keep only embedded historical AE2WTLib API; avoid upgrading it via unnecessary modern external jar",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "version": "1.21.1-2.0.1-neoforge",
+          "file": "ExtendedAE-1.21-2.0.1-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/JiOqfoFM/versions/gOnTv6Fx/ExtendedAE-1.21-2.0.1-neoforge.jar",
+          "sha512": "96736498a806de198da754af7ee5cac2570cdb2aa9f8adba321fe33d8e3619a045961988ef79b9116900a8014bcff7c168e5b97b66e1734f317268652135e5cc"
+        },
+        "ae2": {
+          "name": "ae2",
+          "version": "19.2.9",
+          "file": "appliedenergistics2-19.2.9.jar",
+          "url": "https://cdn.modrinth.com/data/XxWD5pD3/versions/DUSBnYm0/appliedenergistics2-19.2.9.jar",
+          "sha512": "e7977a4bc3259e656a365d3bac83e6f5c23de0a487f02942693f9f69cb8654a13c7104066f77b3ff58546d92ee32a2f28a8a945d7c0ae373519df0c445852603"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "advanced-0.6.1-ae21929",
+      "base": "advanced-ae",
+      "note": "Pair old AdvancedAE with Federation minimum AE2 to separate AE2 ABI break",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "0.6.1-1.21.1",
+          "file": "AdvancedAE-0.6.1-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/Jinl5ahF/AdvancedAE-0.6.1-1.21.1.jar",
+          "sha512": "b8423006e2e46a48a9fa58e57185dcbbcf069ddd9a3a11100d62c16ed129411679708613d5394ffdfa36ddba690ab3e9ef0ee728cfde54f35f5d8f358a53a5ac"
+        },
+        "ae2": {
+          "name": "ae2",
+          "version": "19.2.9",
+          "file": "appliedenergistics2-19.2.9.jar",
+          "url": "https://cdn.modrinth.com/data/XxWD5pD3/versions/DUSBnYm0/appliedenergistics2-19.2.9.jar",
+          "sha512": "e7977a4bc3259e656a365d3bac83e6f5c23de0a487f02942693f9f69cb8654a13c7104066f77b3ff58546d92ee32a2f28a8a945d7c0ae373519df0c445852603"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "mega-4.4.0-ae21929",
+      "base": "megacells",
+      "note": "Old menu registration ABI with minimum AE2",
+      "replace": {
+        "megacells": {
+          "name": "megacells",
+          "version": "4.4.0",
+          "file": "megacells-4.4.0.jar",
+          "url": "https://cdn.modrinth.com/data/jjuIRIVr/versions/VekxOvrc/megacells-4.4.0.jar",
+          "sha512": "076177e58fa79c980e13dedb2fcd660520e0f0b0cf2a94e50f0b31ede4c77bd13c10a8add147d4450e4d86d8a23fe75a446a271e08ebc744b7ce3132e8e2c2ce"
+        },
+        "ae2": {
+          "name": "ae2",
+          "version": "19.2.9",
+          "file": "appliedenergistics2-19.2.9.jar",
+          "url": "https://cdn.modrinth.com/data/XxWD5pD3/versions/DUSBnYm0/appliedenergistics2-19.2.9.jar",
+          "sha512": "e7977a4bc3259e656a365d3bac83e6f5c23de0a487f02942693f9f69cb8654a13c7104066f77b3ff58546d92ee32a2f28a8a945d7c0ae373519df0c445852603"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "megacells"
+      ]
+    },
+    {
+      "name": "mega-4.9.0",
+      "base": "megacells",
+      "note": "Find minimum MEGA generation for AE2 19.2.18",
+      "replace": {
+        "megacells": {
+          "name": "megacells",
+          "version": "4.9.0",
+          "file": "megacells-4.9.0.jar",
+          "url": "https://cdn.modrinth.com/data/jjuIRIVr/versions/QLJNl0ZF/megacells-4.9.0.jar",
+          "sha512": "c38cf91c050088911ea8f11d3534a0c8aa1225412a389ba92e3eda8298b78629ed4de6815dbc6e20865757bf2b5f8dd5e2f6a0f0c255e8939acffa74b1d6a615"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "megacells"
+      ]
+    },
+    {
+      "name": "mega-4.10.0",
+      "base": "megacells",
+      "note": "Find minimum MEGA generation for AE2 19.2.18",
+      "replace": {
+        "megacells": {
+          "name": "megacells",
+          "version": "4.10.0",
+          "file": "megacells-4.10.0.jar",
+          "url": "https://cdn.modrinth.com/data/jjuIRIVr/versions/X0ht22nC/megacells-4.10.0.jar",
+          "sha512": "2dfbb120e79d1e0054ddfef8c9154b3ecf79247a25c879249725fe81d8edc78e7c3ed00617028c9d9ed9937dca48eaa65d71e1f7e23356c32ff8324d10475599"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "megacells"
+      ]
+    },
+    {
+      "name": "advanced-1.3.0",
+      "base": "advanced-ae",
+      "note": "Find current AE2-compatible Advanced provider and independent CPU generation",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.3.0-1.21.1",
+          "file": "AdvancedAE-1.3.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/Qi5k4qWd/AdvancedAE-1.3.0-1.21.1.jar",
+          "sha512": "de675837bf96b23756599057d84cf968cdeaa9586cfaa111809c13af59100469cad73f1edd1eeec8685ef5aa2921067bdb5831639d755f7ca7289201104fe593"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.5.0",
+      "base": "advanced-ae",
+      "note": "Find current AE2-compatible Advanced provider and independent CPU generation",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.5.0-1.21.1",
+          "file": "AdvancedAE-1.5.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/Q2Mnjlqk/AdvancedAE-1.5.0-1.21.1.jar",
+          "sha512": "360a8950addc5593e4733996981734de7d4e7703440e1705e3775ccfda893ef4545f535519879a5ee432707d759e7249e15e55f9cde4808cd7ef67e10f97ba12"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.6.0",
+      "base": "advanced-ae",
+      "note": "Find current AE2-compatible Advanced provider and independent CPU generation",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.6.0-1.21.1",
+          "file": "AdvancedAE-1.6.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/Uw4N3dTu/AdvancedAE-1.6.0-1.21.1.jar",
+          "sha512": "2261ce96cafd5b42225311294d4a5d229e31fdbc908adcad64b71708290c99ed8dd53d5a9f70a677f7e8253f329edc5b0b7ba5843af7abcd8b7faf96c9b71495"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "expanded-2.1.1-full-deps",
+      "base": "extendedae",
+      "note": "Supply both actual AdvancedAE and ExtendedAE class dependencies for smart-blocking compatibility",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "version": "2.1.1",
+          "file": "expandedae-2.1.1.jar",
+          "url": "https://cdn.modrinth.com/data/ayN3DZKb/versions/Iw2gl7Lb/expandedae-2.1.1.jar",
+          "sha512": "5d6b0c7430d6f1f2bdb2cb38832ee27d0b28402d16171a9fe746d0275ba54c288405b64b9ad269c010aadd729e82ddeb61b9550c0361c6e1ece2c0bdc77a4b23"
+        },
+        {
+          "name": "advancedae",
+          "version": "1.6.12-1.21.1",
+          "file": "AdvancedAE-1.6.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+          "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+        },
+        {
+          "name": "geckolib",
+          "version": "4.9.3",
+          "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+          "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
+        }
+      ]
+    },
+    {
+      "name": "expanded-2.1.2-full-deps",
+      "base": "extendedae",
+      "note": "Supply both actual AdvancedAE and ExtendedAE class dependencies for smart-blocking compatibility",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "file": "expandedae-2.1.2.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8873/191/expandedae-2.1.2.jar",
+          "sha512": "ab75c09ceb07ae5fcbf12499b18b1f2476787d38ecaeff7a0cd395b48ebb2ab2f095fd7c27883e714867987f4d95ef34d071528d5c40568c4e5f259ac51393c7",
+          "version": "2.1.2"
+        },
+        {
+          "name": "advancedae",
+          "version": "1.6.12-1.21.1",
+          "file": "AdvancedAE-1.6.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+          "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+        },
+        {
+          "name": "geckolib",
+          "version": "4.9.3",
+          "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+          "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
+        }
+      ]
+    },
+    {
+      "name": "expanded-2.1.3-full-deps",
+      "base": "extendedae",
+      "note": "Supply both actual AdvancedAE and ExtendedAE class dependencies for smart-blocking compatibility",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "file": "expandedae-2.1.3.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8907/643/expandedae-2.1.3.jar",
+          "sha512": "4f7ea8245fa1c9d08bc70c528c4f36e85542b6dbd2d01bd6833a4b46a35e261600c29048022033847ae4fb1497413cf002516b8ce4892e19a2d22c7247017930",
+          "version": "2.1.3"
+        },
+        {
+          "name": "advancedae",
+          "version": "1.6.12-1.21.1",
+          "file": "AdvancedAE-1.6.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+          "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+        },
+        {
+          "name": "geckolib",
+          "version": "4.9.3",
+          "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+          "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
+        }
+      ]
+    },
+    {
+      "name": "expanded-2.1.4-full-deps",
+      "base": "extendedae",
+      "note": "Supply both actual AdvancedAE and ExtendedAE class dependencies for smart-blocking compatibility",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "file": "expandedae-2.1.4.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9021/958/expandedae-2.1.4.jar",
+          "sha512": "6ce8d087deffe520e1263d08faef6f657103a50f11709921651a3a9b8831483d39bb3b2328ec033246bb0cbfe68d7d82d044a6938488502d69d4258e4abcea96",
+          "version": "2.1.4"
+        },
+        {
+          "name": "advancedae",
+          "version": "1.6.12-1.21.1",
+          "file": "AdvancedAE-1.6.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+          "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+        },
+        {
+          "name": "geckolib",
+          "version": "4.9.3",
+          "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+          "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
+        }
+      ]
+    },
+    {
+      "name": "omni-2.0.9-enh114",
+      "base": "omnisequence",
+      "note": "Correct actual Omni 2.0.9 upstream requirement Applied Enhancements >=1.1.2",
+      "replace": {
+        "omnisequence": {
+          "name": "omnisequence",
+          "file": "omnisequence-transfinite-2.0.9.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9168/904/omnisequence-transfinite-2.0.9.jar",
+          "sha512": "59baf53c8dcd1c730d2105dabd536eeb3dacda1eeca5636215a427a12eac0a908fce8f5398e5452666bbf335f7147dd7a4d3b3d892ea6814b11d738a4e4ea73a",
+          "version": "omnisequence-transfinite-2.0.9.jar"
+        },
+        "appliedenhancements": {
+          "name": "appliedenhancements",
+          "file": "appliedenhancements-1.1.4.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9297/305/appliedenhancements-1.1.4.jar",
+          "sha512": "d73f5dca1fcac8879a0c016daf751cb9b1ac2082787a8313877a3751c8b6d4563bd73b2e4b1e926b930735abb9fa822c4d48f8131ea636bb96c6b051ee8e95ee",
+          "version": "1.1.4"
+        }
+      },
+      "tests": [
+        "core",
+        "omnisequence"
+      ]
+    },
+    {
+      "name": "pattern-disk-0.2.1-with-neo",
+      "base": "ae2-pattern-disk",
+      "note": "Supply old Pattern Disk unconditional Neo ECO API class dependency",
+      "replace": {
+        "ae2-pattern-disk": {
+          "name": "ae2-pattern-disk",
+          "file": "ae2_pattern_disk-0.2.1.jar",
+          "url": "https://github.com/xingluo01/AE2-Pattern-Disk/releases/download/v0.2.1/ae2_pattern_disk-0.2.1.jar",
+          "sha512": "885824067d8fe62efe3897dc3ed4e8f0e542681672b4ea4212da377237d2ec054fdc8387a3e6415365347595355598165bcce2ede8246ffdc21b0f404e3c9f3b",
+          "version": "v0.2.1"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "ae2-pattern-disk"
+      ],
+      "add": [
+        {
+          "name": "neoecoae",
+          "version": "21.2.10",
+          "file": "neoecoae-21.2.10.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/kzNgvnUI/neoecoae-21.2.10.jar",
+          "sha512": "44f964081db0de864b28d92d48a7f71cd98bb90744ea5459cd87994102646c94a4cc1a61cdff46bcd06676bab402f457f3259676403d20a1fb5e917dfce33ac3"
+        }
+      ]
+    },
+    {
+      "name": "useless-2.4.5.11",
+      "base": "useless-mod",
+      "note": "Locate last known passing alloy furnace generation before 2.4.6 timeout",
+      "replace": {
+        "useless-mod": {
+          "name": "useless-mod",
+          "file": "useless_mod-1.21.1-2.4.5.11.jar",
+          "url": "https://github.com/SorrowMist/UselessMod/releases/download/1.21.1-2.4.5.11/useless_mod-1.21.1-2.4.5.11.jar",
+          "sha512": "06690aa52ad808a1235e27da2e589613a11800750d7f84aa1aaa438685bcba772d9a56a99a0abdefd0e4f535b5398fee535858a13094857927fa60427451ef47",
+          "version": "1.21.1-2.4.5.11"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "useless-mod"
+      ]
+    },
+    {
+      "name": "useless-2.4.5.12",
+      "base": "useless-mod",
+      "note": "Locate last known passing alloy furnace generation before 2.4.6 timeout",
+      "replace": {
+        "useless-mod": {
+          "name": "useless-mod",
+          "file": "useless_mod-1.21.1-2.4.5.12.jar",
+          "url": "https://github.com/SorrowMist/UselessMod/releases/download/1.21.1-2.4.5.12/useless_mod-1.21.1-2.4.5.12.jar",
+          "sha512": "cf796c01fc6bc2d3cae6db04e8bd6d3e56d126de2f56e86384c1a5e30a2bd421b9549418f743ab7f8a1efdf2b78390c2a4dc2aa15f595630b03971914c8aa58d",
+          "version": "1.21.1-2.4.5.12"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "useless-mod"
+      ]
+    },
+    {
+      "name": "useless-2.4.5.13",
+      "base": "useless-mod",
+      "note": "Locate last known passing alloy furnace generation before 2.4.6 timeout",
+      "replace": {
+        "useless-mod": {
+          "name": "useless-mod",
+          "file": "useless_mod-1.21.1-2.4.5.13.jar",
+          "url": "https://github.com/SorrowMist/UselessMod/releases/download/1.21.1-2.4.5.13/useless_mod-1.21.1-2.4.5.13.jar",
+          "sha512": "8c8cf869839c6cbe9061326b7945804ab932953355d53520de0a356ac4a1b0b7d6c39d8f4448001598993724e393a2b91d72aeb608d544ea4be7fdb1664a7af3",
+          "version": "1.21.1-2.4.5.13"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "useless-mod"
+      ]
+    },
+    {
+      "name": "extended-2.2.0",
+      "base": "extendedae",
+      "note": "Search first supported ExtendedAE generation; old-only fixtures exclude later content",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/6138/925/ExtendedAE-1.21-2.2.0-neoforge.jar",
+          "sha512": "7ad921221a122fbf9df22f36fb0c7ce719b1067da1716d136afbb19df6e604f8fdd098ef429e6a7a5b4eb8894f4e2736dc46234ba145125c039e6d3f6ea20152",
+          "version": "2.2.0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "extended-2.2.16",
+      "base": "extendedae",
+      "note": "Search first supported ExtendedAE generation; old-only fixtures exclude later content",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.16-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/6786/438/ExtendedAE-1.21-2.2.16-neoforge.jar",
+          "sha512": "6e692c92e752eee02f57a2d0f0ab51053b071c853af24eda196d857571fd45b72fddc60a651100a8a6d6d76c5114c348907c0cd1ba09625a59bdb0946161843c",
+          "version": "2.2.16"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "extended-2.2.32",
+      "base": "extendedae",
+      "note": "Search first supported ExtendedAE generation; old-only fixtures exclude later content",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.32-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8025/439/ExtendedAE-1.21-2.2.32-neoforge.jar",
+          "sha512": "4b8ec3b1007c72fd73ffe5ca1f734636bd5c0c61bbfaacb8a55bb1de457f3cc22a3205e6f33c9480b6db665f48e1648f8d51e95ee8cb238b02528d8796a13b3e",
+          "version": "2.2.32"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "plus-1.5.0",
+      "base": "extendedae-plus",
+      "note": "Locate Plus dedicated-server and marked-pattern API generation",
+      "replace": {
+        "extendedae-plus": {
+          "name": "extendedae-plus",
+          "version": "1.21.1-1.5.0",
+          "file": "extendedae_plus-1.21.1-1.5.0.jar",
+          "url": "https://cdn.modrinth.com/data/xr109llC/versions/i320N7oY/extendedae_plus-1.21.1-1.5.0.jar",
+          "sha512": "82f6272c6c988d7daca49ac3cbcc07b26999605b53687329b19b203bba41cae12950d6a1501d57128d3bdc39658f8e60a2f6a832c53647012023f1d9e35046d0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "acceleratedCpuCrafting",
+        "smartDoublingProcessing",
+        "smartDoublingTurnedOnLater",
+        "smartDoublingEndpoint"
+      ]
+    },
+    {
+      "name": "advanced-1.5.0-full",
+      "base": "advanced-ae",
+      "note": "Distinguish earlier basic CPU/provider support from complete present-day AdvancedAE scene coverage",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.5.0-1.21.1",
+          "file": "AdvancedAE-1.5.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/Q2Mnjlqk/AdvancedAE-1.5.0-1.21.1.jar",
+          "sha512": "360a8950addc5593e4733996981734de7d4e7703440e1705e3775ccfda893ef4545f535519879a5ee432707d759e7249e15e55f9cde4808cd7ef67e10f97ba12"
+        }
+      },
+      "tests": [
+        "core",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.6.1",
+      "base": "advanced-ae",
+      "note": "Dedicated-server regression and recovery around 1.6.0",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.6.1-1.21.1",
+          "file": "AdvancedAE-1.6.1-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/VT36z30L/AdvancedAE-1.6.1-1.21.1.jar",
+          "sha512": "8da61ac6d8da21d43f0acaf17df8c00fa21f0f3abd30b02befbd06508119381efedc6370ab23026f22cfd2976a340f087a841533f303df7c18f8232e81d2f40d"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ]
+    },
+    {
+      "name": "advanced-1.6.11",
+      "base": "advanced-ae",
+      "note": "Dedicated-server regression and recovery around 1.6.0",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.6.11-1.21.1",
+          "file": "AdvancedAE-1.6.11-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/lHSZ2gYI/AdvancedAE-1.6.11-1.21.1.jar",
+          "sha512": "8e34fa91360dc9871292e33e6348fdb33251bba484c15246b08c91c6c6ff69b4571105029f7ec456d875586110e19f6f45545a2a940e3fe26ec91a928d33d9d9"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ]
+    },
+    {
+      "name": "expanded-2.1.1-all-deps",
+      "base": "extendedae",
+      "note": "All actual ExpandedAE class links: AdvancedAE, ExtendedAE, AE2WTLib; failures without them are not Federation bounds",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "version": "2.1.1",
+          "file": "expandedae-2.1.1.jar",
+          "url": "https://cdn.modrinth.com/data/ayN3DZKb/versions/Iw2gl7Lb/expandedae-2.1.1.jar",
+          "sha512": "5d6b0c7430d6f1f2bdb2cb38832ee27d0b28402d16171a9fe746d0275ba54c288405b64b9ad269c010aadd729e82ddeb61b9550c0361c6e1ece2c0bdc77a4b23"
+        },
+        {
+          "name": "advancedae",
+          "version": "1.6.12-1.21.1",
+          "file": "AdvancedAE-1.6.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+          "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+        },
+        {
+          "name": "geckolib",
+          "version": "4.9.3",
+          "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+          "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "expanded-2.1.2-all-deps",
+      "base": "extendedae",
+      "note": "All actual ExpandedAE class links: AdvancedAE, ExtendedAE, AE2WTLib; failures without them are not Federation bounds",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "file": "expandedae-2.1.2.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8873/191/expandedae-2.1.2.jar",
+          "sha512": "ab75c09ceb07ae5fcbf12499b18b1f2476787d38ecaeff7a0cd395b48ebb2ab2f095fd7c27883e714867987f4d95ef34d071528d5c40568c4e5f259ac51393c7",
+          "version": "2.1.2"
+        },
+        {
+          "name": "advancedae",
+          "version": "1.6.12-1.21.1",
+          "file": "AdvancedAE-1.6.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+          "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+        },
+        {
+          "name": "geckolib",
+          "version": "4.9.3",
+          "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+          "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "expanded-2.1.3-all-deps",
+      "base": "extendedae",
+      "note": "All actual ExpandedAE class links: AdvancedAE, ExtendedAE, AE2WTLib; failures without them are not Federation bounds",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "file": "expandedae-2.1.3.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8907/643/expandedae-2.1.3.jar",
+          "sha512": "4f7ea8245fa1c9d08bc70c528c4f36e85542b6dbd2d01bd6833a4b46a35e261600c29048022033847ae4fb1497413cf002516b8ce4892e19a2d22c7247017930",
+          "version": "2.1.3"
+        },
+        {
+          "name": "advancedae",
+          "version": "1.6.12-1.21.1",
+          "file": "AdvancedAE-1.6.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+          "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+        },
+        {
+          "name": "geckolib",
+          "version": "4.9.3",
+          "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+          "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "expanded-2.1.4-all-deps",
+      "base": "extendedae",
+      "note": "All actual ExpandedAE class links: AdvancedAE, ExtendedAE, AE2WTLib; failures without them are not Federation bounds",
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "file": "expandedae-2.1.4.jar",
+          "url": "https://mediafilez.forgecdn.net/files/9021/958/expandedae-2.1.4.jar",
+          "sha512": "6ce8d087deffe520e1263d08faef6f657103a50f11709921651a3a9b8831483d39bb3b2328ec033246bb0cbfe68d7d82d044a6938488502d69d4258e4abcea96",
+          "version": "2.1.4"
+        },
+        {
+          "name": "advancedae",
+          "version": "1.6.12-1.21.1",
+          "file": "AdvancedAE-1.6.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+          "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+        },
+        {
+          "name": "geckolib",
+          "version": "4.9.3",
+          "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+          "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "pattern-disk-0.2.1-with-neo2120",
+      "base": "ae2-pattern-disk",
+      "note": "Historical Pattern Disk boots with Neo 21.2.0; current test-only PatternDiskApi encoder is absent, so these fixture errors are not a Federation floor",
+      "replace": {
+        "ae2-pattern-disk": {
+          "name": "ae2-pattern-disk",
+          "file": "ae2_pattern_disk-0.2.1.jar",
+          "url": "https://github.com/xingluo01/AE2-Pattern-Disk/releases/download/v0.2.1/ae2_pattern_disk-0.2.1.jar",
+          "sha512": "885824067d8fe62efe3897dc3ed4e8f0e542681672b4ea4212da377237d2ec054fdc8387a3e6415365347595355598165bcce2ede8246ffdc21b0f404e3c9f3b",
+          "version": "v0.2.1"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "ae2-pattern-disk"
+      ],
+      "add": [
+        {
+          "name": "neoecoae",
+          "version": "21.2.0",
+          "file": "neoecoae-21.2.0.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/cyNfBT7v/neoecoae-21.2.0.jar",
+          "sha512": "420c4442cffa4a96d76efac21490bb17b8ce2cdb4477b3d87f5b0bb0d55cdb011d1ab1da59daea5c7ee7e4f559db5e7a3515fa64045b7e57ee126054abae83cb"
+        }
+      ]
+    },
+    {
+      "name": "extended-2.2.8",
+      "base": "extendedae",
+      "note": "Resolve adjacent ExtendedAE registration/API boundary under AE2 19.2.18",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.8-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/6394/321/ExtendedAE-1.21-2.2.8-neoforge.jar",
+          "sha512": "73e80ec7aae4bc3b7a3ea9b093e0ba8ff07c9db7ac0a39dd9a2fa71b061718dedc489bc6a1aa7490ed8a55575dadd9db151db4a1a02e2f3c1a773538e5ac6343",
+          "version": "2.2.8"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "extended-2.2.4",
+      "base": "extendedae",
+      "note": "Resolve adjacent ExtendedAE registration/API boundary under AE2 19.2.18",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.4-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/6251/183/ExtendedAE-1.21-2.2.4-neoforge.jar",
+          "sha512": "672a74bcd2e834b4d1e4009736a10e36edddc88bfff4ff146a3003ae5ab38cd557c6770b1a9f4a2d6088dec8a1b5c872aade98b4aaa799c192f2939f9d7eec22",
+          "version": "2.2.4"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "extended-2.2.2",
+      "base": "extendedae",
+      "note": "Resolve adjacent ExtendedAE registration/API boundary under AE2 19.2.18",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.2-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/6185/45/ExtendedAE-1.21-2.2.2-neoforge.jar",
+          "sha512": "442bcc9e703f0da23e1d9af5663a5c181561def22c721e12ffae3f80806e9516f3ea71d0a9c76201ffe26fdd32c2e7c97b9f60331fef27e0ccd7968249f86a66",
+          "version": "2.2.2"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "extended-2.2.1",
+      "base": "extendedae",
+      "note": "Resolve adjacent ExtendedAE registration/API boundary under AE2 19.2.18",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.1-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/6164/133/ExtendedAE-1.21-2.2.1-neoforge.jar",
+          "sha512": "cb6f4ee2a37f58493e7ee3c96ca6068cc6bfd0d1451ea786c789bcbc9d33e0653988f0a9530495dd8e45f4e4a184411b3939453d48f6d25b7a359e6c6a374826",
+          "version": "2.2.1"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "plus-1.4.2",
+      "base": "extendedae-plus",
+      "note": "Resolve Plus client-only mixin regression versus earliest tested working smart-doubling integration",
+      "replace": {
+        "extendedae-plus": {
+          "name": "extendedae-plus",
+          "version": "1.21.1-1.4.2",
+          "file": "extendedae_plus-1.21.1-1.4.2.jar",
+          "url": "https://cdn.modrinth.com/data/xr109llC/versions/5jwUhrdM/extendedae_plus-1.21.1-1.4.2.jar",
+          "sha512": "1655a1dad7d6daff3bead39dd803d42e15e703c0767ab7061ce338a50851dce7e096d2bfa31cf8f2caf4e6375dd25a029af5bada421c18652cfffce171699fcf"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "acceleratedCpuCrafting",
+        "smartDoublingProcessing",
+        "smartDoublingTurnedOnLater",
+        "smartDoublingEndpoint"
+      ]
+    },
+    {
+      "name": "plus-1.4.3",
+      "base": "extendedae-plus",
+      "note": "Resolve Plus client-only mixin regression versus earliest tested working smart-doubling integration",
+      "replace": {
+        "extendedae-plus": {
+          "name": "extendedae-plus",
+          "version": "1.21.1-1.4.3",
+          "file": "extendedae_plus-1.21.1-1.4.3.jar",
+          "url": "https://cdn.modrinth.com/data/xr109llC/versions/ZMOMiGYe/extendedae_plus-1.21.1-1.4.3.jar",
+          "sha512": "f1d49d0d9bd4b4fb701b430bba541e4ea02bd8cd0f8f08692703108fe9be3c39ad6870a534d7ecc641ee8081e172d3b1255dea18ed545fa8a8bf27c5badbf964"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "acceleratedCpuCrafting",
+        "smartDoublingProcessing",
+        "smartDoublingTurnedOnLater",
+        "smartDoublingEndpoint"
+      ]
+    },
+    {
+      "name": "plus-1.4.4",
+      "base": "extendedae-plus",
+      "note": "Resolve Plus client-only mixin regression versus earliest tested working smart-doubling integration",
+      "replace": {
+        "extendedae-plus": {
+          "name": "extendedae-plus",
+          "version": "1.21.1-1.4.4",
+          "file": "extendedae_plus-1.21.1-1.4.4.jar",
+          "url": "https://cdn.modrinth.com/data/xr109llC/versions/CpncCAVo/extendedae_plus-1.21.1-1.4.4.jar",
+          "sha512": "1df17887c5ba5e662769b795cfb4a89a93f1f1663285b61deced0baddf71d20c0552361dc742f210dc9851d0cd02fbb85e0b4582556eb292b40d419eaded0b2d"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "acceleratedCpuCrafting",
+        "smartDoublingProcessing",
+        "smartDoublingTurnedOnLater",
+        "smartDoublingEndpoint"
+      ]
+    },
+    {
+      "name": "plus-1.6.0",
+      "base": "extendedae-plus",
+      "note": "Resolve Plus client-only mixin regression versus earliest tested working smart-doubling integration",
+      "replace": {
+        "extendedae-plus": {
+          "name": "extendedae-plus",
+          "version": "1.6.0",
+          "file": "extendedae_plus-1.6.0.jar",
+          "url": "https://cdn.modrinth.com/data/xr109llC/versions/G2bHHv7g/extendedae_plus-1.6.0.jar",
+          "sha512": "0c87d8826624a004bcbdf2766a9d3b5c9176d772027895a4d02215bc23b538b14ab1bca4d2d3cd7c239c723847da4f8b23a7b1ae133fcb4ac08a40c885a0b2ce"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "acceleratedCpuCrafting",
+        "smartDoublingProcessing",
+        "smartDoublingTurnedOnLater",
+        "smartDoublingEndpoint"
+      ]
+    },
+    {
+      "name": "advanced-1.4.0",
+      "base": "advanced-ae",
+      "note": "Bracket first current-AE2-compatible AdvancedAE generation without assuming monotonic dedicated-server stability",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.4.0-1.21.1",
+          "file": "AdvancedAE-1.4.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/Ffc5FAuR/AdvancedAE-1.4.0-1.21.1.jar",
+          "sha512": "19c3bec7d7cac7ee995fe60588190b1c8979318db94949f38ce34c264748f124d39e0a130e08a29931b1f776842e9841e56fde12d54adcac7ebbb0f70fefc73a"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.4.3",
+      "base": "advanced-ae",
+      "note": "Bracket first current-AE2-compatible AdvancedAE generation without assuming monotonic dedicated-server stability",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.4.3-1.21.1",
+          "file": "AdvancedAE-1.4.3-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/jBJRjy3p/AdvancedAE-1.4.3-1.21.1.jar",
+          "sha512": "5039d1bfc244a23fd21a26a5a615e263475c4682f56a8e1a0dd296b780ca9013494bdf4553e28c4af3fcbfa46993da47afb098d8a80eccf485dc98a8f41dc909"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.4.6",
+      "base": "advanced-ae",
+      "note": "Bracket first current-AE2-compatible AdvancedAE generation without assuming monotonic dedicated-server stability",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.4.6-1.21.1",
+          "file": "AdvancedAE-1.4.6-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/rMWbdQC2/AdvancedAE-1.4.6-1.21.1.jar",
+          "sha512": "b0020b45682a3e997e51c79f48ded956a10d603841be87b7710d20e72072bf785323e4afb323a07a8c7e17bda36ff0033811b41af96c52239e5c486cc4b22758"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.6.1-glodium",
+      "base": "advanced-ae",
+      "note": "Correct historical AdvancedAE transitive Glodium requirement",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.6.1-1.21.1",
+          "file": "AdvancedAE-1.6.1-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/VT36z30L/AdvancedAE-1.6.1-1.21.1.jar",
+          "sha512": "8da61ac6d8da21d43f0acaf17df8c00fa21f0f3abd30b02befbd06508119381efedc6370ab23026f22cfd2976a340f087a841533f303df7c18f8232e81d2f40d"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ]
+    },
+    {
+      "name": "allpattern-0.2.2",
+      "base": "aeallpattern",
+      "note": "Adjacent route-planner behavior before current 0.2.6",
+      "replace": {
+        "aeallpattern": {
+          "name": "aeallpattern",
+          "file": "aeallpattern-1.21.1-neoforge-0.2.2.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8842/112/aeallpattern-1.21.1-neoforge-0.2.2.jar",
+          "sha512": "20d8463b3675683d6946f76796ec7b504992aa3f1da01462d4d51717de4729c04215ebb5d1c54525e400f54e6a26452c907007806e340a614263bfd719b90cd8",
+          "version": "0.2.2"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "aeallpattern"
+      ]
+    },
+    {
+      "name": "allpattern-0.2.1-core",
+      "base": "aeallpattern",
+      "note": "Do not turn old planner-specific fixture failure into a global Federation loader floor",
+      "replace": {
+        "aeallpattern": {
+          "name": "aeallpattern",
+          "file": "aeallpattern-1.21.1-neoforge-0.2.1.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8798/864/aeallpattern-1.21.1-neoforge-0.2.1.jar",
+          "sha512": "9f6bc2fcea150f7b9f4a9bea0625b455550d5ca5e4cccac54db01823de50b25bae1545663a61a986add7bbc4ecc6315b51f07781f2b448be62341f01be61cc67",
+          "version": "0.2.1"
+        }
+      },
+      "tests": [
+        "core"
+      ]
+    },
+    {
+      "name": "enhancements-1.0.0-core",
+      "base": "appliedenhancements",
+      "note": "Old Aelis API lacks only fixture automatic-planner switch; test ordinary Federation separately",
+      "replace": {
+        "appliedenhancements": {
+          "name": "appliedenhancements",
+          "file": "appliedenhancements-1.0.0.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8718/558/appliedenhancements-1.0.0.jar",
+          "sha512": "84f11496262cd3028632d442447269ad96696d46a912ba7f58d8bbfdbafb44b95d8b3a9a30d7c4370615d86899068b6b3149ef969ae9436c469f7252e95d2a83",
+          "version": "1.0.0"
+        }
+      },
+      "tests": [
+        "core"
+      ]
+    },
+    {
+      "name": "omni-1.3.0-core",
+      "base": "omnisequence",
+      "note": "Production-only startup succeeds; isolate old content from later Omni fixture assumptions",
+      "replace": {
+        "omnisequence": {
+          "name": "omnisequence",
+          "file": "omnisequence-transfinite-1.3.0.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8504/859/omnisequence-transfinite-1.3.0.jar",
+          "sha512": "0e42b84b7077488d8f22289891f1d6a6e4e7c905dee6d07f3eeceac4e02195cd19da08c8d74d385832a0b58348dfa92d31e43adf25e60e8fdabcfa8213592d79",
+          "version": "omnisequence-transfinite-1.3.0.jar"
+        }
+      },
+      "tests": [
+        "core"
+      ]
+    },
+    {
+      "name": "neoeco-21.2.0-beta1",
+      "base": "neoecoae",
+      "note": "Exact prerelease generation boundary for hard-coded ECO CPU lifecycle and batching APIs",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.0-beta1",
+          "file": "neoecoae-21.2.0-beta1.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/1wgQhl1y/neoecoae-21.2.0-beta1.jar",
+          "sha512": "7759000ff476a80d5f6b067e17df57669e53004be5eb17ddf5de255e168430b166b1af25aafffad0d3a115fb1f367e00c9ee466aebe19eb2c26b17d459155cb6"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "computationSystemCancel"
+      ]
+    },
+    {
+      "name": "neoeco-21.2.0-beta2",
+      "base": "neoecoae",
+      "note": "Exact prerelease generation boundary for hard-coded ECO CPU lifecycle and batching APIs",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.0-beta2",
+          "file": "neoecoae-21.2.0-beta2.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/ojEQQQSG/neoecoae-21.2.0-beta2.jar",
+          "sha512": "45d4f4d1882b442114a905363f08d51fecc1bb8dac7e8c9ab1dec70977880e7d01d9655f2a24eb1874b6ff630b3ca12002b5a9a293646c94eaadf7b1d2d744c1"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "computationSystemCancel"
+      ]
+    },
+    {
+      "name": "neoeco-21.2.0-beta3",
+      "base": "neoecoae",
+      "note": "Exact prerelease generation boundary for hard-coded ECO CPU lifecycle and batching APIs",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.0-beta3",
+          "file": "neoecoae-21.2.0-beta3.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/1vKpC42G/neoecoae-21.2.0-beta3.jar",
+          "sha512": "4b23bf3fb3979d2c1b59074fe94c5d3e563aa13132231e6f16b71e89b1dd2c41c198603b522e09356d87ab18361a05f660f2f14ab7a030cd8d5ed4c9bb94f3d3"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "computationSystemCancel"
+      ]
+    },
+    {
+      "name": "neoeco-21.2.0-beta4",
+      "base": "neoecoae",
+      "note": "Exact prerelease generation boundary for hard-coded ECO CPU lifecycle and batching APIs",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.0-beta4",
+          "file": "neoecoae-21.2.0-beta4.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/c1xX1P0i/neoecoae-21.2.0-beta4.jar",
+          "sha512": "d7cbfac48d27fddb8592f80cf1fa27ebeaccdcab3316dcfa01e2e7bdbf981be8455c097e10bad314b62297e1dda9e632b148a11ba8caf3117d2558f0f50ab1b1"
+        }
+      },
+      "tests": [
+        "core",
+        "neoecoae"
+      ]
+    },
+    {
+      "name": "lightning-2.1.0-beta1",
+      "base": "ae2-lightning-tech",
+      "note": "First TimeWheel CPU beta and its exact Thunderbolt prerelease range; compare cancellation with 2.0.9",
+      "replace": {
+        "ae2-lightning-tech": {
+          "name": "ae2-lightning-tech",
+          "version": "2.1.0-beta.1",
+          "file": "ae2lt-2.1.0-beta.1.jar",
+          "url": "https://cdn.modrinth.com/data/ArHeh5Fz/versions/Ap2OL0DS/ae2lt-2.1.0-beta.1.jar",
+          "sha512": "c46fbf9f0f4ab3b18bfae27c633457794d53138e244a07aa83c621711c0e32821524899e7c8d6ce71b612fd1896a6a9e8f8de4ae09fb969d378c05e2702ab1e1"
+        },
+        "thunderbolt-core": {
+          "name": "thunderbolt-core",
+          "version": "2.0.0-beta.1",
+          "file": "thunderbolt-2.0.0-beta.1.jar",
+          "url": "https://cdn.modrinth.com/data/M5jhzZXH/versions/cs4e3E2e/thunderbolt-2.0.0-beta.1.jar",
+          "sha512": "9675733b63cddd0d078e3de1b0d3870fe9da0a2894c9c587261cccd3bf145e9c4039c601ba0ec1d9c166549b2709d228a9fd129205c88a6a0c4fcd0732786624"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "mentalMathUnitCrafting",
+        "mentalMathUnitCancel",
+        "mentalMathUnitDisconnected",
+        "mentalMathUnitFluidReturn"
+      ]
+    },
+    {
+      "name": "extended-2.2.5",
+      "base": "extendedae",
+      "note": "Adjacent old/new ExtendedAE menu registration boundary on the recorded current dependency tuple",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.5-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/6266/863/ExtendedAE-1.21-2.2.5-neoforge.jar",
+          "sha512": "151acd71fa2381dc80d216c6d0700d9bc84211d51b9a8b85001f1e70af3cbc4ec91e6b6b5877239fb4b1a78818cc9e7a6db417ef9cd56f322f21f4fa113c5051",
+          "version": "2.2.5"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "extended-2.2.6",
+      "base": "extendedae",
+      "note": "Adjacent old/new ExtendedAE menu registration boundary on the recorded current dependency tuple",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.6-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/6283/473/ExtendedAE-1.21-2.2.6-neoforge.jar",
+          "sha512": "1eace9528e19f3460048e84998d8718b6e19d4feeb0c685c8970141b6e3b40457c949d8ac289372cc8a3801657a8d9ea5e4a892d7399b30dab76749e5009914f",
+          "version": "2.2.6"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "extended-2.2.7",
+      "base": "extendedae",
+      "note": "Adjacent old/new ExtendedAE menu registration boundary on the recorded current dependency tuple",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.7-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/6370/500/ExtendedAE-1.21-2.2.7-neoforge.jar",
+          "sha512": "fafbbaf374305f45eb36c768908d9af1f61d29dcfe6fbb8a5e2823703d5e3c7c49949bb0ddc2350b59eee50d5ad7dfdc816f6709aa2754039a0a4f7dde0e63c9",
+          "version": "2.2.7"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "advanced-0.6.1-no-gecko",
+      "base": "advanced-ae",
+      "note": "Minimal declared companion set for old AdvancedAE: Glodium present, unnecessary modern GeckoLib absent",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "0.6.1-1.21.1",
+          "file": "AdvancedAE-0.6.1-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/Jinl5ahF/AdvancedAE-0.6.1-1.21.1.jar",
+          "sha512": "b8423006e2e46a48a9fa58e57185dcbbcf069ddd9a3a11100d62c16ed129411679708613d5394ffdfa36ddba690ab3e9ef0ee728cfde54f35f5d8f358a53a5ac"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ],
+      "remove": [
+        "geckolib"
+      ]
+    },
+    {
+      "name": "advanced-1.3.0-no-gecko",
+      "base": "advanced-ae",
+      "note": "Negative companion-removal control: actual binary requires GeckoLib; missing dependency is not a Federation version floor",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.3.0-1.21.1",
+          "file": "AdvancedAE-1.3.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/Qi5k4qWd/AdvancedAE-1.3.0-1.21.1.jar",
+          "sha512": "de675837bf96b23756599057d84cf968cdeaa9586cfaa111809c13af59100469cad73f1edd1eeec8685ef5aa2921067bdb5831639d755f7ca7289201104fe593"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ],
+      "remove": [
+        "geckolib"
+      ]
+    },
+    {
+      "name": "advanced-1.1.0-no-gecko",
+      "base": "advanced-ae",
+      "note": "Negative companion-removal control: actual binary requires GeckoLib; missing dependency is not a Federation version floor",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.1.0-1.21.1",
+          "file": "AdvancedAE-1.1.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/oirsZ71Z/AdvancedAE-1.1.0-1.21.1.jar",
+          "sha512": "c1d423bedcc3380c94cb3ec57819b54e58650194c2890dea6a916f8813df5a5219516573e8fec17932199a11cd306dcc1891e1e100e1d8c81c2f76c7a0e20c71"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ],
+      "remove": [
+        "geckolib"
+      ]
+    },
+    {
+      "name": "advanced-1.1.18-no-gecko",
+      "base": "advanced-ae",
+      "note": "Negative companion-removal control: actual binary requires GeckoLib; missing dependency is not a Federation version floor",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.1.18-1.21.1",
+          "file": "AdvancedAE-1.1.18-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ezakbQqZ/AdvancedAE-1.1.18-1.21.1.jar",
+          "sha512": "82757e624b591c220ef6b2468cd5ffd71654699919cb372cfc3d248e9b619868c998f5e652dc510a2b7aef6f58f621b7b3c6cc47324ccff752cbced10c491dcd"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ],
+      "remove": [
+        "geckolib"
+      ]
+    },
+    {
+      "name": "advanced-1.2.0-no-gecko",
+      "base": "advanced-ae",
+      "note": "Negative companion-removal control: actual binary requires GeckoLib; missing dependency is not a Federation version floor",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.2.0-1.21.1",
+          "file": "AdvancedAE-1.2.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/f48bVTCH/AdvancedAE-1.2.0-1.21.1.jar",
+          "sha512": "cc6c9447755a96c2e708f318ddb0f21b7fc2c19eaf0924e6710243646842c8af640a8e9d8d1583e674919f5538763c5a7a8c61ccd8ec70756b2d72e221e9b685"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ],
+      "remove": [
+        "geckolib"
+      ]
+    },
+    {
+      "name": "advanced-1.2.5-no-gecko",
+      "base": "advanced-ae",
+      "note": "Negative companion-removal control: actual binary requires GeckoLib; missing dependency is not a Federation version floor",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.2.5-1.21.1",
+          "file": "AdvancedAE-1.2.5-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/f5galYPR/AdvancedAE-1.2.5-1.21.1.jar",
+          "sha512": "fb5d43808e854a5c28768ba989ad7691cf99f5aec7f76c077dc13003841bffa2ee2aa11b2bb12ab8a014627bc97c6c586c9e6541f1bc4f53f4e99e537747ee99"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "version": "1.21-2.2-neoforge",
+          "file": "Glodium-1.21-2.2-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
+          "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
+        }
+      ],
+      "remove": [
+        "geckolib"
+      ]
+    },
+    {
+      "name": "extended-2.0.1-minimum-tuple",
+      "base": "extendedae",
+      "note": "Minimum supported AE2, minimum Glodium, only embedded historical AE2WTLib API; no unrelated modern library",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "version": "1.21.1-2.0.1-neoforge",
+          "file": "ExtendedAE-1.21-2.0.1-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/JiOqfoFM/versions/gOnTv6Fx/ExtendedAE-1.21-2.0.1-neoforge.jar",
+          "sha512": "96736498a806de198da754af7ee5cac2570cdb2aa9f8adba321fe33d8e3619a045961988ef79b9116900a8014bcff7c168e5b97b66e1734f317268652135e5cc"
+        },
+        "glodium": {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        },
+        "ae2": {
+          "name": "ae2",
+          "version": "19.2.9",
+          "file": "appliedenergistics2-19.2.9.jar",
+          "url": "https://cdn.modrinth.com/data/XxWD5pD3/versions/DUSBnYm0/appliedenergistics2-19.2.9.jar",
+          "sha512": "e7977a4bc3259e656a365d3bac83e6f5c23de0a487f02942693f9f69cb8654a13c7104066f77b3ff58546d92ee32a2f28a8a945d7c0ae373519df0c445852603"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "extended-2.0.1-glodium20",
+      "base": "extendedae",
+      "note": "Minimum Glodium under current AE2 19.2.18, to distinguish menu ABI drift",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "version": "1.21.1-2.0.1-neoforge",
+          "file": "ExtendedAE-1.21-2.0.1-neoforge.jar",
+          "url": "https://cdn.modrinth.com/data/JiOqfoFM/versions/gOnTv6Fx/ExtendedAE-1.21-2.0.1-neoforge.jar",
+          "sha512": "96736498a806de198da754af7ee5cac2570cdb2aa9f8adba321fe33d8e3619a045961988ef79b9116900a8014bcff7c168e5b97b66e1734f317268652135e5cc"
+        },
+        "glodium": {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "advanced-0.6.1-minimum-tuple",
+      "base": "advanced-ae",
+      "note": "Minimum supported AE2 and minimum Glodium, without irrelevant modern GeckoLib",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "0.6.1-1.21.1",
+          "file": "AdvancedAE-0.6.1-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/Jinl5ahF/AdvancedAE-0.6.1-1.21.1.jar",
+          "sha512": "b8423006e2e46a48a9fa58e57185dcbbcf069ddd9a3a11100d62c16ed129411679708613d5394ffdfa36ddba690ab3e9ef0ee728cfde54f35f5d8f358a53a5ac"
+        },
+        "ae2": {
+          "name": "ae2",
+          "version": "19.2.9",
+          "file": "appliedenergistics2-19.2.9.jar",
+          "url": "https://cdn.modrinth.com/data/XxWD5pD3/versions/DUSBnYm0/appliedenergistics2-19.2.9.jar",
+          "sha512": "e7977a4bc3259e656a365d3bac83e6f5c23de0a487f02942693f9f69cb8654a13c7104066f77b3ff58546d92ee32a2f28a8a945d7c0ae373519df0c445852603"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ],
+      "remove": [
+        "geckolib"
+      ]
+    },
+    {
+      "name": "advanced-1.1.0-matched-gecko",
+      "base": "advanced-ae",
+      "note": "Historical mandatory GeckoLib plus minimum Glodium; no absent-companion false positives",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.1.0-1.21.1",
+          "file": "AdvancedAE-1.1.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/oirsZ71Z/AdvancedAE-1.1.0-1.21.1.jar",
+          "sha512": "c1d423bedcc3380c94cb3ec57819b54e58650194c2890dea6a916f8813df5a5219516573e8fec17932199a11cd306dcc1891e1e100e1d8c81c2f76c7a0e20c71"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.6.6",
+          "file": "geckolib-neoforge-1.21.1-4.6.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/qj2pTqCr/geckolib-neoforge-1.21.1-4.6.6.jar",
+          "sha512": "6355127ce8fc74fe55e295ddbcf0cb23e6c7a4d4a1cb22c9b78c11e7b76b4c2ea738e9d408cfbfe2fd96fc3e5b43f2a24e20297563f35bee659e97d93a27f14a"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.1.18-matched-gecko",
+      "base": "advanced-ae",
+      "note": "Historical mandatory GeckoLib plus minimum Glodium; no absent-companion false positives",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.1.18-1.21.1",
+          "file": "AdvancedAE-1.1.18-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ezakbQqZ/AdvancedAE-1.1.18-1.21.1.jar",
+          "sha512": "82757e624b591c220ef6b2468cd5ffd71654699919cb372cfc3d248e9b619868c998f5e652dc510a2b7aef6f58f621b7b3c6cc47324ccff752cbced10c491dcd"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.7.6",
+          "file": "geckolib-neoforge-1.21.1-4.7.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/DTo3uxPN/geckolib-neoforge-1.21.1-4.7.6.jar",
+          "sha512": "bb493b082e3a871d0b5df3f9eaee08d47d931a38daa37a9debf6d3e7bfdcc490dc98008f631c2282ea405c383c4b05afdb19a898e4419ed7616e4128fe5460d0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.2.0-matched-gecko",
+      "base": "advanced-ae",
+      "note": "Historical mandatory GeckoLib plus minimum Glodium; no absent-companion false positives",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.2.0-1.21.1",
+          "file": "AdvancedAE-1.2.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/f48bVTCH/AdvancedAE-1.2.0-1.21.1.jar",
+          "sha512": "cc6c9447755a96c2e708f318ddb0f21b7fc2c19eaf0924e6710243646842c8af640a8e9d8d1583e674919f5538763c5a7a8c61ccd8ec70756b2d72e221e9b685"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.7.6",
+          "file": "geckolib-neoforge-1.21.1-4.7.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/DTo3uxPN/geckolib-neoforge-1.21.1-4.7.6.jar",
+          "sha512": "bb493b082e3a871d0b5df3f9eaee08d47d931a38daa37a9debf6d3e7bfdcc490dc98008f631c2282ea405c383c4b05afdb19a898e4419ed7616e4128fe5460d0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.2.5-matched-gecko",
+      "base": "advanced-ae",
+      "note": "Historical mandatory GeckoLib plus minimum Glodium; no absent-companion false positives",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.2.5-1.21.1",
+          "file": "AdvancedAE-1.2.5-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/f5galYPR/AdvancedAE-1.2.5-1.21.1.jar",
+          "sha512": "fb5d43808e854a5c28768ba989ad7691cf99f5aec7f76c077dc13003841bffa2ee2aa11b2bb12ab8a014627bc97c6c586c9e6541f1bc4f53f4e99e537747ee99"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.7.6",
+          "file": "geckolib-neoforge-1.21.1-4.7.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/DTo3uxPN/geckolib-neoforge-1.21.1-4.7.6.jar",
+          "sha512": "bb493b082e3a871d0b5df3f9eaee08d47d931a38daa37a9debf6d3e7bfdcc490dc98008f631c2282ea405c383c4b05afdb19a898e4419ed7616e4128fe5460d0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.3.0-matched-gecko",
+      "base": "advanced-ae",
+      "note": "Historical mandatory GeckoLib plus minimum Glodium; no absent-companion false positives",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.3.0-1.21.1",
+          "file": "AdvancedAE-1.3.0-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/Qi5k4qWd/AdvancedAE-1.3.0-1.21.1.jar",
+          "sha512": "de675837bf96b23756599057d84cf968cdeaa9586cfaa111809c13af59100469cad73f1edd1eeec8685ef5aa2921067bdb5831639d755f7ca7289201104fe593"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.7.6",
+          "file": "geckolib-neoforge-1.21.1-4.7.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/DTo3uxPN/geckolib-neoforge-1.21.1-4.7.6.jar",
+          "sha512": "bb493b082e3a871d0b5df3f9eaee08d47d931a38daa37a9debf6d3e7bfdcc490dc98008f631c2282ea405c383c4b05afdb19a898e4419ed7616e4128fe5460d0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advanced-ae"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.1.4-matched-gecko",
+      "base": "advanced-ae",
+      "note": "Bisection within the old AdvancedAE line using a complete minimal required companion set",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.1.4-1.21.1",
+          "file": "AdvancedAE-1.1.4-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/DI6KODZy/AdvancedAE-1.1.4-1.21.1.jar",
+          "sha512": "7850700b4bd10fa6bdcd71c174c163e52e02710be9e45da4ef33bebcdc62185174edb6de7caf10bc07657eff2f1feccb87ef316568bcae7ce430f899329a8d5d"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.7.6",
+          "file": "geckolib-neoforge-1.21.1-4.7.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/DTo3uxPN/geckolib-neoforge-1.21.1-4.7.6.jar",
+          "sha512": "bb493b082e3a871d0b5df3f9eaee08d47d931a38daa37a9debf6d3e7bfdcc490dc98008f631c2282ea405c383c4b05afdb19a898e4419ed7616e4128fe5460d0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.1.9-matched-gecko",
+      "base": "advanced-ae",
+      "note": "Bisection within the old AdvancedAE line using a complete minimal required companion set",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.1.9-1.21.1",
+          "file": "AdvancedAE-1.1.9-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/exrY05o6/AdvancedAE-1.1.9-1.21.1.jar",
+          "sha512": "9785646f3339ea5fdfc5f816154a64e4e249baecda0d84ba7de2340b4436f6db69f450358132a3de196e61a17574e45c349263a54e24f5b32b7f844ac3400727"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.7.6",
+          "file": "geckolib-neoforge-1.21.1-4.7.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/DTo3uxPN/geckolib-neoforge-1.21.1-4.7.6.jar",
+          "sha512": "bb493b082e3a871d0b5df3f9eaee08d47d931a38daa37a9debf6d3e7bfdcc490dc98008f631c2282ea405c383c4b05afdb19a898e4419ed7616e4128fe5460d0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.1.13-matched-gecko",
+      "base": "advanced-ae",
+      "note": "Bisection within the old AdvancedAE line using a complete minimal required companion set",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.1.13-1.21.1",
+          "file": "AdvancedAE-1.1.13-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/dYtd6x4g/AdvancedAE-1.1.13-1.21.1.jar",
+          "sha512": "3489862636a487606c68ed95dc80c3f1b24bab1099e2d7ff2db3aa71893df015826a8e55a9918c50c520fb3d7e9ccfdcd5708f3ee74cc1e1aacf682ae0656448"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.7.6",
+          "file": "geckolib-neoforge-1.21.1-4.7.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/DTo3uxPN/geckolib-neoforge-1.21.1-4.7.6.jar",
+          "sha512": "bb493b082e3a871d0b5df3f9eaee08d47d931a38daa37a9debf6d3e7bfdcc490dc98008f631c2282ea405c383c4b05afdb19a898e4419ed7616e4128fe5460d0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    },
+    {
+      "name": "neoeco-beta4-full-one-worker",
+      "base": "neoecoae",
+      "note": "One-worker repeat preserves the same mid-suite fixture failure: missing test-only ECOPlanningResultRegistry.isECOOwnedPlan, not a startup failure or processor workaround",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.0-beta4",
+          "file": "neoecoae-21.2.0-beta4.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/c1xX1P0i/neoecoae-21.2.0-beta4.jar",
+          "sha512": "d7cbfac48d27fddb8592f80cf1fa27ebeaccdcab3316dcfa01e2e7bdbf981be8455c097e10bad314b62297e1dda9e632b148a11ba8caf3117d2558f0f50ab1b1"
+        }
+      },
+      "tests": [
+        "core",
+        "neoecoae"
+      ],
+      "processors": 1
+    },
+    {
+      "name": "expanded-2.1.1-matched-extended",
+      "base": "extendedae",
+      "note": "Remove separate packing-tape ABI error with historical ExtendedAE 2.2.32 before comparing Federation Mixin conflict against bare startup",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.32-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/8025/439/ExtendedAE-1.21-2.2.32-neoforge.jar",
+          "sha512": "4b8ec3b1007c72fd73ffe5ca1f734636bd5c0c61bbfaacb8a55bb1de457f3cc22a3205e6f33c9480b6db665f48e1648f8d51e95ee8cb238b02528d8796a13b3e",
+          "version": "2.2.32"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "expandedae"
+      ],
+      "add": [
+        {
+          "name": "expanded-ae",
+          "version": "2.1.1",
+          "file": "expandedae-2.1.1.jar",
+          "url": "https://cdn.modrinth.com/data/ayN3DZKb/versions/Iw2gl7Lb/expandedae-2.1.1.jar",
+          "sha512": "5d6b0c7430d6f1f2bdb2cb38832ee27d0b28402d16171a9fe746d0275ba54c288405b64b9ad269c010aadd729e82ddeb61b9550c0361c6e1ece2c0bdc77a4b23"
+        },
+        {
+          "name": "advancedae",
+          "version": "1.6.12-1.21.1",
+          "file": "AdvancedAE-1.6.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+          "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+        },
+        {
+          "name": "geckolib",
+          "version": "4.9.3",
+          "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+          "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
+        },
+        {
+          "name": "applied-energistics-2-wireless-terminals",
+          "version": "19.5.1",
+          "file": "ae2wtlib-19.5.1.jar",
+          "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
+          "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
+        }
+      ]
+    },
+    {
+      "name": "neoeco-beta4-without-new-planner-fixture",
+      "base": "neoecoae",
+      "note": "Full API/gameplay selection except fixture-only isECOOwnedPlan absent from beta4; prior timeout was mid-suite fixture failure, not startup",
+      "replace": {
+        "neoecoae": {
+          "name": "neoecoae",
+          "version": "21.2.0-beta4",
+          "file": "neoecoae-21.2.0-beta4.jar",
+          "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/c1xX1P0i/neoecoae-21.2.0-beta4.jar",
+          "sha512": "d7cbfac48d27fddb8592f80cf1fa27ebeaccdcab3316dcfa01e2e7bdbf981be8455c097e10bad314b62297e1dda9e632b148a11ba8caf3117d2558f0f50ab1b1"
+        }
+      },
+      "tests": [
+        "core",
+        "craftingSystemCrafting",
+        "computationSharedAnchorLifecycle",
+        "computationCompletedLifecycle",
+        "computationSystemOrdering",
+        "computationSystemCancel",
+        "computationSystemDelayedByproduct",
+        "computationSystemDisconnect",
+        "computationSystemFluidReturn",
+        "computationSystemFluidCancel",
+        "computationSystemSmartDoubling",
+        "laneSmartDoubling",
+        "craftingSystemThroughput",
+        "craftingSystemThroughputJoined",
+        "craftingSystemExactOrder",
+        "largeWorkstationBatching",
+        "largeWorkstationBatchingJoined",
+        "ecoDistrictOrdering",
+        "storageSystemStorage",
+        "storageSystemDismantled",
+        "ecoWarehouseChain",
+        "computationSystemMergedFluidReturn"
+      ]
+    },
+    {
+      "name": "advanced-1.1.10-matched-gecko",
+      "base": "advanced-ae",
+      "note": "Exact adjacent registration boundary with valid GeckoLib and Glodium companions",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.1.10-1.21.1",
+          "file": "AdvancedAE-1.1.10-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/MmUnwoSb/AdvancedAE-1.1.10-1.21.1.jar",
+          "sha512": "e616df863d5954a01394ac787553435f2a7d5066c43c20156e5449a42040abb571baddf2af50b2ba11841dd0c74aac851581bdc3383ffe8306fe7822049163a9"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.7.6",
+          "file": "geckolib-neoforge-1.21.1-4.7.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/DTo3uxPN/geckolib-neoforge-1.21.1-4.7.6.jar",
+          "sha512": "bb493b082e3a871d0b5df3f9eaee08d47d931a38daa37a9debf6d3e7bfdcc490dc98008f631c2282ea405c383c4b05afdb19a898e4419ed7616e4128fe5460d0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.1.11-matched-gecko",
+      "base": "advanced-ae",
+      "note": "Exact adjacent registration boundary with valid GeckoLib and Glodium companions",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.1.11-1.21.1",
+          "file": "AdvancedAE-1.1.11-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/LBbe2WHo/AdvancedAE-1.1.11-1.21.1.jar",
+          "sha512": "05c1d2195e15f5b8630044a1f3c8757c28f995e6896fc36e207af85eaa8323515a4bba41d529da653092f2c0934660a809e82dbd6637a50860c0dc94972306e1"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.7.6",
+          "file": "geckolib-neoforge-1.21.1-4.7.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/DTo3uxPN/geckolib-neoforge-1.21.1-4.7.6.jar",
+          "sha512": "bb493b082e3a871d0b5df3f9eaee08d47d931a38daa37a9debf6d3e7bfdcc490dc98008f631c2282ea405c383c4b05afdb19a898e4419ed7616e4128fe5460d0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    },
+    {
+      "name": "advanced-1.1.12-matched-gecko",
+      "base": "advanced-ae",
+      "note": "Exact adjacent registration boundary with valid GeckoLib and Glodium companions",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.1.12-1.21.1",
+          "file": "AdvancedAE-1.1.12-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/hiYL5mhc/AdvancedAE-1.1.12-1.21.1.jar",
+          "sha512": "5843354dcb372d09d9eccd6802fa3d11f2acf34c9dec1c7e2d2dab87517ca65178d28734e3b205352593c4e18cc0c948b0e653e4615a5cc9c30d85ee9c4d9b36"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.7.6",
+          "file": "geckolib-neoforge-1.21.1-4.7.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/DTo3uxPN/geckolib-neoforge-1.21.1-4.7.6.jar",
+          "sha512": "bb493b082e3a871d0b5df3f9eaee08d47d931a38daa37a9debf6d3e7bfdcc490dc98008f631c2282ea405c383c4b05afdb19a898e4419ed7616e4128fe5460d0"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "advPatternProviderCrafting",
+        "advPatternProviderProcessing",
+        "endpointLocalAdvPatternProvider",
+        "quantumCoreCrafting",
+        "quantumCoreCancel",
+        "quantumCoreDisconnected"
+      ],
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    },
+    {
+      "name": "extended-2.2.6-minimum-tuple",
+      "base": "extendedae",
+      "note": "Check whether the current-tuple 2.2.6/2.2.7 boundary also holds at Federation minimum AE2 19.2.9",
+      "replace": {
+        "extendedae": {
+          "name": "extendedae",
+          "file": "ExtendedAE-1.21-2.2.6-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/6283/473/ExtendedAE-1.21-2.2.6-neoforge.jar",
+          "sha512": "1eace9528e19f3460048e84998d8718b6e19d4feeb0c685c8970141b6e3b40457c949d8ac289372cc8a3801657a8d9ea5e4a892d7399b30dab76749e5009914f",
+          "version": "2.2.6"
+        },
+        "ae2": {
+          "name": "ae2",
+          "version": "19.2.9",
+          "file": "appliedenergistics2-19.2.9.jar",
+          "url": "https://cdn.modrinth.com/data/XxWD5pD3/versions/DUSBnYm0/appliedenergistics2-19.2.9.jar",
+          "sha512": "e7977a4bc3259e656a365d3bac83e6f5c23de0a487f02942693f9f69cb8654a13c7104066f77b3ff58546d92ee32a2f28a8a945d7c0ae373519df0c445852603"
+        },
+        "glodium": {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      },
+      "tests": [
+        "storageShare",
+        "remoteCrafting",
+        "remoteProcessingPlacedBlocks",
+        "processingThreeEndpoints",
+        "endpointLocalFurnace",
+        "exPatternProviderCrafting",
+        "exPatternProviderProcessing",
+        "exMolecularAssemblerCrafting",
+        "endpointLocalExPatternProvider",
+        "exPatternProviderDisconnected"
+      ]
+    },
+    {
+      "name": "advanced-1.1.13-full",
+      "base": "advanced-ae",
+      "note": "Adjacent first passing current-AE2 generation: full core plus AdvancedAE provider/CPU/lifecycle selection, using historical GeckoLib and Glodium.",
+      "replace": {
+        "advancedae": {
+          "name": "advancedae",
+          "version": "1.1.13-1.21.1",
+          "file": "AdvancedAE-1.1.13-1.21.1.jar",
+          "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/dYtd6x4g/AdvancedAE-1.1.13-1.21.1.jar",
+          "sha512": "3489862636a487606c68ed95dc80c3f1b24bab1099e2d7ff2db3aa71893df015826a8e55a9918c50c520fb3d7e9ccfdcd5708f3ee74cc1e1aacf682ae0656448"
+        },
+        "geckolib": {
+          "name": "geckolib",
+          "version": "4.7.6",
+          "file": "geckolib-neoforge-1.21.1-4.7.6.jar",
+          "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/DTo3uxPN/geckolib-neoforge-1.21.1-4.7.6.jar",
+          "sha512": "bb493b082e3a871d0b5df3f9eaee08d47d931a38daa37a9debf6d3e7bfdcc490dc98008f631c2282ea405c383c4b05afdb19a898e4419ed7616e4128fe5460d0"
+        }
+      },
+      "add": [
+        {
+          "name": "glodium",
+          "file": "Glodium-1.21-2.0-neoforge.jar",
+          "url": "https://mediafilez.forgecdn.net/files/5614/731/Glodium-1.21-2.0-neoforge.jar",
+          "sha512": "9e7241bedc4a614f64c430b0659eea8877fc060e70bf7463f68bbdd4205e1c7bb35c020dde3b759d0a2598551adb8ec03e9d604a47fb2b288d1ba46ca351530f",
+          "version": "1.21-2.0-neoforge"
+        }
+      ]
+    }
+  ]
+}

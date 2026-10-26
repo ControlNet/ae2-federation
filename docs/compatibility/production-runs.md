@@ -330,3 +330,58 @@ disk space only when it has a new pack to download, and leaves the pins as they 
 ```bash
 gh workflow run latest-modpacks.yml --ref dev
 ```
+
+## Historical addon versions
+
+The single-version profiles above are not minimum-version declarations.
+[`minimum-versions.md`](minimum-versions.md#optional-addon-version-investigation-2026-10-25)
+separates Federation adapter boundaries, upstream dependency/ABI problems and
+historical fixture limitations. The pinned historical matrix is
+[`tests/compat/version-boundaries.json`](../../tests/compat/version-boundaries.json).
+
+```bash
+python3 tools/compat_versions.py --list
+python3 tools/compat_versions.py --accept-eula -j 3 -p 4 \
+  advanced-1.5.0-full neoeco-21.2.0-full extended-2.2.42 plus-1.6.3 \
+  --output neoforge-1.21.1/build/addon-version-check
+python3 tools/compat_versions.py --accept-eula --no-build --bare \
+  advanced-0.6.0 extended-2.0.1 plus-1.4.0 mega-4.0.2 \
+  --output neoforge-1.21.1/build/addon-version-check-bare
+```
+
+The positive selection runs packaged production Federation and compatibility-test
+JARs in ordinary dedicated servers. The bare selection removes both JARs to
+attribute startup failures. `--no-build` requires the two previously built JARs.
+Each case records resolved dependencies, artifact hashes, outcomes, and its
+server directory. Downloads use the existing compatibility cache; worlds are
+fresh experiment worlds, not user saves.
+
+The complete historical matrix deliberately contains failing versions and loader
+controls. Its expected overall exit status is **1**, not a green acceptance run.
+For the positive selection above, expect **34/34**, **42/42**, **33/33** and
+**41/41**, respectively, and exit **0**. For the four bare historical versions,
+expect upstream startup crashes and exit **1**. A server process exiting zero
+without `compat-report.json` is not a passing compatibility test.
+
+The archived [machine-readable evidence](../../tests/compat/version-boundaries-evidence.json)
+records the actual production and fixture hashes separately. Historical fixtures
+span three snapshots; do not assume the latest rebuilt fixture has byte-for-byte
+identity with every archived run. Each run retains its exact resolved mod tuple
+and report/log hashes.
+
+To reproduce the adjacent AdvancedAE boundary and the old ECO CPU generation:
+
+```bash
+python3 tools/compat_versions.py --accept-eula -j 2 -p 8 \
+  advanced-1.1.13-full neoeco-beta4-without-new-planner-fixture \
+  --output neoforge-1.21.1/build/addon-boundary-recheck
+python3 tools/compat_versions.py --accept-eula --no-build --bare \
+  advanced-1.1.12-matched-gecko \
+  --output neoforge-1.21.1/build/addon-boundary-recheck-bare
+```
+
+The archived positive results are **34/34** and **41/41** (exit **0**).
+The adjacent bare AdvancedAE control crashes on duplicate
+`advanced_ae:quantum_computer` menu registration (exit **1**). ECO's omitted
+planner-ownership check uses a newer test-only method; its omission is not a
+claim that old ECO has a production startup failure.
