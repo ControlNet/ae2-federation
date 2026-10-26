@@ -13,7 +13,7 @@
     "sha512": "ba7226744aae3fedef8b5ab74f80b424dcf643878c327c14a8cc95f129051b9eca59a3fffe4f6355225d601c6a24b2f786cb390547129b2656bd6a59543c3a5c"
   },
   "mods": [
-    "ldlib2@2.2.41"
+    "ldlib2@2.2.44"
   ],
   "memory": "8G",
   "timeout": 1800,
