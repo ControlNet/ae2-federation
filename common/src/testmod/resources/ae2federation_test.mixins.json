@@ -24,8 +24,6 @@
     "FederationNativeTargetEvidenceMixin",
     "EndpointTargetBindingEvidenceMixin",
     "EndpointPersistenceEvidenceMixin",
-    "SourceSnapshotLedgerTestHookMixin",
-    "NativeStorageNotificationHubTestHookMixin",
     "TerminalCraftingServiceEvidenceMixin",
     "TerminalCraftingCpuEvidenceMixin",
     "TerminalCraftingResultEvidenceMixin",

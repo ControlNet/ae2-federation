@@ -78,8 +78,6 @@ public final class FederationTestMod {
 					 EndpointReturnGameTests.class, EndpointAuthorizationGameTests.class,
 					 StorageProofGameTests.class, StorageNativeCharacterizationGameTests.class, StorageMountGameTests.class,
 					 StorageProvenanceGameTests.class, StorageChainGameTests.class, AcrossDomainsGameTests.class,
-					 StorageSubscriptionGameTests.class, StorageSubscriptionDiamondGameTest.class,
-					 StorageSubscriptionBoundaryGameTest.class, StorageSubscriptionMaskingGameTest.class,
 					 StorageSourceIndexGameTests.class,
 					 StorageNativeStateGameTests.class,
 						 ResourceQualificationGameTests.class,

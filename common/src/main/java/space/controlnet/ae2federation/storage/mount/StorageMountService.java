@@ -22,8 +22,6 @@ import space.controlnet.ae2federation.storage.provenance.MountGeneration;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomain;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomainRegistry;
 import space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic;
-import space.controlnet.ae2federation.storage.subscription.SourceSubscriptionKey;
-import space.controlnet.ae2federation.storage.subscription.StorageSubscriptionService;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.identity.IdentityEpoch;
 
@@ -39,8 +37,6 @@ public final class StorageMountService implements AutoCloseable {
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
     private final StorageFederationDomainObserver federationDomains;
     private final StorageDependencyIndex dependencies;
-    private final StorageSubscriptionService subscriptions;
-    private final StorageSubscriptionPlanner subscriptionPlanner;
     private final LevelObservabilityService observability;
     private int removedProviderCount;
     private long sourceValidations;
@@ -52,10 +48,8 @@ public final class StorageMountService implements AutoCloseable {
     private StorageMountService(MinecraftServer server) {
         // The overworld names the server for registry and rule lookups, and keeps the game time of every dimension.
         var level = server.overworld();
-        subscriptions = new StorageSubscriptionService(level::getGameTime);
         federationDomains = new StorageFederationDomainObserver(level);
         dependencies = new StorageDependencyIndex(level, federationDomains, provenance);
-        subscriptionPlanner = new StorageSubscriptionPlanner(dependencies, subscriptions);
         observability = LevelObservabilityService.get(level);
     }
 
@@ -233,7 +227,6 @@ public final class StorageMountService implements AutoCloseable {
                 .filter(key -> !desiredPolicies.contains(key))
                 .forEach(this::removeMount);
         desired.values().forEach(this::reconcileEffective);
-        subscriptionPlanner.reconcile(mounts, mountGenerations);
         refreshInEffect();
     }
 
@@ -279,62 +272,6 @@ public final class StorageMountService implements AutoCloseable {
         return dependencies.refreshCount();
     }
 
-    public int activeSubscriptionCount() {
-        return subscriptions.activeListenerCount();
-    }
-
-    public int subscriptionRegistrationCount() {
-        return subscriptions.listenerRegistrationCount();
-    }
-
-    public int subscriptionRemovalCount() {
-        return subscriptions.listenerRemovalCount();
-    }
-
-    public long sourceEventCount() {
-        return subscriptions.sourceEventCount();
-    }
-
-    public long consumerDeliveryCount() {
-        return subscriptions.consumerDeliveryCount();
-    }
-
-    public long consumerDeliveryCount(PolicyKey key) {
-        var mounted = mounts.get(key);
-        return mounted == null ? 0 : subscriptions.consumerDeliveryCount(mounted.effectiveKey());
-    }
-
-    public SourceSubscriptionKey subscriptionKey(PolicyKey key) {
-        var mounted = mounts.get(key);
-        if (mounted == null || mounted.domain().sources().isEmpty()) return null;
-        var source = mounted.domain().sources().getFirst();
-        return new SourceSubscriptionKey(source.id(), source.generation());
-    }
-
-    public long subscriptionEventVersion(PolicyKey key) {
-        var subscriptionKey = subscriptionKey(key);
-        return subscriptionKey == null ? 0 : subscriptions.eventVersion(subscriptionKey);
-    }
-
-    public long subscriptionSnapshotVersion(PolicyKey key) {
-        var subscriptionKey = subscriptionKey(key);
-        return subscriptionKey == null ? 0 : subscriptions.snapshotVersion(subscriptionKey);
-    }
-
-    public long subscriptionRegistrationId(PolicyKey key) {
-        var subscriptionKey = subscriptionKey(key);
-        return subscriptionKey == null ? 0 : subscriptions.registrationId(subscriptionKey);
-    }
-
-    public long subscriptionRegistrationId(MEStorage source) {
-        return subscriptions.registrationId(source);
-    }
-
-    public void resetSubscription(PolicyKey key) {
-        var subscriptionKey = subscriptionKey(key);
-        if (subscriptionKey != null) subscriptions.reset(subscriptionKey);
-    }
-
     public Integer mountedPriority(PolicyKey key) {
         var mounted = mounts.get(key);
         return mounted == null ? null : mounted.provider().priority();
@@ -360,7 +297,6 @@ public final class StorageMountService implements AutoCloseable {
 
     public void remove(PolicyKey key) {
         removeMount(key);
-        subscriptionPlanner.reconcile(mounts, mountGenerations);
         refreshInEffect();
     }
 
@@ -472,7 +408,6 @@ public final class StorageMountService implements AutoCloseable {
         var removed = mounts.size();
         mountsRevision++;
         AuthorityEpoch.advance();
-        subscriptions.close();
         List.copyOf(mounts.values()).forEach(mounted -> mounted.relationship().consumerGrid()
                 .getService(IStorageService.class).removeGlobalStorageProvider(mounted.provider()));
         mounts.clear();
@@ -488,7 +423,6 @@ public final class StorageMountService implements AutoCloseable {
     private void removeIfCurrent(MountedStorageRelationship mounted) {
         if (mounts.get(mounted.relationship().key()) == mounted) {
             removeMount(mounted.relationship().key());
-            subscriptionPlanner.reconcile(mounts, mountGenerations);
             refreshInEffect();
         }
     }

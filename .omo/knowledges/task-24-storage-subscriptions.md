@@ -1,5 +1,13 @@
 # Task 24 Storage Subscriptions
 
+> **Removed 2026-10-27 (owner decision).** A subscription's only effect was `consumer.invalidateCache()` when a source
+> amount changed. AE2 19.2.17 `StorageService` already rebuilds its cached inventory every end tick when watchers exist
+> and lazily on the next read otherwise, and inserts never invalidate it, so even within one Grid `getCachedInventory()`
+> is a per-tick snapshot. Past `MAX_RETAINED_KEYS = 64` a source retired its subscription, so on real networks the path
+> was inactive and a consumer's view lagged to the end of the tick anyway, like a storage bus on an interface. The
+> `storage/subscription` package, `StorageSubscriptionPlanner`, `StorageServiceNotificationMixin`, the
+> `subscription.*` GameTests and the Task 24 QA wiring were deleted. The notes below describe the removed design.
+
 ## Runtime model
 
 - One subscription is keyed by `ExportSourceId` plus `SourceGeneration`, so alternative paths to the same true native
