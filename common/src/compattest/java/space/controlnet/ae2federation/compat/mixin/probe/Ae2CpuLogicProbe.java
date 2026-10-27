@@ -19,7 +19,7 @@ abstract class Ae2CpuLogicProbe {
             target = "Lappeng/api/networking/crafting/ICraftingProvider;pushPattern(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;)Z"))
     private boolean ae2federation$probe(ICraftingProvider provider, IPatternDetails details, KeyCounter[] inputs,
             Operation<Boolean> original, @Local(argsOnly = true) CraftingService service) {
-        return DispatchProbe.dispatch("ae2:CraftingCpuLogic.executeCrafting", service, provider, 1,
+        return DispatchProbe.dispatch("ae2:CraftingCpuLogic.executeCrafting", service, provider, details, 1,
                 () -> original.call(provider, details, inputs));
     }
 }

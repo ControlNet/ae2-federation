@@ -25,7 +25,7 @@ abstract class ThunderboltBatchProbe {
             target = "Lcom/moakiee/thunderbolt/api/crafting/batch/IBatchCraftingProvider;pushBatch(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;JLcom/moakiee/thunderbolt/api/crafting/batch/BatchJobView;)J"))
     private static long ae2federation$probe(@Coerce Object provider, IPatternDetails details, KeyCounter[] inputs,
             long runs, @Coerce Object job, Operation<Long> original, @Local(argsOnly = true) CraftingService service) {
-        return DispatchProbe.dispatchCount("thunderbolt:BatchExecutor.runBatchOnly", service, provider, () -> {
+        return DispatchProbe.dispatchCount("thunderbolt:BatchExecutor.runBatchOnly", service, provider, details, () -> {
             DispatchProbe.enterKnown();
             try {
                 return original.call(provider, details, inputs, runs, job);

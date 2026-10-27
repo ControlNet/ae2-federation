@@ -17,6 +17,7 @@
     "probe.NeoEcoCpuProbe",
     "probe.NeoEcoFacadeProbe",
     "probe.NeoEcoFastPathWitness",
+    "probe.NetworkStorageArrivalProbe",
     "probe.PatternProjectionWitness",
     "probe.PatternProviderLogicGapProbe",
     "probe.PatternProviderLogicWitness",

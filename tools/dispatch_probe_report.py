@@ -7,7 +7,8 @@ their call stacks), and whether the dispatching service, by executor or by scope
 
 The gap tables measure option 1 of the CPU route: executor hand-overs that opened no known protocol, pattern provider
 pushes that succeeded and send lists that grew outside every known protocol, and the provider classes each executor
-handed work to. Joined runs (--jvm-property ae2federation.compat.joinBeforeOrder=true) are the ones that decide: only
+handed work to. The arrival table asks whether a returning output's action source names the provider that was
+pushed, which a demand-based return fallback would rely on. Joined runs (--jvm-property ae2federation.compat.joinBeforeOrder=true) are the ones that decide: only
 there do addons see real providers and run their own protocols against them.
 
     python3 tools/dispatch_probe_report.py neoecoae-probe data-energistics-probe-joined
@@ -89,7 +90,8 @@ def render(path: Path) -> str:
         lines.append("")
     for title, key in (("Executor hand-overs that opened no known protocol", "unhookedDispatches"),
                        ("Pattern provider pushes that succeeded outside known protocols", "unrecordedSuccesses"),
-                       ("Send lists that grew outside known protocols", "unrecordedSends")):
+                       ("Send lists that grew outside known protocols", "unrecordedSends"),
+                       ("Arrivals of owed outputs, by what their action source names", "arrivals")):
         gaps = probe.get(key, {})
         if not gaps:
             lines += [f"{title}: none.", ""]
@@ -101,6 +103,11 @@ def render(path: Path) -> str:
             for stack in gap.get("stacks", []):
                 lines += ["", f"`{where}` ({stack['count']}x):", "", "```", stack["stack"].replace(" < ", "\n  < "),
                           "```"]
+        lines.append("")
+    never = probe.get("owedNeverArrived", {})
+    if never:
+        lines += ["Owed outputs that never arrived through a grid's storage:", "", "| Provider | Amount |", "|---|---:|"]
+        lines += [f"| `{name}` | {amount} |" for name, amount in never.items()]
         lines.append("")
     return "\n".join(lines)
 

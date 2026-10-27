@@ -19,7 +19,7 @@ abstract class DataEnergisticsCommitProbe {
             target = "Lcom/fish_dan_/data_energistics/api/crafting/dispatch/CountedCraftingAdmission;commit([Lappeng/api/stacks/KeyCounter;)Z"))
     private boolean ae2federation$probe(@Coerce Object admission, KeyCounter[] prototype,
             Operation<Boolean> original) {
-        return DispatchProbe.dispatch("data_energistics:CraftingDispatchCommitter.commit", null, null, count(admission),
+        return DispatchProbe.dispatch("data_energistics:CraftingDispatchCommitter.commit", null, null, null, count(admission),
                 () -> original.call(admission, prototype));
     }
 

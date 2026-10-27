@@ -23,7 +23,7 @@ abstract class NeoEcoCpuProbe {
             target = "Lappeng/api/networking/crafting/ICraftingProvider;pushPattern(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;)Z"))
     private boolean ae2federation$probeLoop(ICraftingProvider provider, IPatternDetails details, KeyCounter[] inputs,
             Operation<Boolean> original, @Local(argsOnly = true) CraftingService service) {
-        return DispatchProbe.dispatch("neoecoae:ECOCraftingCPULogic.executeCrafting", service, provider, 1,
+        return DispatchProbe.dispatch("neoecoae:ECOCraftingCPULogic.executeCrafting", service, provider, details, 1,
                 () -> original.call(provider, details, inputs));
     }
 
@@ -31,7 +31,7 @@ abstract class NeoEcoCpuProbe {
             target = "Lcn/dancingsnow/neoecoae/crafting/execution/fastpath/ECOSingleCraftingExecutor;pushPattern(Lappeng/api/networking/crafting/ICraftingProvider;Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;Lappeng/api/stacks/KeyCounter;Lappeng/api/stacks/KeyCounter;Lnet/minecraft/world/level/Level;Ljava/util/UUID;)Z"))
     private boolean ae2federation$probeSingle(ICraftingProvider provider, IPatternDetails details, KeyCounter[] inputs,
             KeyCounter first, KeyCounter second, Level level, UUID job, Operation<Boolean> original) {
-        return DispatchProbe.dispatch("neoecoae:ECOCraftingCPULogic.invokeNormalProvider/single", null, provider, 1,
+        return DispatchProbe.dispatch("neoecoae:ECOCraftingCPULogic.invokeNormalProvider/single", null, provider, details, 1,
                 () -> original.call(provider, details, inputs, first, second, level, job));
     }
 
@@ -39,7 +39,7 @@ abstract class NeoEcoCpuProbe {
             target = "Lcn/dancingsnow/neoecoae/api/me/provider/ECOParallelCraftingProvider;eco$pushPatternBatch(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;JLjava/util/UUID;)Z"))
     private boolean ae2federation$probeBatch(@Coerce Object provider, IPatternDetails details, KeyCounter[] inputs,
             long runs, UUID job, Operation<Boolean> original) {
-        return DispatchProbe.dispatch("neoecoae:ECOCraftingCPULogic.invokeNormalProvider/batch", null, provider, runs,
+        return DispatchProbe.dispatch("neoecoae:ECOCraftingCPULogic.invokeNormalProvider/batch", null, provider, details, runs,
                 () -> original.call(provider, details, inputs, runs, job));
     }
 
@@ -47,7 +47,7 @@ abstract class NeoEcoCpuProbe {
             target = "Lappeng/api/networking/crafting/ICraftingProvider;pushPattern(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;)Z"))
     private boolean ae2federation$probePlain(ICraftingProvider provider, IPatternDetails details, KeyCounter[] inputs,
             Operation<Boolean> original) {
-        return DispatchProbe.dispatch("neoecoae:ECOCraftingCPULogic.invokeNormalProvider/plain", null, provider, 1,
+        return DispatchProbe.dispatch("neoecoae:ECOCraftingCPULogic.invokeNormalProvider/plain", null, provider, details, 1,
                 () -> original.call(provider, details, inputs));
     }
 }

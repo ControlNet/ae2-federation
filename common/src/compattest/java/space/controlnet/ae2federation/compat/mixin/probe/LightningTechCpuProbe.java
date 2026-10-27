@@ -18,7 +18,7 @@ abstract class LightningTechCpuProbe {
             target = "Lappeng/api/networking/crafting/ICraftingProvider;pushPattern(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;)Z"))
     private boolean ae2federation$probe(ICraftingProvider provider, IPatternDetails details, KeyCounter[] inputs,
             Operation<Boolean> original) {
-        return DispatchProbe.dispatch("ae2lt:Ae2LtTimeWheelCraftingCpuLogic.tryPushPattern", null, provider, 1,
+        return DispatchProbe.dispatch("ae2lt:Ae2LtTimeWheelCraftingCpuLogic.tryPushPattern", null, provider, details, 1,
                 () -> original.call(provider, details, inputs));
     }
 }

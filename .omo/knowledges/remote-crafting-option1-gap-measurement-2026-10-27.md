@@ -62,3 +62,25 @@ Known protocols (the hooks option 1 would keep): `PatternProviderLogic.pushPatte
   probes. Executor adapters account a push whatever the provider class; provider-side hooks only matter for an
   executor we do not know. The case nothing covers is an unknown executor handing work to a provider class outside
   the AE2 family. No such executor appeared in these profiles.
+
+## Arrival sources for a demand-based fallback (2026-10-27)
+
+Owner direction: the fallback for pushes no hook sees is network listening (what the consumer's CPUs request, plus who
+inserted the output), and no provider wrapper is kept. `NetworkStorageArrivalProbe` records, for every outermost insert
+into a grid's storage of a key some addon provider owes from an accepted hand-over, what its `IActionSource` names.
+Federation's own providers are left out. Run: the 17 profiles above (not `addons-all`), joined, suffix `src-joined`.
+
+| The source names | Arrivals | What they were |
+|---|---:|---|
+| the provider that owes it | 200 | AE2 providers and AdvPatternProviderLogic, ae2lt Overloaded and Pigmee, ae2cs Meteorite and Resonating, Pattern Disk, DE Adaptive, OmniSequence's two logics, Useless Mod's alloy furnace |
+| a machine without a provider | 162 | Neo ECO CPU final delivery 99, AE2 CPU final delivery 4, Federation Lanes about 55, ExtendedAE assembler matrix frame 6 |
+| no machine | 80 | test scenes' simulated machines (`ChestMachine.collect`, `RoutedMachine.collect`) and Federation's own hand-backs |
+| another provider | 7 | multiblocks and wrappers: ae2lt matrix port, ExtendedAE-Plus super assembler matrix, DE Trinity job finish, Useless Mod furnace behind its Smart Doubling proxy |
+
+- A provider's own return names it for every single-block addon provider seen.
+- It does not for multiblocks whose output block is another part than the provider part (assembler matrices, the
+  ae2lt matrix) or for providers wrapped by another mod's proxy.
+- Neo ECO crafting pattern bus outputs never pass a grid's storage insert (owed, never arrived), like the Trinity
+  pattern core's direct ingress.
+- Not covered by any scene: outputs a player routes back through an ME interface or import bus. Their source names
+  that interface or bus, so a fallback for them can only match by key and demand.

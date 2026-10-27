@@ -2,6 +2,9 @@ package space.controlnet.ae2federation.compat.probe;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.crafting.ICraftingProvider;
+import appeng.api.networking.security.IActionHost;
+import appeng.api.networking.security.IActionSource;
+import appeng.api.stacks.AEKey;
 import appeng.me.service.CraftingService;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -45,12 +48,15 @@ public final class DispatchProbe {
         final String site;
         final @Nullable CraftingService service;
         final @Nullable Object provider;
+        final @Nullable IPatternDetails pattern;
         boolean known;
 
-        Frame(String site, @Nullable CraftingService service, @Nullable Object provider) {
+        Frame(String site, @Nullable CraftingService service, @Nullable Object provider,
+                @Nullable IPatternDetails pattern) {
             this.site = site;
             this.service = service;
             this.provider = provider;
+            this.pattern = pattern;
         }
     }
 
@@ -68,6 +74,10 @@ public final class DispatchProbe {
     private static final Map<String, Map<String, long[]>> PROVIDER_CLASSES = new LinkedHashMap<>();
     /** Every successful pattern provider push and every send list growth, so a zero gap is known to be measured. */
     private static long pushSuccesses, sendListGrowths;
+    /** Outputs each provider still owes from accepted hand-overs, by provider identity. */
+    private static final Map<Object, Map<AEKey, Long>> PENDING = new java.util.IdentityHashMap<>();
+    /** Arrivals of owed outputs in a grid's storage, by what their action source names. */
+    private static final Map<String, Gap> ARRIVALS = new LinkedHashMap<>();
 
     private static final class Executor {
         long calls, accepted, runsAccepted, runsUnknown, nested;
@@ -143,6 +153,61 @@ public final class DispatchProbe {
         }
     }
 
+    private static final ThreadLocal<int[]> INSERTS = ThreadLocal.withInitial(() -> new int[1]);
+
+    /**
+     * Federation's own providers (projections and Lanes) are left out: option 1 has no projections, and Lanes are
+     * accounted by their own pushPattern. What remains is the addons' providers the fallback would face.
+     */
+    private static synchronized void expect(Object provider, IPatternDetails pattern, long runs) {
+        if (provider.getClass().getName().startsWith("space.controlnet.ae2federation.")) return;
+        var owed = PENDING.computeIfAbsent(provider, key -> new LinkedHashMap<>());
+        for (var output : pattern.getOutputs()) {
+            owed.merge(output.what(), output.amount() * runs, Long::sum);
+        }
+    }
+
+    /**
+     * {@code amount} of {@code what} entered a grid's storage from {@code source}. When some provider owes it, records
+     * whether the source's grid node is a provider that owes it (the demand fallback could then name the provider) and
+     * otherwise what the source is.
+     */
+    public static boolean enterInsert() {
+        return INSERTS.get()[0]++ == 0;
+    }
+
+    public static void exitInsert() {
+        INSERTS.get()[0]--;
+    }
+
+    public static void arrived(AEKey what, long amount, IActionSource source) {
+        if (amount <= 0) return;
+        ICraftingProvider named = source.machine()
+                .map(IActionHost::getActionableNode)
+                .map(node -> node.getService(ICraftingProvider.class))
+                .orElse(null);
+        String key;
+        synchronized (DispatchProbe.class) {
+            if (PENDING.values().stream().noneMatch(owed -> owed.containsKey(what))) return;
+            var owed = named == null ? null : PENDING.get(named);
+            if (owed != null && owed.containsKey(what)) {
+                long left = owed.get(what) - amount;
+                if (left > 0) owed.put(what, left);
+                else owed.remove(what);
+                key = "names the provider that owes it: " + describe(named);
+            } else if (named != null) {
+                key = "names another provider: " + describe(named);
+            } else if (source.machine().isPresent()) {
+                var node = source.machine().get().getActionableNode();
+                key = "names a machine without a provider: " + describe(source.machine().get())
+                        + (node == null ? "" : " (node owner " + describe(node.getOwner()) + ")");
+            } else {
+                key = "names no machine: " + (source.player().isPresent() ? "player" : describe(source));
+            }
+        }
+        gap(ARRIVALS, key);
+    }
+
     private static String describe(Object provider) {
         if (java.lang.reflect.Proxy.isProxyClass(provider.getClass())) {
             return "proxy(" + java.util.Arrays.stream(provider.getClass().getInterfaces()).map(Class::getName)
@@ -167,9 +232,9 @@ public final class DispatchProbe {
      * Records one executor's hand-over of {@code runs} runs ({@link #UNKNOWN} when it cannot tell) to {@code provider},
      * dispatched by {@code service} when the executor has it at hand, and runs {@code call}.
      */
-    public static boolean dispatch(String site, @Nullable CraftingService service, @Nullable Object provider, long runs,
-            BooleanSupplier call) {
-        var frame = open(site, service, provider);
+    public static boolean dispatch(String site, @Nullable CraftingService service, @Nullable Object provider,
+            @Nullable IPatternDetails pattern, long runs, BooleanSupplier call) {
+        var frame = open(site, service, provider, pattern);
         boolean accepted = false;
         try {
             accepted = call.getAsBoolean();
@@ -181,8 +246,8 @@ public final class DispatchProbe {
 
     /** As {@link #dispatch}, for a batch call that answers how many runs it took. */
     public static long dispatchCount(String site, @Nullable CraftingService service, @Nullable Object provider,
-            LongSupplier call) {
-        var frame = open(site, service, provider);
+            @Nullable IPatternDetails pattern, LongSupplier call) {
+        var frame = open(site, service, provider, pattern);
         long taken = 0;
         try {
             taken = call.getAsLong();
@@ -192,7 +257,8 @@ public final class DispatchProbe {
         }
     }
 
-    private static Frame open(String site, @Nullable CraftingService service, @Nullable Object provider) {
+    private static Frame open(String site, @Nullable CraftingService service, @Nullable Object provider,
+            @Nullable IPatternDetails pattern) {
         var frames = FRAMES.get();
         var scope = SCOPES.get().peek();
         synchronized (DispatchProbe.class) {
@@ -208,7 +274,7 @@ public final class DispatchProbe {
                 executor.noService++;
             }
         }
-        var frame = new Frame(site, service != null ? service : scope, provider);
+        var frame = new Frame(site, service != null ? service : scope, provider, pattern);
         frames.push(frame);
         return frame;
     }
@@ -229,6 +295,7 @@ public final class DispatchProbe {
             if (frame.known) counts[1]++;
         }
         if (!frame.known) gap(UNHOOKED_DISPATCHES, site + " -> " + providerClass);
+        if (frame.provider != null && frame.pattern != null) expect(frame.provider, frame.pattern, Math.max(runs, 1));
     }
 
     /**
@@ -338,6 +405,13 @@ public final class DispatchProbe {
         root.add("unhookedDispatches", gaps(UNHOOKED_DISPATCHES));
         root.add("unrecordedSuccesses", gaps(UNRECORDED_SUCCESSES));
         root.add("unrecordedSends", gaps(UNRECORDED_SENDS));
+        root.add("arrivals", gaps(ARRIVALS));
+        var neverArrived = new JsonObject();
+        PENDING.forEach((provider, owed) -> {
+            long total = owed.values().stream().mapToLong(Long::longValue).sum();
+            if (total > 0) neverArrived.addProperty(describe(provider) + "@" + System.identityHashCode(provider), total);
+        });
+        root.add("owedNeverArrived", neverArrived);
         var providerClasses = new JsonObject();
         PROVIDER_CLASSES.forEach((site, classes) -> {
             var json = new JsonObject();
