@@ -5,6 +5,11 @@ compat-report.json. This prints, per run, which executor sites dispatched and wh
 which provider-side pushes no executor probe saw, which fell outside every crafting service's dispatch scope (both with
 their call stacks), and whether the dispatching service, by executor or by scope, holds the provider.
 
+The gap tables measure option 1 of the CPU route: executor hand-overs that opened no known protocol, pattern provider
+pushes that succeeded and send lists that grew outside every known protocol, and the provider classes each executor
+handed work to. Joined runs (--jvm-property ae2federation.compat.joinBeforeOrder=true) are the ones that decide: only
+there do addons see real providers and run their own protocols against them.
+
     python3 tools/dispatch_probe_report.py neoecoae-probe data-energistics-probe-joined
     python3 tools/dispatch_probe_report.py build/compat/runs/neoecoae-probe/dispatch-probe.json
 """
@@ -72,6 +77,31 @@ def render(path: Path) -> str:
     else:
         lines.append("No provider-side push was seen.")
     lines.append("")
+    if "pushSuccesses" in probe:
+        lines += [f"Pattern provider pushes that succeeded: {probe['pushSuccesses']}; send list growths: "
+                  f"{probe['sendListGrowths']}", ""]
+    classes = probe.get("providerClasses", {})
+    if classes:
+        lines += ["| Executor site | Provider class | Accepted | Opened a known protocol |", "|---|---|---:|---:|"]
+        for site, by_class in classes.items():
+            for name, counts in by_class.items():
+                lines.append(f"| `{site}` | `{name}` | {counts['accepted']} | {counts['known']} |")
+        lines.append("")
+    for title, key in (("Executor hand-overs that opened no known protocol", "unhookedDispatches"),
+                       ("Pattern provider pushes that succeeded outside known protocols", "unrecordedSuccesses"),
+                       ("Send lists that grew outside known protocols", "unrecordedSends")):
+        gaps = probe.get(key, {})
+        if not gaps:
+            lines += [f"{title}: none.", ""]
+            continue
+        lines += [f"{title}:", "", "| Where | Count | Scope: in / out |", "|---|---:|---|"]
+        for where, gap in gaps.items():
+            lines.append(f"| `{where}` | {gap['count']} | {gap['inScope']} / {gap['outOfScope']} |")
+        for where, gap in gaps.items():
+            for stack in gap.get("stacks", []):
+                lines += ["", f"`{where}` ({stack['count']}x):", "", "```", stack["stack"].replace(" < ", "\n  < "),
+                          "```"]
+        lines.append("")
     return "\n".join(lines)
 
 

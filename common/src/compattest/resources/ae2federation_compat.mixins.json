@@ -13,9 +13,12 @@
     "probe.DataEnergisticsCommitProbe",
     "probe.DataEnergisticsParticipantScope",
     "probe.LightningTechCpuProbe",
+    "probe.NeoEcoBatchWitness",
     "probe.NeoEcoCpuProbe",
     "probe.NeoEcoFacadeProbe",
+    "probe.NeoEcoFastPathWitness",
     "probe.PatternProjectionWitness",
+    "probe.PatternProviderLogicGapProbe",
     "probe.PatternProviderLogicWitness",
     "probe.ThunderboltBatchProbe"
   ],

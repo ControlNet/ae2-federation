@@ -12,12 +12,19 @@ import space.controlnet.ae2federation.compat.probe.DispatchProbe;
 /**
  * Every single push that reaches an AE2 pattern provider (and its subclasses that do not override it). Through a
  * projection, the dispatching service holds the projection, not this provider, so its attribution reads false there.
+ * A known protocol for the gap measurement.
  */
 @Mixin(value = PatternProviderLogic.class, remap = false)
 abstract class PatternProviderLogicWitness {
     @WrapMethod(method = "pushPattern")
     private boolean ae2federation$witness(IPatternDetails details, KeyCounter[] inputs, Operation<Boolean> original) {
-        boolean accepted = original.call(details, inputs);
+        boolean accepted;
+        DispatchProbe.enterKnown();
+        try {
+            accepted = original.call(details, inputs);
+        } finally {
+            DispatchProbe.exitKnown();
+        }
         if (accepted) {
             DispatchProbe.witness("ae2:PatternProviderLogic.pushPattern", (ICraftingProvider) this, details, 1);
         }

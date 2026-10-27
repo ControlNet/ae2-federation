@@ -12,7 +12,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Coerce;
 import space.controlnet.ae2federation.compat.probe.DispatchProbe;
 
-/** Thunderbolt's batch executor handing a provider many runs at once; the provider answers how many it took. */
+/**
+ * Thunderbolt's batch executor handing a provider many runs at once; the provider answers how many it took. Its
+ * {@code pushBatch} is a known protocol for the gap measurement.
+ */
 @Pseudo
 @Mixin(targets = "com.moakiee.thunderbolt.core.crafting.batch.BatchExecutor", remap = false)
 abstract class ThunderboltBatchProbe {
@@ -22,7 +25,13 @@ abstract class ThunderboltBatchProbe {
             target = "Lcom/moakiee/thunderbolt/api/crafting/batch/IBatchCraftingProvider;pushBatch(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;JLcom/moakiee/thunderbolt/api/crafting/batch/BatchJobView;)J"))
     private static long ae2federation$probe(@Coerce Object provider, IPatternDetails details, KeyCounter[] inputs,
             long runs, @Coerce Object job, Operation<Long> original, @Local(argsOnly = true) CraftingService service) {
-        return DispatchProbe.dispatchCount("thunderbolt:BatchExecutor.runBatchOnly", service,
-                () -> original.call(provider, details, inputs, runs, job));
+        return DispatchProbe.dispatchCount("thunderbolt:BatchExecutor.runBatchOnly", service, provider, () -> {
+            DispatchProbe.enterKnown();
+            try {
+                return original.call(provider, details, inputs, runs, job);
+            } finally {
+                DispatchProbe.exitKnown();
+            }
+        });
     }
 }

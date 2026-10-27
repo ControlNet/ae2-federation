@@ -18,7 +18,7 @@ abstract class NeoEcoFacadeProbe {
             target = "Lappeng/api/networking/crafting/ICraftingProvider;pushPattern(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;)Z"))
     private static boolean ae2federation$probe(ICraftingProvider provider, IPatternDetails details,
             KeyCounter[] inputs, Operation<Boolean> original) {
-        return DispatchProbe.dispatch("neoecoae:ECOFastPathFacade.pushPatternForJob", null, 1,
+        return DispatchProbe.dispatch("neoecoae:ECOFastPathFacade.pushPatternForJob", null, provider, 1,
                 () -> original.call(provider, details, inputs));
     }
 }

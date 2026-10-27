@@ -14,7 +14,7 @@ import space.controlnet.ae2federation.compat.probe.DispatchProbe;
 
 /**
  * Data Energistics' counted batches, which write a pattern provider's send list directly and so never reach
- * {@code PatternProviderLogic.pushPattern}.
+ * {@code PatternProviderLogic.pushPattern}. Known protocols for the gap measurement, open from head to return.
  */
 @Pseudo
 @Mixin(targets = "com.fish_dan_.data_energistics.ae2.patternprovider.PatternProviderBatching", remap = false)
@@ -23,11 +23,23 @@ abstract class DataEnergisticsBatchWitness {
     private static void ae2federation$witnessExpanded(IPatternDetails details, KeyCounter[] inputs, long runs,
             @Coerce Object access, Direction side, Runnable done, CallbackInfo callback) {
         DispatchProbe.witness("data_energistics:PatternProviderBatching.pushExpanded", null, details, runs);
+        DispatchProbe.enterKnown();
+    }
+
+    @Inject(method = "pushExpanded", at = @At("RETURN"))
+    private static void ae2federation$exitExpanded(CallbackInfo callback) {
+        DispatchProbe.exitKnown();
     }
 
     @Inject(method = "pushExpandedToTarget", at = @At("HEAD"))
     private static void ae2federation$witnessTarget(IPatternDetails details, KeyCounter[] inputs, long runs,
             PatternProviderTarget target, Runnable done, CallbackInfo callback) {
         DispatchProbe.witness("data_energistics:PatternProviderBatching.pushExpandedToTarget", null, details, runs);
+        DispatchProbe.enterKnown();
+    }
+
+    @Inject(method = "pushExpandedToTarget", at = @At("RETURN"))
+    private static void ae2federation$exitTarget(CallbackInfo callback) {
+        DispatchProbe.exitKnown();
     }
 }
