@@ -82,6 +82,7 @@ final class AddonCraftingScene {
     private boolean providerChanged;
     private boolean cpuOnCable;
     private boolean providerWithoutStorage;
+    private boolean noPatternContainer;
     private boolean cancelAfterPush;
     private boolean outputOnConsumer;
     private boolean lateByproduct;
@@ -89,7 +90,8 @@ final class AddonCraftingScene {
     private boolean disconnectAfterPush;
     private boolean relinkAfterDisconnect;
     private boolean mergeAfterPush;
-    private boolean joinBeforeOrder;
+    // A whole run can order joined (-Dae2federation.compat.joinBeforeOrder=true), as a native control of every scene.
+    private boolean joinBeforeOrder = Boolean.getBoolean("ae2federation.compat.joinBeforeOrder");
     private java.util.function.Consumer<GameTestHelper> joiner;
     private BiFunction<IGrid, ICraftingPlan, ICraftingSubmitResult> submit = (grid, plan) ->
             grid.getCraftingService().submitJob(plan, null, null, true, IActionSource.empty());
@@ -390,6 +392,15 @@ final class AddonCraftingScene {
         return this;
     }
 
+    /**
+     * The provider shows AE2's Pattern Access Terminal no pattern container, as a Data Energistics Trinity Data Core
+     * does: its patterns live in pattern cores that only {@link #installingPatternsWith} reaches.
+     */
+    AddonCraftingScene withoutPatternContainer() {
+        noPatternContainer = true;
+        return this;
+    }
+
     /** How many inputs the consumer stores and uses up, two unless set: two planks make four sticks. */
     AddonCraftingScene requesting(long jobs) {
         this.jobs = jobs;
@@ -593,7 +604,7 @@ final class AddonCraftingScene {
                         providerId + " must join the provider network");
                 var entity = helper.getLevel().getBlockEntity(helper.absolutePos(providerPos));
                 // Addons with their own provider logic still show it to AE2's Pattern Access Terminal.
-                helper.assertTrue(entity instanceof PatternContainer,
+                helper.assertTrue(noPatternContainer || entity instanceof PatternContainer,
                         providerId + " must be a pattern container, but is " + entity);
                 prepareProvider.accept(entity);
                 helper.assertTrue(installPattern.test(entity, processing ? processingPattern() : stickPattern()),
@@ -832,8 +843,13 @@ final class AddonCraftingScene {
                     stage = 17;
                     helper.fail("Waiting for the independent CPU's delayed byproduct return");
                 }
-                helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
-                        "Waiting for the consumer's job to finish");
+                if (consumerGrid().getCraftingService().getCpus().stream().anyMatch(cpu -> cpu.isBusy())) {
+                    helper.fail("Waiting for the consumer's job to finish: owed " + CraftingReturnLedger.get(
+                            helper.getLevel()).owed(providerNetwork, consumerNetwork, output()) + " " + output()
+                            + ", the provider network holds " + bridge.outerGrid().getStorageService().getInventory()
+                            .getAvailableStacks().get(output()) + ", the consumer network "
+                            + consumerGrid().getStorageService().getInventory().getAvailableStacks().get(output()));
+                }
                 if (jobTicks < 0) jobTicks = helper.getTick() - submittedTick;
                 if (consumerStorage != null) {
                     helper.assertValueEqual(held(consumerChest(), output()), requested() * tookOrders.size(),

@@ -3,10 +3,13 @@ package space.controlnet.ae2federation.compat;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.ICraftingPlan;
+import appeng.api.networking.security.IActionSource;
 import appeng.api.parts.PartHelper;
+import appeng.api.stacks.AEItemKey;
 import appeng.api.util.AEColor;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEParts;
+import appeng.me.cluster.implementations.CraftingCPUCluster;
 import appeng.util.inv.AppEngInternalInventory;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import java.io.IOException;
@@ -27,6 +30,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -35,6 +39,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.observability.statistics.StatisticsNames;
+import space.controlnet.ae2federation.observability.statistics.StatisticsRange;
 
 /** Federation features with Data Energistics' own blocks. */
 @PrefixGameTestTemplate(false)
@@ -140,7 +146,7 @@ public final class DataEnergisticsCompatGameTests {
     @GameTest(templateNamespace = "ae2federation_test", template = "matter_fabrication_well", timeoutTicks = 1200)
     public static void trinityPlanning(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "ae2:molecular_assembler", List.of());
-        var trinity = new TrinityDataCore(helper);
+        var trinity = new TrinityDataCore(helper, false);
         scene.consumerCpuStructure(test -> trinity.place(), () -> trinity.ready(scene.consumerGrid()))
                 .checkingPlan((plan, local) -> {
                     helper.assertTrue(plan.getClass().getName().equals(TrinityDataCore.PLAN),
@@ -164,11 +170,80 @@ public final class DataEnergisticsCompatGameTests {
     @GameTest(templateNamespace = "ae2federation_test", template = "matter_fabrication_well", timeoutTicks = 1200)
     public static void trinityDataCoreMergedFluidReturn(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(), AddonCraftingScene.lavaMachine());
-        var trinity = new TrinityDataCore(helper);
+        var trinity = new TrinityDataCore(helper, false);
         scene.consumerCpuStructure(test -> trinity.place(), () -> trinity.ready(scene.consumerGrid()))
                 .checkingPlan((plan, local) -> helper.assertTrue(plan.getClass().getName().equals(TrinityDataCore.PLAN),
                         "The Trinity planner must make the consumer's plan, not " + TrinityDataCore.describe(plan)))
                 .craftingOnly().outputStoredOnConsumer().mergingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The consumer's Trinity Data Core runs sixteen runs of a projected cobblestone -> stone pattern from an AE2
+     * Pattern Provider on the provider network. The Trinity CPU dispatches counted batches to providers Data Energistics can
+     * batch, an AE2 Pattern Provider among them; the test records whether it can batch to the projection too and how
+     * many pushes cross it, and checks every run's stone comes back.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "matter_fabrication_well", timeoutTicks = 1500)
+    public static void trinityCpuSixteenRemoteRuns(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true);
+        var trinity = new TrinityDataCore(helper, false);
+        scene.consumerCpuStructure(test -> trinity.place(), () -> trinity.ready(scene.consumerGrid()))
+                .checkingPlan((plan, local) -> helper.assertTrue(plan.getClass().getName().equals(TrinityDataCore.PLAN),
+                        "The Trinity planner must make the consumer's plan, not " + TrinityDataCore.describe(plan)))
+                .craftingOnly().requesting(16)
+                .checkingAfterJob((order, cpu, provider) -> {
+                    var bridge = scene.bridge();
+                    var consumer = scene.consumerGrid();
+                    var stone = AEItemKey.of(Items.STONE);
+                    var pattern = consumer.getCraftingService().getCraftingFor(stone).iterator().next();
+                    var real = NeoEcoScaledDispatch.providers(provider, pattern);
+                    var projected = NeoEcoScaledDispatch.providers(consumer, pattern);
+                    helper.assertTrue(real.size() == 1 && projected.size() == 1,
+                            "One provider on each network: real " + real + ", projected " + projected);
+                    var statistics = space.controlnet.ae2federation.observability.LevelObservabilityService
+                            .get(helper.getLevel()).statistics();
+                    long now = statistics.nowSecond();
+                    statistics.finishSecond(now);
+                    double pushes = statistics.book().total(StatisticsNames.pair(StatisticsNames.PUSHED,
+                            bridge.mainNetwork(), bridge.outerNetwork()), StatisticsRange.MINUTES, now);
+                    var observed = "Trinity batches to the real provider: " + TrinityDataCore.counted(real.getFirst())
+                            + ", to the projection: " + TrinityDataCore.counted(projected.getFirst())
+                            + "; pushes through the projection for 16 runs: " + pushes;
+                    helper.assertTrue(TrinityDataCore.counted(real.getFirst()),
+                            "Data Energistics must batch to an AE2 Pattern Provider on its own network. " + observed);
+                    helper.assertValueEqual(space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger
+                            .get(helper.getLevel()).owed(bridge.outerNetwork(), bridge.mainNetwork(), stone), 0L,
+                            "Every run's stone must be returned. " + observed);
+                    com.mojang.logging.LogUtils.getLogger().info("Trinity remote runs: {}", observed);
+                });
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * A Trinity Data Core's pattern core as the provider of an AE2 CPU, with both networks joined into one AE2 Grid
+     * before the order. There the Trinity plans the order itself, Data Energistics refuses that plan to the AE2 CPU
+     * (only Trinity CPUs take Trinity plans), and a Trinity CPU runs it. So an AE2 CPU using a Trinity pattern core is a
+     * pairing only Federation makes: natively, on a Grid with the Trinity, orders through its pattern cores are planned
+     * by the Trinity and run on its own CPUs.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "matter_fabrication_well", timeoutTicks = 1200)
+    public static void trinityPatternCoreProviderJoined(GameTestHelper helper) {
+        var trinity = new TrinityDataCore(helper, true);
+        var scene = AddonCraftingScene.structure(helper, "the Trinity Data Core", List.of("ae2:1k_crafting_storage"),
+                        test -> trinity.place(), TrinityDataCore.DEPOT, entity -> trinity.formed())
+                .withoutPatternContainer().installingPatternsWith((entity, pattern) -> trinity.installPattern(pattern))
+                .joinedBeforeOrder()
+                .submittingWith((grid, plan) -> {
+                    var crafting = grid.getCraftingService();
+                    var nativeCpu = crafting.getCpus().stream().filter(cpu -> cpu instanceof CraftingCPUCluster)
+                            .findFirst().orElseThrow();
+                    var refused = crafting.submitJob(plan, null, nativeCpu, true, IActionSource.empty());
+                    helper.assertFalse(refused.successful(), "The AE2 CPU must refuse the joined Grid's Trinity plan");
+                    return crafting.submitJob(plan, null, null, true, IActionSource.empty());
+                })
+                .checkingAfterJob((order, cpu, provider) -> helper.assertTrue(TrinityDataCore.trinityCpu(cpu),
+                        "A Trinity CPU must run the joined Grid's order: " + cpu));
         helper.succeedWhen(scene::tick);
     }
 
@@ -178,9 +253,10 @@ public final class DataEnergisticsCompatGameTests {
      * block from the guide structures Data Energistics ships, the children sharing the main structure's controller. The
      * main structure's Information Exchange Depot goes where the guide shows quartz vibrant glass under the controller,
      * its cable bus spots get covered cables, and the controller goes in last, as a player builds it. A glass cable runs
-     * from west of the consumer's cable to the depot through the open channel in front of it.
+     * from west of the consumer's cable, or on the provider's side from {@link AddonCraftingScene#PROVIDER}, to the
+     * depot through the open channel in front of it.
      *
-     * <p>The crafting child is needed even though the Trinity crafts nothing itself: until its pattern catalog is
+     * <p>The crafting child is needed even when the Trinity crafts nothing itself: until its pattern catalog is
      * active, the depot's own crafting provider reports its custody incomplete, and the Trinity CPU dispatches no
      * pattern at all, its job waiting forever with the inputs taken.
      */
@@ -191,6 +267,9 @@ public final class DataEnergisticsCompatGameTests {
         private static final String VIRTUAL_CPU =
                 "com.fish_dan_.data_energistics.common.crafting.trinity.execution.cpu.TrinityDataCoreVirtualCpu";
         private static final String CORE = "data_energistics:trinity_data_core";
+        private static final String PATTERN_CORE = "data_energistics:me_digital_pattern_processing_core";
+        private static final String COUNTED = "com.fish_dan_.data_energistics.common.crafting.trinity.dispatch."
+                + "provider.CountedCraftingProviderAdapters";
         /** The main structure's (0, 0, 0). */
         private static final BlockPos ORIGIN = new BlockPos(10, 1, 12);
         /** The controller in each guide structure, where the three overlap. */
@@ -202,20 +281,35 @@ public final class DataEnergisticsCompatGameTests {
         private static final BlockPos DEPOT = CONTROLLER.below();
 
         private final GameTestHelper helper;
+        /** Whether the Trinity joins the provider network instead of the consumer's. */
+        private final boolean onProvider;
+        /** The first pattern core of the crafting child, once placed. */
+        private BlockPos patternCore;
 
-        TrinityDataCore(GameTestHelper helper) {
+        TrinityDataCore(GameTestHelper helper, boolean onProvider) {
             this.helper = helper;
+            this.onProvider = onProvider;
         }
 
         /** The cable to the depot, the main structure, the two children, and then the controller. */
         void place() {
-            var start = AddonCraftingScene.FIRST_CPU;
-            // West of the consumer's cable, south to four blocks short of the structure, east, down, and south in.
-            var turn = new BlockPos(start.getX(), start.getY(), ORIGIN.getZ() - 4);
-            for (int z = start.getZ(); z <= turn.getZ(); z++) cable(new BlockPos(start.getX(), start.getY(), z));
-            for (int x = turn.getX() + 1; x <= DEPOT.getX(); x++) cable(new BlockPos(x, turn.getY(), turn.getZ()));
-            for (int y = turn.getY() - 1; y >= DEPOT.getY(); y--) cable(new BlockPos(DEPOT.getX(), y, turn.getZ()));
-            for (int z = turn.getZ() + 1; z < DEPOT.getZ(); z++) cable(new BlockPos(DEPOT.getX(), DEPOT.getY(), z));
+            var start = onProvider ? AddonCraftingScene.PROVIDER : AddonCraftingScene.FIRST_CPU;
+            // Four blocks short of the structure in front of the depot; from there down and south in.
+            var corner = new BlockPos(DEPOT.getX(), start.getY(), ORIGIN.getZ() - 4);
+            int x0 = corner.getX();
+            int y0 = corner.getY();
+            int z0 = corner.getZ();
+            if (onProvider) {
+                // East along the provider network's row, then south.
+                for (int x = start.getX(); x <= x0; x++) cable(new BlockPos(x, y0, start.getZ()));
+                for (int z = start.getZ() + 1; z <= z0; z++) cable(new BlockPos(x0, y0, z));
+            } else {
+                // West of the consumer's cable, south, then east.
+                for (int z = start.getZ(); z <= z0; z++) cable(new BlockPos(start.getX(), y0, z));
+                for (int x = start.getX() + 1; x <= x0; x++) cable(new BlockPos(x, y0, z0));
+            }
+            for (int y = y0 - 1; y >= DEPOT.getY(); y--) cable(new BlockPos(x0, y, z0));
+            for (int z = z0 + 1; z < DEPOT.getZ(); z++) cable(new BlockPos(x0, DEPOT.getY(), z));
             var controller = placeGuideStructure("trinity_data_core_main.snbt", ORIGIN);
             placeGuideStructure("trinity_data_core_cpu.snbt", CONTROLLER.subtract(CPU_CONTROLLER));
             placeGuideStructure("trinity_data_core_crafting.snbt", CONTROLLER.subtract(CRAFTING_CONTROLLER));
@@ -251,6 +345,9 @@ public final class DataEnergisticsCompatGameTests {
                     helper.assertTrue(state.is(AddonCraftingScene.block("ae2:quartz_vibrant_glass")),
                             "The guide must show quartz vibrant glass under the controller, not " + state);
                     helper.setBlock(position, AddonCraftingScene.block("data_energistics:trinity_information_exchange_depot"));
+                } else if (state.is(AddonCraftingScene.block(PATTERN_CORE))) {
+                    if (patternCore == null) patternCore = position;
+                    helper.setBlock(position, state);
                 } else if (state.is(AddonCraftingScene.block("ae2:cable_bus"))) {
                     helper.assertTrue(PartHelper.setPart(helper.getLevel(), helper.absolutePos(position),
                             null, null, AEParts.COVERED_CABLE.item(
@@ -264,10 +361,20 @@ public final class DataEnergisticsCompatGameTests {
         }
 
         /**
-         * True once all three structures have formed, the depot is online, the empty pattern catalog is active, and the
-         * consumer network has the Trinity's CPUs and no others; until then, what the controller reports.
+         * True once the Trinity is formed and the consumer network has the Trinity's CPUs and no others; until then,
+         * what the controller reports.
          */
         boolean ready(IGrid consumer) {
+            formed();
+            assertOnlyTrinityCpus(consumer);
+            return true;
+        }
+
+        /**
+         * True once all three structures have formed, the depot is online and the pattern catalog is active; until
+         * then, what the controller reports.
+         */
+        boolean formed() {
             var core = helper.getLevel().getBlockEntity(helper.absolutePos(CONTROLLER));
             helper.assertTrue(core != null && core.getBlockState().is(AddonCraftingScene.block(CORE)),
                     "No Trinity Data Core at " + CONTROLLER);
@@ -281,13 +388,37 @@ public final class DataEnergisticsCompatGameTests {
                     "Waiting for the Information Exchange Depot to come online");
             helper.assertTrue((boolean) invoke(core, "isCpuProviderAvailable"), "Waiting for the Trinity's CPUs");
             helper.assertTrue((boolean) invoke(core, "isPatternProviderAvailable"), "Waiting for the pattern catalog");
-            assertOnlyTrinityCpus(consumer);
             return true;
+        }
+
+        /** Puts {@code pattern} into the first slot of the crafting child's first pattern core, as its screen does. */
+        boolean installPattern(ItemStack pattern) {
+            var core = helper.getLevel().getBlockEntity(helper.absolutePos(patternCore));
+            try {
+                return (boolean) core.getClass().getMethod("trySetPattern", int.class, ItemStack.class)
+                        .invoke(core, 0, pattern);
+            } catch (ReflectiveOperationException exception) {
+                throw new IllegalStateException("The pattern core at " + patternCore + " takes no pattern", exception);
+            }
+        }
+
+        /** Whether a Trinity CPU can dispatch counted batches to {@code provider}, not only one run per push. */
+        static boolean counted(appeng.api.networking.crafting.ICraftingProvider provider) {
+            try {
+                return (boolean) Class.forName(COUNTED).getMethod("supportsCountedDispatch",
+                        appeng.api.networking.crafting.ICraftingProvider.class).invoke(null, provider);
+            } catch (ReflectiveOperationException exception) {
+                throw new IllegalStateException("Data Energistics' counted dispatch is unavailable", exception);
+            }
+        }
+
+        static boolean trinityCpu(appeng.api.networking.crafting.ICraftingCPU cpu) {
+            return cpu.getClass().getName().equals(VIRTUAL_CPU);
         }
 
         void assertOnlyTrinityCpus(IGrid consumer) {
             var cpus = consumer.getCraftingService().getCpus();
-            helper.assertTrue(!cpus.isEmpty() && cpus.stream().allMatch(cpu -> cpu.getClass().getName().equals(VIRTUAL_CPU)),
+            helper.assertTrue(!cpus.isEmpty() && cpus.stream().allMatch(TrinityDataCore::trinityCpu),
                     "The consumer's only CPUs must be the Trinity's: "
                             + cpus.stream().map(cpu -> cpu.getClass().getSimpleName()).toList());
         }
