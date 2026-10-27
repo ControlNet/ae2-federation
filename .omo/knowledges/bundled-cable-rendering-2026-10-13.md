@@ -33,6 +33,20 @@ a beam per cell), 1a34a908 (rails open at joints), then the guide page `bundled-
   `hero-world/data/ae2federation_bundled_cables.dat` (gzip NBT `data.segments[{min, max, axis}]`) with the server
   stopped, which forms bundles without wrench clicks.
 
+## Device arms (2026-10-27)
+
+- An ordinary bundle (e.g. 2x3) gives each cell facing a whole device contact the 1x1 cable's dense arm, one per beam.
+- A 2x2 or 3x3 bundle is one thick cable, so its cells share one arm across the whole contact
+  (`CableShapes.denseArm`): 1 voxel inside the shell's outer edges (3..13 where the arm ends, 0/16 where it runs on into
+  the next cell), 2 voxels deep. A side contact is one layer, so there the arm keeps 3..13 along the bundle. Before
+  this, a thick end against a Router showed a grid of small 1x1 arms, which looked like thin-cable connectors.
+- The arm is drawn as tiles (`BundleShellLayout.armFaces`) that sample single texels of `dense/line.png`: rim columns
+  3, 4 (and 11, 12) only where the arm ends, glass column 5 elsewhere; row 14 next to the shell, 15 next to the device.
+  Stretching the 1x1 arm's position-based UVs over a wide arm sampled the texture's transparent corners (columns 0, 1,
+  14, 15 of rows 14, 15) and left holes.
+- In game: `build/bundle-device-arm-check/` (scene: 2x2 and 3x3 bundles ending on Routers, rendered through the guide
+  client).
+
 ## Guide scenes with bundles
 
 - A GuideME scene can show a formed bundle: give every cell a block-entity `nbt` with `id: "ae2federation:cable"`,

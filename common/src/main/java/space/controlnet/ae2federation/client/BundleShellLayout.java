@@ -27,6 +27,16 @@ final class BundleShellLayout {
     private static final int STRAIGHT_ROW = 6;
     private static final int GLASS = 6;
     private static final float OPEN = Float.POSITIVE_INFINITY;
+    /**
+     * An ordinary cable's dense arm spans 3..13 and samples the line texture where it lies: a 2-texel rim at each end,
+     * glass from column 5, and rows 14 by the core and 15 by the face.
+     */
+    private static final int ARM_LOW = 3;
+    private static final int ARM_HIGH = 13;
+    private static final int ARM_RIM = 2;
+    private static final int ARM_GLASS = 5;
+    private static final int ARM_SHELL_ROW = 14;
+    private static final int ARM_FACE_ROW = 15;
 
     private BundleShellLayout() {
     }
@@ -50,8 +60,59 @@ final class BundleShellLayout {
         }
     }
 
-    /** A rectangle of a panel, in voxels, that samples one texel of the core texture throughout. */
+    /** A rectangle of a panel, in voxels, that samples one texel of its texture throughout: core or line. */
     record Tile(int u0, int v0, int u1, int v1, int texelU, int texelV) {
+    }
+
+    /** A face of a 2x2 or 3x3 cell's part of a dense arm, and its tiles of the line texture. */
+    record ArmFace(Panel panel, List<Tile> tiles) {
+    }
+
+    /**
+     * The faces of a 2x2 or 3x3 cell's part of the one dense arm toward {@code side} ({@link CableShapes#denseArm}):
+     * none against the device, the shell, or the next cell of the same arm. Their tiles of the line texture draw what
+     * the sides of an ordinary cable's dense arm show, stretched over the whole contact: across the arm, a 2-texel rim
+     * where it ends and glass between; along it, the texture's row by the core next to the shell and the row by the
+     * face next to the device.
+     */
+    static List<ArmFace> armFaces(BundleLook look, Direction side) {
+        var box = CableShapes.denseArm(look, side);
+        var faces = new ArrayList<ArmFace>();
+        for (var face : Direction.values()) {
+            if (face.getAxis() == side.getAxis() || face.getAxis() != look.axis() && !look.edge(face)) continue;
+            var across = third(side.getAxis(), face.getAxis());
+            int low = (int) box.min(across);
+            int high = (int) box.max(across);
+            int depthLow = (int) box.min(side.getAxis());
+            int depthHigh = (int) box.max(side.getAxis());
+            boolean positive = side.getAxisDirection() == Direction.AxisDirection.POSITIVE;
+            var panel = new Panel(face, (float) (face.getAxisDirection() == Direction.AxisDirection.POSITIVE
+                    ? box.max(face.getAxis()) : box.min(face.getAxis())), across,
+                    new Span(low, high, low == ARM_LOW, high == ARM_HIGH), side.getAxis(),
+                    new Span(depthLow, depthHigh, false, false));
+            var tiles = new ArrayList<Tile>();
+            for (int depth = depthLow; depth < depthHigh; depth++) {
+                boolean byShell = positive ? depth == depthLow : depth == depthHigh - 1;
+                int row = byShell ? ARM_SHELL_ROW : ARM_FACE_ROW;
+                int start = low;
+                while (start < high) {
+                    int texel = armTexel(start, low, high);
+                    int end = start + 1;
+                    while (end < high && armTexel(end, low, high) == texel) end++;
+                    tiles.add(new Tile(start, depth, end, depth + 1, texel, row));
+                    start = end;
+                }
+            }
+            faces.add(new ArmFace(panel, List.copyOf(tiles)));
+        }
+        return List.copyOf(faces);
+    }
+
+    /** The line texture's column for the voxel at {@code at} across an arm from {@code low} to {@code high}. */
+    private static int armTexel(int at, int low, int high) {
+        if (low == ARM_LOW && at < ARM_LOW + ARM_RIM) return at;
+        if (high == ARM_HIGH && at >= ARM_HIGH - ARM_RIM) return at;
+        return ARM_GLASS;
     }
 
     static List<Panel> panels(BundleLook look) {

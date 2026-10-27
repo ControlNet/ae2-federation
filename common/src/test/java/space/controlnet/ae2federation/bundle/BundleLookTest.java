@@ -8,7 +8,9 @@ import java.util.List;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.phys.AABB;
 import org.junit.jupiter.api.Test;
+import space.controlnet.ae2federation.router.CableShapes;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
 /** What one bundled cell shows: its outer sides, its links, its device arms and the runs of a branch's opening. */
@@ -52,6 +54,27 @@ final class BundleLookTest {
         var device = look(set, new BlockPos(5, 1, 1), (segment, pos, face) -> face == Direction.EAST);
         assertTrue(device.dense(Direction.EAST));
         assertEquals(mask(Direction.EAST, Direction.WEST), device.flowMask());
+    }
+
+    @Test
+    void aThickBundleSendsOneArmAcrossEachContact() {
+        var set = new BundleSet();
+        set.form(RUN);
+        BundleLook.Contacts east = (segment, pos, face) -> face == Direction.EAST;
+        // The end's four cells share one arm, 1 voxel inside the shell's outer edges at 2 and 14.
+        assertEquals(new AABB(14, 0, 0, 16, 13, 13), CableShapes.denseArm(look(set, new BlockPos(5, 1, 1), east),
+                Direction.EAST));
+        assertEquals(new AABB(14, 3, 3, 16, 16, 16), CableShapes.denseArm(look(set, new BlockPos(5, 0, 0), east),
+                Direction.EAST));
+        // A side contact is one layer: the arm spans the side's width but keeps to its layer.
+        BundleLook.Contacts up = (segment, pos, face) -> face == Direction.UP;
+        assertEquals(new AABB(3, 14, 0, 13, 16, 13), CableShapes.denseArm(look(set, new BlockPos(3, 1, 1), up),
+                Direction.UP));
+        // An ordinary bundle's cell has its own arm, as each of its beams has.
+        var flat = new BundleSet();
+        flat.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 1, 2), Direction.Axis.X));
+        assertEquals(new AABB(14, 3, 3, 16, 13, 13), CableShapes.denseArm(look(flat, new BlockPos(5, 0, 1), east),
+                Direction.EAST));
     }
 
     @Test

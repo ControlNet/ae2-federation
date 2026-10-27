@@ -13,16 +13,19 @@ import space.controlnet.ae2federation.bundle.BundleLook;
  * artist's core frame, and inside it the ordinary cable's pieces at the cell's own size. A collar rings the cell where
  * its beam runs on into the next cell or into a branch, and a dense arm reaches each device it connects to, so a 2x3
  * bundle shows six beams in one 2x3 shell. A 2x2 or 3x3 bundle is one thick cable instead: no collars, but the artist's rings
- * ({@link LargeCableRings}) around the one beam down its middle.
+ * ({@link LargeCableRings}) around the one beam down its middle, and one dense arm across each device contact.
  */
 final class BundleCableBuilder {
     private final FederationCableBuilder cable;
     private final TextureAtlasSprite frame;
+    private final TextureAtlasSprite line;
     private final LargeCableRings rings;
 
-    BundleCableBuilder(FederationCableBuilder cable, TextureAtlasSprite frame, LargeCableRings rings) {
+    BundleCableBuilder(FederationCableBuilder cable, TextureAtlasSprite frame, TextureAtlasSprite line,
+            LargeCableRings rings) {
         this.cable = cable;
         this.frame = frame;
+        this.line = line;
         this.rings = rings;
     }
 
@@ -30,16 +33,28 @@ final class BundleCableBuilder {
         var quads = new ArrayList<BakedQuad>();
         var baker = new QuadBakingVertexConsumer();
         for (var panel : BundleShellLayout.panels(look)) {
-            for (var tile : BundleShellLayout.tiles(panel)) quads.add(quad(baker, panel, tile));
+            for (var tile : BundleShellLayout.tiles(panel)) quads.add(quad(baker, panel, tile, frame));
         }
         for (var side : Direction.values()) {
             if (look.open(side)) {
                 if (!look.thick()) cable.addCollar(side, quads);
             } else if (look.dense(side)) {
-                cable.addDenseConnection(side, quads);
+                if (look.thick()) addSharedArm(look, side, quads);
+                else cable.addDenseConnection(side, quads);
             }
         }
         return List.copyOf(quads);
+    }
+
+    /**
+     * A 2x2 or 3x3 cell's part of the one dense arm its bundle sends to a device, drawn from the line texture's texels as
+     * {@link BundleShellLayout#armFaces} lays them out.
+     */
+    private void addSharedArm(BundleLook look, Direction side, List<BakedQuad> quads) {
+        var baker = new QuadBakingVertexConsumer();
+        for (var face : BundleShellLayout.armFaces(look, side)) {
+            for (var tile : face.tiles()) quads.add(quad(baker, face.panel(), tile, line));
+        }
     }
 
     /**
@@ -57,9 +72,10 @@ final class BundleCableBuilder {
      * One tile of a panel, wound counter-clockwise seen from outside, as the translucent layer culls. It samples the
      * middle of its one texel, so mipmaps never blend in the next.
      */
-    private BakedQuad quad(QuadBakingVertexConsumer baker, BundleShellLayout.Panel panel, BundleShellLayout.Tile tile) {
+    private static BakedQuad quad(QuadBakingVertexConsumer baker, BundleShellLayout.Panel panel,
+            BundleShellLayout.Tile tile, TextureAtlasSprite sprite) {
         var normal = panel.normal();
-        baker.setSprite(frame);
+        baker.setSprite(sprite);
         baker.setDirection(normal);
         baker.setShade(true);
         baker.setHasAmbientOcclusion(true);
@@ -81,7 +97,7 @@ final class BundleCableBuilder {
             position[panel.vAxis().ordinal()] = corner[1] / 16;
             baker.addVertex(position[0], position[1], position[2]);
             baker.setColor(255, 255, 255, 255);
-            baker.setUv(frame.getU(texelU / 16), frame.getV(texelV / 16));
+            baker.setUv(sprite.getU(texelU / 16), sprite.getV(texelV / 16));
             baker.setNormal(normal.getStepX(), normal.getStepY(), normal.getStepZ());
         }
         return baker.bakeQuad();

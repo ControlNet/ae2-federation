@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import space.controlnet.ae2federation.bundle.BundleLook;
@@ -43,7 +44,10 @@ public final class CableShapes {
                 shellLow(look, Direction.Axis.Z) / 16, shellHigh(look, Direction.Axis.X) / 16,
                 shellHigh(look, Direction.Axis.Y) / 16, shellHigh(look, Direction.Axis.Z) / 16);
         for (var side : Direction.values()) {
-            if (look.dense(side)) shape = Shapes.or(shape, arm(side, 14, 3, 13));
+            if (look.dense(side)) {
+                var arm = denseArm(look, side);
+                shape = Shapes.or(shape, Block.box(arm.minX, arm.minY, arm.minZ, arm.maxX, arm.maxY, arm.maxZ));
+            }
             if (side.getAxis() == look.axis() || !look.join(side)) continue;
             // The opening onto a branch reaches the cell's face, as far along as the branch's own shell.
             double[] from = new double[3];
@@ -67,6 +71,29 @@ public final class CableShapes {
     public static double shellLow(BundleLook look, Direction.Axis axis) {
         var side = Direction.fromAxisAndDirection(axis, Direction.AxisDirection.NEGATIVE);
         return axis == look.axis() ? look.open(side) ? 0 : 2 : look.edge(side) ? 2 : 0;
+    }
+
+    /**
+     * A bundled cell's dense arm toward {@code side}, in voxels, from the shell to the cell's face. An ordinary bundle's
+     * cell has its own 10-voxel arm, as each of its beams has. A 2x2 or 3x3 bundle is one thick cable, so its cells
+     * share one arm across the whole contact, 1 voxel inside the shell's outer edges as a cable's arm is inside its
+     * core. A side contact is one layer, so there the arm keeps 3 voxels from the layer's ends.
+     */
+    public static AABB denseArm(BundleLook look, Direction side) {
+        double[] from = new double[3];
+        double[] to = new double[3];
+        for (var axis : Direction.Axis.values()) {
+            boolean shared = look.thick() && axis != look.axis();
+            from[axis.ordinal()] = shared && !look.edge(Direction.fromAxisAndDirection(axis,
+                    Direction.AxisDirection.NEGATIVE)) ? 0 : 3;
+            to[axis.ordinal()] = shared && !look.edge(Direction.fromAxisAndDirection(axis,
+                    Direction.AxisDirection.POSITIVE)) ? 16 : 13;
+        }
+        int along = side.getAxis().ordinal();
+        boolean positive = side.getAxisDirection() == Direction.AxisDirection.POSITIVE;
+        from[along] = positive ? 14 : 0;
+        to[along] = positive ? 16 : 2;
+        return new AABB(from[0], from[1], from[2], to[0], to[1], to[2]);
     }
 
     /** Where the cell's part of the shell ends along {@code axis}, in voxels. */
