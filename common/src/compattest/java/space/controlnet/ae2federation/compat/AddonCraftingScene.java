@@ -82,7 +82,6 @@ final class AddonCraftingScene {
     private boolean providerChanged;
     private boolean cpuOnCable;
     private boolean providerWithoutStorage;
-    private boolean noPatternContainer;
     private boolean cancelAfterPush;
     private boolean outputOnConsumer;
     private boolean lateByproduct;
@@ -392,15 +391,6 @@ final class AddonCraftingScene {
         return this;
     }
 
-    /**
-     * The provider shows AE2's Pattern Access Terminal no pattern container, as a Data Energistics Trinity Data Core
-     * does: its patterns live in pattern cores that only {@link #installingPatternsWith} reaches.
-     */
-    AddonCraftingScene withoutPatternContainer() {
-        noPatternContainer = true;
-        return this;
-    }
-
     /** How many inputs the consumer stores and uses up, two unless set: two planks make four sticks. */
     AddonCraftingScene requesting(long jobs) {
         this.jobs = jobs;
@@ -604,7 +594,7 @@ final class AddonCraftingScene {
                         providerId + " must join the provider network");
                 var entity = helper.getLevel().getBlockEntity(helper.absolutePos(providerPos));
                 // Addons with their own provider logic still show it to AE2's Pattern Access Terminal.
-                helper.assertTrue(noPatternContainer || entity instanceof PatternContainer,
+                helper.assertTrue(entity instanceof PatternContainer,
                         providerId + " must be a pattern container, but is " + entity);
                 prepareProvider.accept(entity);
                 helper.assertTrue(installPattern.test(entity, processing ? processingPattern() : stickPattern()),

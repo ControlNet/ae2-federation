@@ -24,6 +24,7 @@ its claims below were checked against the sources.
   (`NO_SUITABLE_CPU_FOUND`, `excluded=1`), and a Trinity CPU runs it. So "AE2 CPU + Trinity pattern core", which
   `trinityPatternCoreProvider` builds through Federation and which hangs, is a pairing the native stack never forms.
   Not tested: an AE2 plan pushed straight to a pattern core on one Grid.
+  2026-10-27 (owner): the pairing never forms natively, so both Trinity pattern core tests were removed.
 - The crafting rule shares whole providers; there is no per-pattern filter.
 
 ## Diagnosis
