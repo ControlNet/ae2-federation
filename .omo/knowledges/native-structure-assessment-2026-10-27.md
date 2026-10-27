@@ -43,8 +43,15 @@ the CPU route (owner, 2026-10-26); delegation below is an option raised by this 
   domain 13.9 ms, AE2 one network 14.6 ms, AE2 subnets 15.5 ms.
 - Assessment: its coupling is AE2-upgrade cost, not addon cost. Recommendation: keep; optionally replace the
   notification mixin with `IStorageWatcherNode` (audit: strong candidate).
-- Open check: `NativeStorageNotificationHub.MAX_RETAINED_KEYS = 64`; a source whose discovery passes 64 keys retires
-  its subscription (`StorageSubscriptionService` failed starts). The player-visible effect was not traced.
+- Subscription cap, traced from code (not run): `NativeStorageNotificationHub.MAX_RETAINED_KEYS = 64` is a memory
+  bound. A subscription's only effect is `consumer.invalidateCache()` when a source amount changes
+  (`StorageSubscriptionService.invalidateCurrentTargets`). AE2 19.2.17 `StorageService` already rebuilds its cached
+  inventory every end tick when watchers exist and lazily on the next read otherwise; inserts never invalidate it, so
+  even within one Grid `getCachedInventory()` is a per-tick snapshot. A source with more than 64 key types retires its
+  subscription and is retried only at the next `reconcileAll` (mount or topology change), not every tick. So past the
+  cap C's cached view of P can lag to the end of the tick, the same as native AE2 within one Grid or through a storage
+  bus on an interface. Most real networks hold more than 64 types, so the subscription path, its notification mixin
+  and the per-tick keyed probes are inactive in practice.
 
 ## Processing (Provider/Endpoint) (recommendation: evaluate a plain provider)
 
@@ -103,5 +110,5 @@ the CPU route (owner, 2026-10-26); delegation below is an option raised by this 
 ## Open for the owner
 
 Nothing above is decided. Questions: whether to evaluate delegation at all next to the decided CPU route, and if so
-whether P supplying materials is acceptable; whether to evaluate a plain provider for processing; whether to trace the
-64-key subscription retirement.
+whether P supplying materials is acceptable; whether to evaluate a plain provider for processing; whether the storage
+subscription path (inactive past 64 key types, see above) stays, is removed, or gets its cap raised.
