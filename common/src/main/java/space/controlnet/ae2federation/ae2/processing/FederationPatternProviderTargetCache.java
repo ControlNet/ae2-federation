@@ -5,15 +5,11 @@ import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderTarget;
 import appeng.me.helpers.MachineSource;
 import appeng.util.ConfigManager;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.function.Supplier;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.compat.adapters.CompatAdapters;
 import space.controlnet.ae2federation.processing.provider.AuthorizedNativeTarget;
 import space.controlnet.ae2federation.processing.provider.ProviderLogicProvenance;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetResolution;
@@ -21,13 +17,8 @@ import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
 
 public final class FederationPatternProviderTargetCache {
     private static final Map<PatternProviderLogic, Binding> BINDINGS = new WeakHashMap<>();
-    /**
-     * ExpandedAE replaces the targets of every AE2 provider logic with its own, which carry its blocking modes, so a Lane
-     * builds its Endpoint target the same way and blocks as a native provider does with that mod. Absent without it.
-     */
-    private static final @Nullable Constructor<?> EXPANDED_AE_TARGETS = expandedAeTargets();
-    private static final @Nullable Method EXPANDED_AE_FIND = EXPANDED_AE_TARGETS == null ? null
-            : method(EXPANDED_AE_TARGETS.getDeclaringClass(), "find");
+    /** The add-on whose targets a Lane builds as every AE2 provider logic does with it; absent without one. */
+    private static final @Nullable AddonLaneTargets ADDON_TARGETS = addonTargets();
 
     private FederationPatternProviderTargetCache() {
     }
@@ -83,22 +74,11 @@ public final class FederationPatternProviderTargetCache {
     public record Lookup(boolean bound, @Nullable Object target) {
     }
 
-    private static @Nullable Constructor<?> expandedAeTargets() {
-        try {
-            return Class.forName("lu.kolja.expandedae.helper.pattern.PatternProviderTargetCache").getConstructor(
-                    ServerLevel.class, BlockPos.class, Direction.class, appeng.api.networking.security.IActionSource.class,
-                    ConfigManager.class);
-        } catch (ReflectiveOperationException | LinkageError absent) {
-            return null;
+    private static @Nullable AddonLaneTargets addonTargets() {
+        for (var addon : CompatAdapters.LANE_TARGETS) {
+            if (addon.available()) return addon;
         }
-    }
-
-    private static @Nullable Method method(Class<?> type, String name) {
-        try {
-            return type.getMethod(name);
-        } catch (NoSuchMethodException absent) {
-            return null;
-        }
+        return null;
     }
 
     private static final class Binding {
@@ -117,15 +97,15 @@ public final class FederationPatternProviderTargetCache {
 
         private @Nullable PatternProviderTarget find(AuthorizedNativeTarget authorized) {
             var source = new MachineSource(sourceNode::get);
-            if (EXPANDED_AE_FIND != null
+            if (ADDON_TARGETS != null
                     && provenance.logic().getConfigManager() instanceof ConfigManager config) {
                 try {
                     if (addonTargets == null || !sameTarget(addonTargetKey, authorized)) {
-                        addonTargets = EXPANDED_AE_TARGETS.newInstance(authorized.level(), authorized.position(),
+                        addonTargets = ADDON_TARGETS.create(authorized.level(), authorized.position(),
                                 authorized.side(), source, config);
                         addonTargetKey = authorized;
                     }
-                    return (PatternProviderTarget) EXPANDED_AE_FIND.invoke(addonTargets);
+                    return ADDON_TARGETS.find(addonTargets);
                 } catch (ReflectiveOperationException | ClassCastException | LinkageError unusable) {
                     addonTargets = null;
                 }

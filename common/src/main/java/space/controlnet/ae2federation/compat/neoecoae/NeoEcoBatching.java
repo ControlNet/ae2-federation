@@ -1,4 +1,4 @@
-package space.controlnet.ae2federation.crafting.projection;
+package space.controlnet.ae2federation.compat.neoecoae;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Predicate;
 import net.minecraft.world.level.Level;
+import space.controlnet.ae2federation.crafting.projection.AddonProjections;
+import space.controlnet.ae2federation.crafting.projection.ProjectedProvider;
 
 /**
  * Neo ECO's batches through a projection. Neo ECO's CPU (and AE2's, with Neo ECO's mixin) pushes many crafts as one
@@ -27,7 +29,7 @@ import net.minecraft.world.level.Level;
  *   says how many crafts it takes at once, and the CPU pushes them as one.</li>
  * </ul>
  * A projection of such a provider has the same interface. The real provider prepares or takes each batch, and the
- * hand-over goes through {@link PatternProjection#pushBatch}, which owes the batch's outputs as a push owes a
+ * hand-over goes through {@link ProjectedProvider#pushBatch}, which owes the batch's outputs as a push owes a
  * pattern's.
  *
  * <p>The real provider never gets the CPU's job id. With one, Neo ECO's machines return a batch only to that job's CPU
@@ -35,10 +37,10 @@ import net.minecraft.world.level.Level;
  * return router takes them, as after an ordinary push. Neo ECO's exact batches need the job id, so a projection does
  * not offer them.
  */
-final class NeoEcoBatching {
+public final class NeoEcoBatching implements AddonProjections {
     private static final String PACKAGE = "cn.dancingsnow.neoecoae.api.me.provider.";
-    static final String FAST_PATH = PACKAGE + "ECOFastPathDispatchProvider";
-    static final String PARALLEL = PACKAGE + "ECOParallelCraftingProvider";
+    private static final String FAST_PATH = PACKAGE + "ECOFastPathDispatchProvider";
+    private static final String PARALLEL = PACKAGE + "ECOParallelCraftingProvider";
 
     /** One of Neo ECO's batch interfaces, as this class knows it; null for any other or a changed one. */
     private static final ClassValue<Api> APIS = new ClassValue<>() {
@@ -56,11 +58,9 @@ final class NeoEcoBatching {
         }
     };
 
-    private NeoEcoBatching() {
-    }
-
     /** Neo ECO's batch interfaces among {@code type}'s whose API is the one this class knows. */
-    static List<Class<?>> interfaces(Class<?> type) {
+    @Override
+    public List<Class<?>> interfaces(Class<?> type) {
         var found = new ArrayList<Class<?>>();
         var pending = new ArrayList<Class<?>>();
         for (var current = type; current != null; current = current.getSuperclass()) {
@@ -76,14 +76,9 @@ final class NeoEcoBatching {
         return found;
     }
 
-    /** Whether {@code method} belongs to one of Neo ECO's batch interfaces. */
-    static boolean declares(Method method) {
-        var name = method.getDeclaringClass().getName();
-        return name.equals(FAST_PATH) || name.equals(PARALLEL);
-    }
-
     /** Answers a call on one of Neo ECO's batch interfaces for the projection behind {@code proxy}. */
-    static Object invoke(PatternProjection projection, Object proxy, Method method, Object[] arguments)
+    @Override
+    public Object invoke(ProjectedProvider projection, Object proxy, Method method, Object[] arguments)
             throws Throwable {
         var answer = APIS.get(method.getDeclaringClass()).invoke(projection, method, arguments);
         if (answer != Api.UNKNOWN) return answer;
@@ -95,7 +90,7 @@ final class NeoEcoBatching {
         /** What {@link #invoke} returns for a method it does not know. */
         Object UNKNOWN = new Object();
 
-        Object invoke(PatternProjection projection, Method method, Object[] arguments) throws Throwable;
+        Object invoke(ProjectedProvider projection, Method method, Object[] arguments) throws Throwable;
     }
 
     /** {@code ECOFastPathDispatchProvider}: the real provider prepares each batch without the CPU's job id. */
@@ -151,7 +146,7 @@ final class NeoEcoBatching {
         }
 
         @Override
-        public Object invoke(PatternProjection projection, Method method, Object[] arguments) throws Throwable {
+        public Object invoke(ProjectedProvider projection, Method method, Object[] arguments) throws Throwable {
             return switch (method.getName()) {
                 case "eco$prepareFastPath" -> prepare(projection, arguments[0]);
                 case "eco$prepareExactFastPath" -> null;
@@ -163,7 +158,7 @@ final class NeoEcoBatching {
          * The real provider's preparation of {@code request}, made without its job id, whose hand-over goes through
          * {@code projection}; null when the projection is withdrawn or the real provider offers no batch.
          */
-        private Object prepare(PatternProjection projection, Object request) throws Throwable {
+        private Object prepare(ProjectedProvider projection, Object request) throws Throwable {
             if (!projection.isLive()) return null;
             var details = (IPatternDetails) call(pattern, request);
             var jobless = construct(context, details, call(inputs, request), call(outputs, request),
@@ -220,7 +215,7 @@ final class NeoEcoBatching {
         }
 
         @Override
-        public Object invoke(PatternProjection projection, Method method, Object[] arguments) throws Throwable {
+        public Object invoke(ProjectedProvider projection, Method method, Object[] arguments) throws Throwable {
             return switch (method.getName()) {
                 case "eco$getAvailableParallelSlots" -> projection.isLive() ? call(slots, projection.real()) : 0;
                 case "eco$pushPatternBatch" -> push(projection, (IPatternDetails) arguments[0],
@@ -230,7 +225,7 @@ final class NeoEcoBatching {
         }
 
         /** Pushes {@code crafts} runs of {@code details}, whose inputs {@code holders} hold, as one batch. */
-        private boolean push(PatternProjection projection, IPatternDetails details, KeyCounter[] holders,
+        private boolean push(ProjectedProvider projection, IPatternDetails details, KeyCounter[] holders,
                 long crafts) {
             var outputs = new ArrayList<GenericStack>();
             for (var output : details.getOutputs()) {
@@ -240,7 +235,7 @@ final class NeoEcoBatching {
             for (var holder : holders) {
                 if (holder != null) inputs.addAll(holder);
             }
-            return projection.pushBatch(details, outputs, PatternProjection.containerItems(details, holders), inputs,
+            return projection.pushBatch(details, outputs, ProjectedProvider.containerItems(details, holders), inputs,
                     () -> (boolean) unchecked(pushBatch, projection.real(), details, holders, crafts, null));
         }
     }
