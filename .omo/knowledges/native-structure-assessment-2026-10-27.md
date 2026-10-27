@@ -3,7 +3,8 @@
 Owner question: does Federation's coupling to AE2 internals make addon compatibility expensive beyond remote crafting?
 This note assesses each feature against one test: **does an addon see something an ordinary AE2 player could also
 build?** If yes, addon bugs there reproduce without Federation and belong upstream. If no, every addon needs our code.
-Findings only; no decision has been made. Inputs: code statistics, the 2026-10-05 mixin audit
+Findings and recommendations only; the owner has decided nothing here. The decided remote-crafting direction is still
+the CPU route (owner, 2026-10-26); delegation below is an option raised by this note, not adopted. Inputs: code statistics, the 2026-10-05 mixin audit
 (`mixin-replacement-risk-audit-2026-10-05.md`), AE2 19.2.17 sources, Data Energistics main (6c2c046a), Neo ECO main
 (1c1e084b), and two read-only fact-finding passes over storage and processing.
 
@@ -18,7 +19,7 @@ Findings only; no decision has been made. Inputs: code statistics, the 2026-10-0
   replace reading or changing state; only `StorageServiceNotificationMixin` has a public replacement
   (`IStorageWatcherNode`). Events are not the lever; AE2's extension interfaces are.
 
-## Storage federation: keep
+## Storage federation (recommendation: keep)
 
 - Promise: per ordered pair of networks, C sees, inserts into and extracts from P's storages; optional re-export; loops
   show each item once; P's sources keep native priority inside one aggregate mounted on C (`StorageMountHelpers:15-22`).
@@ -40,12 +41,12 @@ Findings only; no decision has been made. Inputs: code statistics, the 2026-10-0
 - Measured against that native baseline (`performance-fixes-2026-10-01.md`): listing 90.5 us vs 297.2 us,
   extract+insert 365.6 ns vs 394.8 ns, simulate 138.3 ns vs 121.5 ns. Bus farm 1000x10 median tick: Federation one
   domain 13.9 ms, AE2 one network 14.6 ms, AE2 subnets 15.5 ms.
-- Verdict: its coupling is AE2-upgrade cost, not addon cost. Keep. Optional: replace the notification mixin with
-  `IStorageWatcherNode` (audit: strong candidate).
+- Assessment: its coupling is AE2-upgrade cost, not addon cost. Recommendation: keep; optionally replace the
+  notification mixin with `IStorageWatcherNode` (audit: strong candidate).
 - Open check: `NativeStorageNotificationHub.MAX_RETAINED_KEYS = 64`; a source whose discovery passes 64 keys retires
   its subscription (`StorageSubscriptionService` failed starts). The player-visible effect was not traced.
 
-## Processing (Provider/Endpoint): spike a plain provider
+## Processing (Provider/Endpoint) (recommendation: evaluate a plain provider)
 
 - Promise: Provider holds patterns, each mapped to Endpoints; every mapped Endpoint is a lane with its own Blocking,
   lock, send list and returns; a lane pushes into the Endpoint subnet's `ME_STORAGE`; results pushed into an Endpoint
@@ -70,10 +71,10 @@ Findings only; no decision has been made. Inputs: code statistics, the 2026-10-0
   into the provider's return inventory, flow observation (today from lane `sendList`), FE relay targets, release checks.
 - Open design question: which block sits at the Provider's target side (the Federation face it already touches, or a
   separate block).
-- Spike: plain provider + pass-through `ME_STORAGE` to a subnet, with DE and ExpandedAE loaded; check Blocking, DE run
-  counts and ExpandedAE Smart blocking.
+- Possible spike, if the owner wants it: plain provider + pass-through `ME_STORAGE` to a subnet, with DE and ExpandedAE
+  loaded; check Blocking, DE run counts and ExpandedAE Smart blocking.
 
-## Remote crafting: spike delegation before P1
+## Remote crafting (decided: CPU route; delegation is an unadopted option)
 
 - Projection and the CPU route both split CPU (on C) from provider (on P). No player can build that, so every addon's
   same-Grid assumption needs our code. Example: Neo ECO holds job-bound outputs on the provider's Grid
@@ -90,17 +91,17 @@ Findings only; no decision has been made. Inputs: code statistics, the 2026-10-0
 - Costs: materials come from P (escrow from C if "C's materials, P's machines" must stay); C cannot see whether P can
   finish, so P's failures must cancel or report on C; C's preview shows X as emitted; declare X only when C cannot
   craft it itself.
-- Spike: C with AE2, Neo ECO, AdvancedAE and DE CPUs ordering an emitable X; P crafting it on a Neo ECO workstation.
+- Possible spike, if the owner wants it: C with AE2, Neo ECO, AdvancedAE and DE CPUs ordering an emitable X; P
+  crafting it on a Neo ECO workstation.
 
-## Energy, P2P, identity: keep
+## Energy, P2P, identity (recommendation: keep)
 
 - Energy already is a native structure: AE2's `EnergyOverlayGrid`, as a Quartz Fiber (`native-energy-contract.md`).
 - P2P uses AE2's `P2PService` frequencies; internal imports are part classes; no addon collision recorded.
 - Identity: `CableBusIdentityInitializationMixin` has no public replacement and no addon collision.
 
-## Order
+## Open for the owner
 
-1. Crafting: delegation spike, then decide between delegation and the CPU route.
-2. Processing: plain-provider spike.
-3. Storage: keep; optional notification-mixin replacement; trace the 64-key retirement.
-4. Energy, P2P, identity: keep.
+Nothing above is decided. Questions: whether to evaluate delegation at all next to the decided CPU route, and if so
+whether P supplying materials is acceptable; whether to evaluate a plain provider for processing; whether to trace the
+64-key subscription retirement.
