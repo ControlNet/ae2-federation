@@ -85,8 +85,9 @@ and the options considered: `remote-crafting-architecture-2026-10-26.md`.
 - Apply the unknown-CPU policy (see the open decisions).
 - Take statistics from events.
 - Measured in [remote-crafting-dual-registration-spike-2026-10-26.md](remote-crafting-dual-registration-spike-2026-10-26.md):
-  outputs return to the provider's own Grid even with Neo ECO's job id, so the return router stays; C never hears of
-  pattern changes or removal without an explicit refresh or removal.
+  outputs return to the provider's own Grid, so the return router stays; Neo ECO batches pushed with a job id are held
+  on P until the job ends, so the Neo ECO adapter drops the job id for mirrored providers; C never hears of pattern
+  changes or removal without an explicit refresh or removal.
 
 ### P4. Delete the projection route
 

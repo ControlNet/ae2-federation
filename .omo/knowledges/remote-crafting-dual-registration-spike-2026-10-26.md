@@ -24,15 +24,19 @@ grep AE2F_SPIKE neoforge-1.21.1/build/compat/runs/baseline-spike/logs/latest.log
 | Concurrent orders | P and C order in the same tick; both pushes go through. P's job finishes, C's waits; P's chest ends with 8 sticks. C's outputs are ordinary items on P, which P's CPU may take for its own job. |
 | Broken provider | C still offers the pattern 20 ticks later. An order from C is refused (the provider's node is inactive): cancelling gives back both planks, nothing is lost. |
 
-## Neo ECO, from bytecode (21.2.11)
+## Neo ECO, from source (21.2.11, upstream main 1c1e084b)
 
+- The job id reaches a machine only through the batch protocol (`ECOBatchDispatchContext.craftingJobId()`); a plain
+  `pushPattern` carries none. With Neo ECO installed, C's AE2 CPUs dispatch through that protocol too.
 - `ECOLargeIntegratedWorkingStationBlockEntity.deliverBatchOutputs` and `ECOCraftingThread.ejectOutputs` (crafting
-  system workers) take `getMainNode().getGrid().getCraftingService()`, their own Grid, and call
-  `ECOCraftingOutputRouter.neoecoae$insertIntoCpuForJob(jobId, ...)` (a mixin on AE2's `CraftingService`). That looks
-  the job up only among that Grid's CPUs; what no CPU there takes goes into the same Grid's storage.
-- So passing the real job id to a provider on P does not deliver to a job on C. Not run in game.
-- Upstream candidate: resolve the job's CPU through the level-wide `ECOCraftingJobLifecycle` registry instead of the
-  own Grid.
+  system workers) take their own Grid's crafting service and call `ECOCraftingOutputRouter.neoecoae$insertIntoCpuForJob`
+  (a mixin on AE2's `CraftingService`), which looks the job up only among that Grid's CPUs.
+- When no CPU there has the job, the outputs are held, not stored: the workstation stops with `CPU_INSERT` until the job
+  is terminated; a crafting thread waits (`WAITING_FOR_OWNER`) and recovers to storage after 2400 ticks. A job on C
+  waits for those outputs, so a real Neo ECO provider registered on C stalls (workstation) or stalls for 2400 ticks
+  (crafting system). Not run in game. The projection avoids it today by pushing without the job id (`NeoEcoBatching`).
+- `ECOCraftingJobLifecycle` is a server-wide set of terminated job ids only; it cannot locate a live job's CPU.
+- P3 therefore needs the Neo ECO batch-protocol hook to drop the job id for mirrored providers, whatever upstream does.
 
 ## Lightning Tech, from its API
 
@@ -42,8 +46,9 @@ LT's own machines implement it.
 
 ## What P3 needs
 
-1. A return path stays necessary: outputs of a real provider land on its own Grid (AE2, Neo ECO with or without the job
-   id). The ledger and return router carry over; only LT deferred providers can skip them.
+1. A return path stays necessary: outputs of a real provider land on its own Grid (AE2, Neo ECO without a job id). The
+   ledger and return router carry over; only LT deferred providers can skip them. Neo ECO batches pushed with a job id
+   are held on P instead (see above), so the job id must be dropped for mirrored providers.
 2. Fan out pattern changes: on every provider refresh on P, call `refreshGlobalCraftingProvider` on each consumer that
    holds it.
 3. Remove registrations when the provider leaves P (`globalProviderRemoved` already sees this), or C keeps offering a
