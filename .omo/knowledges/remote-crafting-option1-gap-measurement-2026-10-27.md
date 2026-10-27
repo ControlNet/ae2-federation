@@ -54,6 +54,11 @@ Known protocols (the hooks option 1 would keep): `PatternProviderLogic.pushPatte
   pattern but not the run count.
 - `onPushPatternSuccess` sees more than `pushPattern`: it also catches subclasses that override `pushPattern` but keep
   AE2's lock bookkeeping (Resonating) and DE's standard batch.
-- The generic hook covers plain AE2 providers and subclasses that keep `pushPattern`; about ten provider classes in
-  seven of the tested addons fall outside it. Under option 1 the "minimal" projection would carry all of them, so it
-  is a second path in regular use, not a rare fallback.
+- The provider-side hooks cover plain AE2 providers and subclasses that keep `pushPattern`; about ten provider classes
+  in seven of the tested addons fall outside them.
+- Correction (same day): that list does not make the projection a second path in regular use. Every hand-over above,
+  including those to the ten classes and the DE standard batch, was seen by an executor probe (AE2, Advanced AE,
+  Neo ECO, Lightning Tech, Data Energistics), and no provider-side push in any joined run was missed by the executor
+  probes. Executor adapters account a push whatever the provider class; provider-side hooks only matter for an
+  executor we do not know. The case nothing covers is an unknown executor handing work to a provider class outside
+  the AE2 family. No such executor appeared in these profiles.
