@@ -89,8 +89,8 @@ final class AddonCraftingScene {
     private boolean disconnectAfterPush;
     private boolean relinkAfterDisconnect;
     private boolean mergeAfterPush;
-    // A whole run can order joined (-Dae2federation.compat.joinBeforeOrder=true), as a native control of every scene.
-    private boolean joinBeforeOrder = Boolean.getBoolean("ae2federation.compat.joinBeforeOrder");
+    // A whole run can order joined, as a native control of every scene (NativeParity).
+    private boolean joinBeforeOrder = NativeParity.joinedRun();
     private java.util.function.Consumer<GameTestHelper> joiner;
     private BiFunction<IGrid, ICraftingPlan, ICraftingSubmitResult> submit = (grid, plan) ->
             grid.getCraftingService().submitJob(plan, null, null, true, IActionSource.empty());
@@ -510,12 +510,20 @@ final class AddonCraftingScene {
     /** The game ticks from submitting the last order until its CPU was seen idle; -1 while it runs. */
     long jobTicks() { return jobTicks; }
 
+    /** Whether the scene orders with both networks joined into one Grid instead of through Federation. */
+    boolean joined() { return joinBeforeOrder; }
+
     PolicyBridgeFixtures bridge() { return bridge; }
 
     /** Runs the whole craft; call from {@code succeedWhen}. */
     void tick() {
         switch (stage) {
             case 0 -> {
+                if (joinBeforeOrder && (cancelAfterPush || disconnectAfterPush || mergeAfterPush)) {
+                    // These follow Federation's ledger after the push; one Grid has none to follow.
+                    throw new IllegalStateException(NativeParity.NO_JOINED_CONTROL + "the scene checks the ledger"
+                            + " after a cancelled job, a removed Bridge or a merge");
+                }
                 helper.assertTrue(bridge.networksSettled(), "Waiting for both networks");
                 if (placeStructure != null) {
                     placeStructure.accept(helper);
@@ -840,7 +848,10 @@ final class AddonCraftingScene {
                             .getAvailableStacks().get(output()) + ", the consumer network "
                             + consumerGrid().getStorageService().getInventory().getAvailableStacks().get(output()));
                 }
-                if (jobTicks < 0) jobTicks = helper.getTick() - submittedTick;
+                if (jobTicks < 0) {
+                    jobTicks = helper.getTick() - submittedTick;
+                    NativeParity.recordJobTicks(helper.testInfo.getTestName(), jobTicks);
+                }
                 if (consumerStorage != null) {
                     helper.assertValueEqual(held(consumerChest(), output()), requested() * tookOrders.size(),
                             "The consumer's own storage must hold everything made");

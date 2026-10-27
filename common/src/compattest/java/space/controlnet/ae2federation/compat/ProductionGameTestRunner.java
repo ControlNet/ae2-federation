@@ -223,6 +223,7 @@ final class ProductionGameTestRunner {
     private void writeReport(MinecraftServer server, String setupError) {
         var root = new JsonObject();
         root.addProperty("setupError", setupError);
+        root.addProperty("joinBeforeOrder", NativeParity.joinedRun());
         var tests = new JsonArray();
         for (var info : infos) {
             var test = new JsonObject();
@@ -230,6 +231,8 @@ final class ProductionGameTestRunner {
             test.addProperty("status", info.hasSucceeded() ? "pass" : info.hasFailed() ? "fail" : "missing");
             test.addProperty("required", info.isRequired());
             test.addProperty("ms", info.hasStarted() ? info.getRunTime() : 0);
+            var jobTicks = NativeParity.jobTicks(info.getTestName());
+            if (jobTicks != null) test.addProperty("jobTicks", jobTicks);
             if (info.getError() != null) test.addProperty("error", String.valueOf(info.getError().getMessage()));
             tests.add(test);
         }

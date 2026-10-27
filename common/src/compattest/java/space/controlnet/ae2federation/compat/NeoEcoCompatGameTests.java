@@ -152,6 +152,7 @@ public final class NeoEcoCompatGameTests {
                 .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
                 .craftingOnly().requesting(16);
         return scene.checkingAfterJob((order, cpu, provider) -> {
+            if (scene.joined()) return; // One Grid has no projection to batch through.
             var bridge = scene.bridge();
             var consumer = scene.consumerGrid();
             var stone = appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.STONE);
@@ -230,7 +231,7 @@ public final class NeoEcoCompatGameTests {
     static AddonCraftingScene throughput(GameTestHelper helper, boolean joined) {
         var scene = computationOrdering(helper, Tier.L4).requesting(THROUGHPUT_PLANKS);
         if (joined) scene.joinedBeforeOrder();
-        return scene.checkingAfterJob(batches(helper, scene, joined, appeng.api.stacks.AEItemKey.of(
+        return scene.checkingAfterJob(batches(helper, scene, appeng.api.stacks.AEItemKey.of(
                 net.minecraft.world.item.Items.STICK), THROUGHPUT_PLANKS / 2, THROUGHPUT_TICKS, "fast path true"));
     }
 
@@ -262,7 +263,7 @@ public final class NeoEcoCompatGameTests {
             }
         });
         var sticks = appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.STICK);
-        helper.succeedWhen(scene.checkingAfterJob(batches(helper, scene, false, sticks, THROUGHPUT_PLANKS / 2,
+        helper.succeedWhen(scene.checkingAfterJob(batches(helper, scene, sticks, THROUGHPUT_PLANKS / 2,
                 THROUGHPUT_TICKS, "fast path true"))::tick);
     }
 
@@ -298,7 +299,7 @@ public final class NeoEcoCompatGameTests {
                         () -> fitComputationCell(helper, Tier.L4))
                 .craftingOnly().requesting(WORKSTATION_CRAFTS);
         if (joined) scene.joinedBeforeOrder();
-        return scene.checkingAfterJob(batches(helper, scene, joined, EnergizedCrystal.CRYSTAL, WORKSTATION_CRAFTS,
+        return scene.checkingAfterJob(batches(helper, scene, EnergizedCrystal.CRYSTAL, WORKSTATION_CRAFTS,
                 WORKSTATION_TICKS, "parallel true"));
     }
 
@@ -307,9 +308,10 @@ public final class NeoEcoCompatGameTests {
      * Federation, Neo ECO must take the projection on {@code path} and send {@code crafts} in batches within
      * {@code maxTicks}, and the ledger must be settled.
      */
-    private static AddonCraftingScene.CpuCheck batches(GameTestHelper helper, AddonCraftingScene scene, boolean joined,
+    private static AddonCraftingScene.CpuCheck batches(GameTestHelper helper, AddonCraftingScene scene,
             appeng.api.stacks.AEKey output, long crafts, long maxTicks, String path) {
         return (order, cpu, provider) -> {
+            boolean joined = scene.joined();
             var consumer = scene.consumerGrid();
             var pattern = consumer.getCraftingService().getCraftingFor(output).iterator().next();
             var paths = NeoEcoScaledDispatch.providers(consumer, pattern).stream()
