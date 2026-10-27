@@ -186,13 +186,18 @@ public final class DataEnergisticsCompatGameTests {
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "matter_fabrication_well", timeoutTicks = 1500)
     public static void trinityCpuSixteenRemoteRuns(GameTestHelper helper) {
+        helper.succeedWhen(trinityRemoteRuns(helper, 16)::tick);
+    }
+
+    /** As {@link #trinityCpuSixteenRemoteRuns}, with {@code runs} runs. */
+    static AddonCraftingScene trinityRemoteRuns(GameTestHelper helper, int runs) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true);
         var trinity = new TrinityDataCore(helper);
         scene.consumerCpuStructure(test -> trinity.place(), () -> trinity.ready(scene.consumerGrid()))
                 .checkingPlan((plan, local) -> helper.assertTrue(plan.getClass().getName().equals(TrinityDataCore.PLAN),
                         "The Trinity planner must make the consumer's plan, not " + TrinityDataCore.describe(plan)))
-                .craftingOnly().requesting(16)
-                .checkingAfterJob((order, cpu, provider) -> {
+                .craftingOnly().requesting(runs);
+        return scene.checkingAfterJob((order, cpu, provider) -> {
                     if (scene.joined()) return; // One Grid has no projection to count pushes through.
                     var bridge = scene.bridge();
                     var consumer = scene.consumerGrid();
@@ -210,7 +215,7 @@ public final class DataEnergisticsCompatGameTests {
                             bridge.mainNetwork(), bridge.outerNetwork()), StatisticsRange.MINUTES, now);
                     var observed = "Trinity batches to the real provider: " + TrinityDataCore.counted(real.getFirst())
                             + ", to the projection: " + TrinityDataCore.counted(projected.getFirst())
-                            + "; pushes through the projection for 16 runs: " + pushes;
+                            + "; pushes through the projection for " + runs + " runs: " + pushes;
                     helper.assertTrue(TrinityDataCore.counted(real.getFirst()),
                             "Data Energistics must batch to an AE2 Pattern Provider on its own network. " + observed);
                     helper.assertValueEqual(space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger
@@ -218,7 +223,6 @@ public final class DataEnergisticsCompatGameTests {
                             "Every run's stone must be returned. " + observed);
                     com.mojang.logging.LogUtils.getLogger().info("Trinity remote runs: {}", observed);
                 });
-        helper.succeedWhen(scene::tick);
     }
 
     /**

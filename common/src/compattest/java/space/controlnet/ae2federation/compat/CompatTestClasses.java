@@ -9,7 +9,7 @@ final class CompatTestClasses {
     }
 
     static boolean includedInAll(String group) {
-        return !group.equals("quest-coverage") && !group.startsWith("playthrough-");
+        return !group.equals("quest-coverage") && !group.startsWith("playthrough-") && !group.endsWith("-benchmark");
     }
 
     static Map<String, Class<?>> groups() {
@@ -50,6 +50,7 @@ final class CompatTestClasses {
         groups.put("neoecoae-advanced-ae", NeoEcoAdvancedAECompatGameTests.class);
         groups.put("useless-mod", UselessModCompatGameTests.class);
         groups.put("ae2cs", CrystalScienceCompatGameTests.class);
+        groups.put("data-energistics-benchmark", DataEnergisticsBenchmarkGameTests.class);
         // Spans several addons: each profile names its addon's tests by id (see the class).
         return groups;
     }
