@@ -1,0 +1,59 @@
+# Option 1 gap measurement (2026-10-27)
+
+Measurement only; no route decision. Option 1 is the CPU route with a minimal projection kept as fallback: real
+providers on the consumer, a ledger fed by a few provider-side hooks, and the projection only for providers those hooks
+cannot see. The question was how often current addons push in ways those hooks miss.
+
+## How to run
+
+```sh
+P="baseline data-energistics neoecoae neoecoae-advanced-ae advanced-ae ae2-lightning-tech extendedae extendedae-plus \
+megacells ae2-pattern-disk ae2cs omnisequence useless-mod appflux aeallpattern neoecoprototype appliedenhancements addons-all"
+python3 tools/compat_run.py --accept-eula $P -j 7 -p 4 --run-suffix gap-joined \
+  --jvm-property ae2federation.dispatchProbe=true --jvm-property ae2federation.compat.joinBeforeOrder=true
+python3 tools/compat_run.py --accept-eula --no-build $P -j 7 -p 4 --run-suffix gap --jvm-property ae2federation.dispatchProbe=true
+python3 tools/dispatch_probe_report.py data-energistics-gap-joined ae2cs-gap-joined
+```
+
+Joined runs decide: there the consumer sees real providers, as it would under option 1. Federated runs only see
+projections, which no addon recognises. Probe runs replace each pattern provider's send list with a recording
+`ArrayList` (`RecordingSendList`); ordinary runs are unchanged.
+
+Known protocols (the hooks option 1 would keep): `PatternProviderLogic.pushPattern`, Data Energistics
+`pushExpanded`/`pushExpandedToTarget`, Neo ECO `LargeWorkstationPatternProvider.eco$pushPatternBatch` and FastPath
+`Preparation.push`, Thunderbolt `pushBatch`. Gaps: an executor hand-over that opened none of them; a pattern provider's
+`onPushPatternSuccess` outside them; its send list growing outside them and outside `readFromNBT`.
+
+## Results on the 2026-10-26 pins
+
+- Federated: 18/18 profiles pass, so the probes change nothing. Joined: the same federation-only failures as P0;
+  `addons-all` joined hit the 900 s deadline and wrote no probe file, so it is not measured.
+- Out of scope: 0 pushes in every run. Scope attribution held everywhere; the "refuse an out-of-scope push" fallback
+  was never needed.
+- Send list growth outside known protocols: 0 in every run.
+- One private protocol on a plain `PatternProviderLogic` (data-energistics joined, 1x):
+  `TrinityDataCoreCpuLogic.dispatchToAvailableProvider` -> `CraftingDispatchCommitter.commit` ->
+  `PatternProviderBatching$OneShotAdmission.commit` -> `prepareStandardBatch` lambda ->
+  `dataEnergistics$invokeOnPushPatternSuccess`. DE's standard batch completes a push without `pushPattern` or
+  `pushExpanded`. It ran inside DE's participant scope and was caught only by the `onPushPatternSuccess` indicator.
+- Provider classes whose pushes no known protocol saw (joined), each of which option 1 would serve through the
+  projection or a per-class adapter:
+  - Advanced AE `AdvPatternProviderLogic` (AE2 CPU, AAE CPU, Neo ECO CPU)
+  - AE2 Lightning Tech `PigmeePatternProviderBlockEntity`
+  - AE2 Crystal Science `MeteoritePatternProviderLogic` (34 of 38) and `ResonatingPatternProviderLogic` (4 of 8; it
+    overrides `pushPattern` and still calls AE2's `onPushPatternSuccess`)
+  - ExtendedAE `TileAssemblerMatrixPattern`
+  - Neo ECO `ECOCraftingPatternBusBlockEntity`
+  - OmniSequence (`com.atir.molecularmanipulator`) `MolecularManipulatorLogic` and `MatterFabricationPatternLogic`
+  - Useless Mod `AdvancedAlloyFurnaceBlockEntity` and its Smart Doubling provider proxy
+- Not seen in these scenes: Neo ECO exact-order dispatch, Thunderbolt batches into real providers.
+
+## Reading
+
+- The feared gap exists but is small: one DE path, detectable through `onPushPatternSuccess`, which carries the
+  pattern but not the run count.
+- `onPushPatternSuccess` sees more than `pushPattern`: it also catches subclasses that override `pushPattern` but keep
+  AE2's lock bookkeeping (Resonating) and DE's standard batch.
+- The generic hook covers plain AE2 providers and subclasses that keep `pushPattern`; about ten provider classes in
+  seven of the tested addons fall outside it. Under option 1 the "minimal" projection would carry all of them, so it
+  is a second path in regular use, not a rare fallback.
