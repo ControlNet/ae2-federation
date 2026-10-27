@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "space.controlnet.ae2federation.compat.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "GameTestSequenceFailureMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
