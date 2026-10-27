@@ -46,7 +46,10 @@ Federation: every profile passed. The joined run's counts:
   - This is fixed latency, not per-craft cost.
 - slower: `trinitycpusixteenremoteruns` in data-energistics, addons-all and useless-mod-addons takes 18-19 ticks vs
   4. The Trinity CPU sends a projection one craft per push, because Data Energistics batches only to providers it
-  recognises as counted. This is the target of the DE counted-batching work.
+  recognises as counted.
+  - Fixed later the same day: a projection of a counted provider is now counted too, through DE's public provider
+    plugin (`de-counted-projection-2026-10-27.md`). The test takes 4 ticks both ways and checks that the runs cross in
+    fewer pushes than runs.
 - joined fails: `smartdoublingturnedonlater` in extendedae-plus-aeallpattern only.
   - On one Grid with AE All Pattern loaded, the consumer never sees the provider's re-decoded pattern objects after
     Smart Doubling is switched on. AE All Pattern replaces AE2's pattern refresh.

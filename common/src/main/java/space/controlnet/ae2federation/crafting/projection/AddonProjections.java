@@ -18,8 +18,9 @@ public interface AddonProjections {
     }
 
     /**
-     * The add-on's interfaces among {@code type}'s whose API this adapter knows, which a projection of a provider of
-     * {@code type} has too; their methods go to {@link #invoke}.
+     * The add-on's interfaces whose API this adapter knows that a projection of a provider of {@code type} has: some of
+     * {@code type}'s own, or ones the add-on asks of a provider it treats as {@code type}'s; their methods go to
+     * {@link #invoke}.
      */
     default List<Class<?>> interfaces(Class<?> type) {
         return List.of();

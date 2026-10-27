@@ -13,7 +13,7 @@ Everything else names only the platform and required libraries. `AddonCodeContra
 | `compat/ae2lt` | CPU lifecycle (`TimeWheelCraftingCPU`, Pigmee pool) |
 | `compat/neoecoae` | CPU lifecycle (`ECOCraftingCPU`, threading core); `NeoEcoBatching` (fast path, parallel) |
 | `compat/expandedae` | Lane targets built with ExpandedAE's target cache |
-| `compat/data_energistics` | Whether the guide leaves the sidebar nesting to Data Energistics |
+| `compat/data_energistics` | Whether the guide leaves the sidebar nesting to Data Energistics; `DataEnergisticsBatching` (counted batches through a projection, by name) and `DataEnergisticsCountedProjections` (its DE plugin, compiled against DE's API) |
 | `compat/jade`, `compat/jech` | Unchanged |
 
 The core interfaces live next to the code that uses them:
@@ -49,8 +49,12 @@ The core interfaces live next to the code that uses them:
 1. Add `compat/<mod id>/` with a class that implements the relevant core interface.
 2. Register it in `CompatAdapters`.
 3. If the core interface lacks the hook, add a default method to it. Do not name the add-on in core.
-4. For add-on mixins (planned for Data Energistics counted batches), use a separate mod-gated mixin config whose package
-   is outside `compat/`, with `require = 0`. A registered mixin package cannot hold ordinary classes.
+4. Prefer the add-on's own plugin API. Data Energistics' counted batches go through its public provider plugin (see
+   `de-counted-projection-2026-10-27.md`). Compile against such an API in a configuration that feeds only the main
+   compile classpath, like `jadeApi` and `dataEnergisticsApi`, and keep the typed classes out of `CompatAdapters`: an
+   adapter there names the add-on's types and calls the typed class only once the add-on has made the call possible.
+5. For add-on mixins, use a separate mod-gated mixin config whose package is outside `compat/`, with `require = 0`. A
+   registered mixin package cannot hold ordinary classes.
 
 ## Verification (2026-10-27)
 

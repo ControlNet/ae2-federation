@@ -181,8 +181,8 @@ public final class DataEnergisticsCompatGameTests {
     /**
      * The consumer's Trinity Data Core runs sixteen runs of a projected cobblestone -> stone pattern from an AE2
      * Pattern Provider on the provider network. The Trinity CPU dispatches counted batches to providers Data Energistics can
-     * batch, an AE2 Pattern Provider among them; the test records whether it can batch to the projection too and how
-     * many pushes cross it, and checks every run's stone comes back.
+     * batch, an AE2 Pattern Provider among them, and the projection of one is counted too: fewer pushes than runs cross
+     * it, and every run's stone comes back.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "matter_fabrication_well", timeoutTicks = 1500)
     public static void trinityCpuSixteenRemoteRuns(GameTestHelper helper) {
@@ -218,6 +218,10 @@ public final class DataEnergisticsCompatGameTests {
                             + "; pushes through the projection for " + runs + " runs: " + pushes;
                     helper.assertTrue(TrinityDataCore.counted(real.getFirst()),
                             "Data Energistics must batch to an AE2 Pattern Provider on its own network. " + observed);
+                    helper.assertTrue(TrinityDataCore.counted(projected.getFirst()),
+                            "Data Energistics must batch to the projection of that provider too. " + observed);
+                    helper.assertTrue(pushes < runs,
+                            "The projection must take the runs in batches, not one push a run. " + observed);
                     helper.assertValueEqual(space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger
                             .get(helper.getLevel()).owed(bridge.outerNetwork(), bridge.mainNetwork(), stone), 0L,
                             "Every run's stone must be returned. " + observed);

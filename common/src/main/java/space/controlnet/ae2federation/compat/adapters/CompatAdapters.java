@@ -5,6 +5,7 @@ import space.controlnet.ae2federation.ae2.processing.AddonLaneTargets;
 import space.controlnet.ae2federation.compat.advanced_ae.AdvancedAeCraftingCpus;
 import space.controlnet.ae2federation.compat.advanced_ae.AdvancedAeProjections;
 import space.controlnet.ae2federation.compat.ae2lt.LightningTechCraftingCpus;
+import space.controlnet.ae2federation.compat.data_energistics.DataEnergisticsBatching;
 import space.controlnet.ae2federation.compat.expandedae.ExpandedAeLaneTargets;
 import space.controlnet.ae2federation.compat.neoecoae.NeoEcoBatching;
 import space.controlnet.ae2federation.compat.neoecoae.NeoEcoCraftingCpus;
@@ -19,7 +20,8 @@ import space.controlnet.ae2federation.crafting.projection.AddonProjections;
 public final class CompatAdapters {
     public static final List<AddonCraftingCpus> CRAFTING_CPUS = List.of(new AdvancedAeCraftingCpus(),
             new LightningTechCraftingCpus(), new NeoEcoCraftingCpus());
-    public static final List<AddonProjections> PROJECTIONS = List.of(new AdvancedAeProjections(), new NeoEcoBatching());
+    public static final List<AddonProjections> PROJECTIONS = List.of(new AdvancedAeProjections(), new NeoEcoBatching(),
+            new DataEnergisticsBatching());
     public static final List<AddonLaneTargets> LANE_TARGETS = List.of(new ExpandedAeLaneTargets());
 
     private CompatAdapters() {

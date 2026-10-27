@@ -104,6 +104,14 @@ repositories {
             includeGroup('com.gregtechceu.gtceu')
         }
     }
+    maven {
+        // CurseForge-only mods, by project and file id.
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+        content {
+            includeGroup('curse.maven')
+        }
+    }
 }
 
 def prepareLoopbackServerProperties = tasks.register('prepareLoopbackServerProperties') {
@@ -523,6 +531,11 @@ configurations {
         canBeResolved = true
         description = 'Jade, compiled against by the optional Jade plugin only; on no run or test classpath.'
     }
+    dataEnergisticsApi {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Data Energistics, compiled against by its optional plugin only; on no run or test classpath.'
+    }
     appliedFluxCompatibility {
         canBeConsumed = false
         canBeResolved = true
@@ -549,7 +562,7 @@ configurations {
     gtceuTestImplementation.extendsFrom(gtceuCompatibility)
 }
 
-sourceSets.main.compileClasspath += configurations.jadeApi
+sourceSets.main.compileClasspath += configurations.jadeApi + configurations.dataEnergisticsApi
 
 dependencies {
     implementation("org.appliedenergistics:appliedenergistics2:${ae2_version}")
@@ -559,6 +572,9 @@ dependencies {
     // Jade 15.10.6 for 1.21.1 NeoForge (Modrinth version eYz2YBGT); optional, only its plugin class refers to it.
     // Not compileOnly: test source sets run with the main compile classpath, and a loaded Jade breaks fake players.
     jadeApi('maven.modrinth:jade:eYz2YBGT')
+    // Data Energistics 3.3.5 (CurseForge project 1565514, file 9095664), the compat runs' pin; only its plugin class
+    // refers to it.
+    dataEnergisticsApi('curse.maven:data-energistics-1565514:9095664')
     testImplementation(platform('org.junit:junit-bom:5.10.1'))
     testImplementation('org.junit.jupiter:junit-jupiter')
     testRuntimeOnly('org.junit.platform:junit-platform-launcher')
