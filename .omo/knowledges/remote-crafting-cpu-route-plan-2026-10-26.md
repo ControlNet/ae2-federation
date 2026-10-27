@@ -1,5 +1,12 @@
 # Remote crafting: migration to real providers and a compat layer (plan, 2026-10-26)
 
+> **Abandoned 2026-10-27 (owner decision): cross-network crafting stays on pattern projection.** The CPU route has no
+> reliable generic fallback. A consumer CPU we have no hook for, handing work to a provider outside the AE2
+> `PatternProviderLogic` family, runs none of our code, so its job would stall. A minimal projection as fallback needs
+> a whitelist to decide when to use it, and a demand-based return fails for multiblocks, wrapped providers, Neo ECO's
+> pattern bus and interface returns. Projection fails soft instead: missing addon acceleration, not stalled jobs.
+> Measurements: `remote-crafting-option1-gap-measurement-2026-10-27.md`. The plan below is kept as a record.
+
 Owner decision, 2026-10-26: cross-network crafting moves to real provider objects registered on the consumer, with
 dispatch accounting taken from CPU-side hooks in an isolated compat layer. The projection wrapper route is abandoned.
 There is no wrapper fallback, and once the migration is done the old implementation is deleted completely. Background
