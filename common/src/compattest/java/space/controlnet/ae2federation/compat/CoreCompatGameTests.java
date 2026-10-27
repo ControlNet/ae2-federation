@@ -178,6 +178,7 @@ public final class CoreCompatGameTests {
      * This is the control for each addon CPU's variant.
      */
     @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger after a cancelled job")
     public static void remoteProcessingCancel(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest",
                 List.of("ae2:1k_crafting_storage"), true).cancellingAfterPush();
@@ -223,6 +224,7 @@ public final class CoreCompatGameTests {
      * the provider network and the consumer's job keeps waiting. This is the control for the addon variants.
      */
     @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger after the Bridge is removed")
     public static void remoteProcessingDisconnected(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest",
                 List.of("ae2:1k_crafting_storage"), true).disconnectingAfterPush();
@@ -235,6 +237,7 @@ public final class CoreCompatGameTests {
      * whatever hooks the loaded addons add there; the debt settles, and after the split the provider keeps its next lava.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    @FederationOnly("the ledger when the networks merge mid-job")
     public static void nativeCpuMergedFluidReturn(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("ae2:1k_crafting_storage"),
                 AddonCraftingScene.lavaMachine()).craftingOnly().outputStoredOnConsumer().mergingAfterPush();

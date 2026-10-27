@@ -34,18 +34,17 @@ class ParityClassTest(unittest.TestCase):
     def test_scenes_without_a_native_control(self):
         self.assertEqual(parity_class(test("a"), test("a")), "no control")
         self.assertEqual(parity_class(test("a"), None), "no control")
-        self.assertEqual(parity_class(test("a", ticks=10), test("a", "fail", error="NO_JOINED_CONTROL: ledger")),
-                         "Federation-only")
+        self.assertEqual(parity_class(test("a", ticks=10), test("a", "skipped")), "Federation-only")
 
 
 class ParityTableTest(unittest.TestCase):
     def test_table_lists_compared_rows_and_counts_the_rest(self):
         federation = {"p": report(False, test("craft", ticks=150), test("storage"), test("cancel", ticks=30))}
         joined = {"p": report(True, test("craft", ticks=50), test("storage"),
-                              test("cancel", "fail", error="NO_JOINED_CONTROL: ledger"))}
+                              test("cancel", "skipped"))}
         table = parity(federation, joined)
         self.assertIn("| p | craft | pass, 150 ticks | pass, 50 ticks | +100 (3.00x) | slower |", table)
-        self.assertIn("| p | cancel | pass, 30 ticks | NO_JOINED_CONTROL: ledger |  | Federation-only |", table)
+        self.assertIn("| p | cancel | pass, 30 ticks | skipped |  | Federation-only |", table)
         self.assertNotIn("| storage |", table)
         self.assertIn("no control: 1", table)
 

@@ -70,11 +70,13 @@ public final class NeoEcoCompatGameTests {
 
     /** Two real jobs share one threading-core anchor without sharing a lifecycle. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger's watch of the CPU's job")
     public static void computationSharedAnchorLifecycle(GameTestHelper helper) {
         CpuLifecycleAuditScene.sharedAnchor(helper);
     }
 
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger's watch of the CPU's job")
     public static void computationCompletedLifecycle(GameTestHelper helper) {
         CpuLifecycleAuditScene.completed(helper);
     }
@@ -87,6 +89,7 @@ public final class NeoEcoCompatGameTests {
 
     /** Real independent ECO CPU cancellation, with delayed output from the explicitly hand-run test machine. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    @FederationOnly("the ledger after a cancelled job")
     public static void computationSystemCancel(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true)
                 .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
@@ -96,6 +99,7 @@ public final class NeoEcoCompatGameTests {
 
     /** Real independent ECO CPU waits for a separately delayed declared byproduct (test-operated machine). */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    @FederationOnly("the ledger's wait for a late byproduct")
     public static void computationSystemDelayedByproduct(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true)
                 .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
@@ -105,6 +109,7 @@ public final class NeoEcoCompatGameTests {
 
     /** Real ECO CPU keeps its return debt with the Federation link removed after dispatch. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    @FederationOnly("the ledger after the Bridge is removed")
     public static void computationSystemDisconnect(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true)
                 .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
@@ -126,6 +131,7 @@ public final class NeoEcoCompatGameTests {
 
     /** As {@link #computationSystemFluidReturn}, with the ECO job cancelled before the lava comes back. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    @FederationOnly("the ledger after a cancelled job")
     public static void computationSystemFluidCancel(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(), AddonCraftingScene.lavaMachine())
                 .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
@@ -842,6 +848,7 @@ public final class NeoEcoCompatGameTests {
      * settles, and after the split the provider keeps its next lava.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    @FederationOnly("the ledger when the networks merge mid-job")
     public static void computationSystemMergedFluidReturn(GameTestHelper helper) {
         var tier = Tier.L4;
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(), AddonCraftingScene.lavaMachine())

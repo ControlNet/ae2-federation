@@ -114,6 +114,7 @@ public final class ExtendedAEPlusCompatGameTests {
      * only, and the consumer's next order runs on its own CPU without co-processors.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    @FederationOnly("an accelerator moved to the provider network, which one Grid does not have")
     public static void acceleratorMovedToWorkshop(GameTestHelper helper) {
         var accelerator = AddonCraftingScene.FIRST_CPU.west();
         var workshopCpu = AddonCraftingScene.PROVIDER_CABLE.above();

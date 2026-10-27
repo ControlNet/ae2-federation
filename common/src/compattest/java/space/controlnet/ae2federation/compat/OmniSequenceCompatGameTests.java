@@ -52,6 +52,7 @@ public final class OmniSequenceCompatGameTests {
 
     /** The Transfinite Compute Nexus' job is cancelled after the push. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger after a cancelled job")
     public static void nexusCancel(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(NEXUS), true)
                 .cancellingAfterPush();
@@ -94,6 +95,7 @@ public final class OmniSequenceCompatGameTests {
 
     /** The Bridge is removed while the Transfinite Compute Nexus runs a job. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger after the Bridge is removed")
     public static void nexusDisconnected(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(NEXUS), true)
                 .disconnectingAfterPush();

@@ -46,8 +46,9 @@ import space.controlnet.ae2federation.power.OperatingPowerRule;
  * <p>NeoForge registers and ticks GameTests only outside production, so this registers the test methods with vanilla's
  * {@link GameTestRegistry} itself and ticks {@link GameTestTicker} from the server tick. Tests run side by side, up to
  * {@code ae2federation.compat.parallel} at a time (default 1, one after another), each in a {@link CellGridSpawner}
- * cell of its own; a {@link RunsAlone} test gets a batch of its own. The report is a JSON file; the server log also gets
- * vanilla's summary lines.
+ * cell of its own; a {@link RunsAlone} test gets a batch of its own. A joined run ({@link NativeParity}) skips
+ * {@link FederationOnly} tests and reports them as skipped. The report is a JSON file; the server log also gets vanilla's
+ * summary lines.
  */
 final class ProductionGameTestRunner {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -59,6 +60,8 @@ final class ProductionGameTestRunner {
     private final Path report;
     private final int parallel;
     private final Set<String> alone = new HashSet<>();
+    /** The tests a joined run skips, with why they check only Federation. */
+    private final Map<String, String> skipped = new LinkedHashMap<>();
     private MultipleTestTracker tracker;
     private List<GameTestInfo> infos = List.of();
     private long started;
@@ -212,10 +215,16 @@ final class ProductionGameTestRunner {
         wanted.stream().distinct().forEach(id -> GameTestRegistry.register(byName.get(id)));
         var functions = new ArrayList<>(GameTestRegistry.getAllTestFunctions());
         functions.removeAll(before);
-        for (var function : functions) {
+        for (var function : List.copyOf(functions)) {
             var name = function.testName().toLowerCase(Locale.ROOT);
             var method = byName.get(name.substring(name.lastIndexOf('.') + 1));
-            if (method != null && method.isAnnotationPresent(RunsAlone.class)) alone.add(function.testName());
+            if (method == null) continue;
+            if (NativeParity.joinedRun() && method.isAnnotationPresent(FederationOnly.class)) {
+                skipped.put(function.testName(), method.getAnnotation(FederationOnly.class).value());
+                functions.remove(function);
+            } else if (method.isAnnotationPresent(RunsAlone.class)) {
+                alone.add(function.testName());
+            }
         }
         return functions;
     }
@@ -236,6 +245,13 @@ final class ProductionGameTestRunner {
             if (info.getError() != null) test.addProperty("error", String.valueOf(info.getError().getMessage()));
             tests.add(test);
         }
+        skipped.forEach((name, reason) -> {
+            var test = new JsonObject();
+            test.addProperty("id", name);
+            test.addProperty("status", "skipped");
+            test.addProperty("reason", "Federation only: " + reason);
+            tests.add(test);
+        });
         root.add("tests", tests);
         var mods = new JsonObject();
         for (var mod : net.neoforged.fml.ModList.get().getMods()) mods.addProperty(mod.getModId(), mod.getVersion().toString());

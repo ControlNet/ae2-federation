@@ -167,6 +167,7 @@ public final class DataEnergisticsCompatGameTests {
      * keeps its next lava.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "matter_fabrication_well", timeoutTicks = 1200)
+    @FederationOnly("the ledger when the networks merge mid-job")
     public static void trinityDataCoreMergedFluidReturn(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of(), AddonCraftingScene.lavaMachine());
         var trinity = new TrinityDataCore(helper);

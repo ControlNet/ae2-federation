@@ -289,10 +289,13 @@ def run_profile(name: str, profile: dict, tests: str, timeout: int, parallel: in
         return {"profile": name, "status": status, "exit": exit_code, "seconds": seconds,
                 "detail": failure_hint(log)}
     data = json.loads(report.read_text())
-    failed = [test for test in data["tests"] if test["status"] != "pass"]
+    # A joined run skips the tests that check only Federation; they are neither run nor failed.
+    ran = [test for test in data["tests"] if test["status"] != "skipped"]
+    failed = [test for test in ran if test["status"] != "pass"]
     status = "setup-error" if data.get("setupError") else "fail" if failed else "pass"
     return {"profile": name, "status": status, "exit": exit_code, "seconds": seconds,
-            "passed": len(data["tests"]) - len(failed), "total": len(data["tests"]), "failed": failed,
+            "passed": len(ran) - len(failed), "total": len(ran), "skipped": len(data["tests"]) - len(ran),
+            "failed": failed,
             "detail": data.get("setupError"), "mods": len(data.get("mods", {}))}
 
 
@@ -479,7 +482,9 @@ def report(directory: Path) -> str:
         return failed
 
     def tests(row: dict) -> str:
-        return f"{row['passed']}/{row['total']}" if "total" in row else ""
+        if "total" not in row:
+            return ""
+        return f"{row['passed']}/{row['total']}" + (f" ({row['skipped']} skipped)" if row.get("skipped") else "")
 
     pinned = [row for row in rows if "latest" not in row]
     newest = [row for row in rows if "latest" in row]
@@ -506,16 +511,13 @@ def report(directory: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-NO_JOINED_CONTROL = "NO_JOINED_CONTROL: "
-
-
 def parity_class(federation: dict, joined: dict | None) -> str:
     """How a test through Federation compares with the same test on one joined Grid.
 
     A Federation job is "slower" when it takes more than half again the joined job's ticks, and at least 10 more."""
     if joined is None:
         return "no control"
-    if (joined.get("error") or "").startswith(NO_JOINED_CONTROL):
+    if joined["status"] == "skipped":
         return "Federation-only"
     passed = federation["status"] == "pass", joined["status"] == "pass"
     if passed == (False, True):
@@ -543,6 +545,8 @@ def parity(federation: dict[str, dict], joined: dict[str, dict]) -> str:
     def shown(test: dict | None) -> str:
         if test is None:
             return "missing"
+        if test["status"] == "skipped":
+            return "skipped"
         if test["status"] != "pass":
             return (test.get("error") or test["status"]).splitlines()[0][:160].replace("|", "/")
         return f"pass, {test['jobTicks']} ticks" if "jobTicks" in test else "pass"
@@ -744,6 +748,7 @@ def main() -> int:
                 result["latest"] = latest[futures[future]]
             results.append(result)
             counts = f" {result['passed']}/{result['total']}" if "total" in result else ""
+            counts += f" ({result['skipped']} skipped)" if result.get("skipped") else ""
             print(f"{result['status'].upper():12} {result['profile']}{counts} ({result['seconds']} s)", flush=True)
             for test in result.get("failed", []):
                 print(f"    {test['id']}: {test.get('error', test['status'])}")

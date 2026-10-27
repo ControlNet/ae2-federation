@@ -6,16 +6,12 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Federation against one AE2 Grid for the same scenes. A whole run can order joined
  * ({@code -Dae2federation.compat.joinBeforeOrder=true}); each crafting scene records how many game ticks its job took,
- * and the report carries them, so a Federation run and a joined run of the same tests compare test by test.
+ * and the report carries them, so a Federation run and a joined run of the same tests compare test by test. A joined run
+ * skips {@link FederationOnly} tests, which check only what Federation does.
  */
 final class NativeParity {
     /** The property that orders every crafting scene of a run joined. */
     static final String JOINED_RUN = "ae2federation.compat.joinBeforeOrder";
-    /**
-     * How a scene that checks only what Federation does, such as its ledger after a cancelled job, fails at once in a
-     * joined run: it has no native control.
-     */
-    static final String NO_JOINED_CONTROL = "NO_JOINED_CONTROL: ";
 
     private static final Map<String, Long> JOB_TICKS = new ConcurrentHashMap<>();
 

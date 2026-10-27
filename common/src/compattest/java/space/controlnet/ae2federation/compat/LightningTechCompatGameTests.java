@@ -26,6 +26,7 @@ public final class LightningTechCompatGameTests {
 
     /** AE2 Lightning Tech's Overloaded Pattern Provider serves the remote craft. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger's watch of a retired CPU")
     public static void mentalMathUnitRetirement(GameTestHelper helper) {
         IndependentCpuRetirementScene.run(helper);
     }
@@ -91,6 +92,7 @@ public final class LightningTechCompatGameTests {
 
     /** The Pigmee Mental Math Unit's job is cancelled after the push. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger after a cancelled job")
     public static void mentalMathUnitCancel(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest",
                 List.of(MENTAL_MATH_UNIT), true).cancellingAfterPush();
@@ -133,6 +135,7 @@ public final class LightningTechCompatGameTests {
 
     /** The Bridge is removed while the Pigmee Mental Math Unit runs a job through the Pigmee provider. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger after the Bridge is removed")
     public static void mentalMathUnitDisconnected(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2lt:pigmee_pattern_provider", "minecraft:chest",
                 List.of(MENTAL_MATH_UNIT), true).disconnectingAfterPush();
@@ -349,6 +352,7 @@ public final class LightningTechCompatGameTests {
      * settles, and after the split the provider keeps its next lava.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    @FederationOnly("the ledger when the networks merge mid-job")
     public static void mentalMathUnitMergedFluidReturn(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("ae2lt:pigmee_mentalmath_unit"),
                 AddonCraftingScene.lavaMachine()).craftingOnly().outputStoredOnConsumer().mergingAfterPush();

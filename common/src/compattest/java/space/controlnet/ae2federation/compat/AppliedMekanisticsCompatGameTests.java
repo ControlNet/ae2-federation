@@ -88,6 +88,7 @@ public final class AppliedMekanisticsCompatGameTests {
      * and only that delivery settles the debt.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    @FederationOnly("the ledger after a cancelled job")
     public static void oxidizerChemicalCancelledReturn(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("ae2:1k_crafting_storage"),
                 new ProviderOxidizer(AddonStorageScene.key(helper, "appmek:chemical", "mekanism:carbon")))
@@ -101,6 +102,7 @@ public final class AppliedMekanisticsCompatGameTests {
      * read back from the ledger's saved form, and once the Bridge is back the job gets it and the return settles.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    @FederationOnly("the ledger after the Bridge is removed")
     public static void oxidizerChemicalDisconnectedReturn(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("ae2:1k_crafting_storage"),
                 new ProviderOxidizer(AddonStorageScene.key(helper, "appmek:chemical", "mekanism:carbon")))

@@ -21,6 +21,7 @@ public final class AdvancedAECompatGameTests {
     }
 
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger's watch of a retired CPU")
     public static void quantumCoreRetirement(GameTestHelper helper) {
         IndependentCpuRetirementScene.run(helper, true);
     }
@@ -75,6 +76,7 @@ public final class AdvancedAECompatGameTests {
 
     /** The Quantum Computer Core's job is cancelled after the push, as the core's own CPU logic cancels it. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger after a cancelled job")
     public static void quantumCoreCancel(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(QUANTUM_CORE),
                 true).cpuOnCable().cancellingAfterPush();
@@ -117,6 +119,7 @@ public final class AdvancedAECompatGameTests {
 
     /** The Bridge is removed while the Quantum Core runs a job through an Advanced Pattern Provider. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger after the Bridge is removed")
     public static void quantumCoreDisconnected(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "advanced_ae:adv_pattern_provider", "minecraft:chest",
                 List.of(QUANTUM_CORE), true).cpuOnCable().disconnectingAfterPush();
@@ -179,6 +182,7 @@ public final class AdvancedAECompatGameTests {
      * and after the split the provider keeps its next lava.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    @FederationOnly("the ledger when the networks merge mid-job")
     public static void quantumCoreMergedFluidReturn(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("advanced_ae:quantum_core"),
                 AddonCraftingScene.lavaMachine()).cpuOnCable().craftingOnly().outputStoredOnConsumer()

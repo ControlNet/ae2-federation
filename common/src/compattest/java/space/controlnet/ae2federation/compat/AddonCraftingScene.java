@@ -519,10 +519,11 @@ final class AddonCraftingScene {
     void tick() {
         switch (stage) {
             case 0 -> {
-                if (joinBeforeOrder && (cancelAfterPush || disconnectAfterPush || mergeAfterPush)) {
-                    // These follow Federation's ledger after the push; one Grid has none to follow.
-                    throw new IllegalStateException(NativeParity.NO_JOINED_CONTROL + "the scene checks the ledger"
-                            + " after a cancelled job, a removed Bridge or a merge");
+                if (joinBeforeOrder && (cancelAfterPush || disconnectAfterPush || mergeAfterPush || lateByproduct)) {
+                    // These follow Federation's ledger after the push; one Grid has none to follow, so a joined run
+                    // skips them.
+                    throw new IllegalStateException("The scene checks the ledger after a cancelled job, a removed"
+                            + " Bridge, a merge or a late byproduct: mark the test @FederationOnly");
                 }
                 helper.assertTrue(bridge.networksSettled(), "Waiting for both networks");
                 if (placeStructure != null) {
@@ -1032,6 +1033,11 @@ final class AddonCraftingScene {
      * empty, and none of the output anywhere on the provider network.
      */
     private void assertReturnsSettled() {
+        if (joinBeforeOrder) {
+            // One Grid has no ledger and no provider network apart from the consumer's: only its CPUs can be checked.
+            assertConsumerCpusIdle();
+            return;
+        }
         var ledger = CraftingReturnLedger.get(helper.getLevel());
         var factory = bridge.outerNetwork();
         var consumer = bridge.mainNetwork();
@@ -1041,6 +1047,10 @@ final class AddonCraftingScene {
         helper.assertValueEqual(held(bridge.outerGrid().getStorageService().getInventory(), output()), 0L,
                 "The provider network keeps none of the output");
         helper.assertTrue(ledger.jobs(consumer).isEmpty(), "Waiting for the consumer's job to retire: " + ledger.jobs(consumer));
+        assertConsumerCpusIdle();
+    }
+
+    private void assertConsumerCpusIdle() {
         for (var cpu : consumerGrid().getCraftingService().getCpus()) {
             helper.assertTrue(!cpu.isBusy() && (!(cpu instanceof appeng.me.cluster.implementations.CraftingCPUCluster
                     cluster) || cluster.craftingLogic.getInventory().list.isEmpty()), "The consumer's CPU is idle and empty");
