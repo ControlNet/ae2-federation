@@ -84,10 +84,17 @@ public final class Timeline {
         }
     }
 
-    /** Whether the longest range holds nothing at {@code nowSecond}, so the timeline can be forgotten. */
+    /**
+     * Whether the longest range holds nothing at {@code nowSecond}, so the timeline can be forgotten. Read off the
+     * slots' bucket numbers: the book asks every timeline it holds at once, too many to read each range.
+     */
     public boolean idle(long nowSecond) {
-        for (double value : read(StatisticsRange.LONGEST, nowSecond)) {
-            if (!Double.isNaN(value)) return false;
+        var range = StatisticsRange.LONGEST;
+        int tier = range.ordinal();
+        long last = Math.floorDiv(nowSecond, range.seconds());
+        for (int slot = 0; slot < range.buckets(); slot++) {
+            long bucket = buckets[tier][slot];
+            if (counts[tier][slot] > 0 && bucket <= last && bucket > last - range.buckets()) return false;
         }
         return true;
     }
