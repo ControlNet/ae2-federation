@@ -221,11 +221,17 @@ public final class Evaluator {
                 var args = arguments(file, c, locals);
                 c.keywords().forEach(k -> keywords.put(k.name(), eval(file, k.value(), locals)));
                 if (c.name().equals("print")) {
-                    var separator = keywords.get("sep");
-                    var line = args.stream().map(Ops::str).collect(java.util.stream.Collectors.joining(
-                            separator == null ? " " : (String) separator));
-                    Ops.grow(line.length());
-                    host.print(line);
+                    var separator = keywords.get("sep") == null ? " " : (String) keywords.get("sep");
+                    // Built part by part against the cap: many references to one long string would otherwise make
+                    // a line far past it before it is checked.
+                    var line = new StringBuilder();
+                    for (int i = 0; i < args.size(); i++) {
+                        var part = (i == 0 ? "" : separator) + Ops.str(args.get(i));
+                        Ops.grow((long) line.length() + part.length());
+                        line.append(part);
+                    }
+                    Ops.made(line.length());
+                    host.print(line.toString());
                     return null;
                 }
                 return Ops.builtIn(c.name(), args, keywords);
@@ -290,6 +296,14 @@ public final class Evaluator {
                 throw Ops.typeError("argument '" + param.name() + "' of " + display + " must be " + param.type()
                         + ", not None");
             }
+            // A typed string from a fixed set, made at run time (read from a file, joined): one outside the set would
+            // otherwise reach the host, which could take it for another value.
+            var fixed = param.type() == null ? null
+                    : StandardLibrary.ENUMERATIONS.get(Types.unwrap(param.type()).name());
+            if (fixed != null && value instanceof String text && !fixed.contains(text)) {
+                throw Ops.valueError(param.name() + " of " + display + " must be one of " + String.join(", ", fixed)
+                        + ", not " + Ops.repr(text));
+            }
             var range = param.range();
             if (range != null && value instanceof Long l && (l < range.min() || l > range.max())) {
                 throw Ops.valueError(param.name() + " of " + display + " must be "
@@ -326,6 +340,7 @@ public final class Evaluator {
             }
             fields.put(field.name(), value);
         }
+        Ops.made(fields.size() + 1L);
         return new RecordValue(classFile + "." + record.name(), fields, false);
     }
 }

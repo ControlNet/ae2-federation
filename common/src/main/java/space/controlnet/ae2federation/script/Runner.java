@@ -55,6 +55,8 @@ public final class Runner {
     private Pending pending;
     private Node.Action pendingAction;
     private Frame pendingFrame;
+    /** The work of the step being run and what the run holds, metered while it ticks. */
+    private final Meter meter = new Meter();
 
     private static final class Frame {
         final Graph graph;
@@ -67,7 +69,7 @@ public final class Runner {
     }
 
     /** A cursor of a {@code for} loop: a list is read live, as Python's iterator reads it. */
-    private static final class Cursor {
+    private static final class Cursor implements Meter.Held {
         final Object iterable;
         long next;
         /** A dict or set walked through a copy of its keys, with its version and size when the walk started. */
@@ -77,6 +79,11 @@ public final class Runner {
 
         Cursor(Object iterable) {
             this.iterable = iterable;
+        }
+
+        @Override
+        public Iterable<?> parts() {
+            return java.util.Arrays.asList(iterable, watched);
         }
 
         /** Stops the walk as Python does when the dict or set changed under it. */
@@ -103,8 +110,16 @@ public final class Runner {
         var graph = graphs.get(file).get(function);
         var frame = new Frame(graph);
         var params = graph.function().params();
+        if (args.size() > params.size()) {
+            throw new IllegalArgumentException(function + " takes " + params.size() + " argument(s), not "
+                    + args.size());
+        }
         for (int i = 0; i < params.size(); i++) {
             var param = params.get(i);
+            if (i >= args.size() && param.defaultValue() == null) {
+                // An installation made before a push added this parameter.
+                throw new IllegalArgumentException(function + " needs " + param.name());
+            }
             var value = i < args.size() ? args.get(i) : evaluator.eval(file, param.defaultValue(), Map.of());
             frame.locals.put(param.name(), value);
             if (trace != null) trace.value(file, param.id(), value);
@@ -152,6 +167,15 @@ public final class Runner {
         if (status == Status.DONE || status == Status.FAILED) {
             return status;
         }
+        var previous = Meter.enter(meter);
+        try {
+            return metered(budget);
+        } finally {
+            Meter.leave(previous);
+        }
+    }
+
+    private Status metered(int budget) {
         if (sleeping > 0 && --sleeping > 0) {
             return status = Status.WAITING;
         }
@@ -195,12 +219,21 @@ public final class Runner {
                 if (node instanceof Node.Action) {
                     acted = true;
                 }
+                meter.step();
                 var next = step(frame, node);
+                if (meter.due()) {
+                    meter.walk(held());
+                }
                 if (next != null) {
                     return status = next;
                 }
             } catch (RunError error) {
                 error.at(node.source());
+                failure = new Failure(frame.graph.file(), error.node(), error);
+                return status = Status.FAILED;
+            } catch (StackOverflowError deep) {
+                // The caps keep values and their nesting below this; still, a run must never stop the server.
+                var error = new RunError("RecursionError", "maximum recursion depth exceeded").at(node.source());
                 failure = new Failure(frame.graph.file(), error.node(), error);
                 return status = Status.FAILED;
             } catch (RuntimeException bug) {
@@ -211,6 +244,13 @@ public final class Runner {
             }
         }
         return status = Status.RUNNING;
+    }
+
+    /** Every value the run's frames hold, for the memory meter. */
+    private List<Object> held() {
+        var values = new ArrayList<Object>();
+        frames.forEach(frame -> values.addAll(frame.locals.values()));
+        return values;
     }
 
     private static boolean isWait(Node.Action a) {

@@ -94,6 +94,11 @@ public final class Ops {
     }
 
     public static boolean eq(Object a, Object b) {
+        return eq(a, b, 0);
+    }
+
+    /** Python's {@code ==}; nesting deeper than its recursion limit stops as CPython's comparison does. */
+    private static boolean eq(Object a, Object b, int depth) {
         if (isNumber(a) && isNumber(b)) {
             return compareNumbers(a, b) == 0;
         }
@@ -103,12 +108,18 @@ public final class Ops {
         if (a == null || b == null) {
             return false;
         }
+        if (a instanceof ListValue || a instanceof DictValue || a instanceof SetValue || a instanceof RecordValue) {
+            if (depth >= Runner.MAX_DEPTH) {
+                throw new RunError("RecursionError", "maximum recursion depth exceeded in comparison");
+            }
+            Meter.work(1);
+        }
         if (a instanceof ListValue x && b instanceof ListValue y) {
             if (x.items.size() != y.items.size()) {
                 return false;
             }
             for (int i = 0; i < x.items.size(); i++) {
-                if (!eq(x.items.get(i), y.items.get(i))) {
+                if (!eq(x.items.get(i), y.items.get(i), depth + 1)) {
                     return false;
                 }
             }
@@ -120,7 +131,7 @@ public final class Ops {
             }
             for (var entry : x.entries.entrySet()) {
                 var other = y.entries.get(entry.getKey());
-                if (other == null || !eq(entry.getValue().value, other.value)) {
+                if (other == null || !eq(entry.getValue().value, other.value, depth + 1)) {
                     return false;
                 }
             }
@@ -134,7 +145,7 @@ public final class Ops {
                 return false;
             }
             for (var field : x.fields.keySet()) {
-                if (!eq(x.fields.get(field), y.fields.get(field))) {
+                if (!eq(x.fields.get(field), y.fields.get(field), depth + 1)) {
                     return false;
                 }
             }
@@ -178,6 +189,10 @@ public final class Ops {
 
     /** {@code a op b} for {@code < <= > >=}. */
     static boolean order(BinaryOp op, Object a, Object b) {
+        return order(op, a, b, 0);
+    }
+
+    private static boolean order(BinaryOp op, Object a, Object b, int depth) {
         int c;
         if (isNumber(a) && isNumber(b)) {
             c = compareNumbers(a, b);
@@ -188,10 +203,14 @@ public final class Ops {
             c = compareText(x, y);
         } else if (a instanceof ListValue x && b instanceof ListValue y) {
             // The first items that differ decide; if there are none, the shorter list is the smaller.
+            if (depth >= Runner.MAX_DEPTH) {
+                throw new RunError("RecursionError", "maximum recursion depth exceeded in comparison");
+            }
+            Meter.work(1);
             int n = Math.min(x.items.size(), y.items.size());
             for (int i = 0; i < n; i++) {
-                if (!eq(x.items.get(i), y.items.get(i))) {
-                    return order(op, x.items.get(i), y.items.get(i));
+                if (!eq(x.items.get(i), y.items.get(i), depth + 1)) {
+                    return order(op, x.items.get(i), y.items.get(i), depth + 1);
                 }
             }
             c = Integer.compare(x.items.size(), y.items.size());
@@ -311,7 +330,7 @@ public final class Ops {
                     if (y == 0) {
                         throw new RunError("ZeroDivisionError", "float floor division by zero");
                     }
-                    yield Math.floor(x / y);
+                    yield floorDivide(x, y);
                 }
                 case MOD -> {
                     if (y == 0) {
@@ -326,10 +345,12 @@ public final class Ops {
         }
         if (op == BinaryOp.ADD && a instanceof String x && b instanceof String y) {
             grow((long) x.length() + y.length());
+            made((long) x.length() + y.length());
             return x + y;
         }
         if (op == BinaryOp.ADD && a instanceof ListValue x && b instanceof ListValue y) {
             grow((long) x.items.size() + y.items.size());
+            made((long) x.items.size() + y.items.size());
             var items = new ArrayList<>(x.items);
             items.addAll(y.items);
             return new ListValue(items);
@@ -354,12 +375,32 @@ public final class Ops {
                 + typeName(b) + "'");
     }
 
+    /**
+     * CPython's float floor division ({@code float_floor_div}): from the remainder, not {@code floor(x / y)}, whose
+     * rounded quotient can land on the next whole number, as in {@code 1.0 // 0.1}.
+     */
+    private static double floorDivide(double x, double y) {
+        double mod = x % y;
+        double div = (x - mod) / y;
+        if (mod != 0 && (y < 0) != (mod < 0)) {
+            div -= 1.0;
+        }
+        if (div == 0) {
+            return Math.copySign(0.0, x / y);
+        }
+        double floor = Math.floor(div);
+        return div - floor > 0.5 ? floor + 1.0 : floor;
+    }
+
     private static Object repeat(Object sequence, long times) {
         long n = Math.max(0, times);
         long size = sequence instanceof String s ? s.length() : ((ListValue) sequence).items.size();
-        if (size != 0) {
-            grow(n > MAX_SEQUENCE ? n : n * size);
+        if (size == 0 || n == 0) {
+            // Nothing to repeat: an empty result at once, however large the count.
+            return sequence instanceof String ? "" : new ListValue(List.of());
         }
+        grow(n > MAX_SEQUENCE ? n : n * size);
+        made(n * size);
         if (sequence instanceof String s) {
             return s.repeat((int) n);
         }
@@ -375,6 +416,7 @@ public final class Ops {
         if (current instanceof ListValue list && op == BinaryOp.ADD) {
             var added = items(value);
             grow((long) list.items.size() + added.size());
+            made(added.size());
             list.items.addAll(added);
             return list;
         }
@@ -413,13 +455,19 @@ public final class Ops {
                 if (!isNumber(item) || item instanceof Double d && (d != Math.rint(d) || Double.isInfinite(d))) {
                     return false;
                 }
-                long v = item instanceof Double d ? (long) (double) d : asLong(item);
-                long n = r.length();
-                if (n == 0 || (v - r.start()) % r.step() != 0) {
+                if (item instanceof Double d && (d >= 0x1p63 || d < -0x1p63)) {
                     return false;
                 }
-                long index = (v - r.start()) / r.step();
-                return index >= 0 && index < n;
+                long v = item instanceof Double d ? (long) (double) d : asLong(item);
+                long n = r.length();
+                if (n == 0) {
+                    return false;
+                }
+                // The distance from the start can pass 64 bits; it is exact as a BigInteger.
+                var distance = java.math.BigInteger.valueOf(v).subtract(java.math.BigInteger.valueOf(r.start()));
+                var parts = distance.divideAndRemainder(java.math.BigInteger.valueOf(r.step()));
+                return parts[1].signum() == 0 && parts[0].signum() >= 0
+                        && parts[0].compareTo(java.math.BigInteger.valueOf(n)) < 0;
             }
             case null, default -> throw typeError("argument of type '" + typeName(container) + "' is not iterable");
         }
@@ -431,7 +479,7 @@ public final class Ops {
     public static long length(Object iterable) {
         return switch (iterable) {
             case ListValue l -> l.items.size();
-            case String s -> s.codePointCount(0, s.length());
+            case String s -> points(s).count();
             case RangeValue r -> r.length();
             case DictValue d -> d.size();
             case SetValue s -> s.size();
@@ -444,16 +492,43 @@ public final class Ops {
         return switch (iterable) {
             case ListValue l -> l.items.get((int) i);
             case String s -> {
-                int at = s.offsetByCodePoints(0, (int) i);
-                yield new String(Character.toChars(s.codePointAt(at)));
+                var points = points(s);
+                yield points.starts() == null ? String.valueOf(s.charAt((int) i))
+                        : new String(Character.toChars(s.codePointAt(points.starts()[(int) i])));
             }
             case RangeValue r -> r.get(i);
             case null, default -> throw typeError("'" + typeName(iterable) + "' object is not iterable");
         };
     }
 
+    /** Where a string's code points start, or {@code null} when each is one char; and how many there are. */
+    private record Points(String text, int count, int[] starts) {
+    }
+
+    /** The string looked up last, so a loop indexing one long string does not count it again at every step. */
+    private static final ThreadLocal<Points> LAST_POINTS = new ThreadLocal<>();
+
+    private static Points points(String s) {
+        var last = LAST_POINTS.get();
+        if (last != null && last.text() == s) {
+            return last;
+        }
+        int count = s.codePointCount(0, s.length());
+        int[] starts = null;
+        if (count != s.length()) {
+            starts = new int[count];
+            for (int i = 0, at = 0; i < count; i++, at = s.offsetByCodePoints(at, 1)) {
+                starts[i] = at;
+            }
+        }
+        var points = new Points(s, count, starts);
+        LAST_POINTS.set(points);
+        return points;
+    }
+
     /** Stops a dict or set from growing past {@link #MAX_SEQUENCE} entries. */
     static void growMapping(long size) {
+        made(1);
         if (size > MAX_SEQUENCE) {
             throw new RunError("MemoryError", "dicts and sets hold at most " + MAX_SEQUENCE + " items");
         }
@@ -478,6 +553,11 @@ public final class Ops {
         };
     }
 
+    /** {@code n} new items were made: the run's memory meter walks its values once enough were. */
+    static void made(long n) {
+        Meter.made(n);
+    }
+
     /** Stops a list or string from growing past {@link #MAX_SEQUENCE}. */
     static void grow(long size) {
         if (size > MAX_SEQUENCE) {
@@ -492,10 +572,18 @@ public final class Ops {
         if (iterable instanceof SetValue s) {
             return s.items();
         }
+        if (iterable instanceof String s) {
+            // Character by character in one pass: looking each one up from the start would take quadratic time.
+            var out = new ArrayList<>();
+            s.codePoints().forEach(c -> out.add(new String(Character.toChars(c))));
+            made(out.size());
+            return out;
+        }
         long n = length(iterable);
         if (iterable instanceof RangeValue) {
             grow(n);
         }
+        made(n);
         var out = new ArrayList<>();
         for (long i = 0; i < n; i++) {
             out.add(item(iterable, i));
@@ -574,7 +662,8 @@ public final class Ops {
         }
         long start = lower == null ? (step < 0 ? length - 1 : 0) : clamp(asLong(lower), length, step);
         long stop = upper == null ? (step < 0 ? -1 : length) : clamp(asLong(upper), length, step);
-        long count = step < 0 ? (stop < start ? (start - stop - 1) / -step + 1 : 0)
+        // Long.MIN_VALUE has no positive; any one step that large passes the whole sequence.
+        long count = step < 0 ? (stop < start ? (step == Long.MIN_VALUE ? 1 : (start - stop - 1) / -step + 1) : 0)
                 : (start < stop ? (stop - start - 1) / step + 1 : 0);
         return new Bounds(start, stop, step, count);
     }
@@ -600,7 +689,25 @@ public final class Ops {
         }
         var b = bounds(length(target), lower, upper, step);
         if (target instanceof RangeValue r) {
-            return new RangeValue(r.get(b.start), r.get(b.start) + b.count * b.step * r.step(), b.step * r.step());
+            try {
+                long by = Math.multiplyExact(b.step, r.step());
+                long start = r.get(b.start);
+                if (b.count == 0) {
+                    return new RangeValue(start, start, by);
+                }
+                long last = r.get(b.start + (b.count - 1) * b.step);
+                long stop;
+                try {
+                    // As CPython writes it: one step past the last item.
+                    stop = Math.addExact(last, by);
+                } catch (ArithmeticException e) {
+                    // That passes 64 bits where the items fit: just past the last item holds the same numbers.
+                    stop = Math.addExact(last, by > 0 ? 1 : -1);
+                }
+                return new RangeValue(start, stop, by);
+            } catch (ArithmeticException e) {
+                throw overflow();
+            }
         }
         if (target instanceof String s) {
             var out = new StringBuilder();
@@ -627,6 +734,7 @@ public final class Ops {
         if (b.step == 1) {
             long stop = Math.max(b.start, b.stop);
             grow(list.items.size() - (stop - b.start) + values.size());
+            made(values.size());
             list.items.subList((int) b.start, (int) stop).clear();
             list.items.addAll((int) b.start, values);
             return;
@@ -657,8 +765,14 @@ public final class Ops {
      */
     public static String repr(Object v, java.util.function.Function<Object, String> own) {
         try {
-            return text(v, own);
+            var text = text(v, own);
+            made(text.length());
+            return text;
         } catch (TooLong cut) {
+            if (cut.deep) {
+                throw new RunError("RecursionError", "maximum recursion depth exceeded while getting the repr of an "
+                        + "object");
+            }
             throw new RunError("MemoryError", "lists and strings hold at most " + MAX_SEQUENCE + " items");
         }
     }
@@ -684,12 +798,37 @@ public final class Ops {
     }
 
     private static void repr(Object v, java.util.function.Function<Object, String> own, Text text) {
+        if (v instanceof ListValue || v instanceof DictValue || v instanceof SetValue || v instanceof RecordValue) {
+            // A value inside itself is written as CPython writes it, [...]; nesting past the recursion limit stops.
+            if (!text.open.add(v)) {
+                text.add(v instanceof ListValue ? "[...]" : v instanceof RecordValue ? "..." : "{...}");
+                return;
+            }
+            if (text.open.size() > Runner.MAX_DEPTH) {
+                throw new TooLong(text.out.toString(), true);
+            }
+            try {
+                container(v, own, text);
+            } finally {
+                text.open.remove(v);
+            }
+            return;
+        }
         switch (v) {
             case null -> text.add("None");
             case Boolean b -> text.add(b ? "True" : "False");
             case Long l -> text.add(Long.toString(l));
             case Double d -> text.add(floatRepr(d));
             case String s -> text.add(stringRepr(s));
+            case RangeValue r -> text.add("range(" + r.start() + ", " + r.stop()
+                    + (r.step() == 1 ? "" : ", " + r.step()) + ")");
+            default -> text.add(own.apply(v));
+        }
+    }
+
+    /** A list, dict, set or record, written while {@link Text#open} holds it. */
+    private static void container(Object v, java.util.function.Function<Object, String> own, Text text) {
+        switch (v) {
             case ListValue l -> {
                 text.add("[");
                 for (int i = 0; i < l.items.size(); i++) {
@@ -724,8 +863,6 @@ public final class Ops {
                 }
                 text.add("}");
             }
-            case RangeValue r -> text.add("range(" + r.start() + ", " + r.stop()
-                    + (r.step() == 1 ? "" : ", " + r.step()) + ")");
             case RecordValue r -> {
                 text.add(typeName(r) + "(");
                 boolean first = true;
@@ -736,13 +873,15 @@ public final class Ops {
                 }
                 text.add(")");
             }
-            default -> text.add(own.apply(v));
+            default -> throw new IllegalArgumentException(typeName(v));
         }
     }
 
     /** A value's text as it is written, stopping at the string cap. */
     private static final class Text {
         final StringBuilder out = new StringBuilder();
+        /** The containers being written, outermost first. */
+        final java.util.Set<Object> open = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 
         void add(String part) {
             if (out.length() + (long) part.length() > MAX_SEQUENCE) {
@@ -756,10 +895,17 @@ public final class Ops {
     /** A value's text passed the string cap; holds the text up to the cap for {@link #shown(Object)}. */
     private static final class TooLong extends RuntimeException {
         final String start;
+        /** Cut for nesting past the recursion limit rather than for length. */
+        final boolean deep;
 
         TooLong(String start) {
+            this(start, false);
+        }
+
+        TooLong(String start, boolean deep) {
             super(null, null, false, false);
             this.start = start;
+            this.deep = deep;
         }
     }
 
@@ -1327,6 +1473,7 @@ public final class Ops {
         switch (name) {
             case "append" -> {
                 grow(items.size() + 1L);
+                made(1);
                 items.add(a[0]);
             }
             case "extend" -> {
@@ -1336,6 +1483,7 @@ public final class Ops {
             }
             case "insert" -> {
                 grow(items.size() + 1L);
+                made(1);
                 long i = integer(a[0]);
                 long n = items.size();
                 if (i < 0) {
@@ -1459,12 +1607,14 @@ public final class Ops {
                 }
                 yield name.equals("startswith") ? s.startsWith(affix) : s.endsWith(affix);
             }
-            case "lower" -> s.toLowerCase(Locale.ROOT);
-            case "upper" -> s.toUpperCase(Locale.ROOT);
+            // Case changes can lengthen the text ('ß' becomes 'SS'), so the result is checked against the cap.
+            case "lower" -> sized(s.toLowerCase(Locale.ROOT));
+            case "upper" -> sized(s.toUpperCase(Locale.ROOT));
             case "strip" -> s.strip();
             case "split" -> split(s, a[0]);
             case "join" -> {
-                if (!(a[0] instanceof ListValue || a[0] instanceof String || a[0] instanceof RangeValue)) {
+                if (!(a[0] instanceof ListValue || a[0] instanceof String || a[0] instanceof RangeValue
+                        || a[0] instanceof DictValue || a[0] instanceof SetValue)) {
                     throw typeError("can only join an iterable");
                 }
                 var parts = items(a[0]);
@@ -1479,6 +1629,7 @@ public final class Ops {
                     size += ((String) part).length();
                 }
                 grow(size);
+                made(size);
                 yield String.join(s, parts.stream().map(String.class::cast).toList());
             }
             case "replace" -> {
@@ -1494,6 +1645,7 @@ public final class Ops {
                     matches++;
                 }
                 grow(s.length() + matches * (replacement.length() - old.length()));
+                made(s.length() + matches * (replacement.length() - old.length()));
                 yield s.replace(old, replacement);
             }
             case "find" -> {
@@ -1515,6 +1667,12 @@ public final class Ops {
         };
     }
 
+    private static String sized(String s) {
+        grow(s.length());
+        made(s.length());
+        return s;
+    }
+
     private static String text(Object v) {
         if (!(v instanceof String s)) {
             throw typeError("must be str, not " + typeName(v));
@@ -1530,6 +1688,8 @@ public final class Ops {
                     parts.add(part);
                 }
             }
+            grow(parts.size());
+            made(parts.size() + s.length());
             return new ListValue(parts);
         }
         if (!(separator instanceof String sep)) {
@@ -1540,10 +1700,12 @@ public final class Ops {
         }
         int from = 0;
         for (int at = s.indexOf(sep); at >= 0; at = s.indexOf(sep, from)) {
+            grow(parts.size() + 2L);
             parts.add(s.substring(from, at));
             from = at + sep.length();
         }
         parts.add(s.substring(from));
+        made(parts.size() + s.length());
         return new ListValue(parts);
     }
 }

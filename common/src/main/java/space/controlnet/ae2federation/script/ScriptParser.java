@@ -35,6 +35,18 @@ public final class ScriptParser {
     private int pos;
     /** How many loops the statement being parsed is inside. */
     private int loops;
+    /**
+     * How deep the expression being parsed is nested: each bracket, '-', 'not', operator in a chain and '.' or '['
+     * after a value is a level. Every pass over a program (checking, printing, running) recurses as deep, so a short
+     * text must not nest past the Java stack.
+     */
+    private int nesting;
+    /** How many blocks the statement being parsed is inside. */
+    private int blocks;
+    /** As CPython's limit on nested brackets. */
+    static final int MAX_NESTING = 200;
+    /** CPython's limit on indentation levels. */
+    static final int MAX_BLOCKS = 100;
 
     private ScriptParser(List<Token> tokens, List<ScriptError> errors, Ids ids) {
         this.tokens = tokens;
@@ -348,6 +360,9 @@ public final class ScriptParser {
 
     /** After a header's {@code :} and end comment: the line break and the indentation of a block. */
     private void openBlock(String keyword) {
+        if (blocks >= MAX_BLOCKS) {
+            throw fail(peek(), "too many levels of indentation (at most " + MAX_BLOCKS + ")");
+        }
         if (!check(Kind.NEWLINE)) {
             throw fail(peek(), "put the body of '" + keyword + "' on its own indented lines");
         }
@@ -360,7 +375,12 @@ public final class ScriptParser {
 
     private List<Stmt> block(String keyword) {
         openBlock(keyword);
-        return statements();
+        blocks++;
+        try {
+            return statements();
+        } finally {
+            blocks--;
+        }
     }
 
     /** Statements up to the end of the current block, which is consumed. */
@@ -581,6 +601,22 @@ public final class ScriptParser {
     // ---- expressions ----
 
     private Expr expr() {
+        nest(peek());
+        try {
+            return unnested();
+        } finally {
+            nesting--;
+        }
+    }
+
+    private void nest(Token at) {
+        if (++nesting > MAX_NESTING) {
+            nesting--;
+            throw fail(at, "this expression nests too deeply (at most " + MAX_NESTING + " levels)");
+        }
+    }
+
+    private Expr unnested() {
         var e = or();
         if (isKeyword(peek(), "if")) {
             throw fail(peek(), "conditional expressions (a if c else b) are not supported");
@@ -594,28 +630,45 @@ public final class ScriptParser {
     private Expr or() {
         var start = peek();
         var left = and();
-        while (isKeyword(peek(), "or")) {
-            advance();
-            left = ended(new Expr.Binary(id(start), BinaryOp.OR, left, and()));
+        int chained = 0;
+        try {
+            while (isKeyword(peek(), "or")) {
+                nest(advance());
+                chained++;
+                left = ended(new Expr.Binary(id(start), BinaryOp.OR, left, and()));
+            }
+            return left;
+        } finally {
+            nesting -= chained;
         }
-        return left;
     }
 
     private Expr and() {
         var start = peek();
         var left = not();
-        while (isKeyword(peek(), "and")) {
-            advance();
-            left = ended(new Expr.Binary(id(start), BinaryOp.AND, left, not()));
+        int chained = 0;
+        try {
+            while (isKeyword(peek(), "and")) {
+                nest(advance());
+                chained++;
+                left = ended(new Expr.Binary(id(start), BinaryOp.AND, left, not()));
+            }
+            return left;
+        } finally {
+            nesting -= chained;
         }
-        return left;
     }
 
     private Expr not() {
         var token = peek();
         if (isKeyword(token, "not")) {
             advance();
-            return ended(new Expr.Unary(id(token), UnaryOp.NOT, not()));
+            nest(token);
+            try {
+                return ended(new Expr.Unary(id(token), UnaryOp.NOT, not()));
+            } finally {
+                nesting--;
+            }
         }
         return comparison();
     }
@@ -659,26 +712,40 @@ public final class ScriptParser {
     private Expr sum() {
         var start = peek();
         var left = product();
-        while (checkOp("+") || checkOp("-")) {
-            var op = advance().text().equals("+") ? BinaryOp.ADD : BinaryOp.SUB;
-            left = ended(new Expr.Binary(id(start), op, left, product()));
+        int chained = 0;
+        try {
+            while (checkOp("+") || checkOp("-")) {
+                nest(peek());
+                chained++;
+                var op = advance().text().equals("+") ? BinaryOp.ADD : BinaryOp.SUB;
+                left = ended(new Expr.Binary(id(start), op, left, product()));
+            }
+            return left;
+        } finally {
+            nesting -= chained;
         }
-        return left;
     }
 
     private Expr product() {
         var start = peek();
         var left = unary();
-        while (true) {
-            var token = peek();
-            if (token.kind() == Kind.OP && UNSUPPORTED_OPERATORS.contains(token.text())) {
-                throw fail(token, "'" + token.text() + "' is not supported");
+        int chained = 0;
+        try {
+            while (true) {
+                var token = peek();
+                if (token.kind() == Kind.OP && UNSUPPORTED_OPERATORS.contains(token.text())) {
+                    throw fail(token, "'" + token.text() + "' is not supported");
+                }
+                if (!(checkOp("*") || checkOp("/") || checkOp("//") || checkOp("%"))) {
+                    return left;
+                }
+                nest(token);
+                chained++;
+                var op = BinaryOp.ofSymbol(advance().text()).orElseThrow();
+                left = ended(new Expr.Binary(id(start), op, left, unary()));
             }
-            if (!(checkOp("*") || checkOp("/") || checkOp("//") || checkOp("%"))) {
-                return left;
-            }
-            var op = BinaryOp.ofSymbol(advance().text()).orElseThrow();
-            left = ended(new Expr.Binary(id(start), op, left, unary()));
+        } finally {
+            nesting -= chained;
         }
     }
 
@@ -686,7 +753,12 @@ public final class ScriptParser {
         var token = peek();
         if (token.is(Kind.OP, "-")) {
             advance();
-            return ended(new Expr.Unary(id(token), UnaryOp.NEG, unary()));
+            nest(token);
+            try {
+                return ended(new Expr.Unary(id(token), UnaryOp.NEG, unary()));
+            } finally {
+                nesting--;
+            }
         }
         if (token.is(Kind.OP, "+")) {
             throw fail(token, "unary '+' is not supported");
@@ -701,21 +773,30 @@ public final class ScriptParser {
     private Expr postfix() {
         var start = peek();
         var e = atom();
-        while (true) {
-            var token = peek();
-            if (token.is(Kind.OP, "(")) {
-                // Functions are not values: only a name or a method is called.
-                throw fail(token, e instanceof Expr.Call ? "calling the result of a call is not supported"
-                        : "only a function name can be called");
+        int chained = 0;
+        try {
+            while (true) {
+                var token = peek();
+                if (token.is(Kind.OP, "(")) {
+                    // Functions are not values: only a name or a method is called.
+                    throw fail(token, e instanceof Expr.Call ? "calling the result of a call is not supported"
+                            : "only a function name can be called");
+                }
+                if (token.is(Kind.OP, ".") || token.is(Kind.OP, "[")) {
+                    nest(token);
+                    chained++;
+                }
+                if (matchOp(".")) {
+                    var name = name("a name after '.'").text();
+                    e = checkOp("(") ? call(start, e, name) : new Expr.Attribute(id(start), e, name);
+                } else if (matchOp("[")) {
+                    e = subscript(start, e);
+                } else {
+                    return e;
+                }
             }
-            if (matchOp(".")) {
-                var name = name("a name after '.'").text();
-                e = checkOp("(") ? call(start, e, name) : new Expr.Attribute(id(start), e, name);
-            } else if (matchOp("[")) {
-                e = subscript(start, e);
-            } else {
-                return e;
-            }
+        } finally {
+            nesting -= chained;
         }
     }
 
