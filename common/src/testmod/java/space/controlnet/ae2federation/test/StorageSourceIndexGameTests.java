@@ -70,43 +70,45 @@ public final class StorageSourceIndexGameTests {
             var warm = projection.getAvailableStacks();
             helper.assertTrue(warm.size() >= WIDE_KEYS, "Waiting for the wide native source to be visible");
 
-            var before = Counters.read(mounts);
-            var visible = 0;
-            for (var index = 0; index < ENUMERATIONS; index++) {
-                visible = projection.getAvailableStacks().size();
-            }
-            var afterList = Counters.read(mounts);
-            var consumerAggregate = fixtures.mainGrid().getStorageService().getInventory();
-            var consumerVisible = consumerAggregate.getAvailableStacks().size();
-            var afterConsumer = Counters.read(mounts);
-            var paper = SourceIndexFixtures.distinctKeys(1).getFirst();
-            for (var index = 0; index < OPERATIONS; index++) {
-                helper.assertValueEqual(projection.insert(paper, 1, Actionable.MODULATE, SOURCE), 1L,
-                        "Insertion must reach the native wide source");
-                helper.assertValueEqual(projection.extract(paper, 1, Actionable.MODULATE, SOURCE), 1L,
-                        "Extraction must reach the native wide source");
-            }
-            var afterOps = Counters.read(mounts);
-            helper.assertValueEqual(wide.amount(paper), 3L, "Native quantity must be conserved by paired operations");
+            GameTestChecks.once(helper, () -> {
+                var before = Counters.read(mounts);
+                var visible = 0;
+                for (var index = 0; index < ENUMERATIONS; index++) {
+                    visible = projection.getAvailableStacks().size();
+                }
+                var afterList = Counters.read(mounts);
+                var consumerAggregate = fixtures.mainGrid().getStorageService().getInventory();
+                var consumerVisible = consumerAggregate.getAvailableStacks().size();
+                var afterConsumer = Counters.read(mounts);
+                var paper = SourceIndexFixtures.distinctKeys(1).getFirst();
+                for (var index = 0; index < OPERATIONS; index++) {
+                    helper.assertValueEqual(projection.insert(paper, 1, Actionable.MODULATE, SOURCE), 1L,
+                            "Insertion must reach the native wide source");
+                    helper.assertValueEqual(projection.extract(paper, 1, Actionable.MODULATE, SOURCE), 1L,
+                            "Extraction must reach the native wide source");
+                }
+                var afterOps = Counters.read(mounts);
+                helper.assertValueEqual(wide.amount(paper), 3L, "Native quantity must be conserved by paired operations");
 
-            var list = afterList.minus(before);
-            var consumer = afterConsumer.minus(afterList);
-            var ops = afterOps.minus(afterConsumer);
-            helper.assertTrue(visible >= WIDE_KEYS, "Projection must list every distinct native key");
-            helper.assertTrue(consumerVisible >= WIDE_KEYS, "Consumer aggregate must list every distinct native key");
-            PolicyEvidence.trace("storagesourceindexscale", "measurement", "keys=" + visible
-                    + " enumerations=" + ENUMERATIONS + " list=" + list + " consumerList=" + consumer
-                    + " operations=" + (OPERATIONS * 2) + " ops=" + ops);
-            helper.assertValueEqual(list.rebuilds(), 0L, "Stable enumeration must not rebuild source domains");
-            helper.assertValueEqual(list.scans(), 0L, "Stable enumeration must not scan providers or Grid nodes");
-            helper.assertValueEqual(list.replays(), 0L, "Stable enumeration must not replay mountInventories");
-            helper.assertValueEqual(list.validations(), (long) ENUMERATIONS,
-                    "Source validity must be evaluated exactly once per enumeration, not per key");
-            helper.assertValueEqual(consumer.validations(), 1L,
-                    "Native consumer aggregate listing must evaluate source validity once");
-            helper.assertValueEqual(ops.rebuilds() + ops.scans() + ops.replays(), 0L,
-                    "Stable insert/extract must not rebuild, scan or replay");
-            PolicyEvidence.write("storagesourceindexscale", 12, facts(visible, list, consumer, ops));
+                var list = afterList.minus(before);
+                var consumer = afterConsumer.minus(afterList);
+                var ops = afterOps.minus(afterConsumer);
+                helper.assertTrue(visible >= WIDE_KEYS, "Projection must list every distinct native key");
+                helper.assertTrue(consumerVisible >= WIDE_KEYS, "Consumer aggregate must list every distinct native key");
+                PolicyEvidence.trace("storagesourceindexscale", "measurement", "keys=" + visible
+                        + " enumerations=" + ENUMERATIONS + " list=" + list + " consumerList=" + consumer
+                        + " operations=" + (OPERATIONS * 2) + " ops=" + ops);
+                helper.assertValueEqual(list.rebuilds(), 0L, "Stable enumeration must not rebuild source domains");
+                helper.assertValueEqual(list.scans(), 0L, "Stable enumeration must not scan providers or Grid nodes");
+                helper.assertValueEqual(list.replays(), 0L, "Stable enumeration must not replay mountInventories");
+                helper.assertValueEqual(list.validations(), (long) ENUMERATIONS,
+                        "Source validity must be evaluated exactly once per enumeration, not per key");
+                helper.assertValueEqual(consumer.validations(), 1L,
+                        "Native consumer aggregate listing must evaluate source validity once");
+                helper.assertValueEqual(ops.rebuilds() + ops.scans() + ops.replays(), 0L,
+                        "Stable insert/extract must not rebuild, scan or replay");
+                PolicyEvidence.write("storagesourceindexscale", 12, facts(visible, list, consumer, ops));
+            });
             fixtures.close();
         });
     }
@@ -258,29 +260,31 @@ public final class StorageSourceIndexGameTests {
             var nativeExtract = nativeInventory.extract(IRON, 500, Actionable.SIMULATE, SOURCE);
             var federationExtract = held.extract(IRON, 500, Actionable.SIMULATE, SOURCE);
             helper.assertValueEqual(federationExtract, nativeExtract, "Simulated extract must equal native");
-            var totalBefore = total(nativeList);
-            var inserted = held.insert(IRON, 30, Actionable.MODULATE, SOURCE);
-            var extracted = held.extract(IRON, 12, Actionable.MODULATE, SOURCE);
-            var totalAfter = total(nativeInventory.getAvailableStacks());
-            helper.assertValueEqual(totalAfter, totalBefore + inserted - extracted,
-                    "Federation operations must conserve native resource totals exactly");
-            helper.assertTrue(sameCounter(nativeInventory.getAvailableStacks(), held.getAvailableStacks()),
-                    "Listings must stay identical after real operations");
-            facts.put("sourcesMultiHandleAndGlobal", Integer.toString(domain.sources().size()));
-            facts.put("consumerSourcesExcludingProjection", Integer.toString(consumerDomain.sources().size()));
-            facts.put("nativeSimulateInsert", Long.toString(nativeInsert));
-            facts.put("federationSimulateInsert", Long.toString(federationInsert));
-            facts.put("nativeSimulateExtract", Long.toString(nativeExtract));
-            facts.put("federationSimulateExtract", Long.toString(federationExtract));
-            facts.put("conservedTotalBefore", Long.toString(totalBefore));
-            facts.put("conservedTotalAfter", Long.toString(totalAfter));
+            GameTestChecks.once(helper, () -> {
+                var totalBefore = total(nativeList);
+                var inserted = held.insert(IRON, 30, Actionable.MODULATE, SOURCE);
+                var extracted = held.extract(IRON, 12, Actionable.MODULATE, SOURCE);
+                var totalAfter = total(nativeInventory.getAvailableStacks());
+                helper.assertValueEqual(totalAfter, totalBefore + inserted - extracted,
+                        "Federation operations must conserve native resource totals exactly");
+                helper.assertTrue(sameCounter(nativeInventory.getAvailableStacks(), held.getAvailableStacks()),
+                        "Listings must stay identical after real operations");
+                facts.put("sourcesMultiHandleAndGlobal", Integer.toString(domain.sources().size()));
+                facts.put("consumerSourcesExcludingProjection", Integer.toString(consumerDomain.sources().size()));
+                facts.put("nativeSimulateInsert", Long.toString(nativeInsert));
+                facts.put("federationSimulateInsert", Long.toString(federationInsert));
+                facts.put("nativeSimulateExtract", Long.toString(nativeExtract));
+                facts.put("federationSimulateExtract", Long.toString(federationExtract));
+                facts.put("conservedTotalBefore", Long.toString(totalBefore));
+                facts.put("conservedTotalAfter", Long.toString(totalAfter));
 
-            rebuildsBefore = mounts().sourceDiscoveryRebuilds();
-            nodeProvider.setPriority(50);
-            IStorageProvider.requestUpdate(providerNode);
-            helper.assertValueEqual(held.insert(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
-                    "A native priority remount must stop the held projection immediately");
-            facts.put("staleAfterPriorityInsert", "0");
+                rebuildsBefore = mounts().sourceDiscoveryRebuilds();
+                nodeProvider.setPriority(50);
+                IStorageProvider.requestUpdate(providerNode);
+                helper.assertValueEqual(held.insert(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
+                        "A native priority remount must stop the held projection immediately");
+                facts.put("staleAfterPriorityInsert", "0");
+            });
             phase = 3;
             waitFor("Waiting for native remount reconcile");
         }
@@ -297,8 +301,10 @@ public final class StorageSourceIndexGameTests {
             nodeProvider.add(third);
             third.insert(AEItemKey.of(Items.DIAMOND), 2, Actionable.MODULATE, SOURCE);
             IStorageProvider.requestUpdate(providerNode);
-            helper.assertValueEqual(held.extract(AEItemKey.of(Items.GOLD_INGOT), 1, Actionable.MODULATE, SOURCE), 0L,
-                    "Unmounted native handle must not be reachable through the held projection");
+            GameTestChecks.once(helper, () -> {
+                helper.assertValueEqual(held.extract(AEItemKey.of(Items.GOLD_INGOT), 1, Actionable.MODULATE, SOURCE), 0L,
+                        "Unmounted native handle must not be reachable through the held projection");
+            });
             phase = 4;
             waitFor("Waiting for dynamic mount reconcile");
         }
@@ -315,8 +321,10 @@ public final class StorageSourceIndexGameTests {
             facts.put("mountedVisible", "2");
             held = current;
             fixtures.outerGrid().getStorageService().removeGlobalStorageProvider(globalProvider);
-            helper.assertValueEqual(held.extract(AEItemKey.of(Items.COPPER_INGOT), 1, Actionable.MODULATE, SOURCE), 0L,
-                    "Removed global provider must stop real extraction immediately");
+            GameTestChecks.once(helper, () -> {
+                helper.assertValueEqual(held.extract(AEItemKey.of(Items.COPPER_INGOT), 1, Actionable.MODULATE, SOURCE), 0L,
+                        "Removed global provider must stop real extraction immediately");
+            });
             phase = 5;
             waitFor("Waiting for global provider removal reconcile");
         }
@@ -369,15 +377,17 @@ public final class StorageSourceIndexGameTests {
             var policies = PolicyService.get(helper.getLevel());
             policies.edit(new PolicyEdit(key(), policies.revision(key()),
                     PolicyRule.storageDefaults().withEnabled(false)));
-            helper.assertValueEqual(held.insert(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
-                    "Revocation must stop real insertion immediately");
-            helper.assertValueEqual(held.extract(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
-                    "Revocation must stop real extraction immediately");
-            helper.assertValueEqual(held.getAvailableStacks().size(), 0, "Revocation must hide listings");
-            helper.assertValueEqual(first.amount(IRON), ironBefore, "Revocation must not mutate native storage");
-            policies.edit(new PolicyEdit(key(), policies.revision(key()), PolicyRule.storageDefaults()));
-            held = mounts().projection(key());
-            helper.assertTrue(held != null, "Re-enabled Policy must remount");
+            GameTestChecks.once(helper, () -> {
+                helper.assertValueEqual(held.insert(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
+                        "Revocation must stop real insertion immediately");
+                helper.assertValueEqual(held.extract(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
+                        "Revocation must stop real extraction immediately");
+                helper.assertValueEqual(held.getAvailableStacks().size(), 0, "Revocation must hide listings");
+                helper.assertValueEqual(first.amount(IRON), ironBefore, "Revocation must not mutate native storage");
+                policies.edit(new PolicyEdit(key(), policies.revision(key()), PolicyRule.storageDefaults()));
+                held = mounts().projection(key());
+                helper.assertTrue(held != null, "Re-enabled Policy must remount");
+            });
             facts.put("revokedInsert", "0");
             facts.put("revokedExtract", "0");
             nodeProvider.add(aggregate);
@@ -419,10 +429,12 @@ public final class StorageSourceIndexGameTests {
             helper.assertTrue(held != null && mounts().sourceDomain(key()).skipped().isEmpty(),
                     "Waiting for the remount without the aggregate");
             fixtures.removeFirstBridge();
-            helper.assertValueEqual(held.insert(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
-                    "Disconnect must stop real insertion immediately");
-            helper.assertValueEqual(held.extract(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
-                    "Disconnect must stop real extraction immediately");
+            GameTestChecks.once(helper, () -> {
+                helper.assertValueEqual(held.insert(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
+                        "Disconnect must stop real insertion immediately");
+                helper.assertValueEqual(held.extract(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
+                        "Disconnect must stop real extraction immediately");
+            });
             facts.put("disconnectedInsert", "0");
             facts.put("disconnectedExtract", "0");
             PolicyEvidence.write("storagesourceindexlifecycle", 40, facts);

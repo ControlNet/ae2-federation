@@ -64,8 +64,10 @@ public final class StatisticsGameTests {
                 helper.assertValueEqual(network.extract(cobblestone(), 3, Actionable.SIMULATE, IActionSource.empty()), 3L,
                         "Waiting for the provider's storage on the consumer");
                 helper.assertTrue(fixture.consumerService().isCraftable(sticks()), "Waiting for the projected patterns");
-                helper.assertValueEqual(network.extract(cobblestone(), 3, Actionable.MODULATE, IActionSource.empty()), 3L,
-                        "The consumer takes three cobblestone from the provider");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertValueEqual(network.extract(cobblestone(), 3, Actionable.MODULATE, IActionSource.empty()),
+                            3L, "The consumer takes three cobblestone from the provider");
+                });
                 fixture.begin(sticks(), 4);
                 stage[0] = 2;
             }

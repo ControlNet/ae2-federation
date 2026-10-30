@@ -503,10 +503,12 @@ public final class CrossDimensionCraftingGameTests {
                 CraftingProjectionService.levelClosed(level);
                 EnergySharingService.levelClosed(level);
                 LevelObservabilityService.levelClosed(level);
-                helper.assertTrue(receipt.dimensionNodesRemoved() > 0 && receipt.dimensionNodesLeft() == 0,
-                        "The close takes every nether node out of the registry: " + receipt);
-                helper.assertTrue(FederationDomainRegistryAccess.get(helper.getLevel())
-                        .federationDomainOf(nether.routerNode()).isEmpty(), "No Domain holds a nether node");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(receipt.dimensionNodesRemoved() > 0 && receipt.dimensionNodesLeft() == 0,
+                            "The close takes every nether node out of the registry: " + receipt);
+                    helper.assertTrue(FederationDomainRegistryAccess.get(helper.getLevel())
+                            .federationDomainOf(nether.routerNode()).isEmpty(), "No Domain holds a nether node");
+                });
                 stage[0] = 4;
             }
             if (stage[0] == 4) {

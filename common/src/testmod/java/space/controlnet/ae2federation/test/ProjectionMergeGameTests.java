@@ -265,9 +265,11 @@ public final class ProjectionMergeGameTests {
                 helper.assertValueEqual(fixture.held(providerStorage.get(), output), 0L,
                         "The provider network keeps none of it; after the split: " + afterSplit[0]);
                 // Unrelated output that a player's import bus stores on the provider network after the job.
-                helper.assertValueEqual(fixture.providerGrid().getStorageService().getInventory().insert(output, unit,
-                        Actionable.MODULATE, IActionSource.empty()), unit,
-                        "The provider network stores a player's output");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertValueEqual(fixture.providerGrid().getStorageService().getInventory().insert(output, unit,
+                            Actionable.MODULATE, IActionSource.empty()), unit,
+                            "The provider network stores a player's output");
+                });
                 sweeps[0] = fixture.ledgerSweeps();
                 stage[0] = 8;
             }

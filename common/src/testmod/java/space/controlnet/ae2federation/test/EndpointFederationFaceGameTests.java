@@ -168,14 +168,18 @@ public final class EndpointFederationFaceGameTests {
                     seen[1] = helper.getTick();
                 }
                 helper.assertTrue(helper.getTick() - seen[1] >= 20, "waiting for the domain to settle");
-                helper.assertTrue(endpoint.claim(new ClaimRequest(endpoint.endpointIdentity(), endpoint.claimState().epoch(),
-                        owner)) instanceof ClaimResult.Acquired, "A Federated Endpoint must accept a Claim");
-                helper.assertTrue(endpoint.activateFederated(), "The claimed Endpoint must activate Federated mode");
-                // Still the same tick: the claim must not have withdrawn the domain.
-                var claimed = scene.domainOf(HUB).map(FederationDomainSnapshot::generation).orElse(-1L);
-                helper.assertTrue(endpoint.releaseClaim(owner, endpoint.claimState().epoch()), "The owner must release its Claim");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(endpoint.claim(new ClaimRequest(endpoint.endpointIdentity(),
+                            endpoint.claimState().epoch(), owner)) instanceof ClaimResult.Acquired,
+                            "A Federated Endpoint must accept a Claim");
+                    helper.assertTrue(endpoint.activateFederated(), "The claimed Endpoint must activate Federated mode");
+                    // Still the same tick: the claim must not have withdrawn the domain.
+                    var claimed = scene.domainOf(HUB).map(FederationDomainSnapshot::generation).orElse(-1L);
+                    helper.assertTrue(endpoint.releaseClaim(owner, endpoint.claimState().epoch()),
+                            "The owner must release its Claim");
+                    helper.assertValueEqual(claimed, seen[0], "Claiming must not withdraw the Endpoint's domain");
+                });
                 seen[2] = helper.getTick();
-                helper.assertValueEqual(claimed, seen[0], "Claiming must not withdraw the Endpoint's domain");
                 helper.fail("claimed and released; waiting");
             }
             helper.assertValueEqual(generation, seen[0], "Claim and release must not republish the Endpoint's domain");
@@ -254,10 +258,12 @@ public final class EndpointFederationFaceGameTests {
                 case 1 -> {
                     helper.assertValueEqual(binding.runtime().configuredMode(), EndpointMode.FEDERATED,
                             "Without a native Provider the Endpoint must be Federated");
-                    helper.assertTrue(endpoint.claim(new ClaimRequest(endpoint.endpointIdentity(),
-                            endpoint.claimState().epoch(), owner)) instanceof ClaimResult.Acquired,
-                            "A Federated Endpoint must accept a Claim");
-                    helper.assertTrue(endpoint.activateFederated(), "The claimed Endpoint must activate Federated mode");
+                    GameTestChecks.once(helper, () -> {
+                        helper.assertTrue(endpoint.claim(new ClaimRequest(endpoint.endpointIdentity(),
+                                endpoint.claimState().epoch(), owner)) instanceof ClaimResult.Acquired,
+                                "A Federated Endpoint must accept a Claim");
+                        helper.assertTrue(endpoint.activateFederated(), "The claimed Endpoint must activate Federated mode");
+                    });
                     scene.nativeProvider(HUB);
                     phase[0] = 2;
                     helper.fail("placed the native Provider again");
@@ -332,8 +338,12 @@ public final class EndpointFederationFaceGameTests {
                     helper.assertTrue(endpoint.shareEnergy(), "an Endpoint shares energy by default");
                     helper.assertFalse(subnet.isPowered(), "an unclaimed subnet without a cell must be unpowered");
                     installPattern(provider);
+                    // A refused map changes nothing, so it is asked again until the Endpoint is in the domain.
                     var status = provider.toggleEndpoint(provider.mappedProvider().mappingHandle(0), endpoint.binding());
-                    helper.assertTrue(status.startsWith("accepted-"), "the Provider must map the Endpoint: " + status);
+                    helper.assertTrue(!status.equals("rejected-domain-disconnected"),
+                            "Waiting for the Endpoint to join the domain");
+                    GameTestChecks.once(helper, () -> helper.assertTrue(status.startsWith("accepted-"),
+                            "the Provider must map the Endpoint: " + status));
                     phase[0] = 1;
                     helper.fail("mapped the Endpoint");
                 }
@@ -341,9 +351,11 @@ public final class EndpointFederationFaceGameTests {
                     helper.assertTrue(endpoint.claimState() instanceof ClaimState.Owned, "the mapping must claim the Endpoint");
                     helper.assertTrue(subnet.isPowered(), "the claimed subnet must share the Provider network's power");
                     endpoint.setShareEnergy(false);
-                    var saved = endpoint.saveWithoutMetadata(helper.getLevel().registryAccess());
-                    helper.assertTrue(saved.contains("endpointShareEnergy") && !saved.getBoolean("endpointShareEnergy"),
-                            "the switch must persist");
+                    GameTestChecks.once(helper, () -> {
+                        var saved = endpoint.saveWithoutMetadata(helper.getLevel().registryAccess());
+                        helper.assertTrue(saved.contains("endpointShareEnergy") && !saved.getBoolean("endpointShareEnergy"),
+                                "the switch must persist");
+                    });
                     phase[0] = 2;
                     helper.fail("turned sharing off");
                 }
@@ -355,8 +367,10 @@ public final class EndpointFederationFaceGameTests {
                 }
                 case 3 -> {
                     helper.assertTrue(subnet.isPowered(), "a subnet that shares again must be powered");
-                    var status = provider.toggleEndpoint(provider.mappedProvider().mappingHandle(0), endpoint.binding());
-                    helper.assertTrue(status.startsWith("accepted-"), "the Provider must unmap the Endpoint: " + status);
+                    GameTestChecks.once(helper, () -> {
+                        var status = provider.toggleEndpoint(provider.mappedProvider().mappingHandle(0), endpoint.binding());
+                        helper.assertTrue(status.startsWith("accepted-"), "the Provider must unmap the Endpoint: " + status);
+                    });
                     phase[0] = 4;
                     helper.fail("unmapped the Endpoint");
                 }

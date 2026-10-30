@@ -266,7 +266,8 @@ public final class BeamConverterGameTests {
                             "each block keeps an equal share: " + cell);
                 }
                 accepted[1] = input.receiveEnergy(200_000, false);
-                helper.assertValueEqual(accepted[1], 16 * capacity - 100_000, "the body takes in up to its room");
+                GameTestChecks.once(helper, () -> helper.assertValueEqual(accepted[1], 16 * capacity - 100_000,
+                        "the body takes in up to its room"));
                 helper.setBlock(other, Blocks.AIR);
             }
             for (var cell : cells.subList(0, cells.size() - 1)) {

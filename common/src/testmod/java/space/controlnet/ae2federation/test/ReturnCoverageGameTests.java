@@ -516,30 +516,32 @@ public final class ReturnCoverageGameTests {
             }
             if (stage[0] == 1) {
                 helper.assertTrue(service.routes(fixture.grid(2)), "Debt keeps the native return router mounted after disconnect");
-                var inventory = fixture.grid(2).getStorageService().getInventory();
-                for (int attempt = 0; attempt < 12; attempt++) {
-                    helper.assertValueEqual(inventory.insert(key, machine.getCount(), Actionable.MODULATE, IActionSource.empty()),
-                            0L, "Rejected single item remains in machine");
-                    helper.assertValueEqual(totalHeld(ledger, ids, key), 0L, "Retry attempts never create held stock");
-                }
-                helper.assertValueEqual(machine.getCount(), 1, "Machine still owns exactly its original item");
-                // Two additional real processor outputs, distinct from retries of the existing item.
-                machine.grow(2);
-                fixture.grid(2).getStorageService().addGlobalStorageProvider(firstMount);
-                helper.assertValueEqual(inventory.insert(key, 3, Actionable.SIMULATE, IActionSource.empty()), 1L,
-                        "Simulation sees only one unit of actual capacity");
-                helper.assertValueEqual(totalHeld(ledger, ids, key), 0L, "Simulation has no held side effects");
-                long accepted = inventory.insert(key, machine.getCount(), Actionable.MODULATE, IActionSource.empty());
-                helper.assertValueEqual(accepted, 1L, "Only one of three machine items is actually accepted");
-                machine.shrink((int) accepted);
-                for (int attempt = 0; attempt < 12; attempt++) {
-                    helper.assertValueEqual(inventory.insert(key, machine.getCount(), Actionable.MODULATE, IActionSource.empty()),
-                            0L, "Partially refused remainder stays in machine on every retry");
-                    helper.assertValueEqual(totalHeld(ledger, ids, key), 1L, "Repeated residual never increases held");
-                }
-                source.put(key, 7); // Existing factory stock is deliberately available for extraction, never an arrival.
-                helper.assertValueEqual(machine.getCount() + source.held(key) + firstCapacity.held(key), 10L,
-                        "Three produced items plus seven pre-existing items are conserved before reconnect");
+                GameTestChecks.once(helper, () -> {
+                    var inventory = fixture.grid(2).getStorageService().getInventory();
+                    for (int attempt = 0; attempt < 12; attempt++) {
+                        helper.assertValueEqual(inventory.insert(key, machine.getCount(), Actionable.MODULATE, IActionSource.empty()),
+                                0L, "Rejected single item remains in machine");
+                        helper.assertValueEqual(totalHeld(ledger, ids, key), 0L, "Retry attempts never create held stock");
+                    }
+                    helper.assertValueEqual(machine.getCount(), 1, "Machine still owns exactly its original item");
+                    // Two additional real processor outputs, distinct from retries of the existing item.
+                    machine.grow(2);
+                    fixture.grid(2).getStorageService().addGlobalStorageProvider(firstMount);
+                    helper.assertValueEqual(inventory.insert(key, 3, Actionable.SIMULATE, IActionSource.empty()), 1L,
+                            "Simulation sees only one unit of actual capacity");
+                    helper.assertValueEqual(totalHeld(ledger, ids, key), 0L, "Simulation has no held side effects");
+                    long accepted = inventory.insert(key, machine.getCount(), Actionable.MODULATE, IActionSource.empty());
+                    helper.assertValueEqual(accepted, 1L, "Only one of three machine items is actually accepted");
+                    machine.shrink((int) accepted);
+                    for (int attempt = 0; attempt < 12; attempt++) {
+                        helper.assertValueEqual(inventory.insert(key, machine.getCount(), Actionable.MODULATE, IActionSource.empty()),
+                                0L, "Partially refused remainder stays in machine on every retry");
+                        helper.assertValueEqual(totalHeld(ledger, ids, key), 1L, "Repeated residual never increases held");
+                    }
+                    source.put(key, 7); // Existing factory stock is deliberately available for extraction, never an arrival.
+                    helper.assertValueEqual(machine.getCount() + source.held(key) + firstCapacity.held(key), 10L,
+                            "Three produced items plus seven pre-existing items are conserved before reconnect");
+                });
                 fixture.restoreSwitch();
                 sweep[0] = service.ledgerSweeps();
                 stage[0] = 2;
@@ -552,11 +554,13 @@ public final class ReturnCoverageGameTests {
                 helper.assertValueEqual(totalHeld(ledger, ids, key), 0L, "The one held arrival was delivered once");
                 helper.assertValueEqual(ledger.owed(ids[2], ids[0], key) + ledger.owed(ids[2], ids[1], key), 8L,
                         "Unarrived obligations remain without authorizing extra withdrawals");
-                fixture.grid(2).getStorageService().addGlobalStorageProvider(secondMount);
-                long accepted = fixture.grid(2).getStorageService().getInventory().insert(key, machine.getCount(),
-                        Actionable.MODULATE, IActionSource.empty());
-                helper.assertValueEqual(accepted, 2L, "Restored local capacity accepts the actual remainder");
-                machine.shrink((int) accepted);
+                GameTestChecks.once(helper, () -> {
+                    fixture.grid(2).getStorageService().addGlobalStorageProvider(secondMount);
+                    long accepted = fixture.grid(2).getStorageService().getInventory().insert(key, machine.getCount(),
+                            Actionable.MODULATE, IActionSource.empty());
+                    helper.assertValueEqual(accepted, 2L, "Restored local capacity accepts the actual remainder");
+                    machine.shrink((int) accepted);
+                });
                 stage[0] = 3;
             }
             if (stage[0] == 3) {
@@ -569,10 +573,12 @@ public final class ReturnCoverageGameTests {
                 helper.assertTrue(fixture.grids().stream().flatMap(grid -> grid.getCraftingService().getCpus().stream())
                         .allMatch(cpu -> !cpu.isBusy() && ((appeng.me.cluster.implementations.CraftingCPUCluster) cpu)
                                 .craftingLogic.getInventory().list.isEmpty()), "No native CPU hides extra stock in the conservation equation");
-                chest[0].setCell(cell[0]);
-                // Complete the remaining injected obligations with six explicitly new processor outputs.
-                helper.assertValueEqual(fixture.grid(2).getStorageService().getInventory().insert(key, 6,
-                        Actionable.MODULATE, IActionSource.empty()), 6L, "Six distinct new outputs are accepted");
+                GameTestChecks.once(helper, () -> {
+                    chest[0].setCell(cell[0]);
+                    // Complete the remaining injected obligations with six explicitly new processor outputs.
+                    helper.assertValueEqual(fixture.grid(2).getStorageService().getInventory().insert(key, 6,
+                            Actionable.MODULATE, IActionSource.empty()), 6L, "Six distinct new outputs are accepted");
+                });
                 stage[0] = 4;
             }
             helper.assertValueEqual(fixture.amount(0, key), 1L, "First consumer receives exactly its one owed output");

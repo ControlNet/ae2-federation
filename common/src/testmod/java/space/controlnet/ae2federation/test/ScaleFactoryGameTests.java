@@ -1564,21 +1564,23 @@ public final class ScaleFactoryGameTests {
             helper.assertValueEqual(state.second.inputAmount(AEItemKey.of(Items.COBBLESTONE)), 0L,
                     "Target B must not receive Lane A input");
             state.processing.close();
-            if (fourTargets) {
-                helper.assertTrue(state.fourthRoute.remote().lane(0).getReturnInv().isEmpty(),
-                        "H2 native return inventory must retire");
-                helper.assertValueEqual(state.fourth.inputAmount(
-                        AEItemKey.of(ScaleProcessingCatalog.recipes().get(3).input())), 0L,
-                        "D target input cell must be empty after native job");
-                state.fourthRoute.close();
-                state.fourth.close();
-            }
-            if (threeTargets) {
-                helper.assertTrue(state.thirdRoute.remote().lane(0).getReturnInv().isEmpty(),
-                        "H1 native return inventory must retire");
-                state.thirdRoute.close();
-                state.third.close();
-            }
+            GameTestChecks.once(helper, () -> {
+                if (fourTargets) {
+                    helper.assertTrue(state.fourthRoute.remote().lane(0).getReturnInv().isEmpty(),
+                            "H2 native return inventory must retire");
+                    helper.assertValueEqual(state.fourth.inputAmount(
+                            AEItemKey.of(ScaleProcessingCatalog.recipes().get(3).input())), 0L,
+                            "D target input cell must be empty after native job");
+                    state.fourthRoute.close();
+                    state.fourth.close();
+                }
+                if (threeTargets) {
+                    helper.assertTrue(state.thirdRoute.remote().lane(0).getReturnInv().isEmpty(),
+                            "H1 native return inventory must retire");
+                    state.thirdRoute.close();
+                    state.third.close();
+                }
+            });
             state.route.close();
             state.second.close();
             state.first.close();
@@ -2123,11 +2125,13 @@ public final class ScaleFactoryGameTests {
             }
             state.processing.close();
             if (subnetBatch) state.subnet.close();
-            if (federationBatch) {
-                state.route.assertNativeJobRoute();
-                state.route.close();
-                state.federation.close();
-            }
+            GameTestChecks.once(helper, () -> {
+                if (federationBatch) {
+                    state.route.assertNativeJobRoute();
+                    state.route.close();
+                    state.federation.close();
+                }
+            });
             if (state.retention != null) state.retention.close();
             if (twoPatterns) {
                 state.crafting.close();

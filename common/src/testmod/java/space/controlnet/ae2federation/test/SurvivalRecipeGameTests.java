@@ -184,10 +184,12 @@ public final class SurvivalRecipeGameTests {
                 helper.assertTrue(handler != null, "Waiting for the Inscriber's item handler");
                 helper.assertTrue(insert(handler, new ItemStack(MaterialRegistration.PRINTED_NEXUS_CIRCUIT.get(), 2)).isEmpty(),
                         "Automation must accept Nexus circuits");
-                helper.assertTrue(insert(handler, new ItemStack(Items.REDSTONE, 2)).isEmpty(),
-                        "Automation must accept the redstone beside the circuits");
-                helper.assertTrue(insert(handler, AEItems.SILICON_PRINT.stack(2)).isEmpty(),
-                        "Automation must accept the Printed Silicon beside the circuits");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(insert(handler, new ItemStack(Items.REDSTONE, 2)).isEmpty(),
+                            "Automation must accept the redstone beside the circuits");
+                    helper.assertTrue(insert(handler, AEItems.SILICON_PRINT.stack(2)).isEmpty(),
+                            "Automation must accept the Printed Silicon beside the circuits");
+                });
                 fed[0] = true;
             }
             var inventory = inscriber.getInternalInventory();

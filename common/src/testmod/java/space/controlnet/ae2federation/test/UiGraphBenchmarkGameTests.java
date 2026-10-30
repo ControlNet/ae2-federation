@@ -47,10 +47,12 @@ public final class UiGraphBenchmarkGameTests {
                 state.delegateCount = scene.nativeTickerDelegateCount();
                 scene.closeFirstMenu();
                 scene.closeSecondMenu();
-                helper.assertTrue(scene.player().containerMenu == scene.player().inventoryMenu
-                                && scene.secondPlayer().containerMenu == scene.secondPlayer().inventoryMenu,
-                        "Both production Federation Domain menus must be closed before native progress observation");
-                helper.assertTrue(scene.wakeNativeTicker(), "AE2 tick manager must own and wake the native Provider ticker");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(scene.player().containerMenu == scene.player().inventoryMenu
+                                    && scene.secondPlayer().containerMenu == scene.secondPlayer().inventoryMenu,
+                            "Both production Federation Domain menus must be closed before native progress observation");
+                    helper.assertTrue(scene.wakeNativeTicker(), "AE2 tick manager must own and wake the native Provider ticker");
+                });
                 state.closedAt = helper.getTick();
                 helper.assertTrue(false, "Waiting for native AE2 ticker progress with both menus closed");
             }

@@ -40,10 +40,12 @@ public final class NativeCraftingGameTests {
                     helper.assertTrue(false, "Waiting for terminal-equivalent native plan");
                 }
                 var result = fixture.submit(null);
-                helper.assertTrue(result.successful(), "Terminal-equivalent native plan must submit");
-                helper.assertTrue(fixture.submittedLink() == null, "Native terminal submission must be standalone");
-                helper.assertValueEqual(fixture.uniqueNativeJobCount(), 1,
-                        "Native CPU observation must expose one terminal job UUID");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(result.successful(), "Terminal-equivalent native plan must submit");
+                    helper.assertTrue(fixture.submittedLink() == null, "Native terminal submission must be standalone");
+                    helper.assertValueEqual(fixture.uniqueNativeJobCount(), 1,
+                            "Native CPU observation must expose one terminal job UUID");
+                });
                 submitted[0] = true;
             }
             helper.assertValueEqual(fixture.materialAmount(), 0L, "Native CPU must extract initial materials");

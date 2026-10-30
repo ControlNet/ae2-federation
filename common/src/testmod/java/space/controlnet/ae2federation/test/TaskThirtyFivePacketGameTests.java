@@ -57,52 +57,54 @@ public final class TaskThirtyFivePacketGameTests {
             var inventoryBefore = player.getInventory().getItem(0).copy();
             var worldBefore = helper.getLevel().getBlockState(fixtures.firstBridgeContext().position());
 
-            helper.assertValueEqual(dispatch(player, requestA),
-                    FederationDomainPolicyActionResult.STALE_CONTAINER, "Menu A replay must be rejected by menu B");
-            var wrongContext = new FederationDomainPolicyActionRequest(requestB.action(), requestB.containerId(),
-                    requestB.menuNonce(), requestB.menuSequence(),
-                    new FederationDomainReference(requestB.context().federationDomainId(), requestB.context().generation() + 1),
-                    requestB.expectedRevision());
-            helper.assertValueEqual(dispatch(player, wrongContext),
-                    FederationDomainPolicyActionResult.STALE_CONTEXT, "Cross-generation action must be rejected");
-            var staleRevision = new FederationDomainPolicyActionRequest(requestB.action(), requestB.containerId(),
-                    requestB.menuNonce(), requestB.menuSequence(), requestB.context(),
-                    new PolicyRevision(requestB.expectedRevision().value() + 1));
-            helper.assertValueEqual(dispatch(player, staleRevision),
-                    FederationDomainPolicyActionResult.STALE_REVISION, "Stale Policy revision must be rejected");
-            helper.assertValueEqual(policy.configuredCount(), configuredBefore,
-                    "Rejected packets must not configure Policy");
-            helper.assertValueEqual(FederationDomainPolicyMenu.currentReceipt(player), receiptBefore,
-                    "Rejected packets must not mutate menu or mapping session state");
-            helper.assertValueEqual(meter.window(requestB.context()), meterBefore,
-                    "Rejected packets must not mutate transport meter state");
-            helper.assertValueEqual(player.getInventory().getItem(0), inventoryBefore,
-                    "Rejected packets must not mutate inventory");
-            helper.assertValueEqual(helper.getLevel().getBlockState(fixtures.firstBridgeContext().position()), worldBefore,
-                    "Rejected packets must not mutate world state");
+            GameTestChecks.once(helper, () -> {
+                helper.assertValueEqual(dispatch(player, requestA),
+                        FederationDomainPolicyActionResult.STALE_CONTAINER, "Menu A replay must be rejected by menu B");
+                var wrongContext = new FederationDomainPolicyActionRequest(requestB.action(), requestB.containerId(),
+                        requestB.menuNonce(), requestB.menuSequence(),
+                        new FederationDomainReference(requestB.context().federationDomainId(), requestB.context().generation() + 1),
+                        requestB.expectedRevision());
+                helper.assertValueEqual(dispatch(player, wrongContext),
+                        FederationDomainPolicyActionResult.STALE_CONTEXT, "Cross-generation action must be rejected");
+                var staleRevision = new FederationDomainPolicyActionRequest(requestB.action(), requestB.containerId(),
+                        requestB.menuNonce(), requestB.menuSequence(), requestB.context(),
+                        new PolicyRevision(requestB.expectedRevision().value() + 1));
+                helper.assertValueEqual(dispatch(player, staleRevision),
+                        FederationDomainPolicyActionResult.STALE_REVISION, "Stale Policy revision must be rejected");
+                helper.assertValueEqual(policy.configuredCount(), configuredBefore,
+                        "Rejected packets must not configure Policy");
+                helper.assertValueEqual(FederationDomainPolicyMenu.currentReceipt(player), receiptBefore,
+                        "Rejected packets must not mutate menu or mapping session state");
+                helper.assertValueEqual(meter.window(requestB.context()), meterBefore,
+                        "Rejected packets must not mutate transport meter state");
+                helper.assertValueEqual(player.getInventory().getItem(0), inventoryBefore,
+                        "Rejected packets must not mutate inventory");
+                helper.assertValueEqual(helper.getLevel().getBlockState(fixtures.firstBridgeContext().position()), worldBefore,
+                        "Rejected packets must not mutate world state");
 
-            helper.assertValueEqual(dispatch(player, requestB), FederationDomainPolicyActionResult.ACCEPTED,
-                    "Valid menu B action must execute on the server thread");
-            helper.assertValueEqual(policy.configuredCount(), configuredBefore + 1,
-                    "Valid menu B action must configure exactly one Policy");
-            helper.assertValueEqual(FederationDomainPolicyMenu.currentRequest(player, FederationDomainPolicyAction.TOGGLE_POLICY)
-                    .orElseThrow().expectedRevision().value(), requestB.expectedRevision().value() + 1,
-                    "Valid menu B action must advance its selected Policy revision exactly once");
-            helper.assertValueEqual(dispatch(player, requestB),
-                    FederationDomainPolicyActionResult.STALE_SEQUENCE, "Replayed menu B action must not execute twice");
-            helper.assertValueEqual(policy.configuredCount(), configuredBefore + 1,
-                    "Replayed menu B action must leave exactly one configured Policy");
+                helper.assertValueEqual(dispatch(player, requestB), FederationDomainPolicyActionResult.ACCEPTED,
+                        "Valid menu B action must execute on the server thread");
+                helper.assertValueEqual(policy.configuredCount(), configuredBefore + 1,
+                        "Valid menu B action must configure exactly one Policy");
+                helper.assertValueEqual(FederationDomainPolicyMenu.currentRequest(player, FederationDomainPolicyAction.TOGGLE_POLICY)
+                        .orElseThrow().expectedRevision().value(), requestB.expectedRevision().value() + 1,
+                        "Valid menu B action must advance its selected Policy revision exactly once");
+                helper.assertValueEqual(dispatch(player, requestB),
+                        FederationDomainPolicyActionResult.STALE_SEQUENCE, "Replayed menu B action must not execute twice");
+                helper.assertValueEqual(policy.configuredCount(), configuredBefore + 1,
+                        "Replayed menu B action must leave exactly one configured Policy");
 
-            NativeEnergyEvidence.write("task35packetauthority", 13, Map.ofEntries(
-                    Map.entry("menuAReplayRejected", "true"), Map.entry("contextRejected", "true"),
-                    Map.entry("revisionRejected", "true"), Map.entry("policyUnchangedOnReject", "true"),
-                    Map.entry("mappingSessionUnchangedOnReject", "true"), Map.entry("meterUnchangedOnReject", "true"),
-                    Map.entry("inventoryUnchangedOnReject", "true"), Map.entry("worldUnchangedOnReject", "true"),
-                    Map.entry("validAccepted", "true"), Map.entry("validExactlyOnce", "true"),
-                    Map.entry("serverThread", "true"), Map.entry("containerChanged",
-                            Boolean.toString(requestA.containerId() != requestB.containerId())),
-                    Map.entry("nonceChanged", Boolean.toString(!requestA.menuNonce().equals(requestB.menuNonce())))));
-            player.doCloseContainer();
+                NativeEnergyEvidence.write("task35packetauthority", 13, Map.ofEntries(
+                        Map.entry("menuAReplayRejected", "true"), Map.entry("contextRejected", "true"),
+                        Map.entry("revisionRejected", "true"), Map.entry("policyUnchangedOnReject", "true"),
+                        Map.entry("mappingSessionUnchangedOnReject", "true"), Map.entry("meterUnchangedOnReject", "true"),
+                        Map.entry("inventoryUnchangedOnReject", "true"), Map.entry("worldUnchangedOnReject", "true"),
+                        Map.entry("validAccepted", "true"), Map.entry("validExactlyOnce", "true"),
+                        Map.entry("serverThread", "true"), Map.entry("containerChanged",
+                                Boolean.toString(requestA.containerId() != requestB.containerId())),
+                        Map.entry("nonceChanged", Boolean.toString(!requestA.menuNonce().equals(requestB.menuNonce())))));
+                player.doCloseContainer();
+            });
             fixtures.close();
         });
     }
