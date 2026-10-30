@@ -98,8 +98,20 @@ public final class DeviceStructureUpdater {
             case DeviceStructure.Valid valid -> Component.translatable("ae2federation.structure.forming", name);
             case DeviceStructure.Unknown unknown -> Component.translatable("ae2federation.structure.unloaded", name);
             case DeviceStructure.Invalid invalid -> Component.translatable("ae2federation.structure.invalid."
-                    + invalid.reason().name().toLowerCase(java.util.Locale.ROOT), name, DeviceStructure.MAX_EDGE);
+                    + reasonKey(block, invalid.reason()), name, DeviceStructure.MAX_EDGE);
         };
+    }
+
+    /**
+     * The lower-case key naming why {@code block}'s body does not form. A device with a size rule of its own names that
+     * rule when the body is too large or the wrong shape, since the rule says which sizes it takes.
+     */
+    public static String reasonKey(Block block, DeviceStructure.Reason reason) {
+        var rule = block instanceof FormableDevice device ? device.sizeRule() : null;
+        if (rule != null && (reason == DeviceStructure.Reason.WRONG_SHAPE || reason == DeviceStructure.Reason.TOO_LARGE)) {
+            return "wrong_shape." + rule;
+        }
+        return reason.name().toLowerCase(java.util.Locale.ROOT);
     }
 
     private static void update(ServerLevel level, BlockPos start, Set<BlockPos> settled) {

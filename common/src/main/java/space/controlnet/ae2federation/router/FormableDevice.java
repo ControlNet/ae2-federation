@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.router;
 import java.util.function.UnaryOperator;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A block whose touching blocks of the same type form one solid-cuboid body, as Routers and Switches do. Its states
@@ -15,6 +16,14 @@ public interface FormableDevice {
      */
     default DeviceStructure.Result judge(BlockGetter level, DeviceStructure.Valid body) {
         return body;
+    }
+
+    /**
+     * The name of this device's own size rule, which {@link #judge} applies, for the message that explains it; null
+     * when only the common rules apply.
+     */
+    default @Nullable String sizeRule() {
+        return null;
     }
 
     /** Clears model properties when a body becomes invalid. */

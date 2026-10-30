@@ -104,6 +104,11 @@ public final class QuantumCubeBlock extends BaseEntityBlock implements FormableD
         return links(state, face);
     }
 
+    @Override
+    public String sizeRule() {
+        return "quantum_cube";
+    }
+
     /** The cuboid must be a cube of edge 3, 4 or 5. */
     @Override
     public DeviceStructure.Result judge(BlockGetter level, DeviceStructure.Valid body) {

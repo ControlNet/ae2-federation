@@ -38,7 +38,7 @@ fronts. Build one at each end of a straight line, with nothing solid between the
 ## Building
 
 A Beam Former is one block, or a square of 2×2 or 3×3 blocks one block thick. It faces where you look when you place
-it. Its front sends the beam; its back joins Federation cable, a [bundle](../mechanics/bundled-cables.md) of the same square or
+it. Its front sends the beam; its back joins Federation cable, a [bundle](../mechanics/bundled-cables.md) no wider than its square or
 any Federation block, like a Router face.
 
 Right-click a formed 2×2 or 3×3 with a wrench to turn it front to back. A single block turns to face the side you

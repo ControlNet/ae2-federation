@@ -46,6 +46,11 @@ a beam per cell), 1a34a908 (rails open at joints), then the guide page `bundled-
   14, 15 of rows 14, 15) and left holes.
 - In game: `build/bundle-device-arm-check/` (scene: 2x2 and 3x3 bundles ending on Routers, rendered through the guide
   client).
+- 2026-10-30: the one beam of a thick bundle also turns toward a side contact. `BundleLook.contacts` holds, for every
+  cell of a layer, the outer sides whose whole row at that layer lies against one device (a side contact belongs to
+  the face cells, not to the corner cell that draws the beam). `BundleBeam` adds them to the beam's mask, over every
+  layer of a branch's box too. The gallery's `bundled-cable.webp` was re-rendered with one arm per end
+  (`tools/blender/gallery.py#thick_arm_quads`). Checks: `build/design-review-check/`.
 
 ## Guide scenes with bundles
 

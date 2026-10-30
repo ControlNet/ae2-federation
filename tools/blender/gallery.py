@@ -29,6 +29,25 @@ import plasma_beam
 import geometry
 
 
+def thick_arm_quads(length):
+    """A 2x2 bundle's dense arms at both ends, in the shell's 32-voxel frame, as BundleShellLayout.armFaces tiles them:
+    1 voxel inside the shell across the whole end, the line texture's rim only where the arm ends, glass between."""
+    def column(a):
+        return a if a < 5 else a - 16 if a >= 27 else 5
+    quads = []
+    for shell_side, device_side in [(1, 0), (16 * length - 2, 16 * length - 1)]:
+        for x in (shell_side, device_side):
+            row = 14 if x == shell_side else 15
+            for a in range(3, 29):
+                uv = [((column(a) + .5) / 16, (row + .5) / 16)] * 4
+                for plane in (3, 29):
+                    for corners in ([(x, plane, a), (x + 1, plane, a), (x + 1, plane, a + 1), (x, plane, a + 1)],
+                                    [(x, a, plane), (x + 1, a, plane), (x + 1, a + 1, plane), (x, a + 1, plane)]):
+                        quads.append({'positions': [tuple(c / 16 for c in p) for p in corners], 'uv': uv,
+                                      'texture': 'ae2federation:part/cable/dense/line'})
+    return quads
+
+
 def main(args):
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -125,14 +144,8 @@ def main(args):
                 q['positions'] = [(1.5 + z - 1, y, 2 - x) for x, y, z in q['positions']]
             quads += ring
             mesh_object('Bundle / shell and original artist ring', quads, coll, materials, (-1.5, 1, 0))
-            # Device contacts use the same dense arm model as ordinary cables.
-            for x, side in [(-1.5, '7'), (.5, '13')]:
-                qs = [q for q in exported['shells'][side]
-                      if q['texture'] == 'ae2federation:part/cable/dense/line'
-                      and all(p[0] <= .125 if x < 0 else p[0] >= .875 for p in q['positions'])]
-                for y in (-.5, .5):
-                    for z in (0, 1):
-                        mesh_object('Bundle / dense contact', qs, coll, materials, (x, y, z))
+            # A thick bundle has one dense arm across each device contact, as the game draws it.
+            mesh_object('Bundle / dense contacts', thick_arm_quads(length=3), coll, materials, (-1.5, 1, 0))
             light(coll, 3, (-1.5, 0, 1), bundle=True)
             anchors = {'router': (-2, -1, 1), 'bundle': (0, -.9, 1), 'ring': (0, 0, 1.8)}
         else:

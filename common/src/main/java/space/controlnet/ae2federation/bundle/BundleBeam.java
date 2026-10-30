@@ -11,7 +11,8 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  * Where a 2x2 or 3x3 bundle's one beam runs: down the middle of its cross-section, not one beam per cell. The cell at
  * the low corner of each layer draws it, as an ordinary cable's beam stretched over a box from that cell: {@code side}
  * cells wide across the bundle and {@code length} layers along it. Where a branch leaves, the box takes every layer the
- * branch covers, so the junction sits on the branch's own beam. Every other cell draws none ({@code length} 0).
+ * branch covers, so the junction sits on the branch's own beam. The beam also turns toward a device that takes a whole
+ * side row of its layer, as an ordinary cable's beam runs into a device. Every other cell draws none ({@code length} 0).
  *
  * @param mask the sides the stretched beam leaves through, as {@link CableVisualConnections#mask} encodes them
  */
@@ -35,13 +36,14 @@ public record BundleBeam(Direction.Axis axis, int mask, int length, int side) {
         var before = Direction.fromAxisAndDirection(axis, Direction.AxisDirection.NEGATIVE);
         var after = before.getOpposite();
         if (look.jointsBefore() != 0) return Optional.of(none);
-        int mask = leaves(look, before) ? bit(before) : 0;
+        int mask = (leaves(look, before) ? bit(before) : 0) | contacts(look);
         if (look.jointsAfter() == 0) {
             if (leaves(look, after)) mask |= bit(after);
             return Optional.of(new BundleBeam(axis, mask, 1, side));
         }
         // A branch covers as many layers as the bundle is wide; the far one decides whether the run goes on.
         if (layer.apply(side - 1).filter(far -> leaves(far, after)).isPresent()) mask |= bit(after);
+        for (int next = 1; next < side; next++) mask |= layer.apply(next).map(BundleBeam::contacts).orElse(0);
         for (var toward : Direction.values()) {
             if (look.jointAfter(toward)) mask |= bit(toward);
         }
@@ -64,6 +66,15 @@ public record BundleBeam(Direction.Axis axis, int mask, int length, int side) {
     /** How far the box reaches along {@code toward}'s axis, in blocks: across the bundle, or its length along it. */
     public int extent(Direction.Axis toward) {
         return toward == axis ? length : side;
+    }
+
+    /** The sides of {@code look}'s layer where a device takes a whole side row, so the beam turns into it. */
+    private static int contacts(BundleLook look) {
+        int mask = 0;
+        for (var side : Direction.values()) {
+            if (look.contact(side)) mask |= bit(side);
+        }
+        return mask;
     }
 
     private static boolean leaves(BundleLook look, Direction side) {

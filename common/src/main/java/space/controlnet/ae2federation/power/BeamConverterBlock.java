@@ -114,6 +114,11 @@ public final class BeamConverterBlock extends BaseEntityBlock implements Formabl
         return defaultBlockState().setValue(FACING, facing);
     }
 
+    @Override
+    public String sizeRule() {
+        return "beam_converter";
+    }
+
     /** The cuboid must have a converter's size; its blocks may face any way. */
     @Override
     public DeviceStructure.Result judge(BlockGetter level, DeviceStructure.Valid body) {

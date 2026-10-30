@@ -24,10 +24,11 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  * before this cell, bit 1 the one after); in a 3x3 one it stands inside every {@link #HUGE_RING_SPACING}th layer but
  * an end layer (bit 2). Where a branch leaves, the layers it covers carry the artist's corner rings instead. {@code jointsBefore} and
  * {@code jointsAfter} name the sides with such a branch, for every cell of those layers, and whether the branch goes on
- * into the previous or the next layer; the middle layer of a 3x3 branch has both.
+ * into the previous or the next layer; the middle layer of a 3x3 branch has both. {@code contacts} names, for every cell of
+ * the layer, the sides where a device takes the whole row of that side at this layer, so the one beam can turn toward it.
  */
 public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, int joinsBefore, int joinsAfter,
-        int side, int rings, int jointsBefore, int jointsAfter) {
+        int side, int rings, int jointsBefore, int jointsAfter, int contacts) {
     /** Layer boundaries between two rings of a straight 2x2 stretch, counted in world coordinates. */
     public static final int RING_SPACING = 2;
     /**
@@ -76,14 +77,19 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
             }
         }
         int width = segment.shape().filter(shape -> shape.narrow() == shape.wide()).map(BundleShape::narrow).orElse(0);
-        if (width == 0) return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, 0, 0, 0, 0));
+        if (width == 0) return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, 0, 0, 0, 0, 0));
         int jointsBefore = 0;
         int jointsAfter = 0;
+        int layerContacts = 0;
         for (var side : Direction.values()) {
             if (side.getAxis() == axis) continue;
             var face = faceCell(segment, pos, side);
             var branch = segments.apply(face.relative(side));
-            if (branch.isEmpty() || !BundleSet.linked(face, segment, face.relative(side), branch.get())) continue;
+            if (branch.isEmpty()) {
+                if (contacts.whole(segment, face, side)) layerContacts |= bit(side);
+                continue;
+            }
+            if (!BundleSet.linked(face, segment, face.relative(side), branch.get())) continue;
             if (opensOnto(face.relative(Direction.fromAxisAndDirection(axis, Direction.AxisDirection.NEGATIVE)), side,
                     segment, branch.get(), segments)) {
                 jointsBefore |= bit(side);
@@ -104,7 +110,7 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
             rings |= 4;
         }
         return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, width, rings, jointsBefore,
-                jointsAfter));
+                jointsAfter, layerContacts));
     }
 
     /** {@link #of(BlockPos, Function, Contacts)} as either side sees the level. */
@@ -181,6 +187,11 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
     /** Whether a branch leaving toward {@code side} from this layer covers the previous one too. */
     public boolean jointBefore(Direction side) {
         return (jointsBefore & bit(side)) != 0;
+    }
+
+    /** Whether a device takes the whole row toward {@code side} at this layer of a 2x2 or 3x3 bundle. */
+    public boolean contact(Direction side) {
+        return (contacts & bit(side)) != 0;
     }
 
     /** Whether a branch leaving toward {@code side} from this layer covers the next one too. */

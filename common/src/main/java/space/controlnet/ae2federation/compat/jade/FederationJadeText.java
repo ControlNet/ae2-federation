@@ -17,7 +17,7 @@ final class FederationJadeText {
 
     /**
      * A Router or Switch body: its size when it is more than one block, else why it does not form. {@code state} is
-     * {@code valid} or the lower-case name of an {@link DeviceStructure.Reason}, or {@code unloaded}.
+     * {@code valid}, a reason as {@code DeviceStructureUpdater.reasonKey} names it, or {@code unloaded}.
      */
     static Optional<Component> body(String state, int sizeX, int sizeY, int sizeZ) {
         return switch (state) {

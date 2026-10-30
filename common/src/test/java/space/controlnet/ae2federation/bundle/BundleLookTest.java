@@ -110,7 +110,9 @@ final class BundleLookTest {
         assertFalse(look.join(Direction.SOUTH));
         assertFalse(look.dense(Direction.SOUTH), "another bundle is no device");
         assertFalse(asked.contains(Direction.SOUTH));
-        assertEquals(Set.of(Direction.DOWN), asked, "only outer sides facing no bundle ask about devices");
+        // The cell's own outer side, and its layer's other outer sides for the beam; never one facing a bundle.
+        assertEquals(Set.of(Direction.DOWN, Direction.UP, Direction.NORTH), asked,
+                "only outer sides facing no bundle ask about devices");
     }
 
     @Test

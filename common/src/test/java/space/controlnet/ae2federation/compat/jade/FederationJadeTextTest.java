@@ -88,7 +88,8 @@ final class FederationJadeTextTest {
     void everyLineAndConfigNameIsTranslatedInBothLanguages() throws IOException {
         var keys = List.of("structure.size", "structure.not_solid", "structure.touching", "structure.too_large",
                 "structure.unloaded", "switch_networks", "endpoint.local", "endpoint.claimed", "endpoint.unclaimed",
-                "pattern_provider", "structure.wrong_shape", "converter", "converter.idle");
+                "pattern_provider", "structure.wrong_shape.beam_converter", "structure.wrong_shape.beam_former",
+                "structure.wrong_shape.quantum_cube", "converter", "converter.idle");
         for (var language : List.of("en_us", "zh_cn")) {
             JsonObject lang = JsonParser.parseString(Files.readString(LANG.resolve(language + ".json"))).getAsJsonObject();
             keys.forEach(key -> assertTrue(lang.has("ae2federation.jade." + key), language + " lacks " + key));

@@ -36,7 +36,7 @@ A domain short of either **stops**: its networks keep working on their own and s
 * Federation blocks link within one dimension. A pair of Quantum Cubes, or Federation P2P tunnels over AE2's Quantum
   Network Bridge, reach into another; see [Long-Distance Links](long-distance.md).
 * Every part of a domain must be in loaded chunks. Federation loads no chunks itself.
-* Federation Cable has no length limit, and one domain holds up to 4096 Federation blocks.
+* Federation Cable has no length limit, and a domain has no size limit.
 * Rules carry no player or team permissions: anyone who can open a Switch, Router or Bridge can change its domain's
   rules.
 

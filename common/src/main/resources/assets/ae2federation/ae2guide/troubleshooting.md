@@ -37,8 +37,8 @@ their own and share nothing until the cause is gone; then the domain starts agai
 * **"The outer attachment does not support a Federation connection."** The Bridge's outer side touches a block with
   no ME node, such as Federation Cable. Bridges join ME networks directly; use a Switch for Federation Cable.
 * **A Switch face does nothing.** A face counts as an ME face when an ME cable or device touches it, and as a
-  Federation face when Federation Cable, a Router, another Switch, a Pattern Provider front or an Endpoint front
-  touches it. Any other block leaves the face unused.
+  Federation face when Federation Cable, or any device face the cable joins (see
+  <ItemLink id="ae2federation:cable" />), touches it. Any other block leaves the face unused.
 * **A Router does not join my network.** Routers attach no ME networks; put a Switch there instead.
 * **"This ME Federation Router is not formed and links nothing: ..."** Router (or Switch) blocks that touch each other must fill a
   solid box with no edge longer than 8 blocks, and no block of the same type may touch the box from outside. Until

@@ -43,6 +43,24 @@ final class BundleBeamTest {
     }
 
     @Test
+    void theBeamTurnsIntoADeviceAlongASide() {
+        var set = new BundleSet();
+        set.form(RUN);
+        // A device takes the whole top row at x 3: the top cells' faces there, not the corner cell's own.
+        BundleLook.Contacts top = (segment, pos, face) -> face == Direction.UP && pos.getX() == 3;
+        var segment = set.at(new BlockPos(3, 0, 0)).orElseThrow().segment();
+        java.util.function.Function<BlockPos, Optional<BundleLook>> looks =
+                pos -> BundleLook.of(pos, cell -> set.at(cell).map(BundleSet.Membership::segment), top);
+        var corner = new BlockPos(3, 0, 0);
+        var beam = BundleBeam.of(corner, segment, looks.apply(corner).orElseThrow(),
+                layers -> looks.apply(corner.relative(Direction.Axis.X, layers))).orElseThrow();
+        assertEquals(mask(Direction.EAST, Direction.WEST, Direction.UP), beam.mask());
+        var next = new BlockPos(4, 0, 0);
+        assertEquals(mask(Direction.EAST, Direction.WEST), BundleBeam.of(next, segment, looks.apply(next).orElseThrow(),
+                layers -> looks.apply(next.relative(Direction.Axis.X, layers))).orElseThrow().mask());
+    }
+
+    @Test
     void aCellOffItsLayersCornerKnowsFromItsOwnSegmentThatItDrawsNoBeam() {
         // A cell's renderer skips reading its neighbours when its own segment says it draws nothing: that must be
         // exactly what the full look says, at runs, branches, turns and ends, for 2x2, 3x3 and non-square bundles.

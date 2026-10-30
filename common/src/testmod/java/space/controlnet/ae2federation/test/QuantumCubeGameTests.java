@@ -69,6 +69,11 @@ public final class QuantumCubeGameTests {
                     helper.assertTrue(!RouterBlock.formed(helper.getBlockState(cell)), "no cube: " + cell);
                 }
             }
+            var status = space.controlnet.ae2federation.router.DeviceStructureUpdater.status(helper.getLevel(),
+                    helper.absolutePos(cuboid.getFirst()));
+            helper.assertTrue(status.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents
+                    contents && contents.getKey().equals("ae2federation.structure.invalid.wrong_shape.quantum_cube"),
+                    "a 3x3x4 must name the cube's sizes: " + status.getString());
             RouterEvidence.write("quantumcubeshapes", 6, Map.of("3x3x3", "1x1", "4x4x4", "2x2", "5x5x5", "3x3",
                     "2x2x2", "unformed", "6x6x6", "unformed", "3x3x4", "unformed"));
         });

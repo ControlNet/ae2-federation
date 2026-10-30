@@ -163,10 +163,11 @@
         1600,
         1000
       ],
-      "bytes": 138516,
-      "sha256": "a6d8e822b4568e45657f546b3072d5b61998a6311d07cba4e9198056e0824d1d",
-      "source": "build/gallery-rework-final/bundled-cable.png",
-      "source_sha256": "d1ac520af5244117f7e8b2da4a9a4ade333c44aca433f15d61c85f5a661db20d",
+      "bytes": 135054,
+      "sha256": "372c52ffa52da85c2e21edde6400a3c36738905ad1092705cdc594259e19d6f5",
+      "source": "build/gallery-render-20261030/bundled-cable.png",
+      "source_sha256": "5aed6df2269f6c03f6e744d29e8d572670896bd1ac0b46ba51aa376172b0a763",
+      "rerendered": "2026-10-30: one dense arm across each end, as thick bundles draw it in game",
       "kind": "annotated Blender connection diagram",
       "composition": {
         "script": "tools/visual/compose_gallery.py",
@@ -403,7 +404,7 @@
       "common/src/main/java/space/controlnet/ae2federation/router/CableVisualConnections.java": "f86cb2fd35148ca1e7fea05741217d392dd43fdbc39b9fcd1628062762f103c1"
     },
     "tool_sha256": {
-      "tools/blender/gallery.py": "e038e854fa8feae7ab7e876562b3d510aa93b372f5bc97ea65b2abd0a0f083e5",
+      "tools/blender/gallery.py": "c8351d8927e06ef8f9ca91b775a084286a5206d736a48394931aad8a5149f63f",
       "tools/blender/cable_beams.py": "a1161c57669237281607a7f84908123570ec6b2193e1b0e264a28a4239875931",
       "tools/blender/plasma_beam.py": "f074f2ef21fde4f622ce540fcdd137572193deebbbc639f03ffbb730b990f11c",
       "tools/blender/bundle_beams.py": "9589f16d4ba7879443a69b5309a673d60c5a06accbccf572145e715edc7449ff",
