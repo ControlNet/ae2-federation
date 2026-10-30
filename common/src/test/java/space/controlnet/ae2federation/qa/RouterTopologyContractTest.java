@@ -27,7 +27,8 @@ final class RouterTopologyContractTest {
         }
         assertEquals(Set.of("router.mixed-six-faces", "router.six-independent-me", "router.repeat-network",
                 "router.port-replacement", "router.reject-unsupported", "router.adjacent-federation",
-                "router.null-side-node", "router.face-recovers-stale-federation-cache"), cases);
+                "router.null-side-node", "router.face-recovers-stale-federation-cache",
+                "router.face-keeps-binding-when-unchanged"), cases);
     }
 
     @Test

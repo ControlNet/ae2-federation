@@ -1,41 +1,36 @@
 # routerPortReplacement batch-only failure (2026-10-30)
 
-CI run 41020946099 (dev 9c76fbcb, Quick correctness) failed `routerportreplacement` in the shared batch only:
-"Affected face must recreate as a Federation binding to be FEDERATION, but was DISCONNECTED". It was the first
-failure of this test in about 300 Quick correctness runs. The test had no bundles, so the commit's bundle change was
-not involved.
+CI run 41020946099 (dev 9c76fbcb) and run 41028260423 (dev 9883159b) failed `routerportreplacement` in the shared
+batch only, both with "Affected face must recreate as a Federation binding to be FEDERATION, but was DISCONNECTED".
+Neither commit was involved.
 
-## What was ruled out, with evidence
+## Cause
 
-- Another worktree: the run tested dev 9c76fbcb, whose parent is b31b2e8f; feature branches are not on dev, and each
-  CI run has its own machine.
+The message was a mask. The second run's diagnostics showed `neighbour=Block{minecraft:stone}`: phase 1 had already
+seen the Federation link and placed the stone, then a later check failed before the phase moved on, so every later
+tick failed the first check against the stone. The check that failed was "Unsupported replacement must not recreate
+another face": the test holds the west face's binding and compares it by identity, and
+`RouterFacePort.tick()`/`revalidate()` stored every resolve's result even when it equalled the old binding. A Router's
+sweep (`RouterTicks.SWEEP_TICKS`, 100 ticks, on the tick its position's hash picks) landing between phase 0 and phase
+1 re-resolved the west face into an equal new object. The random grid origin moves that tick from run to run, hence a
+rare failure that never showed locally. GameTest `routerfacekeepsitsbindingwhenunchanged` reproduces it at once.
+
+Fix: a face keeps its binding when the new one is equal (`RouterFacePort.rebind`); `NativeAttachment` is a record of
+its nodes and grid, so equal means the same attachment. The test now records the stone checks and asserts them from
+phase 2 on, so a failure there reports itself.
+
+## Wrong turns, kept for the next investigation
+
+- First conclusion was a stale Federation capability cache. It was not the cause, but the gap is real: a sweep marked
+  faces dirty while `resolveLink` read the port through a `BlockCapabilityCache` that re-queries only after an
+  invalidation. Fixed anyway (`RouterFacePort.sweep()` reads the port afresh and replaces the cache when it disagrees;
+  test `routerfacerecoversstalefederationcache`). Cost: one capability query per face per sweep, not benchmarked.
 - Chunk not ticking: the Switch sits at (6,6,6), outside the 3x3x3 `harness_native_smoke` structure, so its chunk is
-  not forced and GameTest does not wait for it. A Switch in a chunk two chunks from any forced chunk (FULL, not
-  ticking) never links (deterministic local probe). But on CI the face saw NATIVE_ME first, and AE2 readies nodes
-  only in ticking chunks (same test as `RouterTicks`), so the chunk was ticking there.
-- Leftovers of nearby tests: the grid layout is the same in every run (origin is random, order is the manifest's);
-  the earlier neighbours (bridgevalid, bridgeinvalid, energy tests) build near their own origins, not at the Switch.
-- Local reproduction failed: full `--manifest --ci` batch, four full batches pinned to two cores
-  (`taskset -c 0-1`), six router batches; all green.
+  not forced and GameTest does not wait for it; a Switch in a non-ticking chunk never links. Not the cause here (the
+  face saw NATIVE_ME first, which needs a ticking chunk), but tests that build far outside their structure can hit it.
+- Leftovers of nearby tests and another worktree: ruled out by the grid layout and the tested commit.
+- Local reproduction (full batches, two-core `taskset`, router batches) never failed: the cause depends on the random
+  origin, not on load.
 
-## Confirmed weakness
-
-A Router's sweep (every `RouterTicks.SWEEP_TICKS`) marks every face dirty, but `RouterFacePort.resolveLink` reads the
-Federation port through its `BlockCapabilityCache`, which re-queries only after an invalidation. A stale null in that
-cache is never recovered by the sweep: a local probe that put null in the east face's cache saw `works()` rise every
-100 ticks while the face stayed DISCONNECTED for 400 ticks. Which event left a null there on CI is not known.
-
-## Next failure
-
-The assertion now prints `links`, a fresh `port` query, bundle records, `works` since the replacement, `awake`, and
-the chunk state (784b1b66). Fresh port present + links true + works > 0 means a stale cache; works 0 with awake true
-means the work was gated.
-
-## Fix (owner approved 2026-10-30)
-
-`RouterFacePort.sweep()` (called by `RouterBlockEntity.sweep`) makes the next resolve read the Federation port with
-`level.getCapability`; when it differs from the cache, the face builds a new `BlockCapabilityCache`, so later events
-read the right port too. GameTest `routerfacerecoversstalefederationcache` (manifest
-`router.face-recovers-stale-federation-cache`) puts a stale null in a Router face's cache by reflection and expects the
-link back within 150 ticks and kept after an ordinary neighbour event. Cost: one capability query per face per sweep
-(every 100 ticks per Router); not benchmarked.
+Lesson: in a `succeedWhen` phase, an action followed by assertions that fail leaves the phase stuck, and the timeout
+reports the phase's first assertion, not the one that failed.

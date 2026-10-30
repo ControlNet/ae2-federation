@@ -132,6 +132,8 @@ public final class RouterGameTests {
         var phase = new int[1];
         var unaffected = new RouterPortBinding[1];
         var works = new long[1];
+        var stoneSeen = new RouterPortBinding[1];
+        var westAfterStone = new RouterPortBinding[1];
         helper.succeedWhen(() -> {
             if (phase[0] == 0) {
                 helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.NATIVE_ME,
@@ -148,17 +150,20 @@ public final class RouterGameTests {
                 helper.assertTrue(false, "Waiting for Federation replacement binding");
             }
             if (phase[0] == 1) {
-                // Says which of the face's inputs kept it disconnected, as a batch-only failure on CI did once.
+                // Says which of the face's inputs keep it disconnected, should it stay so.
                 helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
                         "Affected face must recreate as a Federation binding (" + eastInputs(helper, router, works[0]) + ")");
                 fixtures.placeUnsupported(CENTER, Direction.EAST);
-                helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.DISCONNECTED,
-                        "Unsupported replacement must invalidate immediately");
-                helper.assertTrue(router.binding(Direction.WEST) == unaffected[0],
-                        "Unsupported replacement must not recreate another face");
+                // Checked from the next tick on: a failure here must report itself, not leave the stone to fail the
+                // check above on every later tick.
+                stoneSeen[0] = router.binding(Direction.EAST);
+                westAfterStone[0] = router.binding(Direction.WEST);
                 phase[0] = 2;
                 helper.assertTrue(false, "Waiting for unsupported replacement settlement");
             }
+            helper.assertValueEqual(stoneSeen[0].kind(), RouterPortKind.DISCONNECTED,
+                    "Unsupported replacement must invalidate immediately");
+            helper.assertTrue(westAfterStone[0] == unaffected[0], "Unsupported replacement must not recreate another face");
             helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.DISCONNECTED,
                     "Unsupported replacement must remain disconnected");
             RouterEvidence.write("routerportreplacement", 8, Map.of(
@@ -793,6 +798,34 @@ public final class RouterGameTests {
                     "An event after the sweep must keep the link");
             RouterEvidence.write("routerfacerecoversstalefederationcache", 3, Map.of(
                     "sweepRecovers", "federation", "sweepWithinTicks", "150", "eventAfterSweep", "federation"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A face that resolves to the same link again, as in every sweep or a neighbour update that changed nothing, keeps
+     * the binding it had, so whoever holds it still owns the face's link.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void routerFaceKeepsItsBindingWhenUnchanged(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeSwitch(CENTER);
+        fixtures.placeFederationCable(CENTER, Direction.WEST);
+        fixtures.placeNativeDevice(CENTER, Direction.NORTH);
+        helper.succeedWhen(() -> {
+            var federation = router.binding(Direction.WEST);
+            var nativeMe = router.binding(Direction.NORTH);
+            helper.assertValueEqual(federation.kind(), RouterPortKind.FEDERATION, "Waiting for the cable to link");
+            helper.assertValueEqual(nativeMe.kind(), RouterPortKind.NATIVE_ME, "Waiting for the chest to attach");
+            router.neighborChanged(helper.absolutePos(CENTER.west()));
+            router.neighborChanged(helper.absolutePos(CENTER.north()));
+            helper.assertTrue(router.binding(Direction.WEST) == federation,
+                    "A Federation face resolved alike must keep its binding");
+            helper.assertTrue(router.binding(Direction.NORTH) == nativeMe,
+                    "A native face resolved alike must keep its binding");
+            RouterEvidence.write("routerfacekeepsitsbindingwhenunchanged", 2, Map.of(
+                    "federationKept", "true", "nativeKept", "true"));
             fixtures.close();
         });
     }

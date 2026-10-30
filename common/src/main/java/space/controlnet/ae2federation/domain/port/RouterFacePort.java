@@ -108,10 +108,7 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
             return false;
         }
         dirty = false;
-        var resolved = resolve();
-        var changed = !resolved.equals(binding);
-        binding = resolved;
-        return changed;
+        return rebind(resolve());
     }
 
     /**
@@ -121,11 +118,19 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
      * resolves again on the next tick.
      */
     public boolean revalidate() {
-        var resolved = resolve();
-        var changed = !resolved.equals(binding);
-        binding = resolved;
+        var changed = rebind(resolve());
         resolveLater();
         return changed;
+    }
+
+    /**
+     * Takes {@code resolved} as the binding if it differs and reports whether it did. A face that resolves alike keeps
+     * the binding it had, so whoever holds that binding still owns the face's link after a sweep or an idle update.
+     */
+    private boolean rebind(RouterPortBinding resolved) {
+        if (resolved.equals(binding)) return false;
+        binding = resolved;
+        return true;
     }
 
     /**
