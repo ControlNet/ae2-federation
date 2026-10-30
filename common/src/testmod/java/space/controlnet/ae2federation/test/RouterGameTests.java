@@ -7,13 +7,16 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.level.ChunkPos;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.bundle.BundledCables;
 import space.controlnet.ae2federation.domain.port.FederationPortCapability;
 import space.controlnet.ae2federation.domain.port.RouterPortBinding;
 import space.controlnet.ae2federation.domain.port.RouterPortKind;
 import space.controlnet.ae2federation.router.CableLinkedBlock;
+import space.controlnet.ae2federation.router.RouterBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.router.RouterTicks;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
 
@@ -128,6 +131,7 @@ public final class RouterGameTests {
         }
         var phase = new int[1];
         var unaffected = new RouterPortBinding[1];
+        var works = new long[1];
         helper.succeedWhen(() -> {
             if (phase[0] == 0) {
                 helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.NATIVE_ME,
@@ -139,13 +143,14 @@ public final class RouterGameTests {
                         "Replaced native binding must invalidate immediately");
                 helper.assertTrue(router.binding(Direction.WEST) == unaffected[0],
                         "Unchanged face binding must retain ownership");
+                works[0] = router.works();
                 phase[0] = 1;
                 helper.assertTrue(false, "Waiting for Federation replacement binding");
             }
             if (phase[0] == 1) {
                 // Says which of the face's inputs kept it disconnected, as a batch-only failure on CI did once.
                 helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
-                        "Affected face must recreate as a Federation binding (" + eastInputs(helper) + ")");
+                        "Affected face must recreate as a Federation binding (" + eastInputs(helper, router, works[0]) + ")");
                 fixtures.placeUnsupported(CENTER, Direction.EAST);
                 helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.DISCONNECTED,
                         "Unsupported replacement must invalidate immediately");
@@ -165,17 +170,24 @@ public final class RouterGameTests {
         });
     }
 
-    /** What the Switch's east face resolves from: whether the block links there, the cable's port, and bundle records. */
-    private static String eastInputs(GameTestHelper helper) {
+    /**
+     * What the Switch's east face resolves from: whether the block links there, the cable's port and bundle records,
+     * and whether the Switch's scheduled work ran since the replacement, with its chunk's state, which gates that work.
+     */
+    private static String eastInputs(GameTestHelper helper, RouterBlockEntity router, long worksBefore) {
         var level = helper.getLevel();
         var center = helper.absolutePos(CENTER);
         var east = center.east();
         var state = level.getBlockState(center);
         var links = state.getBlock() instanceof CableLinkedBlock linked && linked.linksCable(state, Direction.EAST);
         var bundles = BundledCables.get(level);
+        var chunk = level.getChunkSource().getChunkNow(center.getX() >> 4, center.getZ() >> 4);
         return "links=" + links + " neighbour=" + level.getBlockState(east)
                 + " port=" + level.getCapability(FederationPortCapability.BLOCK, east, Direction.WEST)
-                + " bundleHere=" + bundles.at(center).isPresent() + " bundleEast=" + bundles.at(east).isPresent();
+                + " bundleHere=" + bundles.at(center).isPresent() + " bundleEast=" + bundles.at(east).isPresent()
+                + " works=" + (router.works() - worksBefore) + " awake=" + RouterTicks.awake(router)
+                + " chunk=" + (chunk == null ? "none" : chunk.getFullStatus())
+                + " entities=" + level.areEntitiesLoaded(ChunkPos.asLong(center));
     }
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
