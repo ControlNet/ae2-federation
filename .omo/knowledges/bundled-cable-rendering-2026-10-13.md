@@ -62,10 +62,14 @@ a beam per cell), 1a34a908 (rails open at joints), then the guide page `bundled-
   turns at their boundary (the second of them draws none). Stretches stop at branch layers, whose joint box turns on
   its own. Boxes stay at most 3 layers, so `BundleBeamMesh` is unchanged. Walking the stretch reads up to its length
   in extra looks, only for corner cells of layers with a side contact. Check: `build/design-review-check/round5/`.
-- Cost (not measured in game yet): `refreshFlow` rebuilds `BundleLook.of` each tick for a thick bundle's corner cells,
-  and the layer contacts add `whole()` row reads there. A face cell whose own outer side has no branch reuses its own
-  `dense` bit instead of reading again, which leaves about two extra row reads per corner cell per tick. Compare with
-  the 2028-cell refresh figure in `bundle-render-performance-2026-10-20.md` if bundle refresh shows up in a profile.
+- Cost, measured 2026-10-30 (temporary GameTest probe, not in git: three 24-layer bundles, 3x3 and 2x2 with 4-layer
+  Router bodies on top, 3x3 alone; `BundleLook.of` + `BundleBeam.of` per corner cell, 2000 rounds, median of 3 runs,
+  same probe in a worktree of d53d57b9). Per corner cell per tick: 3x3 with Routers 2.1 us before, 11.5 us with the
+  stretch walk, 3.1 us now; 2x2 with Routers 2.0 / 8.9 / 4.5 us; 3x3 alone 1.0 / 1.7 / 1.2 us (runs vary by about
+  1 us). Fixes: `BundleLookFrame` keeps the tick's looks per thread, so a stretch's layers are read once per tick, not
+  once per walking layer; `BundleContacts.whole` stops at the first cell no device covers; `armRunsOn` trusts the
+  device's connection bit for the next row (a formed body is a solid cuboid), so test stubs of `Contacts.oneBody` must
+  return true only toward a device of the same body.
 - Review renders from any camera: `tools/visual/guide_views.py OUT VIEWS.json --extra DIR` (GuideME client on Xvfb,
   extra SNBT structures copied into a scratch copy of the guide).
 

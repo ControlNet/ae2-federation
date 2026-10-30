@@ -61,7 +61,9 @@ final class BundleShellLayoutTest {
 
             @Override
             public boolean oneBody(BlockPos pos, Direction face, Direction toward) {
-                return true;
+                // As a real body's connection bits: only toward a device of the same body.
+                int next = pos.relative(toward).getX();
+                return next == 2 || next == 3;
             }
         };
         var look = BundleLook.of(new BlockPos(2, 1, 1), cell -> set.at(cell).map(BundleSet.Membership::segment), body)

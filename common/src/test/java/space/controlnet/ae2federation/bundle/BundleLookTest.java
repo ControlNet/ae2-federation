@@ -79,7 +79,9 @@ final class BundleLookTest {
 
             @Override
             public boolean oneBody(BlockPos pos, Direction face, Direction toward) {
-                return true;
+                // As a real body's connection bits: only toward a device of the same body.
+                int next = pos.relative(toward).getX();
+                return next == 2 || next == 3;
             }
         };
         assertEquals(new AABB(3, 14, 0, 16, 16, 13), CableShapes.denseArm(look(set, new BlockPos(2, 1, 1), body),

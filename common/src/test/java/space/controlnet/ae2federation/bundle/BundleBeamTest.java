@@ -70,7 +70,9 @@ final class BundleBeamTest {
 
             @Override
             public boolean oneBody(BlockPos pos, Direction face, Direction toward) {
-                return oneBody;
+                // As a real body's connection bits: only toward a device of the same body.
+                int next = pos.relative(toward).getX();
+                return oneBody && next >= from && next <= to;
             }
         };
     }

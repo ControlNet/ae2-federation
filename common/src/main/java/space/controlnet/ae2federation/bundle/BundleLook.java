@@ -161,7 +161,7 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
         return of(pos, cell -> BundleView.segmentAt(level, cell), new Contacts() {
             @Override
             public boolean whole(BundleSegment segment, BlockPos cell, Direction face) {
-                return BundleContacts.contact(level, segment, cell, face).whole();
+                return BundleContacts.whole(level, segment, cell, face);
             }
 
             @Override
@@ -172,13 +172,13 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
     }
 
     /**
-     * Whether the dense arm toward {@code side} of {@code pos} runs on into the next cell {@code toward}: that cell's row
-     * lies against a device too, of the same body.
+     * Whether the dense arm toward {@code side} of {@code pos}, whose whole row one device body takes, runs on into the
+     * next cell {@code toward}: the device beside it belongs to the same body. A formed body is a solid cuboid, so it then
+     * takes that cell's whole row too, which need not be read again.
      */
     private static boolean armRunsOn(BundleSegment segment, BlockPos pos, Direction side, Direction toward,
             Contacts contacts) {
-        var next = pos.relative(toward);
-        return segment.contains(next) && contacts.whole(segment, next, side) && contacts.oneBody(pos, side, toward);
+        return segment.contains(pos.relative(toward)) && contacts.oneBody(pos, side, toward);
     }
 
     /** Whether the cell lies on the segment's boundary toward {@code side}: the shell, or the segment's end. */

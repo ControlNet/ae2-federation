@@ -44,7 +44,7 @@ public final class BundleContacts {
         var there = bundles.at(neighbour);
         if (here.isEmpty()) return there.isEmpty();
         if (there.isPresent()) return bundles.linked(pos, neighbour);
-        return contact(level, here.get().segment(), pos, face).whole();
+        return whole(level, here.get().segment(), pos, face);
     }
 
     /**
@@ -72,6 +72,26 @@ public final class BundleContacts {
         }
         boolean whole = covered == cells.size() && oneBody(level, cells, face);
         return new Contact(cells, face, covered, whole, firstDevice);
+    }
+
+    /**
+     * Whether one device body takes the whole contact that {@code face} of {@code pos} belongs to: {@link #contact}'s
+     * {@code whole}, which stops at the first cell no device of the body covers instead of counting the rest.
+     */
+    public static boolean whole(BlockGetter level, BundleSegment segment, BlockPos pos, Direction face) {
+        var cells = face.getAxis() == segment.axis() ? segment.endLayer(face).cells() : row(segment, pos, face);
+        net.minecraft.world.level.block.Block body = null;
+        for (var cell : cells) {
+            var device = cell.relative(face);
+            if (level instanceof Level loaded && !loaded.isLoaded(device)) return false;
+            var state = level.getBlockState(device);
+            if (!RouterBlock.formed(state) || body != null && state.getBlock() != body
+                    || !(state.getBlock() instanceof CableLinkedBlock linked && linked.linksCable(state, face.getOpposite()))) {
+                return false;
+            }
+            body = state.getBlock();
+        }
+        return oneBody(level, cells, face);
     }
 
     /** The device contacts of {@code bundle}: whole end faces, whole side runs, and contacts a device covers in part. */
