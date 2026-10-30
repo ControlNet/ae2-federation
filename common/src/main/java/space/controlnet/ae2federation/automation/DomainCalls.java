@@ -61,7 +61,8 @@ final class DomainCalls {
     private static final TypeRef NETWORK = new TypeRef("Network", List.of());
 
     private final MinecraftServer server;
-    private final FederationDomainId domain;
+    /** The domain the calls act in, read at each call: a run follows its device into another domain. */
+    private final java.util.function.Supplier<FederationDomainId> domain;
     private final String owner;
     private final GameCatalog catalog;
     /** Whether actions only check what they would do (the editor's dry run). */
@@ -71,7 +72,8 @@ final class DomainCalls {
     private Map<NetworkId, IGrid> grids = Map.of();
     private int gridsTick = -1;
 
-    DomainCalls(MinecraftServer server, FederationDomainId domain, String owner, GameCatalog catalog,
+    DomainCalls(MinecraftServer server, java.util.function.Supplier<FederationDomainId> domain, String owner,
+            GameCatalog catalog,
             boolean simulate) {
         this.server = server;
         this.domain = domain;
@@ -159,7 +161,7 @@ final class DomainCalls {
     }
 
     private List<NetworkId> members() {
-        return FederationDomainRegistryAccess.get(server.overworld()).federationDomain(domain)
+        return FederationDomainRegistryAccess.get(server.overworld()).federationDomain(domain.get())
                 .map(snapshot -> List.copyOf(snapshot.memberships().keySet())).orElse(List.of());
     }
 
@@ -464,7 +466,7 @@ final class DomainCalls {
         var grid = live().get(network);
         var registry = FederationDomainRegistryAccess.get(server.overworld());
         return grid != null && members().contains(network) && grid.getEnergyService().isNetworkPowered()
-                && !registry.stopped(domain);
+                && !registry.stopped(domain.get());
     }
 
     private PolicyService policies() {

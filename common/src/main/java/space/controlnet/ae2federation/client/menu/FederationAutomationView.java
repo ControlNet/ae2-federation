@@ -120,6 +120,11 @@ final class FederationAutomationView {
     /** Ticks since the last dry run was asked for, whether its answer is awaited, and what it last said. */
     private int dryTicks;
     private boolean dryWaiting;
+    /**
+     * The text whose upload the server or the size cap refused: kept unsent, so the server's text never replaces it,
+     * but not sent again, and its refusal not shown again, until it changes.
+     */
+    private @Nullable String refusedText;
     private String dryMessage = "";
 
     FederationAutomationView(UI ui, boolean client) {
@@ -397,6 +402,7 @@ final class FederationAutomationView {
         if (!dirty || sending || selected == null) return;
         var name = selected;
         var text = text();
+        if (text.equals(refusedText)) return;
         dirty = false;
         sending = true;
         ClientPrograms.get().upload(name, base, text, answer -> {
@@ -404,14 +410,15 @@ final class FederationAutomationView {
             if (!answer.ok()) {
                 answer(answer);
                 pushAfterSend = false;
-                // The edits are still unsent: a server text must not replace them. Tried again after a pause.
+                // The edits are still unsent: a server text must not replace them. Sent again once they change.
                 if (name.equals(selected)) {
                     dirty = true;
-                    idle = 0;
+                    refusedText = text;
                 }
                 return;
             }
             if (name.equals(selected)) {
+                refusedText = null;
                 base = ProgramSync.version(text);
                 dryTicks = DRY_TICKS;
                 // An outside editor's save since the upload is left for watch() to take, not overwritten.
@@ -732,6 +739,7 @@ final class FederationAutomationView {
     private void select(@Nullable String name) {
         send();
         selected = name;
+        refusedText = null;
         dryMessage = "";
         reconciled = false;
         dirty = false;

@@ -591,15 +591,19 @@ public final class ProgramSchedulerGameTests {
         });
     }
 
-    /** A push stops the runs of the old version, and arguments kept from before must fit the new parameters. */
+    /**
+     * A push stops nothing: a run going finishes on the version it started with, in every domain, and the next start
+     * uses the push, whose new parameters the kept arguments must fit.
+     */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
-    public static void aPushStopsOldRunsAndChecksKeptArguments(GameTestHelper helper) {
+    public static void aPushLetsRunsFinishAndChecksKeptArguments(GameTestHelper helper) {
         var scene = Scene.build(helper, "sched_push_args", SLOW);
         scene.whenReady(() -> {
             var installation = scene.scheduler().install(scene.device(), "sched_push_args", "slow", List.of());
             scene.installed(installation);
             scene.scheduler().setInterval(installation.id(), 1);
+            scene.scheduler().setOverlap(installation.id(), Installation.Overlap.PARALLEL);
             scene.scheduler().trigger(installation.id());
         }).then(5, () -> {
             helper.assertValueEqual(scene.running(0), 1, "The old version runs");
@@ -608,17 +612,19 @@ public final class ProgramSchedulerGameTests {
                         return n
                     """);
             scene.scheduler().push("sched_push_args");
-            helper.assertValueEqual(scene.running(0), 0, "The push stopped it");
+            helper.assertValueEqual(scene.running(0), 1, "The push stopped nothing");
             scene.scheduler().trigger(scene.installations().get(0).id());
         }).then(5, () -> {
             helper.assertValueEqual(scene.log(0), List.of("started",
-                    "stopped 1 run(s): a new version was pushed",
                     "not started: slow now needs n; change the installation's arguments"),
                     "A missing argument is logged, never a crash of the tick");
+            helper.assertValueEqual(scene.running(0), 1, "The old run still goes");
+        }).then(100, () -> {
+            helper.assertValueEqual(scene.log(0).get(2), "done: 1", "The old run finished on its own version");
             scene.scheduler().setArgs(scene.installations().get(0).id(), List.of("7"));
             scene.scheduler().trigger(scene.installations().get(0).id());
         }).then(5, () -> helper.assertValueEqual(scene.log(0).subList(3, 5), List.of("started", "done: 7"),
-                "With its argument it runs")).finish(() -> {
+                "With its argument the new version runs")).finish(() -> {
         });
     }
 
@@ -657,11 +663,19 @@ public final class ProgramSchedulerGameTests {
         });
     }
 
-    /** A run acts on the domain it started in; when the device leaves that domain, the run stops. */
+    /**
+     * A run acts wherever its device is: when a cut cable moves the device into another domain the run goes on there,
+     * reading the new domain's networks, instead of stopping.
+     */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
-    public static void aRunStopsWhenItsDeviceLeavesTheDomain(GameTestHelper helper) {
-        var scene = Scene.build(helper, "sched_domain_left", SLOW);
+    public static void aRunFollowsItsDeviceIntoAnotherDomain(GameTestHelper helper) {
+        var scene = Scene.build(helper, "sched_domain_left", """
+                def count() -> int:
+                    before = len(ae2f.networks())
+                    mc.wait(40)
+                    return before * 10 + len(ae2f.networks())
+                """);
         // A network on the cable: when the cable is cut, the domain's ID stays with the side holding it.
         var fixtures = new RouterFixtures(helper);
         var switchAt = CENTER.north();
@@ -674,17 +688,16 @@ public final class ProgramSchedulerGameTests {
             helper.assertValueEqual(FederationDomainRegistryAccess.get(level).federationDomain(domain)
                     .map(snapshot -> snapshot.memberships().size()).orElse(0), 1, "Waiting for the network");
         }, () -> {
-            var installation = scene.scheduler().install(scene.device(), "sched_domain_left", "slow", List.of());
+            var installation = scene.scheduler().install(scene.device(), "sched_domain_left", "count", List.of());
             scene.installed(installation);
             scene.scheduler().trigger(installation.id());
         }).then(5, () -> {
             helper.assertValueEqual(scene.running(0), 1, "Running");
             helper.setBlock(CENTER, Blocks.AIR);
         }).then(10, () -> {
-            helper.assertValueEqual(scene.running(0), 0, "The run stopped");
-            helper.assertTrue(scene.log(0).contains("stopped 1 run(s): the device moved to another domain"),
-                    "Logged: " + scene.log(0));
-        }).finish(fixtures::close);
+            helper.assertValueEqual(scene.running(0), 1, "The run goes on after the cut");
+        }).then(40, () -> helper.assertValueEqual(scene.log(0), List.of("started", "done: 10"),
+                "One network before the cut, none in the device's new domain")).finish(fixtures::close);
     }
 
     /**

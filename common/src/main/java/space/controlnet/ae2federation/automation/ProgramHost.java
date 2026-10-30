@@ -52,7 +52,6 @@ public final class ProgramHost implements Evaluator.Host {
     private static final TypeRef INTERFACE = new TypeRef("Interface", List.of());
 
     private final MinecraftServer server;
-    private final FederationDomainId domain;
     /** Whose run this is: an installation's ID, which also keeps its websocket connections. */
     private final String owner;
     private final GameCatalog catalog;
@@ -69,15 +68,24 @@ public final class ProgramHost implements Evaluator.Host {
 
     /** A host for one run; {@code owner} names the run's crafting jobs, so it cancels only its own. */
     public ProgramHost(MinecraftServer server, FederationDomainId domain, String owner) {
-        this(server, domain, owner, false);
+        this(server, () -> domain, owner, false);
     }
 
-    private ProgramHost(MinecraftServer server, FederationDomainId domain, String owner, boolean simulate) {
+    /**
+     * A host acting in the domain {@code domainNow} gives at each call: an installation's runs act wherever their
+     * device is, so a merge or a cut cable never stops them.
+     */
+    public ProgramHost(MinecraftServer server, java.util.function.Supplier<FederationDomainId> domainNow,
+            String owner) {
+        this(server, domainNow, owner, false);
+    }
+
+    private ProgramHost(MinecraftServer server, java.util.function.Supplier<FederationDomainId> domain, String owner,
+            boolean simulate) {
         this.server = server;
-        this.domain = domain;
         this.owner = owner;
         this.simulate = simulate;
-        this.catalog = ProgramStore.catalog(server, domain);
+        this.catalog = ProgramStore.catalogFollowing(server, domain);
         this.domainCalls = new DomainCalls(server, domain, owner, catalog, simulate);
         this.files = new WorkspaceFiles(workspace(server), AutomationRule::workspaceCapBytes);
     }
@@ -93,7 +101,7 @@ public final class ProgramHost implements Evaluator.Host {
      * with the game's simulate modes, without changing anything.
      */
     public static ProgramHost dryRun(MinecraftServer server, FederationDomainId domain) {
-        return new ProgramHost(server, domain, "dry run", true);
+        return new ProgramHost(server, () -> domain, "dry run", true);
     }
 
     public GameCatalog catalog() {

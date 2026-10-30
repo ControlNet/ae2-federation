@@ -61,8 +61,10 @@ one run after it.
 
 ## When runs stop
 
-A run stops when its device is unloaded, when the server stops, when the device moves to another domain, when a new
-version of its program is pushed, and when the installation's arguments or settings change. The installation stays, and its trigger starts new runs later. Breaking the device removes its installations.
+A run stops when its device is unloaded, when the server stops, and when the installation's arguments or settings
+change. The installation stays, and its trigger starts new runs later. Breaking the device removes its installations.
+A run going when its program is pushed finishes on the version it started with; the next run uses the push. When a
+cable change moves the device into another domain, the run goes on there, acting on the new domain.
 
 Crafting jobs an installation started keep going after its run stops. `ae2.cancel` reaches them while the installation
 exists, until the server restarts.

@@ -434,6 +434,20 @@ public final class AutomationTabScenario implements UIScenario {
                         String.join("\n", editor(context).getLines()).isEmpty())
                 .checkServer("and nothing is saved under its name", context ->
                         ProgramStore.get(context.server()).library().text("scratch").isEmpty())
+                // A text over the cap is refused once and kept unsent, not sent and refused again every second.
+                .step("type a text over the cap", context -> editor(context).setValue(
+                        new String[] {"#" + "x".repeat(space.controlnet.ae2federation.script.Library.MAX_TEXT)}, true))
+                .waitUntil("the text over the cap is refused", context -> context.el("#automation_answer").text()
+                        .equals("a program may hold at most 64000 characters"))
+                .step("clear the status line", context -> context.el("#automation_answer")
+                        .as(com.lowdragmc.lowdraglib2.gui.ui.elements.Label.class)
+                        .setText(net.minecraft.network.chat.Component.empty()))
+                .frames(60)
+                .check("the refusal is not repeated while the text stays as it is", context ->
+                        context.el("#automation_answer").text().isEmpty())
+                .step("shorten the text", context -> editor(context).setValue(new String[] {"# short"}, true))
+                .waitUntilServer("the changed text is sent", context ->
+                        ProgramStore.get(context.server()).library().text("scratch").equals("# short"))
                 // Delete asks first; Cancel keeps the program.
                 .step("press Delete", context -> pressAndRelease(context, "#auto_delete"))
                 .waitUntil("Delete asks before deleting", context -> context.all("#auto_delete_dialog").size() == 1)

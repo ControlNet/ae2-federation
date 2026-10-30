@@ -107,3 +107,12 @@ keeping per-run fixed bandwidth shares (item "elastic shares": guide text change
   atomic local writes; folder keys hashed when characters were replaced; `ClientPrograms.reset()` on logout; alias
   answers (`View.answer`) never open a screen or replace newer typing; graph fields commit only against the text they
   were drawn from.
+
+## Follow-up (user, 2026-10-30)
+
+- Runs no longer stop when their device changes domain (merge or cut) or when their program is pushed. The host,
+  `DomainCalls` and the catalog read the device's current domain at each call (`ProgramScheduler.following`, read
+  once a tick, the last domain kept while the device has none); a pushed program's running runs finish on the version
+  they started with. GameTests `arunfollowsitsdeviceintoanotherdomain`, `apushletsrunsfinishandcheckskeptarguments`.
+- An upload refused (size cap or server) stays unsent but is not sent again, nor its refusal shown again, until the
+  text changes (`FederationAutomationView.refusedText`).

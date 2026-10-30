@@ -71,14 +71,22 @@ public final class ProgramStore {
      * is null. Read on every query. Server thread only, since a network's short ID is drawn on first use.
      */
     public static GameCatalog catalog(MinecraftServer server, @Nullable FederationDomainId domain) {
+        return catalogFollowing(server, domain == null ? null : () -> domain);
+    }
+
+    /** As {@link #catalog(MinecraftServer, FederationDomainId)}, in whatever domain {@code domainNow} gives. */
+    public static GameCatalog catalogFollowing(MinecraftServer server,
+            java.util.function.@Nullable Supplier<FederationDomainId> domainNow) {
         var overworld = server.overworld();
         return new GameCatalog(() -> {
+            var domain = domainNow == null ? null : domainNow.get();
             var interfaces = AutomationInterfaces.get(overworld);
             var ids = domain == null ? interfaces.entries().keySet() : interfaces.idsIn(overworld, domain);
             var named = new ArrayList<GameCatalog.Named>();
             ids.forEach(id -> named.add(new GameCatalog.Named(id, interfaces.alias(id))));
             return named;
         }, () -> {
+            var domain = domainNow == null ? null : domainNow.get();
             var networks = new ArrayList<NetworkId>();
             FederationDomainRegistryAccess.get(overworld).federationDomains().stream()
                     .filter(snapshot -> domain == null || snapshot.federationDomainId().equals(domain))

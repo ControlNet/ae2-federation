@@ -58,8 +58,6 @@ public final class ProgramScheduler {
         /** A websocket event's connection while it opens, and the last problem logged about it. */
         Pending connecting;
         String socketProblem;
-        /** The domain the runs and the condition started in; they act there, so they stop when the device leaves it. */
-        FederationDomainId domain;
 
         State(Installation installation) {
             this.installation = installation;
@@ -148,12 +146,6 @@ public final class ProgramScheduler {
         });
         devices().push(file, texts);
         prepared.remove(file);
-        // Running versions are not what the device now holds or prices: they stop, and the next runs use the push.
-        for (var installation : devices().installations()) {
-            if (installation.file().equals(file)) {
-                stop(installation.id(), "a new version was pushed");
-            }
-        }
         return texts;
     }
 
@@ -543,11 +535,6 @@ public final class ProgramScheduler {
                 }
                 continue;
             }
-            if ((!state.runs.isEmpty() || state.condition != null) && !domain.get().equals(state.domain)) {
-                // A cut cable or a merge moved the device: runs act on the domain they started in, so they stop.
-                stop(installation.id(), "the device moved to another domain");
-                state = state(installation);
-            }
             var budget = budgets.computeIfAbsent(installation.device(), this::budget);
             if (budget.isEmpty()) {
                 continue;
@@ -589,11 +576,9 @@ public final class ProgramScheduler {
                 if (started.isPresent()) {
                     log(installation.id(), "started");
                     state.runs.add(started.get());
-                    state.domain = domain.get();
                 }
             }
-            var running = state;
-            state.runs.removeIf(run -> finished(running.installation.id(), run));
+            state.runs.removeIf(run -> finished(installation.id(), run));
         }
         states.entrySet().removeIf(entry -> {
             if (seen.contains(entry.getKey())) {
@@ -736,9 +721,6 @@ public final class ProgramScheduler {
             state.nextCondition = now + state.installation.interval();
             state.condition = start(state.installation, condition.function(), condition.args(), domain, 0, true)
                     .orElse(null);
-            if (state.condition != null) {
-                state.domain = domain;
-            }
         }
         if (state.condition == null) {
             return;
@@ -766,8 +748,8 @@ public final class ProgramScheduler {
             log(installation.id(), "not started: " + installation.file() + " was never pushed");
             return Optional.empty();
         }
-        var host = new ProgramHost(server, domain, installation.id()).printTo(text -> log(installation.id(), text))
-                .limitMoves(perCall);
+        var host = new ProgramHost(server, following(installation.device(), domain), installation.id())
+                .printTo(text -> log(installation.id(), text)).limitMoves(perCall);
         try {
             var program = prepared.computeIfAbsent(installation.file(),
                     file -> ProgramRun.prepare(texts.get(), host.catalog()));
@@ -799,6 +781,27 @@ public final class ProgramScheduler {
     }
 
     /** The device's domain while it is loaded; empty while it is unloaded, gone, or not yet published. */
+    /**
+     * The domain the device is in now, read at most once a tick, or the last one it was in while it has none: a run
+     * acts wherever its device is, so a merge or a cut cable moves it along instead of stopping it.
+     */
+    private java.util.function.Supplier<FederationDomainId> following(String device, FederationDomainId start) {
+        return new java.util.function.Supplier<>() {
+            private FederationDomainId last = start;
+            private long readAt = server.overworld().getGameTime();
+
+            @Override
+            public FederationDomainId get() {
+                long now = server.overworld().getGameTime();
+                if (now != readAt) {
+                    readAt = now;
+                    last = domain(device).orElse(last);
+                }
+                return last;
+            }
+        };
+    }
+
     private Optional<FederationDomainId> domain(String device) {
         return loaded(device).flatMap(loaded -> devices().domainOf(loaded.level(), device));
     }
