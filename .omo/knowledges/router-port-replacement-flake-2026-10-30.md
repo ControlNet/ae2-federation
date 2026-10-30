@@ -30,3 +30,12 @@ cache is never recovered by the sweep: a local probe that put null in the east f
 The assertion now prints `links`, a fresh `port` query, bundle records, `works` since the replacement, `awake`, and
 the chunk state (784b1b66). Fresh port present + links true + works > 0 means a stale cache; works 0 with awake true
 means the work was gated.
+
+## Fix (owner approved 2026-10-30)
+
+`RouterFacePort.sweep()` (called by `RouterBlockEntity.sweep`) makes the next resolve read the Federation port with
+`level.getCapability`; when it differs from the cache, the face builds a new `BlockCapabilityCache`, so later events
+read the right port too. GameTest `routerfacerecoversstalefederationcache` (manifest
+`router.face-recovers-stale-federation-cache`) puts a stale null in a Router face's cache by reflection and expects the
+link back within 150 ticks and kept after an ordinary neighbour event. Cost: one capability query per face per sweep
+(every 100 ticks per Router); not benchmarked.

@@ -75,6 +75,8 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private boolean dirty = true;
     /** Look at the neighbour without the caches on the next resolve, in case an event that changed it was missed. */
     private boolean verify;
+    /** Read the neighbour's Federation port without its cache on the next resolve, as the Router's sweep asks. */
+    private boolean sweeping;
     private boolean alive;
 
     public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort,
@@ -93,8 +95,7 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         alive = true;
         binding = RouterPortBinding.Disconnected.INSTANCE;
         resolveLater();
-        federationCache = BlockCapabilityCache.create(FederationPortCapability.BLOCK, serverLevel, neighborPosition,
-                face.getOpposite(), () -> alive, this::recheck);
+        federationCache = federationCache();
         if (attachesNetworks) {
             nodeHostCache = BlockCapabilityCache.create(AECapabilities.IN_WORLD_GRID_NODE_HOST, serverLevel,
                     neighborPosition, null, () -> alive, this::recheck);
@@ -138,6 +139,16 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
 
     /** Whether the block may link changed, as when its body forms or breaks: resolve again on the next tick. */
     public void markDirty() {
+        resolveLater();
+    }
+
+    /**
+     * The Router's sweep: resolve again on the next tick, reading the neighbour's Federation port as it is now, so a
+     * port the cache missed (or a stale one it kept) is found within one sweep, as a Switch face's node is.
+     */
+    public void sweep() {
+        verifyIfNodeless();
+        sweeping = true;
         resolveLater();
     }
 
@@ -270,6 +281,11 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         node.create(level, routerPosition);
     }
 
+    private BlockCapabilityCache<FederationPort, Direction> federationCache() {
+        return BlockCapabilityCache.create(FederationPortCapability.BLOCK, level, routerPosition.relative(face),
+                face.getOpposite(), () -> alive, this::recheck);
+    }
+
     private RouterPortBinding resolve() {
         syncNode();
         var link = resolveLink();
@@ -282,6 +298,15 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
             return RouterPortBinding.Disconnected.INSTANCE;
         }
         var federationPort = federationCache.getCapability();
+        if (sweeping) {
+            sweeping = false;
+            var current = level.getCapability(FederationPortCapability.BLOCK, neighborPosition, face.getOpposite());
+            if (!java.util.Objects.equals(current, federationPort)) {
+                // The cache missed an invalidation: a new one reads the neighbour as it is now from here on.
+                federationCache = federationCache();
+                federationPort = current;
+            }
+        }
         if (reciprocal(federationPort)) {
             return new RouterPortBinding.Federation(federationPort);
         }

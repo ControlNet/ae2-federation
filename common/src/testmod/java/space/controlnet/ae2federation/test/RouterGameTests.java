@@ -763,6 +763,62 @@ public final class RouterGameTests {
     }
 
     /**
+     * A Router face whose cached Federation port went stale, as when the invalidation that should have reached it was
+     * missed, links again in its sweep, and keeps the link when an ordinary event resolves it afterwards. TEST-ONLY: the
+     * stale cache is simulated by clearing the face's cached port and binding through reflection.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void routerFaceRecoversStaleFederationCache(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeRouter(CENTER);
+        fixtures.placeFederationCable(CENTER, Direction.EAST);
+        var phase = new int[1];
+        var staleAt = new long[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                        "Waiting for the cable to link");
+                staleFederationCache(router, Direction.EAST);
+                staleAt[0] = helper.getTick();
+                phase[0] = 1;
+                helper.fail("Waiting for the sweep");
+            }
+            helper.assertTrue(helper.getTick() <= staleAt[0] + 150, "The sweep must find the face within its period");
+            helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                    "Waiting for the sweep to link the face again");
+            // An ordinary event reads the face's cache: it must hold the port again, not the stale value.
+            router.neighborChanged(helper.absolutePos(CENTER.east()));
+            helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                    "An event after the sweep must keep the link");
+            RouterEvidence.write("routerfacerecoversstalefederationcache", 3, Map.of(
+                    "sweepRecovers", "federation", "sweepWithinTicks", "150", "eventAfterSweep", "federation"));
+            fixtures.close();
+        });
+    }
+
+    /** Leaves the face's Federation cache holding no port, with no invalidation to come, and the face disconnected. */
+    private static void staleFederationCache(space.controlnet.ae2federation.router.RouterBlockEntity router,
+            Direction face) {
+        try {
+            var portsField = space.controlnet.ae2federation.router.RouterBlockEntity.class.getDeclaredField("facePorts");
+            portsField.setAccessible(true);
+            var port = ((java.util.Map<?, ?>) portsField.get(router)).get(face);
+            var cacheField = port.getClass().getDeclaredField("federationCache");
+            cacheField.setAccessible(true);
+            var cache = cacheField.get(port);
+            var cachedField = cache.getClass().getDeclaredField("cachedCap");
+            cachedField.setAccessible(true);
+            cachedField.set(cache, null);
+            var bindingField = port.getClass().getDeclaredField("binding");
+            bindingField.setAccessible(true);
+            bindingField.set(port, RouterPortBinding.Disconnected.INSTANCE);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("The test must reach the Router face's cache", exception);
+        }
+    }
+
+    /**
      * TEST-ONLY: puts a Switch face in the state a missed event leaves it in, an AE2 block beside it but no node and no
      * pending work, by destroying the node and clearing the face's flags through reflection.
      */

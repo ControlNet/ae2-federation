@@ -186,6 +186,7 @@
     {"id":"switch.face-node-without-block-updates","backend":"gametest","testId":"switchfacenodewithoutblockupdates","structure":"ae2federation_test:harness_native_smoke","assertions":4},
     {"id":"cable.links-without-block-updates","backend":"gametest","testId":"cablelinkswithoutblockupdates","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"switch.face-node-recovers-missed-event","backend":"gametest","testId":"switchfacenoderecoversmissedevent","structure":"ae2federation_test:harness_native_smoke","assertions":4},
+    {"id":"router.face-recovers-stale-federation-cache","backend":"gametest","testId":"routerfacerecoversstalefederationcache","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"cable.sleeps-while-idle","backend":"gametest","testId":"cablesleepswhileidle","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"switch.router-refuses-me-networks","backend":"gametest","testId":"routerrefusesmenetworks","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"switch.joins-through-router","backend":"gametest","testId":"switchesjointhroughrouter","structure":"ae2federation_test:harness_native_smoke","assertions":5},
