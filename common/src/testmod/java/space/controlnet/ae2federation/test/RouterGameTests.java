@@ -8,8 +8,11 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.bundle.BundledCables;
+import space.controlnet.ae2federation.domain.port.FederationPortCapability;
 import space.controlnet.ae2federation.domain.port.RouterPortBinding;
 import space.controlnet.ae2federation.domain.port.RouterPortKind;
+import space.controlnet.ae2federation.router.CableLinkedBlock;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
@@ -140,8 +143,9 @@ public final class RouterGameTests {
                 helper.assertTrue(false, "Waiting for Federation replacement binding");
             }
             if (phase[0] == 1) {
+                // Says which of the face's inputs kept it disconnected, as a batch-only failure on CI did once.
                 helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
-                        "Affected face must recreate as a Federation binding");
+                        "Affected face must recreate as a Federation binding (" + eastInputs(helper) + ")");
                 fixtures.placeUnsupported(CENTER, Direction.EAST);
                 helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.DISCONNECTED,
                         "Unsupported replacement must invalidate immediately");
@@ -159,6 +163,19 @@ public final class RouterGameTests {
                     "affectedFace", "east", "nativeJoin", "false"));
             fixtures.close();
         });
+    }
+
+    /** What the Switch's east face resolves from: whether the block links there, the cable's port, and bundle records. */
+    private static String eastInputs(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var center = helper.absolutePos(CENTER);
+        var east = center.east();
+        var state = level.getBlockState(center);
+        var links = state.getBlock() instanceof CableLinkedBlock linked && linked.linksCable(state, Direction.EAST);
+        var bundles = BundledCables.get(level);
+        return "links=" + links + " neighbour=" + level.getBlockState(east)
+                + " port=" + level.getCapability(FederationPortCapability.BLOCK, east, Direction.WEST)
+                + " bundleHere=" + bundles.at(center).isPresent() + " bundleEast=" + bundles.at(east).isPresent();
     }
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
