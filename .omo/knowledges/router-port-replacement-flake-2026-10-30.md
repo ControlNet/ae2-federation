@@ -34,3 +34,27 @@ phase 2 on, so a failure there reports itself.
 
 Lesson: in a `succeedWhen` phase, an action followed by assertions that fail leaves the phase stuck, and the timeout
 reports the phase's first assertion, not the one that failed.
+
+## Follow-up: masked checks across the GameTests
+
+An audit of every `succeedWhen` body found the same shape in 104 places in 38 files. The pattern is an
+action and then checks in one step, before the step's phase or flag moves on. Two of those places were lost checks,
+not just masked ones:
+
+- `ProductionProviderRetentionGameTests` set `phase[0] = 90` before its "State change cannot reuse the old
+  confirmation" check, so a failure there was swallowed and the next phase ran.
+- `UiGraphBenchmarkGameTests` set `state.result` first, so a failed check still let the test pass.
+
+The fix is `GameTestChecks.once(helper, () -> { ... })` around the checks that follow a step's first action. A failure
+inside it schedules itself with `helper.runAfterDelay(1, ...)`. `GameTestInfo.tickInternal` sends an exception from a
+scheduled task straight to `fail`, with no retry, so the test ends on the next tick with that failure. The step still
+runs once more in that tick, because sequences tick after the scheduled tasks, but the error is already set.
+
+Rules for new tests:
+
+- Waits ("Waiting for ...") stay outside `once`.
+- Phase advances and `throw new GameTestAssertException("Waiting ...")` stay outside `once`.
+- Everything checked after an action goes inside `once`.
+
+A probe test (action, then `once(() -> assertTrue(false, "inner"))`, behind an outer wait that the action breaks)
+failed within a second with "inner", not at the timeout with the outer wait.

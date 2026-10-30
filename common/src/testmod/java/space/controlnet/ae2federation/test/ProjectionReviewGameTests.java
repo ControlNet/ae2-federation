@@ -89,51 +89,53 @@ public final class ProjectionReviewGameTests {
         var fixture = new PatternProjectionFixture(helper);
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for native Grids");
-            var key = PatternProjectionFixture.stone();
-            var ledger = new CraftingReturnLedger();
-            var executing = fixture.providerNetwork();
-            var consumer = fixture.consumerNetwork();
-            var mounted = new MEStorage[1];
-            var mountedRouter = new appeng.api.storage.IStorageProvider[1];
-            try {
-                var add = CraftingReturnLedger.class.getDeclaredMethod("add",
-                        space.controlnet.ae2federation.identity.NetworkId.class,
-                        space.controlnet.ae2federation.identity.NetworkId.class, appeng.api.stacks.AEKey.class, long.class);
-                add.setAccessible(true);
-                add.invoke(ledger, executing, consumer, key, 8L);
-                var constructor = Class.forName("space.controlnet.ae2federation.crafting.projection.CraftingReturnRouter")
-                        .getDeclaredConstructors()[0];
-                constructor.setAccessible(true);
-                var router = (appeng.api.storage.IStorageProvider) constructor.newInstance(executing,
-                        fixture.providerGrid(), ledger, (java.util.function.Function<Object, Object>) ignored -> null,
-                        (java.util.function.Predicate<Object>) ignored -> false,
-                        (java.util.function.Function<Object, Object>) ignored -> null,
-                        space.controlnet.ae2federation.observability.LevelObservabilityService.get(helper.getLevel()).statistics());
-                fixture.providerGrid().getStorageService().addGlobalStorageProvider(router);
-                mountedRouter[0] = router;
-                mounted[0] = fixture.providerGrid().getStorageService().getInventory();
-            } catch (ReflectiveOperationException failure) {
-                throw new IllegalStateException(failure);
-            }
-            var cell = fixture.takeProviderCell();
-            for (int retry = 0; retry < 12; retry++) {
-                helper.assertValueEqual(mounted[0].insert(key, 1, Actionable.MODULATE, IActionSource.empty()), 0L,
-                        "The machine retains the rejected single item");
-                helper.assertValueEqual(ledger.held(executing, consumer, key), 0L,
-                        "Rejected attempts are not distinct accepted arrivals");
-            }
-            fixture.restoreProviderCell(cell);
-            helper.assertValueEqual(mounted[0].insert(key, 1, Actionable.SIMULATE, IActionSource.empty()), 1L,
-                    "Simulation sees available native storage");
-            helper.assertValueEqual(ledger.held(executing, consumer, key), 0L, "Simulation has no ledger effects");
-            helper.assertValueEqual(mounted[0].insert(key, 1, Actionable.MODULATE, IActionSource.empty()), 1L,
-                    "One actual accepted item leaves the machine");
-            helper.assertValueEqual(ledger.held(executing, consumer, key), 1L, "Exactly one accepted arrival is held");
-            helper.assertValueEqual(fixture.held(fixture.providerChest(), key), 1L, "The item really reached local storage");
-            space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectionrejectedarrival", 30,
-                    java.util.Map.of("rejectedRetries", "12", "heldAfterRetries", "0", "heldAfterAcceptance", "1"));
-            fixture.providerGrid().getStorageService().removeGlobalStorageProvider(mountedRouter[0]);
-            fixture.close();
+            GameTestChecks.once(helper, () -> {
+                var key = PatternProjectionFixture.stone();
+                var ledger = new CraftingReturnLedger();
+                var executing = fixture.providerNetwork();
+                var consumer = fixture.consumerNetwork();
+                var mounted = new MEStorage[1];
+                var mountedRouter = new appeng.api.storage.IStorageProvider[1];
+                try {
+                    var add = CraftingReturnLedger.class.getDeclaredMethod("add",
+                            space.controlnet.ae2federation.identity.NetworkId.class,
+                            space.controlnet.ae2federation.identity.NetworkId.class, appeng.api.stacks.AEKey.class, long.class);
+                    add.setAccessible(true);
+                    add.invoke(ledger, executing, consumer, key, 8L);
+                    var constructor = Class.forName("space.controlnet.ae2federation.crafting.projection.CraftingReturnRouter")
+                            .getDeclaredConstructors()[0];
+                    constructor.setAccessible(true);
+                    var router = (appeng.api.storage.IStorageProvider) constructor.newInstance(executing,
+                            fixture.providerGrid(), ledger, (java.util.function.Function<Object, Object>) ignored -> null,
+                            (java.util.function.Predicate<Object>) ignored -> false,
+                            (java.util.function.Function<Object, Object>) ignored -> null,
+                            space.controlnet.ae2federation.observability.LevelObservabilityService.get(helper.getLevel()).statistics());
+                    fixture.providerGrid().getStorageService().addGlobalStorageProvider(router);
+                    mountedRouter[0] = router;
+                    mounted[0] = fixture.providerGrid().getStorageService().getInventory();
+                } catch (ReflectiveOperationException failure) {
+                    throw new IllegalStateException(failure);
+                }
+                var cell = fixture.takeProviderCell();
+                for (int retry = 0; retry < 12; retry++) {
+                    helper.assertValueEqual(mounted[0].insert(key, 1, Actionable.MODULATE, IActionSource.empty()), 0L,
+                            "The machine retains the rejected single item");
+                    helper.assertValueEqual(ledger.held(executing, consumer, key), 0L,
+                            "Rejected attempts are not distinct accepted arrivals");
+                }
+                fixture.restoreProviderCell(cell);
+                helper.assertValueEqual(mounted[0].insert(key, 1, Actionable.SIMULATE, IActionSource.empty()), 1L,
+                        "Simulation sees available native storage");
+                helper.assertValueEqual(ledger.held(executing, consumer, key), 0L, "Simulation has no ledger effects");
+                helper.assertValueEqual(mounted[0].insert(key, 1, Actionable.MODULATE, IActionSource.empty()), 1L,
+                        "One actual accepted item leaves the machine");
+                helper.assertValueEqual(ledger.held(executing, consumer, key), 1L, "Exactly one accepted arrival is held");
+                helper.assertValueEqual(fixture.held(fixture.providerChest(), key), 1L, "The item really reached local storage");
+                space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectionrejectedarrival", 30,
+                        java.util.Map.of("rejectedRetries", "12", "heldAfterRetries", "0", "heldAfterAcceptance", "1"));
+                fixture.providerGrid().getStorageService().removeGlobalStorageProvider(mountedRouter[0]);
+                fixture.close();
+            });
         });
     }
 
@@ -265,8 +267,10 @@ public final class ProjectionReviewGameTests {
                 invoke(service, "watchJobs", new Class<?>[] {CraftingReturnLedger.class,
                         space.controlnet.ae2federation.identity.NetworkId.class, running.getClass()},
                         ledger, fixture.consumerNetwork(), running);
-                helper.assertTrue(ledger.hasUnknownJobs(fixture.consumerNetwork()), "A second CPU observation in the same tick must persist a newly started independent job");
-                helper.assertTrue(ledger.jobs(fixture.consumerNetwork()).isEmpty(), "No native CPU subclass supplied the lifecycle");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(ledger.hasUnknownJobs(fixture.consumerNetwork()), "A second CPU observation in the same tick must persist a newly started independent job");
+                    helper.assertTrue(ledger.jobs(fixture.consumerNetwork()).isEmpty(), "No native CPU subclass supplied the lifecycle");
+                });
                 // This view disappears while the real consumer Grid remains; no CPU job is observable on later sweeps.
                 cpu.cancelJob();
                 sweeps[0] = service.ledgerSweeps();
@@ -329,10 +333,12 @@ public final class ProjectionReviewGameTests {
             service.reconcileAll();
             helper.assertValueEqual(fixture.projections(2, 0), 1, "Ring never reprojects its own globals through consumer projections");
             helper.assertValueEqual(fixture.projections(0, 2), 65, "Ring still contains exactly the 65 real source providers");
-            for (var provider : providers) source.removeGlobalCraftingProvider(provider);
-            service.reconcileAll();
-            helper.assertFalse(fixture.canCraft(0, emerald) || fixture.canCraft(1, emerald),
-                    "Native global withdrawal reaches both consumers even with the ring");
+            GameTestChecks.once(helper, () -> {
+                for (var provider : providers) source.removeGlobalCraftingProvider(provider);
+                service.reconcileAll();
+                helper.assertFalse(fixture.canCraft(0, emerald) || fixture.canCraft(1, emerald),
+                        "Native global withdrawal reaches both consumers even with the ring");
+            });
             space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectiondiscoverycost", 8,
                     java.util.Map.of("providers", "64", "sourceDiscoveries", "2", "relationships", "3",
                             "discoveryNanos", Long.toString(counts.discoveryNanos())));
@@ -346,46 +352,48 @@ public final class ProjectionReviewGameTests {
         var fixture = new PatternProjectionFixture(helper);
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for native storage");
-            var key = PatternProjectionFixture.stone();
-            var action = IActionSource.empty();
-            for (int order = 0; order < 2; order++) {
-                for (int preferencePriority : new int[] {9, 10, 11}) {
-                    var preferred = new space.controlnet.ae2federation.test.storage.SourceIndexFixtures.CountingStorage("preferred", 2);
-                    var other = new space.controlnet.ae2federation.test.storage.SourceIndexFixtures.CountingStorage("other", 4);
-                    var filtered = new appeng.me.storage.MEInventoryHandler(preferred);
-                    filtered.setPartitionList(new appeng.util.prioritylist.IPartitionList() {
-                        public boolean isListed(appeng.api.stacks.AEKey what) { return key.equals(what); }
-                        public boolean isEmpty() { return false; }
-                        public Iterable<appeng.api.stacks.AEKey> getItems() { return List.of(key); }
-                    });
-                    var first = order == 0 ? fixture.mountOnProvider(filtered, preferencePriority) : fixture.mountOnProvider(other, 10);
-                    var second = order == 0 ? fixture.mountOnProvider(other, 10) : fixture.mountOnProvider(filtered, preferencePriority);
-                    helper.assertValueEqual(fixture.providerGrid().getStorageService().getInventory().insert(key, 3,
-                            Actionable.MODULATE, action), 3L, "Native reference accepts the residual");
-                    long expectedPreferred = preferred.amount(key);
-                    long expectedOther = other.amount(key);
-                    preferred.extract(key, 4, Actionable.MODULATE, action);
-                    other.extract(key, 4, Actionable.MODULATE, action);
-                    var source = space.controlnet.ae2federation.test.crafting.FaultStorage.extractOnly();
-                    source.put(key, 4);
-                    var removeSource = fixture.mountOnProvider(source, -100);
-                    var target = new space.controlnet.ae2federation.test.crafting.FaultStorage(4, 1);
-                    var ledger = new CraftingReturnLedger();
-                    helper.assertValueEqual(space.controlnet.ae2federation.crafting.projection.HeldReturnTransfer.handBack(
-                            ledger, fixture.providerNetwork(), fixture.providerGrid(), fixture.consumerNetwork(), key, 4, target),
-                            1L, "Real target accepts only one of four simulated units");
-                    helper.assertValueEqual(preferred.amount(key), expectedPreferred, "Residual uses native preferred/priority order");
-                    helper.assertValueEqual(other.amount(key), expectedOther, "Residual uses native non-preferred/mount order");
-                    helper.assertValueEqual(preferred.amount(key) + other.amount(key) + target.held(key) + source.held(key),
-                            4L, "Actual target plus all sources conserve four items");
-                    first.run();
-                    second.run();
-                    removeSource.run();
+            GameTestChecks.once(helper, () -> {
+                var key = PatternProjectionFixture.stone();
+                var action = IActionSource.empty();
+                for (int order = 0; order < 2; order++) {
+                    for (int preferencePriority : new int[] {9, 10, 11}) {
+                        var preferred = new space.controlnet.ae2federation.test.storage.SourceIndexFixtures.CountingStorage("preferred", 2);
+                        var other = new space.controlnet.ae2federation.test.storage.SourceIndexFixtures.CountingStorage("other", 4);
+                        var filtered = new appeng.me.storage.MEInventoryHandler(preferred);
+                        filtered.setPartitionList(new appeng.util.prioritylist.IPartitionList() {
+                            public boolean isListed(appeng.api.stacks.AEKey what) { return key.equals(what); }
+                            public boolean isEmpty() { return false; }
+                            public Iterable<appeng.api.stacks.AEKey> getItems() { return List.of(key); }
+                        });
+                        var first = order == 0 ? fixture.mountOnProvider(filtered, preferencePriority) : fixture.mountOnProvider(other, 10);
+                        var second = order == 0 ? fixture.mountOnProvider(other, 10) : fixture.mountOnProvider(filtered, preferencePriority);
+                        helper.assertValueEqual(fixture.providerGrid().getStorageService().getInventory().insert(key, 3,
+                                Actionable.MODULATE, action), 3L, "Native reference accepts the residual");
+                        long expectedPreferred = preferred.amount(key);
+                        long expectedOther = other.amount(key);
+                        preferred.extract(key, 4, Actionable.MODULATE, action);
+                        other.extract(key, 4, Actionable.MODULATE, action);
+                        var source = space.controlnet.ae2federation.test.crafting.FaultStorage.extractOnly();
+                        source.put(key, 4);
+                        var removeSource = fixture.mountOnProvider(source, -100);
+                        var target = new space.controlnet.ae2federation.test.crafting.FaultStorage(4, 1);
+                        var ledger = new CraftingReturnLedger();
+                        helper.assertValueEqual(space.controlnet.ae2federation.crafting.projection.HeldReturnTransfer.handBack(
+                                ledger, fixture.providerNetwork(), fixture.providerGrid(), fixture.consumerNetwork(), key, 4, target),
+                                1L, "Real target accepts only one of four simulated units");
+                        helper.assertValueEqual(preferred.amount(key), expectedPreferred, "Residual uses native preferred/priority order");
+                        helper.assertValueEqual(other.amount(key), expectedOther, "Residual uses native non-preferred/mount order");
+                        helper.assertValueEqual(preferred.amount(key) + other.amount(key) + target.held(key) + source.held(key),
+                                4L, "Actual target plus all sources conserve four items");
+                        first.run();
+                        second.run();
+                        removeSource.run();
+                    }
                 }
-            }
-            space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectionnativefallbackorder", 30,
-                    java.util.Map.of("orders", "2", "priorityCombinations", "3", "reference", "native NetworkStorage"));
-            fixture.close();
+                space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectionnativefallbackorder", 30,
+                        java.util.Map.of("orders", "2", "priorityCombinations", "3", "reference", "native NetworkStorage"));
+                fixture.close();
+            });
         });
     }
 
@@ -395,40 +403,42 @@ public final class ProjectionReviewGameTests {
         var fixture = new PatternProjectionFixture(helper);
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for a native recovery destination");
-            var level = helper.getLevel();
-            var ledger = CraftingReturnLedger.get(level);
-            var orphan = space.controlnet.ae2federation.identity.NetworkId.create();
-            var key = PatternProjectionFixture.stone();
-            fixture.putInProvider(key, 3);
-            long removed = fixture.providerChest().extract(key, 3, Actionable.MODULATE, IActionSource.empty());
-            invoke(ledger, "addTransit", new Class<?>[] {space.controlnet.ae2federation.identity.NetworkId.class,
-                    appeng.api.stacks.AEKey.class, long.class}, orphan, key, removed);
-            var saved = ledger.save(new net.minecraft.nbt.CompoundTag(), level.registryAccess());
-            ledger = CraftingReturnLedger.load(saved, level.registryAccess());
-            level.getServer().overworld().getDataStorage().set(CraftingReturnLedger.DATA_NAME, ledger);
-            net.minecraft.core.BlockPos destination = null;
-            for (var node : fixture.providerGrid().getNodes()) {
-                if (node.getOwner() instanceof appeng.blockentity.storage.MEChestBlockEntity chest) {
-                    destination = chest.getBlockPos();
-                    break;
+            GameTestChecks.once(helper, () -> {
+                var level = helper.getLevel();
+                var ledger = CraftingReturnLedger.get(level);
+                var orphan = space.controlnet.ae2federation.identity.NetworkId.create();
+                var key = PatternProjectionFixture.stone();
+                fixture.putInProvider(key, 3);
+                long removed = fixture.providerChest().extract(key, 3, Actionable.MODULATE, IActionSource.empty());
+                invoke(ledger, "addTransit", new Class<?>[] {space.controlnet.ae2federation.identity.NetworkId.class,
+                        appeng.api.stacks.AEKey.class, long.class}, orphan, key, removed);
+                var saved = ledger.save(new net.minecraft.nbt.CompoundTag(), level.registryAccess());
+                ledger = CraftingReturnLedger.load(saved, level.registryAccess());
+                level.getServer().overworld().getDataStorage().set(CraftingReturnLedger.DATA_NAME, ledger);
+                net.minecraft.core.BlockPos destination = null;
+                for (var node : fixture.providerGrid().getNodes()) {
+                    if (node.getOwner() instanceof appeng.blockentity.storage.MEChestBlockEntity chest) {
+                        destination = chest.getBlockPos();
+                        break;
+                    }
                 }
-            }
-            helper.assertTrue(destination != null, "A real ME chest is the destination");
-            var command = "ae2federation returns recover-transit " + orphan.value() + " "
-                    + destination.getX() + " " + destination.getY() + " " + destination.getZ();
-            var source = level.getServer().createCommandSourceStack().withLevel(level);
-            var cell = fixture.takeProviderCell();
-            level.getServer().getCommands().performPrefixedCommand(source, command);
-            helper.assertValueEqual(ledger.transit(orphan, key), 3L, "A refusing destination leaves all saved transit");
-            fixture.restoreProviderCell(cell);
-            level.getServer().getCommands().performPrefixedCommand(source, command);
-            helper.assertValueEqual(ledger.transit(orphan, key), 0L, "Accepted real stock leaves the orphan ledger");
-            helper.assertValueEqual(fixture.held(fixture.providerChest(), key), 3L, "All three physical items are recovered");
-            level.getServer().getCommands().performPrefixedCommand(source, command);
-            helper.assertValueEqual(fixture.held(fixture.providerChest(), key), 3L, "Repeated recovery cannot duplicate stock");
-            space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectionorphantransitrecovery", 5,
-                    java.util.Map.of("orphanIdentity", "never assigned to a Grid", "recovered", "3", "repeated", "no duplicate"));
-            fixture.close();
+                helper.assertTrue(destination != null, "A real ME chest is the destination");
+                var command = "ae2federation returns recover-transit " + orphan.value() + " "
+                        + destination.getX() + " " + destination.getY() + " " + destination.getZ();
+                var source = level.getServer().createCommandSourceStack().withLevel(level);
+                var cell = fixture.takeProviderCell();
+                level.getServer().getCommands().performPrefixedCommand(source, command);
+                helper.assertValueEqual(ledger.transit(orphan, key), 3L, "A refusing destination leaves all saved transit");
+                fixture.restoreProviderCell(cell);
+                level.getServer().getCommands().performPrefixedCommand(source, command);
+                helper.assertValueEqual(ledger.transit(orphan, key), 0L, "Accepted real stock leaves the orphan ledger");
+                helper.assertValueEqual(fixture.held(fixture.providerChest(), key), 3L, "All three physical items are recovered");
+                level.getServer().getCommands().performPrefixedCommand(source, command);
+                helper.assertValueEqual(fixture.held(fixture.providerChest(), key), 3L, "Repeated recovery cannot duplicate stock");
+                space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectionorphantransitrecovery", 5,
+                        java.util.Map.of("orphanIdentity", "never assigned to a Grid", "recovered", "3", "repeated", "no duplicate"));
+                fixture.close();
+            });
         });
     }
 
@@ -466,51 +476,53 @@ public final class ProjectionReviewGameTests {
         var fixture = new space.controlnet.ae2federation.test.crafting.ProjectionChainFixture(helper);
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for three native Grids");
-            var level = helper.getLevel();
-            var service = space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.get(level);
-            service.observeFederationDomainMembers(List.of(fixture.grid(0), fixture.grid(1), fixture.grid(2)));
-            var keys = net.minecraft.core.registries.BuiltInRegistries.ITEM.stream().filter(item -> item != Items.AIR)
-                    .limit(32).map(AEItemKey::of).toList();
-            var stock = new space.controlnet.ae2federation.test.storage.SourceIndexFixtures.CountingStorage("held backlog", 128)
-                    .preload(keys, 2);
-            appeng.api.storage.IStorageProvider mount = inventories -> inventories.mount(stock, -10);
-            fixture.grid(2).getStorageService().addGlobalStorageProvider(mount);
-            var ledger = CraftingReturnLedger.get(level);
-            var networkType = space.controlnet.ae2federation.identity.NetworkId.class;
-            for (int consumer = 0; consumer < 2; consumer++) {
-                var id = fixture.network(consumer);
-                var job = java.util.UUID.randomUUID();
-                invoke(ledger, "watch", new Class<?>[] {networkType, java.util.UUID.class, String.class,
-                        net.minecraft.core.BlockPos.class}, id, job, level.dimension().location().toString(),
-                        helper.absolutePos(net.minecraft.core.BlockPos.ZERO));
-                invoke(ledger, "end", new Class<?>[] {networkType, java.util.UUID.class, CraftingReturnLedger.JobEnd.class},
-                        id, job, CraftingReturnLedger.JobEnd.DONE);
-                for (var key : keys) {
-                    var signature = new Class<?>[] {networkType, networkType, appeng.api.stacks.AEKey.class, long.class};
-                    invoke(ledger, "add", signature, fixture.network(2), id, key, 1L);
-                    invoke(ledger, "hold", signature, fixture.network(2), id, key, 1L);
+            GameTestChecks.once(helper, () -> {
+                var level = helper.getLevel();
+                var service = space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.get(level);
+                service.observeFederationDomainMembers(List.of(fixture.grid(0), fixture.grid(1), fixture.grid(2)));
+                var keys = net.minecraft.core.registries.BuiltInRegistries.ITEM.stream().filter(item -> item != Items.AIR)
+                        .limit(32).map(AEItemKey::of).toList();
+                var stock = new space.controlnet.ae2federation.test.storage.SourceIndexFixtures.CountingStorage("held backlog", 128)
+                        .preload(keys, 2);
+                appeng.api.storage.IStorageProvider mount = inventories -> inventories.mount(stock, -10);
+                fixture.grid(2).getStorageService().addGlobalStorageProvider(mount);
+                var ledger = CraftingReturnLedger.get(level);
+                var networkType = space.controlnet.ae2federation.identity.NetworkId.class;
+                for (int consumer = 0; consumer < 2; consumer++) {
+                    var id = fixture.network(consumer);
+                    var job = java.util.UUID.randomUUID();
+                    invoke(ledger, "watch", new Class<?>[] {networkType, java.util.UUID.class, String.class,
+                            net.minecraft.core.BlockPos.class}, id, job, level.dimension().location().toString(),
+                            helper.absolutePos(net.minecraft.core.BlockPos.ZERO));
+                    invoke(ledger, "end", new Class<?>[] {networkType, java.util.UUID.class, CraftingReturnLedger.JobEnd.class},
+                            id, job, CraftingReturnLedger.JobEnd.DONE);
+                    for (var key : keys) {
+                        var signature = new Class<?>[] {networkType, networkType, appeng.api.stacks.AEKey.class, long.class};
+                        invoke(ledger, "add", signature, fixture.network(2), id, key, 1L);
+                        invoke(ledger, "hold", signature, fixture.network(2), id, key, 1L);
+                    }
                 }
-            }
-            space.controlnet.ae2federation.crafting.projection.ProjectionDiagnostics.reset();
-            long started = System.nanoTime();
-            invoke(service, "sweepLedger", new Class<?>[0]);
-            long nanos = System.nanoTime() - started;
-            var counts = space.controlnet.ae2federation.crafting.projection.ProjectionDiagnostics.snapshot();
-            helper.assertValueEqual(counts.mountViews(), 1L, "64 debts share one valid native mount view");
-            helper.assertValueEqual(stock.total(), 0L, "All 64 real stocked items reach consumers");
-            for (int consumer = 0; consumer < 2; consumer++) {
-                for (var key : keys) {
-                    helper.assertValueEqual(fixture.grid(consumer).getStorageService().getInventory().getAvailableStacks().get(key),
-                            1L, "Each consumer receives one of each actual key");
-                    helper.assertValueEqual(ledger.owed(fixture.network(2), fixture.network(consumer), key), 0L,
-                            "Only actual delivery clears each debt");
+                space.controlnet.ae2federation.crafting.projection.ProjectionDiagnostics.reset();
+                long started = System.nanoTime();
+                invoke(service, "sweepLedger", new Class<?>[0]);
+                long nanos = System.nanoTime() - started;
+                var counts = space.controlnet.ae2federation.crafting.projection.ProjectionDiagnostics.snapshot();
+                helper.assertValueEqual(counts.mountViews(), 1L, "64 debts share one valid native mount view");
+                helper.assertValueEqual(stock.total(), 0L, "All 64 real stocked items reach consumers");
+                for (int consumer = 0; consumer < 2; consumer++) {
+                    for (var key : keys) {
+                        helper.assertValueEqual(fixture.grid(consumer).getStorageService().getInventory().getAvailableStacks().get(key),
+                                1L, "Each consumer receives one of each actual key");
+                        helper.assertValueEqual(ledger.owed(fixture.network(2), fixture.network(consumer), key), 0L,
+                                "Only actual delivery clears each debt");
+                    }
                 }
-            }
-            fixture.grid(2).getStorageService().removeGlobalStorageProvider(mount);
-            org.slf4j.LoggerFactory.getLogger(ProjectionReviewGameTests.class).info("AE2F_HELD_COST debts=64 keys=32 consumers=2 sweepNanos={} {}", nanos, counts);
-            space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectionheldsweepcost", 130,
-                    java.util.Map.of("debts", "64", "keys", "32", "consumers", "2", "mountViews", "1", "sweepNanos", Long.toString(nanos)));
-            fixture.close();
+                fixture.grid(2).getStorageService().removeGlobalStorageProvider(mount);
+                org.slf4j.LoggerFactory.getLogger(ProjectionReviewGameTests.class).info("AE2F_HELD_COST debts=64 keys=32 consumers=2 sweepNanos={} {}", nanos, counts);
+                space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectionheldsweepcost", 130,
+                        java.util.Map.of("debts", "64", "keys", "32", "consumers", "2", "mountViews", "1", "sweepNanos", Long.toString(nanos)));
+                fixture.close();
+            });
         });
     }
 
@@ -538,28 +550,30 @@ public final class ProjectionReviewGameTests {
                 unmount[0] = fixture.mountOnProvider(read, 10);
                 unmount[1] = fixture.mountOnProvider(write, 20);
                 var before = ownView(fixture.providerGrid());
-                helper.assertValueEqual(before.extract(key, 8, Actionable.SIMULATE, IActionSource.empty()), 2L,
-                        "Native write-only wrapper cannot supply held returns");
-                var ledger = new CraftingReturnLedger();
-                MEStorage refusingTarget = new MEStorage() {
-                    public long insert(appeng.api.stacks.AEKey what, long amount, Actionable mode, IActionSource source) {
-                        if (mode == Actionable.SIMULATE) return amount;
-                        unmount[0].run();
-                        return 0;
-                    }
-                    public net.minecraft.network.chat.Component getDescription() {
-                        return net.minecraft.network.chat.Component.literal("Reentrant test target");
-                    }
-                };
-                helper.assertValueEqual(space.controlnet.ae2federation.crafting.projection.HeldReturnTransfer.handBack(ledger,
-                        fixture.providerNetwork(), fixture.providerGrid(), fixture.consumerNetwork(), key, 2, refusingTarget),
-                        0L, "Refusing target accepts no actual items");
-                helper.assertValueEqual(readStock.amount(key), 0L, "Exactly two accessible items were extracted");
-                helper.assertValueEqual(writeStock.amount(key), 4L, "Residual returns through the current write-only mount");
-                helper.assertValueEqual(before.insert(key, 1, Actionable.MODULATE, IActionSource.empty()), 0L,
-                        "The old view refuses operations after a reentrant unmount");
-                helper.assertValueEqual(ledger.transit(fixture.providerNetwork(), key), 0L,
-                        "Successful native fallback leaves no phantom transit");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertValueEqual(before.extract(key, 8, Actionable.SIMULATE, IActionSource.empty()), 2L,
+                            "Native write-only wrapper cannot supply held returns");
+                    var ledger = new CraftingReturnLedger();
+                    MEStorage refusingTarget = new MEStorage() {
+                        public long insert(appeng.api.stacks.AEKey what, long amount, Actionable mode, IActionSource source) {
+                            if (mode == Actionable.SIMULATE) return amount;
+                            unmount[0].run();
+                            return 0;
+                        }
+                        public net.minecraft.network.chat.Component getDescription() {
+                            return net.minecraft.network.chat.Component.literal("Reentrant test target");
+                        }
+                    };
+                    helper.assertValueEqual(space.controlnet.ae2federation.crafting.projection.HeldReturnTransfer.handBack(ledger,
+                            fixture.providerNetwork(), fixture.providerGrid(), fixture.consumerNetwork(), key, 2, refusingTarget),
+                            0L, "Refusing target accepts no actual items");
+                    helper.assertValueEqual(readStock.amount(key), 0L, "Exactly two accessible items were extracted");
+                    helper.assertValueEqual(writeStock.amount(key), 4L, "Residual returns through the current write-only mount");
+                    helper.assertValueEqual(before.insert(key, 1, Actionable.MODULATE, IActionSource.empty()), 0L,
+                            "The old view refuses operations after a reentrant unmount");
+                    helper.assertValueEqual(ledger.transit(fixture.providerNetwork(), key), 0L,
+                            "Successful native fallback leaves no phantom transit");
+                });
                 stage[0] = 1;
                 helper.fail("Waiting for native storage monitor refresh without invalidateCache");
             }

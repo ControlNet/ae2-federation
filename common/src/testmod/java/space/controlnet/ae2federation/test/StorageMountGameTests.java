@@ -58,47 +58,49 @@ public final class StorageMountGameTests {
             }
             var projection = StorageMountService.get(helper.getLevel()).projection(key);
             helper.assertTrue(projection != null, "Cross-Router relationship must mount one projection");
-            var provider = nativeSource(fixtures.providerGrid());
-            var terminalSource = new PlayerSource(helper.makeMockPlayer(GameType.CREATIVE));
-            helper.assertValueEqual(projection.insert(IRON, 9, Actionable.MODULATE, terminalSource), 9L,
-                    "Authorized insertion must preserve the native accepted amount");
-            helper.assertValueEqual(provider.getAvailableStacks().get(IRON), 9L,
-                    "Authorized projection must mutate the provider native source");
-            var consumerAggregate = fixtures.consumerGrid().getStorageService().getInventory();
-            helper.assertValueEqual(consumerAggregate.extract(IRON, 4, Actionable.MODULATE, terminalSource), 4L,
-                    "Consumer native Grid aggregate must access the mounted projection");
-            helper.assertValueEqual(provider.getAvailableStacks().get(IRON), 5L,
-                    "Consumer aggregate extraction must reach provider native storage");
-            var cleanupConsumerBefore = consumerAggregate.getAvailableStacks().get(IRON);
-            var cleanup = StorageLevelLifecycle.close(helper.getLevel());
-            var cleanupConsumerAfter = consumerAggregate.getAvailableStacks().get(IRON);
-            helper.assertValueEqual(cleanupConsumerBefore, 5L,
-                    "Mounted provider must be visible before level teardown");
-            helper.assertValueEqual(cleanupConsumerAfter, 0L,
-                    "Level teardown must remove the provider from the consumer native aggregate");
-            helper.assertValueEqual(provider.getAvailableStacks().get(IRON), 5L,
-                    "Level teardown must not mutate the provider native source");
-            helper.assertTrue(cleanup.servicePresentBefore() && cleanup.mountedProvidersBefore() == 1
-                            && cleanup.mountedProvidersRemoved() == 1 && cleanup.servicePersists(),
-                    "Level teardown must remove the exact mounted provider and keep the server's service");
-            helper.assertTrue(cleanup.dimensionNodesRemoved() > 0 && cleanup.dimensionNodesLeft() == 0,
-                    "Level teardown must take the level's nodes out of the server-wide Federation Domain registry");
-            PolicyEvidence.write("storagenativeaccess", 20, Map.ofEntries(
-                    Map.entry("mountedRelationships", "1"), Map.entry("insertAccepted", "9"),
-                    Map.entry("consumerExtracted", "4"), Map.entry("providerRemaining", "5"),
-                    Map.entry("nativeConsumerAggregate", "true"), Map.entry("nativeProviderSource", "true"),
-                    Map.entry("direction", "consumer-to-provider"), Map.entry("customInventory", "false"),
-                    Map.entry("twoRouterFederationDomain", "true"), Map.entry("nativeCaller", "player-source"),
-                    Map.entry("cleanupConsumerBefore", Long.toString(cleanupConsumerBefore)),
-                    Map.entry("cleanupConsumerAfter", Long.toString(cleanupConsumerAfter)),
-                    Map.entry("cleanupServicePresentBefore", Boolean.toString(cleanup.servicePresentBefore())),
-                    Map.entry("cleanupMountedProvidersBefore", Integer.toString(cleanup.mountedProvidersBefore())),
-                    Map.entry("cleanupMountedProvidersRemoved", Integer.toString(cleanup.mountedProvidersRemoved())),
-                    Map.entry("cleanupServicePersists", Boolean.toString(cleanup.servicePersists())),
-                    Map.entry("cleanupDimensionNodesRemoved", Boolean.toString(cleanup.dimensionNodesRemoved() > 0)),
-                    Map.entry("cleanupDimensionNodesLeft", Integer.toString(cleanup.dimensionNodesLeft())),
-                    Map.entry("cleanupNativeProviderRemoved", Boolean.toString(cleanupConsumerAfter == 0
-                            && provider.getAvailableStacks().get(IRON) == 5))));
+            GameTestChecks.once(helper, () -> {
+                var provider = nativeSource(fixtures.providerGrid());
+                var terminalSource = new PlayerSource(helper.makeMockPlayer(GameType.CREATIVE));
+                helper.assertValueEqual(projection.insert(IRON, 9, Actionable.MODULATE, terminalSource), 9L,
+                        "Authorized insertion must preserve the native accepted amount");
+                helper.assertValueEqual(provider.getAvailableStacks().get(IRON), 9L,
+                        "Authorized projection must mutate the provider native source");
+                var consumerAggregate = fixtures.consumerGrid().getStorageService().getInventory();
+                helper.assertValueEqual(consumerAggregate.extract(IRON, 4, Actionable.MODULATE, terminalSource), 4L,
+                        "Consumer native Grid aggregate must access the mounted projection");
+                helper.assertValueEqual(provider.getAvailableStacks().get(IRON), 5L,
+                        "Consumer aggregate extraction must reach provider native storage");
+                var cleanupConsumerBefore = consumerAggregate.getAvailableStacks().get(IRON);
+                var cleanup = StorageLevelLifecycle.close(helper.getLevel());
+                var cleanupConsumerAfter = consumerAggregate.getAvailableStacks().get(IRON);
+                helper.assertValueEqual(cleanupConsumerBefore, 5L,
+                        "Mounted provider must be visible before level teardown");
+                helper.assertValueEqual(cleanupConsumerAfter, 0L,
+                        "Level teardown must remove the provider from the consumer native aggregate");
+                helper.assertValueEqual(provider.getAvailableStacks().get(IRON), 5L,
+                        "Level teardown must not mutate the provider native source");
+                helper.assertTrue(cleanup.servicePresentBefore() && cleanup.mountedProvidersBefore() == 1
+                                && cleanup.mountedProvidersRemoved() == 1 && cleanup.servicePersists(),
+                        "Level teardown must remove the exact mounted provider and keep the server's service");
+                helper.assertTrue(cleanup.dimensionNodesRemoved() > 0 && cleanup.dimensionNodesLeft() == 0,
+                        "Level teardown must take the level's nodes out of the server-wide Federation Domain registry");
+                PolicyEvidence.write("storagenativeaccess", 20, Map.ofEntries(
+                        Map.entry("mountedRelationships", "1"), Map.entry("insertAccepted", "9"),
+                        Map.entry("consumerExtracted", "4"), Map.entry("providerRemaining", "5"),
+                        Map.entry("nativeConsumerAggregate", "true"), Map.entry("nativeProviderSource", "true"),
+                        Map.entry("direction", "consumer-to-provider"), Map.entry("customInventory", "false"),
+                        Map.entry("twoRouterFederationDomain", "true"), Map.entry("nativeCaller", "player-source"),
+                        Map.entry("cleanupConsumerBefore", Long.toString(cleanupConsumerBefore)),
+                        Map.entry("cleanupConsumerAfter", Long.toString(cleanupConsumerAfter)),
+                        Map.entry("cleanupServicePresentBefore", Boolean.toString(cleanup.servicePresentBefore())),
+                        Map.entry("cleanupMountedProvidersBefore", Integer.toString(cleanup.mountedProvidersBefore())),
+                        Map.entry("cleanupMountedProvidersRemoved", Integer.toString(cleanup.mountedProvidersRemoved())),
+                        Map.entry("cleanupServicePersists", Boolean.toString(cleanup.servicePersists())),
+                        Map.entry("cleanupDimensionNodesRemoved", Boolean.toString(cleanup.dimensionNodesRemoved() > 0)),
+                        Map.entry("cleanupDimensionNodesLeft", Integer.toString(cleanup.dimensionNodesLeft())),
+                        Map.entry("cleanupNativeProviderRemoved", Boolean.toString(cleanupConsumerAfter == 0
+                                && provider.getAvailableStacks().get(IRON) == 5))));
+            });
             fixtures.close();
         });
     }
@@ -243,7 +245,7 @@ public final class StorageMountGameTests {
             var mountService = StorageMountService.get(helper.getLevel());
             var projection = mountService.projection(key);
             helper.assertTrue(projection != null, "Active Storage Policy must mount one authorized projection");
-            assertion.verify(fixtures, key, projection);
+            GameTestChecks.once(helper, () -> assertion.verify(fixtures, key, projection));
             fixtures.close();
         });
     }

@@ -19,7 +19,10 @@ start is only ~15-20 s.
 
 ## Pitfall: scenes build far outside their template
 
-`harness_native_smoke` is 3x3x3, but scenes put blocks at x=10-11 (storage bus target) and multiblocks well beyond.
+`harness_native_smoke` was 3x3x3, but scenes put blocks at x=10-11 (storage bus target) and multiblocks well beyond.
+Since 2026-10-30 it is 13x16x12 (written by `writeEmptyStructure` in `gradle/federation-qa.gradle`), which covers what
+all but four tests build, so GameTest forces, waits for and clears those chunks. Its barrier roof sits at y=16, above
+the player-placement tests. The cell below stays 48 blocks.
 Vanilla's `StructureGridSpawner` leaves 5 blocks between templates (pitch 8 for this template). Serial runs hid this:
 a later test only overwrote a finished test's leftovers. In parallel, 4 of 69 failed (storageBusTank, modStorageBus,
 ecoDistrictOrdering, storageSystemDismantled; the ECO pair were 8 blocks apart). `CellGridSpawner` fixes it: each

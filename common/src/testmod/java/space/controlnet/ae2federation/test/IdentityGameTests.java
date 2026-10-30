@@ -580,9 +580,11 @@ public final class IdentityGameTests {
             if (phase[0] == 1) {
                 helper.assertValueEqual(service(node).settlement().status(), IdentityStatus.AMBIGUOUS_MERGE,
                         "Two differently named pieces wait for the player");
-                helper.assertTrue(!service(node).keep(new space.controlnet.ae2federation.identity.NetworkId(
-                        java.util.UUID.randomUUID())), "An id the Grid does not hold is refused");
-                helper.assertTrue(service(node).keep(ids[0]), "The smaller piece's id can be kept");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(!service(node).keep(new space.controlnet.ae2federation.identity.NetworkId(
+                            java.util.UUID.randomUUID())), "An id the Grid does not hold is refused");
+                    helper.assertTrue(service(node).keep(ids[0]), "The smaller piece's id can be kept");
+                });
                 phase[0] = 2;
             }
             helper.assertValueEqual(service(node).settlement().networkId(), java.util.Optional.of(ids[0]),

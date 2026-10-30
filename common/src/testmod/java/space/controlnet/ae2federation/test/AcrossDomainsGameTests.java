@@ -57,8 +57,10 @@ public final class AcrossDomainsGameTests {
                 helper.assertValueEqual(fixture.visible(A, IRON), 5L, "Waiting for C's iron on A through re-export");
                 helper.assertValueEqual(fixture.room(A, GOLD), roomWithoutC[0] + fixture.ownRoom(C, GOLD),
                         "A can store into C's storage too");
-                helper.assertValueEqual(fixture.extract(A, IRON, 2), 2L, "A takes C's iron out");
-                helper.assertValueEqual(fixture.amount(C, IRON), 3L, "The iron A took came out of C's chest");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertValueEqual(fixture.extract(A, IRON, 2), 2L, "A takes C's iron out");
+                    helper.assertValueEqual(fixture.amount(C, IRON), 3L, "The iron A took came out of C's chest");
+                });
                 fixture.storage(B, C, RuleMode.ENABLED);
                 stage[0] = 3;
             }

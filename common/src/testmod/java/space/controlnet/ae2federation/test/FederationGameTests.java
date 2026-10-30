@@ -45,9 +45,11 @@ public final class FederationGameTests {
             var storage = node.getGrid().getStorageService().getInventory();
             var key = AEItemKey.of(Items.IRON_INGOT);
             var inserted = storage.insert(key, 64, Actionable.MODULATE, IActionSource.empty());
-            helper.assertValueEqual(inserted, 64L, "AE2 network must accept the fixture insertion");
-            helper.assertValueEqual(storage.extract(key, 64, Actionable.MODULATE, IActionSource.empty()), 64L,
-                    "AE2 network must return the inserted fixture items");
+            GameTestChecks.once(helper, () -> {
+                helper.assertValueEqual(inserted, 64L, "AE2 network must accept the fixture insertion");
+                helper.assertValueEqual(storage.extract(key, 64, Actionable.MODULATE, IActionSource.empty()), 64L,
+                        "AE2 network must return the inserted fixture items");
+            });
             writeNativeEvidence("verify", "harnessnativesmoke", "ae2federation_test:harness_native_smoke",
                     6, 2, 64, 64, 0);
             LOGGER.info("AE2F_GT_RESULT id=ae2federation_test:harness_native_smoke assertions=6 operations=2");

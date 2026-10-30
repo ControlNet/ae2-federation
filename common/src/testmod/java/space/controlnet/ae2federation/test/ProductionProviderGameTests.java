@@ -59,14 +59,16 @@ public final class ProductionProviderGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    for (var target : Target.values()) {
-                        helper.assertTrue(scene.setAccess(target, true), "Endpoint must connect to the domain");
-                    }
-                    scene.installPattern(0);
-                    for (var target : Target.values()) {
-                        var status = scene.map(0, target);
-                        helper.assertTrue(status.startsWith("accepted-"), "Mapping " + target + ": " + status);
-                    }
+                    GameTestChecks.once(helper, () -> {
+                        for (var target : Target.values()) {
+                            helper.assertTrue(scene.setAccess(target, true), "Endpoint must connect to the domain");
+                        }
+                        scene.installPattern(0);
+                        for (var target : Target.values()) {
+                            var status = scene.map(0, target);
+                            helper.assertTrue(status.startsWith("accepted-"), "Mapping " + target + ": " + status);
+                        }
+                    });
                     scene.provider().getConfigManager().putSetting(Settings.BLOCKING_MODE, YesNo.YES);
                     for (var target : Target.values()) {
                         scene.stall(target, true);
@@ -174,11 +176,13 @@ public final class ProductionProviderGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
-                    scene.installPattern(0);
-                    var status = scene.map(0, Target.A);
-                    helper.assertTrue(status.startsWith("accepted-"), "Mapping A: " + status);
-                    helper.assertTrue(scene.setAccess(Target.A, false), "Endpoint must disconnect from the domain");
+                    GameTestChecks.once(helper, () -> {
+                        helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
+                        scene.installPattern(0);
+                        var status = scene.map(0, Target.A);
+                        helper.assertTrue(status.startsWith("accepted-"), "Mapping A: " + status);
+                        helper.assertTrue(scene.setAccess(Target.A, false), "Endpoint must disconnect from the domain");
+                    });
                     scene.insertSourceInput(1);
                     scene.beginCraft(1);
                     phase[0] = 1;
@@ -201,7 +205,9 @@ public final class ProductionProviderGameTests {
                     facts.put("endpointDisconnectedState", laneState(scene).name());
                     // Replace the Federation Cable with a real local inventory on the Provider's Federation face.
                     helper.setBlock(ProductionProviderScene.CABLE_NEAR, Blocks.CHEST);
-                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must reconnect to the domain");
+                    GameTestChecks.once(helper, () -> {
+                        helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must reconnect to the domain");
+                    });
                     waited[0] = 0;
                     phase[0] = 3;
                     helper.fail("Disconnected the Domain and placed a local chest");
@@ -254,10 +260,12 @@ public final class ProductionProviderGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
-                    scene.installPattern(0);
-                    var status = scene.map(0, Target.A);
-                    helper.assertTrue(status.startsWith("accepted-"), "Mapping A: " + status);
+                    GameTestChecks.once(helper, () -> {
+                        helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
+                        scene.installPattern(0);
+                        var status = scene.map(0, Target.A);
+                        helper.assertTrue(status.startsWith("accepted-"), "Mapping A: " + status);
+                    });
                     scene.placeSecondProvider();
                     CableCapacityLimit.set(true, 1);
                     phase[0] = 1;
@@ -319,10 +327,12 @@ public final class ProductionProviderGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
-                    scene.installPattern(0);
-                    var status = scene.map(0, Target.A);
-                    helper.assertTrue(status.startsWith("accepted-"), "Mapping A: " + status);
+                    GameTestChecks.once(helper, () -> {
+                        helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
+                        scene.installPattern(0);
+                        var status = scene.map(0, Target.A);
+                        helper.assertTrue(status.startsWith("accepted-"), "Mapping A: " + status);
+                    });
                     scene.provider().getConfigManager().putSetting(Settings.LOCK_CRAFTING_MODE,
                             LockCraftingMode.LOCK_UNTIL_RESULT);
                     scene.stall(Target.A, true);
@@ -349,8 +359,10 @@ public final class ProductionProviderGameTests {
                     provider.onChunkUnloaded();
                     var tag = provider.saveWithFullMetadata(helper.getLevel().registryAccess());
                     var laneTag = tag.getList("laneBindings", net.minecraft.nbt.Tag.TAG_COMPOUND).getCompound(0);
-                    helper.assertValueEqual(laneTag.getString("dimension"),
-                            helper.getLevel().dimension().location().toString(), "A bound Lane saves its Endpoint's dimension");
+                    GameTestChecks.once(helper, () -> {
+                        helper.assertValueEqual(laneTag.getString("dimension"),
+                                helper.getLevel().dimension().location().toString(), "A bound Lane saves its Endpoint's dimension");
+                    });
                     // Load it as a save from before Endpoints could be in another dimension: the Lane's Endpoint is then
                     // in the Provider's own level, and everything below must hold all the same.
                     laneTag.remove("dimension");
@@ -452,14 +464,16 @@ public final class ProductionProviderGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
-                    AddonPatternHookEmulation.reject(rejected);
-                    scene.installPattern(0);
-                    scene.installPattern(1, rejected);
-                    for (int slot = 0; slot < 2; slot++) {
-                        var status = scene.map(slot, Target.A);
-                        helper.assertTrue(status.startsWith("accepted-"), "Mapping slot " + slot + ": " + status);
-                    }
+                    GameTestChecks.once(helper, () -> {
+                        helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
+                        AddonPatternHookEmulation.reject(rejected);
+                        scene.installPattern(0);
+                        scene.installPattern(1, rejected);
+                        for (int slot = 0; slot < 2; slot++) {
+                            var status = scene.map(slot, Target.A);
+                            helper.assertTrue(status.startsWith("accepted-"), "Mapping slot " + slot + ": " + status);
+                        }
+                    });
                     phase[0] = 1;
                     helper.fail("Mapped a kept and a dropped Pattern to one Endpoint");
                 }
@@ -499,8 +513,10 @@ public final class ProductionProviderGameTests {
                     AddonPatternHookEmulation.reset();
                     provider.lane(0).updatePatterns();
                     indexedAtOnce[0] = !crafting.getCraftingFor(rejected).isEmpty();
-                    var status = scene.map(0, Target.A);
-                    helper.assertTrue(status.startsWith("accepted-"), "Unmapping slot 0: " + status);
+                    GameTestChecks.once(helper, () -> {
+                        var status = scene.map(0, Target.A);
+                        helper.assertTrue(status.startsWith("accepted-"), "Unmapping slot 0: " + status);
+                    });
                     phase[0] = 3;
                     helper.fail("Re-ran the Lane's refresh as an addon does and unmapped the kept Pattern");
                 }
@@ -533,14 +549,16 @@ public final class ProductionProviderGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    for (var target : Target.values()) {
-                        helper.assertTrue(scene.setAccess(target, true), "Endpoint must connect to the domain");
-                    }
-                    scene.installPattern(0);
-                    for (var target : Target.values()) {
-                        var status = scene.map(0, target);
-                        helper.assertTrue(status.startsWith("accepted-"), "Mapping " + target + ": " + status);
-                    }
+                    GameTestChecks.once(helper, () -> {
+                        for (var target : Target.values()) {
+                            helper.assertTrue(scene.setAccess(target, true), "Endpoint must connect to the domain");
+                        }
+                        scene.installPattern(0);
+                        for (var target : Target.values()) {
+                            var status = scene.map(0, target);
+                            helper.assertTrue(status.startsWith("accepted-"), "Mapping " + target + ": " + status);
+                        }
+                    });
                     scene.placeSecondProvider();
                     phase[0] = 1;
                     helper.fail("Mapped one Pattern to three Endpoints and placed a second Provider");
@@ -560,40 +578,42 @@ public final class ProductionProviderGameTests {
                     var firstSave = first.saveWithoutMetadata(registries);
                     var emptySave = second.saveWithoutMetadata(registries);
 
-                    first.loadWithComponents(emptySave, registries);
-                    helper.assertValueEqual(first.laneCount(), 3, "A save with no Lanes keeps the running Lanes");
-                    for (int lane = 0; lane < 3; lane++) {
-                        helper.assertValueEqual(first.laneEndpoint(lane), bound.get(lane),
-                                "Lane " + lane + " keeps its Endpoint");
-                    }
-                    helper.assertValueEqual(first.providerIdentity(), firstIdentity,
-                            "A running Provider keeps its identity");
-                    for (var target : Target.values()) {
-                        helper.assertTrue(first.retained(scene.binding(target).endpointIdentity()),
-                                "Endpoint " + target + " left with no Pattern waits for release, as after an unmap");
-                    }
+                    GameTestChecks.once(helper, () -> {
+                        first.loadWithComponents(emptySave, registries);
+                        helper.assertValueEqual(first.laneCount(), 3, "A save with no Lanes keeps the running Lanes");
+                        for (int lane = 0; lane < 3; lane++) {
+                            helper.assertValueEqual(first.laneEndpoint(lane), bound.get(lane),
+                                    "Lane " + lane + " keeps its Endpoint");
+                        }
+                        helper.assertValueEqual(first.providerIdentity(), firstIdentity,
+                                "A running Provider keeps its identity");
+                        for (var target : Target.values()) {
+                            helper.assertTrue(first.retained(scene.binding(target).endpointIdentity()),
+                                    "Endpoint " + target + " left with no Pattern waits for release, as after an unmap");
+                        }
 
-                    second.loadWithComponents(firstSave, registries);
-                    helper.assertValueEqual(second.laneCount(), 3, "Another Provider's save adds its Lane count");
-                    for (int lane = 0; lane < 3; lane++) {
-                        helper.assertTrue(second.laneEndpoint(lane).isEmpty(),
-                                "Lane " + lane + " added from another Provider's save is not bound");
-                        helper.assertTrue(second.mappedProvider().slotsForLane(lane).isEmpty(),
-                                "Lane " + lane + " added from another Provider's save has no Pattern");
-                    }
-                    helper.assertValueEqual(second.providerIdentity(), secondIdentity,
-                            "Another Provider's save does not move its identity");
-                    for (var target : Target.values()) {
-                        helper.assertTrue(scene.endpoint(target).claimState() instanceof ClaimState.Owned owned
-                                && owned.ownerIdentity().provider().equals(firstIdentity),
-                                "Endpoint " + target + " is not claimed through another Provider's save");
-                    }
+                        second.loadWithComponents(firstSave, registries);
+                        helper.assertValueEqual(second.laneCount(), 3, "Another Provider's save adds its Lane count");
+                        for (int lane = 0; lane < 3; lane++) {
+                            helper.assertTrue(second.laneEndpoint(lane).isEmpty(),
+                                    "Lane " + lane + " added from another Provider's save is not bound");
+                            helper.assertTrue(second.mappedProvider().slotsForLane(lane).isEmpty(),
+                                    "Lane " + lane + " added from another Provider's save has no Pattern");
+                        }
+                        helper.assertValueEqual(second.providerIdentity(), secondIdentity,
+                                "Another Provider's save does not move its identity");
+                        for (var target : Target.values()) {
+                            helper.assertTrue(scene.endpoint(target).claimState() instanceof ClaimState.Owned owned
+                                    && owned.ownerIdentity().provider().equals(firstIdentity),
+                                    "Endpoint " + target + " is not claimed through another Provider's save");
+                        }
 
-                    first.loadWithComponents(firstSave, registries);
-                    helper.assertValueEqual(first.mappedProvider().lanesForSlot(0), java.util.Set.of(0, 1, 2),
-                            "The Provider's own save restores its mapping in place");
-                    helper.assertTrue(first.retainedEndpoints().isEmpty(),
-                            "Lanes mapped again by the Provider's own save no longer wait for release");
+                        first.loadWithComponents(firstSave, registries);
+                        helper.assertValueEqual(first.mappedProvider().lanesForSlot(0), java.util.Set.of(0, 1, 2),
+                                "The Provider's own save restores its mapping in place");
+                        helper.assertTrue(first.retainedEndpoints().isEmpty(),
+                                "Lanes mapped again by the Provider's own save no longer wait for release");
+                    });
                     writeEvidence("providerreloadinplace", 16, Map.of("smallerSaveKeepsLanes", "true",
                             "foreignSaveKeepsIdentity", "true", "ownSaveRestoresMapping", "true"));
                 }
@@ -617,21 +637,23 @@ public final class ProductionProviderGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    for (var target : Target.values()) {
-                        helper.assertTrue(scene.setAccess(target, true), "Endpoint must connect to the domain");
-                    }
-                    scene.installPattern(0);
-                    for (var target : Target.values()) {
-                        var status = scene.map(0, target);
-                        helper.assertTrue(status.startsWith("accepted-"), "Mapping " + target + ": " + status);
-                    }
-                    var first = scene.provider();
-                    original[0] = first.providerIdentity();
-                    var copy = scene.placeSecondProvider();
-                    copy.loadWithComponents(first.saveWithFullMetadata(helper.getLevel().registryAccess()),
-                            helper.getLevel().registryAccess());
-                    helper.assertValueEqual(copy.providerIdentity(), original[0],
-                            "The copied data carries the original's identity until the copy starts");
+                    GameTestChecks.once(helper, () -> {
+                        for (var target : Target.values()) {
+                            helper.assertTrue(scene.setAccess(target, true), "Endpoint must connect to the domain");
+                        }
+                        scene.installPattern(0);
+                        for (var target : Target.values()) {
+                            var status = scene.map(0, target);
+                            helper.assertTrue(status.startsWith("accepted-"), "Mapping " + target + ": " + status);
+                        }
+                        var first = scene.provider();
+                        original[0] = first.providerIdentity();
+                        var copy = scene.placeSecondProvider();
+                        copy.loadWithComponents(first.saveWithFullMetadata(helper.getLevel().registryAccess()),
+                                helper.getLevel().registryAccess());
+                        helper.assertValueEqual(copy.providerIdentity(), original[0],
+                                "The copied data carries the original's identity until the copy starts");
+                    });
                     phase[0] = 1;
                     helper.fail("Mapped one Pattern to three Endpoints and placed a copy of the Provider");
                 }
