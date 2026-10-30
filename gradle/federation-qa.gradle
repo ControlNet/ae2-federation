@@ -5770,8 +5770,10 @@ def writeEmptyStructure = { File output ->
         new DataOutputStream(gzip).withCloseable { data ->
             data.writeByte(10)
             data.writeUTF('')
+            // 13 x 16 x 12 covers what the tests on this template build, so GameTest loads, waits for and clears
+            // those chunks, and its barrier walls and roof stand outside what they build.
             data.writeByte(9); data.writeUTF('size'); data.writeByte(3); data.writeInt(3)
-            data.writeInt(3); data.writeInt(3); data.writeInt(3)
+            data.writeInt(13); data.writeInt(16); data.writeInt(12)
             data.writeByte(9); data.writeUTF('palette'); data.writeByte(10); data.writeInt(1)
             data.writeByte(8); data.writeUTF('Name'); data.writeUTF('minecraft:air'); data.writeByte(0)
             data.writeByte(9); data.writeUTF('blocks'); data.writeByte(10); data.writeInt(0)
