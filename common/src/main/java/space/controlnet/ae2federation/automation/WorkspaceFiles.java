@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.automation;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.CharacterCodingException;
@@ -33,7 +34,8 @@ import space.controlnet.ae2federation.script.RunError;
  * The {@code fs} functions on a world's workspace folder, {@code <world>/ae2federation/workspace}. Paths are relative
  * and {@code /} separated; one that would leave the folder, by {@code ..} or through a link, stops the run with
  * {@code ValueError}. Files hold UTF-8 text of at most {@link #MAX_CHARACTERS} characters, the language's string
- * cap, and the folder at most its cap in bytes; what the disk refuses stops the run with {@code OSError}.
+ * cap, and the folder at most its cap in bytes and {@link #MAX_WORKSPACE_ENTRIES} files and folders; what the disk
+ * refuses stops the run with {@code OSError}.
  *
  * <p>Keeping paths inside the folder and the caps keep runs correct and the server stable; they are not permissions,
  * which wait for the mod's permission system (user, 2026-10-22). The folder is made by the first change, so reading
@@ -53,6 +55,11 @@ public final class WorkspaceFiles {
     public static final long DEFAULT_CAP_BYTES = 16L * 1024 * 1024;
     /** As many entries as a list holds. */
     private static final int MAX_ENTRIES = 100_000;
+    /**
+     * Files and folders in the whole workspace, of any origin. Empty ones cost no bytes, and each change walks them
+     * all to count the bytes, so their number is capped too.
+     */
+    public static final int MAX_WORKSPACE_ENTRIES = 10_000;
     /** A character takes at most four bytes, so a larger file is too long without decoding it. */
     private static final long MAX_BYTES = 4L * MAX_CHARACTERS;
 
@@ -136,7 +143,7 @@ public final class WorkspaceFiles {
         var bytes = text.getBytes(StandardCharsets.UTF_8);
         writable(file, path);
         characters(text.codePointCount(0, text.length()));
-        room(bytes.length - size(file));
+        room(bytes.length - size(file), added(file));
         if (!simulate) {
             store(file, path, bytes, false);
         }
@@ -150,7 +157,7 @@ public final class WorkspaceFiles {
         writable(file, path);
         var existing = Files.exists(file) ? read(path) : "";
         characters((long) existing.codePointCount(0, existing.length()) + text.codePointCount(0, text.length()));
-        room(bytes.length);
+        room(bytes.length, added(file));
         if (!simulate) {
             store(file, path, bytes, true);
         }
@@ -408,26 +415,57 @@ public final class WorkspaceFiles {
         }
     }
 
-    /** Fails when {@code growth} more bytes would take the workspace past its cap; files of any origin count. */
-    private void room(long growth) {
-        if (growth <= 0) {
+    /**
+     * Fails when {@code growth} more bytes or {@code entries} more files and folders would take the workspace past its
+     * caps; files of any origin count.
+     */
+    private void room(long growth, int entries) {
+        if (growth <= 0 && entries <= 0) {
             return;
         }
+        var used = used();
         long cap = capBytes.getAsLong();
-        if (used() + growth > cap) {
+        if (growth > 0 && used.bytes() + growth > cap) {
             throw osError(capMessage(cap));
+        }
+        if (entries > 0 && used.entries() + entries > MAX_WORKSPACE_ENTRIES) {
+            throw osError("the workspace holds at most " + MAX_WORKSPACE_ENTRIES + " files and folders");
         }
     }
 
-    private long used() {
+    private record Usage(long bytes, long entries) {
+    }
+
+    /** The workspace's bytes and entries; the walk stops past the entry cap, so it costs at most that many. */
+    private Usage used() {
         if (!Files.isDirectory(root)) {
-            return 0;
+            return new Usage(0, 0);
         }
+        long bytes = 0;
+        long entries = 0;
         try (Stream<Path> all = Files.walk(root)) {
-            return all.filter(Files::isRegularFile).mapToLong(WorkspaceFiles::size).sum();
+            var walk = all.iterator();
+            walk.next(); // the workspace itself
+            while (walk.hasNext() && entries <= MAX_WORKSPACE_ENTRIES) {
+                bytes += size(walk.next());
+                entries++;
+            }
         } catch (IOException exception) {
             throw osError(exception);
+        } catch (UncheckedIOException exception) {
+            throw osError(exception.getCause());
         }
+        return new Usage(bytes, entries);
+    }
+
+    /** The files and folders a write to {@code file} makes: the file and its missing folders. */
+    private int added(Path file) {
+        int count = 0;
+        for (var place = file; place != null && !place.equals(root) && !Files.exists(place, LinkOption.NOFOLLOW_LINKS);
+                place = place.getParent()) {
+            count++;
+        }
+        return count;
     }
 
     private static long size(Path file) {

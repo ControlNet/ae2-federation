@@ -82,6 +82,18 @@ public final class FederationDomainPolicyMenu {
         }
     }
 
+    /**
+     * The domain of the Federation screen the player has open while it is still in reach of its entrance: the domain
+     * the Automation tab's requests may act on. Empty when no such screen is open or it shows no domain.
+     */
+    public static Optional<String> openDomain(ServerPlayer player) {
+        if (player.containerMenu instanceof ModularUIContainerMenu menu
+                && menu.uiHolder instanceof FederationDomainPolicyMenuHolder holder && holder.isStillValid(player)) {
+            return Optional.of(holder.domainId()).filter(domain -> !domain.isEmpty());
+        }
+        return Optional.empty();
+    }
+
     public static FederationDomainPolicyActionResult dispatch(ServerPlayer player, FederationDomainPolicyActionRequest request) {
         if (!player.getServer().isSameThread()) {
             return FederationDomainPolicyActionResult.WRONG_THREAD;

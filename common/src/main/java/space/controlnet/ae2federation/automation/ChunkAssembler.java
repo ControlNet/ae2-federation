@@ -15,7 +15,7 @@ import java.util.Optional;
 public final class ChunkAssembler<K> {
     /** Characters per chunk: at most three UTF-8 bytes each, well under the payload limit. */
     public static final int CHUNK = 8_000;
-    public static final int MAX_TEXT = 64_000;
+    public static final int MAX_TEXT = space.controlnet.ae2federation.script.Library.MAX_TEXT;
     public static final int STALE_TICKS = 600;
 
     private record Upload(int id, int count, String[] parts, long started) {
@@ -72,6 +72,21 @@ public final class ChunkAssembler<K> {
             throw new IllegalArgumentException("a program may hold at most " + MAX_TEXT + " characters");
         }
         return Optional.of(text);
+    }
+
+    /** Whether an upload is under way for {@code key}. */
+    public boolean has(K key) {
+        return uploads.containsKey(key);
+    }
+
+    /** The uploads under way whose key matches. */
+    public long count(java.util.function.Predicate<K> which) {
+        return uploads.keySet().stream().filter(which).count();
+    }
+
+    /** Drops the uploads whose key matches, as when their sender leaves. */
+    public void forget(java.util.function.Predicate<K> which) {
+        uploads.keySet().removeIf(which);
     }
 
     /** Forgets uploads started more than {@link #STALE_TICKS} ago. */

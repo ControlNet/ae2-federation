@@ -234,6 +234,11 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         return session == null || session.isStillValid(player);
     }
 
+    /** The domain this screen shows; empty without one. */
+    String domainId() {
+        return session == null ? "" : session.domainId();
+    }
+
     private void bind(UI ui, String id, java.util.function.Supplier<Component> value) {
         element(ui, id, Label.class).bind(DataBindingBuilder.componentS2C(value).build());
     }

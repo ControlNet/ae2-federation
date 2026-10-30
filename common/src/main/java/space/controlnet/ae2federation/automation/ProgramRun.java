@@ -142,7 +142,12 @@ public final class ProgramRun {
             String function, List<Object> args) {
         var texts = new LinkedHashMap<String, String>();
         library.names().forEach(name -> texts.put(name, library.text(name)));
-        var prepared = prepare(texts, catalog);
+        return dryRun(prepare(texts, catalog), catalog, host, file, function, args);
+    }
+
+    /** As {@link #dryRun(Library, Catalog, Evaluator.Host, String, String, List)}, from a prepared library. */
+    public static DryRun.Result dryRun(Prepared prepared, Catalog catalog, Evaluator.Host host, String file,
+            String function, List<Object> args) {
         check(prepared, catalog, file, function);
         return DryRun.run(new Workspace(prepared.files, catalog), prepared.graphs, host, file, function, args,
                 DryRun.BUDGET);

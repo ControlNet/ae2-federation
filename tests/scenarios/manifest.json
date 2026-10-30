@@ -225,6 +225,7 @@
     {"id":"programs.condition-push","backend":"gametest","testId":"aconditionpushedtoactdoesnotrun","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.domain-left","backend":"gametest","testId":"arunstopswhenitsdeviceleavesthedomain","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.stale-device","backend":"gametest","testId":"astaledevicerecordhandsitsinstallationsover","structure":"ae2federation_test:harness_native_smoke","assertions":1},
+    {"id":"programs.screen-domain","backend":"gametest","testId":"tabrequestsactonlyontheopenscreensdomain","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.block-events","backend":"gametest","testId":"blockeventsstartattheblockaninterfacepointsat","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.stock-event","backend":"gametest","testId":"astockchangestartsarun","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.websocket-event","backend":"gametest","testId":"awebsocketmessagestartsarun","structure":"ae2federation_test:harness_native_smoke","assertions":1},

@@ -230,6 +230,19 @@ final class WebSocketsTest {
         assertFalse(sockets.connected(OWNER, url));
     }
 
+    @Test
+    void aHandshakeThatEndsAfterItsWaitLeavesNothingOpen() throws InterruptedException {
+        server.handshakeDelayMillis = 3_000;
+        var url = server.url("late");
+        var pending = sockets.connect(OWNER, url);
+        waitFor(pending::done);
+        assertEquals("OSError: could not connect to '" + url + "'", error(pending::value));
+        // The server answers the handshake a second after the wait ended: that connection must not stay open.
+        Thread.sleep(2_000);
+        waitFor(() -> server.clients() == 0);
+        assertFalse(sockets.connected(OWNER, url));
+    }
+
     /** More than the operating system buffers while the server reads nothing, so the last sends cannot finish. */
     private List<Pending> stuckSends(String url) {
         server.pause();

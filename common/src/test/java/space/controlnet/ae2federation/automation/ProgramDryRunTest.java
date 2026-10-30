@@ -46,6 +46,30 @@ final class ProgramDryRunTest {
     }
 
     @Test
+    void aLongFailureAndManyNodesStillFitTheAnswer() {
+        var error = new RunError("ValueError", "x".repeat(100_000));
+        var ran = new java.util.HashSet<String>();
+        for (int i = 0; i < 20_000; i++) {
+            ran.add("node" + i);
+        }
+        var text = ProgramDryRun.encode("v", new DryRun.Result(Map.of(), ran,
+                new Runner.Failure("f", "n1", error), true));
+        assertTrue(text.length() <= ProgramDryRun.MAX_ANSWER, "length " + text.length());
+        var answer = ProgramDryRun.decode(text);
+        assertEquals(ProgramDryRun.Status.FAILED, answer.status());
+        assertEquals(ProgramDryRun.MAX_FAILURE, answer.failure().length());
+        assertTrue(answer.failure().endsWith("..."));
+    }
+
+    @Test
+    void anAnswerIsCutToItsPacketWithoutSplittingACharacter() {
+        assertEquals("short", ProgramSync.fitted("short"));
+        var cut = ProgramSync.fitted("a".repeat(ProgramSync.MAX_MESSAGE - 4) + "😀".repeat(10));
+        assertTrue(cut.length() <= ProgramSync.MAX_MESSAGE);
+        assertTrue(cut.endsWith("a..."), "the emoji's halves are not split: " + cut.substring(cut.length() - 6));
+    }
+
+    @Test
     void valuesStopBeforeTheAnswerGrowsTooLong() {
         var values = new LinkedHashMap<String, String>();
         for (int i = 0; i < 2000; i++) {

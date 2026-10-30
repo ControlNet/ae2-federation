@@ -65,7 +65,8 @@ A file holds any number of functions. A function calls another of its file by na
   action too.
 * A run takes at most 10,000 steps a tick and goes on in the next one, so `while True:` cannot freeze the server.
 * Integers are 64-bit, a list, string, dict or set holds at most 100,000 items, and calls nest at most 1,000 deep. The text
-  `str` makes of a list, dict or set is a string too. A program file holds at most 64,000 characters.
+  `str` makes of a list, dict or set is a string too. A program file holds at most 64,000 characters, and the server
+  keeps at most 256 programs of 4,000,000 characters in all.
 * An expression nests at most 200 levels (brackets, operators in a row, `.` and `[` after a value), and blocks at most
   100. A run holds at most 4,000,000 items at once, counting characters, list items, dict entries and fields, and one
   step compares or writes out at most 5,000,000 values.

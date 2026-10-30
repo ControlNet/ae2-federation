@@ -70,7 +70,7 @@ request until it reaches storage.
 
 Files live in the world's workspace folder, `<world>/ae2federation/workspace`, which every program of the world
 shares. A path is relative, with `/` between names, as in `"logs/iron.txt"`; one that leads out of the folder stops
-the run. A file holds text of up to 100,000 characters, and the folder at most 16 MB. Only plain files are read or
+the run. A file holds text of up to 100,000 characters, and the folder at most 16 MB and 10,000 files and folders. Only plain files are read or
 written; anything else at the path, such as a pipe, stops the run with `OSError`.
 
 The server can turn files off: `allowFileAccess = false` in the `[automation]` section of
@@ -98,8 +98,9 @@ with `PermissionError`.
 | `net.disconnect(url)` | **action:** closes the connection; `False` if there was none |
 
 The run waits for the answer without using up actions, at most 10 seconds. Any status, 404 too, is an answer; a
-request that gets none, times out or would bring back more than 100,000 characters stops the run. Header names in
-the answer are lower case. A dry run sends nothing and gives `Response(0, "", {})`.
+request that gets none, times out or would bring back more than 100,000 characters, in its text or in its headers,
+stops the run. A request sends at most 100 headers, of 100,000 characters in all. Header names in the answer are lower
+case. A dry run sends nothing and gives `Response(0, "", {})`.
 
 A websocket URL starts with `ws://` or `wss://`. Connections belong to the installation: they stay open between runs,
 and close when the installation is removed. An installation keeps at most 4 open. `net.connect` and `net.send` wait

@@ -712,6 +712,59 @@ public final class ProgramSchedulerGameTests {
         });
     }
 
+    /**
+     * A tab request that acts on a device, an installation or a domain must come from that domain's open Federation
+     * screen; library-wide ones need none. Each player has at most four uploads under way, and leaving drops them.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void tabRequestsActOnlyOnTheOpenScreensDomain(GameTestHelper helper) {
+        var scene = Scene.build(helper, "sched_screen_domain", SLOW);
+        scene.whenReady(() -> {
+            var level = helper.getLevel();
+            helper.assertTrue(ComputingDevices.get(level).domainOf(level, scene.device()).isPresent(),
+                    "Waiting for the device's domain");
+        }, () -> {
+            var level = helper.getLevel();
+            var server = level.getServer();
+            var sync = ProgramSync.get(server);
+            var domain = ComputingDevices.get(level).domainOf(level, scene.device()).orElseThrow().value();
+            var installation = scene.scheduler().install(scene.device(), "sched_screen_domain", "slow", List.of());
+            scene.installed(installation);
+            var refused = java.util.Optional.of("open the Federation screen of the domain this request acts on");
+            var install = List.of(scene.device(), "sched_screen_domain", "slow");
+            helper.assertValueEqual(sync.refusal("install", install, null), refused, "No screen open");
+            helper.assertValueEqual(sync.refusal("run", List.of(installation.id()), "another"), refused,
+                    "Another domain's screen");
+            helper.assertValueEqual(sync.refusal("dry", List.of(domain, "f", "slow", "v"), "another"), refused,
+                    "A dry run in another domain");
+            helper.assertValueEqual(sync.refusal("install", install, domain), java.util.Optional.empty(),
+                    "Its domain's screen installs");
+            helper.assertValueEqual(sync.refusal("trigger", List.of(installation.id(), "manual"), domain),
+                    java.util.Optional.empty(), "Its domain's screen changes the installation");
+            helper.assertValueEqual(sync.refusal("push", List.of("sched_screen_domain"), null),
+                    java.util.Optional.empty(), "Library-wide requests need no screen");
+
+            var sender = java.util.UUID.randomUUID();
+            for (int i = 0; i < ProgramSync.MAX_UPLOADS; i++) {
+                helper.assertTrue(sync.receive(sender, i, "sched_upload_" + i, "", 0, 2, "#").isEmpty(),
+                        "Upload " + i + " under way");
+            }
+            var answer = sync.receive(sender, 9, "sched_upload_9", "", 0, 2, "#").orElseThrow();
+            helper.assertFalse(answer.ok(), "A fifth upload is refused");
+            helper.assertValueEqual(answer.message(), "at most 4 uploads can be under way at once", "Why");
+            var other = java.util.UUID.randomUUID();
+            helper.assertTrue(sync.receive(other, 1, "sched_upload_9", "", 0, 2, "#").isEmpty(),
+                    "Another player's upload is not counted");
+            ProgramSync.playerLeft(server, other);
+            ProgramSync.playerLeft(server, sender);
+            helper.assertTrue(sync.receive(sender, 10, "sched_upload_9", "", 0, 2, "#").isEmpty(),
+                    "Leaving dropped the unfinished uploads");
+            ProgramSync.playerLeft(server, sender);
+        }).finish(() -> {
+        });
+    }
+
     private static String assertRefused(Runnable call) {
         try {
             call.run();

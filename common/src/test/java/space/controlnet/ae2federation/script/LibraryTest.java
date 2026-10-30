@@ -67,6 +67,32 @@ final class LibraryTest {
     }
 
     @Test
+    void savesStayWithinTheLibrarysCaps() throws IOException {
+        write("huge.ae2f", "#" + "x".repeat(Library.MAX_TEXT));
+        var library = library();
+        assertEquals(Map.of("huge.ae2f", "longer than 64000 characters"), library.skipped(),
+                "a file the editor could not open is not loaded");
+        var tooLong = assertThrows(IllegalArgumentException.class,
+                () -> library.save("big", "#" + "x".repeat(Library.MAX_TEXT)));
+        assertEquals("a program may hold at most 64000 characters", tooLong.getMessage());
+        for (int i = 0; i < Library.MAX_PROGRAMS; i++) {
+            library.save("p" + i, "");
+        }
+        var tooMany = assertThrows(IllegalArgumentException.class, () -> library.save("one_more", ""));
+        assertEquals("the library holds at most 256 programs", tooMany.getMessage());
+        library.save("p0", "# replacing one adds none");
+        // 62 programs near the per-file cap fill the four million characters.
+        var nearly = "#" + "x".repeat(Library.MAX_TEXT - 1);
+        for (int i = 0; i < 62; i++) {
+            library.save("p" + i, nearly);
+        }
+        var tooMuch = assertThrows(IllegalArgumentException.class, () -> library.save("p62", nearly));
+        assertEquals("the library holds at most 4000000 characters", tooMuch.getMessage());
+        library.save("p0", "# shrinking is always allowed");
+        assertFalse(Files.exists(folder.resolve("one_more.ae2f")));
+    }
+
+    @Test
     void loadsEveryProgramFileAndReportsTheOnesItCannotUse() throws IOException {
         write("iron_tools.ae2f", IRON_TOOLS);
         write("smelting.ae2f", SMELTING);

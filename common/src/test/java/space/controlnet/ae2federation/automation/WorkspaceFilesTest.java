@@ -167,6 +167,24 @@ final class WorkspaceFilesTest {
     }
 
     @Test
+    void theWorkspaceHoldsAtMostTenThousandFilesAndFolders() throws IOException {
+        var files = files();
+        Files.createDirectories(root().resolve("full"));
+        for (int i = 0; i < WorkspaceFiles.MAX_WORKSPACE_ENTRIES - 2; i++) {
+            Files.createFile(root().resolve("full").resolve("empty-" + i));
+        }
+        assertTrue(files.write("one-more.txt", "", false), "the last entry fits");
+        assertEquals("OSError: the workspace holds at most 10000 files and folders",
+                error(() -> files.write("another.txt", "", false)), "an empty file counts though it has no bytes");
+        assertEquals("OSError: the workspace holds at most 10000 files and folders",
+                error(() -> files.append("another.txt", "x", false)));
+        assertTrue(files.write("one-more.txt", "replacing makes nothing new", false));
+        assertTrue(files.delete("one-more.txt", false));
+        assertEquals("OSError: the workspace holds at most 10000 files and folders",
+                error(() -> files.write("deep/new.txt", "", false)), "its folder counts too");
+    }
+
+    @Test
     void aSimulatedChangeIsCheckedButTouchesNothing() {
         var files = files();
         files.write("kept.txt", "old", false);

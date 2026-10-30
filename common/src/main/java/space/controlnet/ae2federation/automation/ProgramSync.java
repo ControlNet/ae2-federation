@@ -37,7 +37,10 @@ import space.controlnet.ae2federation.persistence.NetworkNames;
  * put back together from chunks and saved (the last write wins), and the install, push, run, log, stock and dry
  * requests. Players who have the tab open are subscribed and get a new index after every change. The loader's network
  * code registers how the messages travel. Programs are global with no permissions for now (user, 2026-10-18), so any
- * player may do this.
+ * player may change the library. A request that acts on a device, an installation or a domain must come from the
+ * Federation screen of that domain, open and in reach: the tab only shows that domain's devices, so this is where the
+ * request comes from, not a permission. Each player has at most {@link #MAX_UPLOADS} uploads under way and one dry
+ * run every {@link #DRY_TICKS} ticks.
  */
 public final class ProgramSync {
     /**
@@ -109,12 +112,23 @@ public final class ProgramSync {
         void answer(ServerPlayer player, Answer answer);
     }
 
+    public static final int MAX_UPLOADS = 4;
+    /** The tab asks for a dry run every 20 ticks at most; a client asking faster is refused. */
+    public static final int DRY_TICKS = 10;
+    /** An answer's characters at most, under the 32767 its packet carries. */
+    static final int MAX_MESSAGE = 32_000;
+
     private static @Nullable ToClient toClient;
     private static final Map<MinecraftServer, ProgramSync> SERVICES = new java.util.HashMap<>();
 
     private final MinecraftServer server;
     private final Set<UUID> subscribers = new LinkedHashSet<>();
-    private final ChunkAssembler<String> uploads = new ChunkAssembler<>();
+    private record UploadKey(UUID sender, String name) {
+    }
+
+    private final ChunkAssembler<UploadKey> uploads = new ChunkAssembler<>();
+    /** When each player last asked for a dry run. */
+    private final Map<UUID, Long> lastDry = new java.util.HashMap<>();
     /** Each computing device's capacity when the index was last checked; empty while it is not loaded. */
     private Map<String, java.util.Optional<ComputingHost.Capacity>> capacities = Map.of();
 
@@ -140,6 +154,16 @@ public final class ProgramSync {
 
     public static void closeServer(MinecraftServer server) {
         SERVICES.remove(server);
+    }
+
+    /** A player left: their subscription, unfinished uploads and dry-run pacing go. */
+    public static void playerLeft(MinecraftServer server, UUID player) {
+        var sync = SERVICES.get(server);
+        if (sync != null) {
+            sync.subscribers.remove(player);
+            sync.uploads.forget(key -> key.sender().equals(player));
+            sync.lastDry.remove(player);
+        }
     }
 
     /** A program's version: the first 16 hex digits of the SHA-256 of its text, the same after a restart. */
@@ -195,8 +219,11 @@ public final class ProgramSync {
     public java.util.Optional<Answer> receive(UUID sender, int request, String name, String base, int index,
             int count, String part) {
         try {
-            var text = uploads.accept(sender + "/" + name, request, index, count, part,
-                    server.overworld().getGameTime());
+            var key = new UploadKey(sender, name);
+            if (!uploads.has(key) && uploads.count(other -> other.sender().equals(sender)) >= MAX_UPLOADS) {
+                throw new IllegalArgumentException("at most " + MAX_UPLOADS + " uploads can be under way at once");
+            }
+            var text = uploads.accept(key, request, index, count, part, server.overworld().getGameTime());
             return text.map(whole -> new Answer(request, true, save(name, base, whole)));
         } catch (IllegalArgumentException | UncheckedIOException e) {
             return java.util.Optional.of(new Answer(request, false, e.getMessage()));
@@ -222,7 +249,55 @@ public final class ProgramSync {
      * {@code dry domain file function version args...} ({@link ProgramDryRun}).
      */
     public void request(ServerPlayer player, int request, String action, List<String> args) {
-        answer(player, handle(request, action, args));
+        var refused = refusal(action, args,
+                space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.openDomain(player).orElse(null));
+        if (refused.isEmpty() && action.equals("dry")) {
+            long now = server.overworld().getGameTime();
+            var last = lastDry.get(player.getUUID());
+            if (last != null && now - last < DRY_TICKS && now >= last) {
+                refused = java.util.Optional.of("dry runs come at most every " + DRY_TICKS + " ticks");
+            } else {
+                lastDry.put(player.getUUID(), now);
+            }
+        }
+        answer(player, refused.map(reason -> new Answer(request, false, reason))
+                .orElseGet(() -> handle(request, action, args)));
+    }
+
+    /**
+     * Why a player whose Federation screen shows {@code openDomain} ({@code null} when none is open) may not make this
+     * request: one that acts on a device, an installation or a domain must name that screen's domain. Library-wide
+     * requests are not refused here; an unknown installation is left to {@link #perform}.
+     */
+    public java.util.Optional<String> refusal(String action, List<String> args, @Nullable String openDomain) {
+        if (args.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        String target;
+        switch (action) {
+            case "install" -> target = deviceDomain(args.get(0));
+            case "uninstall", "args", "trigger", "interval", "overlap", "run", "log" -> {
+                var installation = ComputingDevices.get(server.overworld()).installation(args.get(0));
+                if (installation.isEmpty()) {
+                    return java.util.Optional.empty();
+                }
+                target = deviceDomain(installation.get().device());
+            }
+            case "stock", "dry" -> target = args.get(0);
+            default -> {
+                return java.util.Optional.empty();
+            }
+        }
+        if (openDomain != null && openDomain.equals(target)) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of("open the Federation screen of the domain this request acts on");
+    }
+
+    /** A computing device's domain, or the empty string while it has none. */
+    private String deviceDomain(String device) {
+        return ComputingDevices.get(server.overworld()).domainOf(server.overworld(), device)
+                .map(FederationDomainId::value).orElse("");
     }
 
     /** As {@link #request}, giving the answer. */
@@ -329,8 +404,25 @@ public final class ProgramSync {
 
     private void answer(ServerPlayer player, Answer answer) {
         if (toClient != null) {
-            toClient.answer(player, answer);
+            toClient.answer(player, new Answer(answer.request(), answer.ok(), fitted(answer.message())));
         }
+    }
+
+    /** The message cut to {@link #MAX_MESSAGE} characters, never inside a surrogate pair. */
+    static String fitted(String message) {
+        return fitted(message, MAX_MESSAGE);
+    }
+
+    /** The text cut to {@code most} characters, ending in {@code ...} when cut, never inside a surrogate pair. */
+    static String fitted(String message, int most) {
+        if (message.length() <= most) {
+            return message;
+        }
+        int end = most - 3;
+        if (Character.isHighSurrogate(message.charAt(end - 1))) {
+            end--;
+        }
+        return message.substring(0, end) + "...";
     }
 
     /** Sends the new index to every subscribed player still online. */

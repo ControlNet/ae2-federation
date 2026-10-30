@@ -27,6 +27,8 @@ public final class WebSocketEchoServer implements AutoCloseable {
     private final List<Client> clients = new CopyOnWriteArrayList<>();
     private final List<String> received = new CopyOnWriteArrayList<>();
     private volatile java.util.concurrent.CountDownLatch paused = new java.util.concurrent.CountDownLatch(0);
+    /** How long the server waits before it answers a handshake. */
+    public volatile long handshakeDelayMillis;
 
     public WebSocketEchoServer() throws IOException {
         // The loopback address can be ::1 in the game; url() names 127.0.0.1.
@@ -110,6 +112,9 @@ public final class WebSocketEchoServer implements AutoCloseable {
         void serve() {
             try (connection) {
                 var in = new DataInputStream(connection.getInputStream());
+                if (handshakeDelayMillis > 0) {
+                    Thread.sleep(handshakeDelayMillis);
+                }
                 handshake(in, connection.getOutputStream());
                 var message = new ByteArrayOutputStream();
                 while (true) {
@@ -155,7 +160,7 @@ public final class WebSocketEchoServer implements AutoCloseable {
                         }
                     }
                 }
-            } catch (IOException ended) {
+            } catch (IOException | InterruptedException ended) {
                 // The client went away or the server closed.
             } finally {
                 closed = true;

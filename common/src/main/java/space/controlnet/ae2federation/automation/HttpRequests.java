@@ -46,7 +46,8 @@ import space.controlnet.ae2federation.script.RunError;
  * <p>Assistant choices: a timeout for the whole request (10 s unless configured, never unlimited); request and answer
  * texts of at most 100,000 characters, the language's string cap; at most {@link #MAX_IN_FLIGHT} requests waiting on
  * a server at once, a busy server's call stopping the run with {@code OSError}; any HTTP status is an answer, and only
- * a request that gets none fails. Header names come back in lower case, repeated ones joined with {@code ", "}.
+ * a request that gets none fails. Header names come back in lower case, repeated ones joined with {@code ", "}; a
+ * request sends at most {@link #MAX_HEADERS} headers, and the headers each way hold at most 100,000 characters.
  * Redirects are followed, except from https to http. No host is refused: that waits for the permission system
  * (user, 2026-10-22).
  */
@@ -54,6 +55,7 @@ public final class HttpRequests {
     public static final int MAX_IN_FLIGHT = 16;
     public static final List<String> METHODS = List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD");
     private static final int MAX_CHARACTERS = 100_000;
+    public static final int MAX_HEADERS = 100;
     /** A character takes at most four bytes in UTF-8, so a longer answer is too long without decoding it. */
     private static final int MAX_BYTES = 4 * MAX_CHARACTERS;
     private static final int THREADS = 4;
@@ -106,6 +108,16 @@ public final class HttpRequests {
                         : HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
         var names = headers.keys();
         var values = headers.values();
+        if (names.size() > MAX_HEADERS) {
+            throw new RunError("ValueError", "a request sends at most " + MAX_HEADERS + " headers");
+        }
+        long characters = 0;
+        for (int i = 0; i < names.size(); i++) {
+            characters += ((String) names.get(i)).length() + ((String) values.get(i)).length();
+        }
+        if (characters > MAX_CHARACTERS) {
+            throw new RunError("ValueError", "a request's headers hold at most " + MAX_CHARACTERS + " characters");
+        }
         for (int i = 0; i < names.size(); i++) {
             var name = (String) names.get(i);
             try {
@@ -196,6 +208,16 @@ public final class HttpRequests {
         var charset = charset(response.headers().firstValue("content-type").orElse(""));
         var text = new String(response.body(), charset);
         if (text.codePointCount(0, text.length()) > MAX_CHARACTERS) {
+            throw new TooLong();
+        }
+        long characters = 0;
+        for (var header : response.headers().map().entrySet()) {
+            characters += header.getKey().length();
+            for (var value : header.getValue()) {
+                characters += value.length();
+            }
+        }
+        if (characters > MAX_CHARACTERS) {
             throw new TooLong();
         }
         var headers = new TreeMap<String, String>();

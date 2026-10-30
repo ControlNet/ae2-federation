@@ -30,6 +30,15 @@ import java.util.TreeSet;
  */
 public final class Library {
     public static final String EXTENSION = ".ae2f";
+    /** A program's characters at most: what the editor fetches and sends in chunks under the payload limits. */
+    public static final int MAX_TEXT = 64_000;
+    /**
+     * Programs, and characters in all, past which a save that adds is refused; files put in the folder by hand still
+     * load. Every program travels in the tab's index and is checked on each change, so the library cannot grow
+     * without end.
+     */
+    public static final int MAX_PROGRAMS = 256;
+    public static final long MAX_CHARACTERS = 4_000_000;
 
     private final Path folder;
     private final Catalog catalog;
@@ -63,7 +72,12 @@ public final class Library {
                 continue;
             }
             try {
-                library.texts.put(name, Files.readString(path, StandardCharsets.UTF_8));
+                var text = Files.readString(path, StandardCharsets.UTF_8);
+                if (text.length() > MAX_TEXT) {
+                    library.skipped.put(file, "longer than " + MAX_TEXT + " characters");
+                } else {
+                    library.texts.put(name, text);
+                }
             } catch (MalformedInputException e) {
                 library.skipped.put(file, "not UTF-8 text");
             }
@@ -129,7 +143,32 @@ public final class Library {
         if (problem != null) {
             throw new IllegalArgumentException(problem);
         }
+        room(Map.of(name, text), Set.of());
         write(name, text);
+    }
+
+    /** Throws unless the library still fits its caps once {@code written} is saved and {@code removed} is gone. */
+    private void room(Map<String, String> written, Set<String> removed) {
+        for (var text : written.values()) {
+            if (text.length() > MAX_TEXT) {
+                throw new IllegalArgumentException("a program may hold at most " + MAX_TEXT + " characters");
+            }
+        }
+        var after = new HashMap<>(texts);
+        removed.forEach(after::remove);
+        after.putAll(written);
+        if (after.size() > texts.size() && after.size() > MAX_PROGRAMS) {
+            throw new IllegalArgumentException("the library holds at most " + MAX_PROGRAMS + " programs");
+        }
+        long before = characters(texts);
+        long now = characters(after);
+        if (now > before && now > MAX_CHARACTERS) {
+            throw new IllegalArgumentException("the library holds at most " + MAX_CHARACTERS + " characters");
+        }
+    }
+
+    private static long characters(Map<String, String> texts) {
+        return texts.values().stream().mapToLong(String::length).sum();
     }
 
     /** Stores an edited definition: its text is printed again in place, and the rest of the file is kept. */
@@ -312,6 +351,8 @@ public final class Library {
     private Set<String> apply(Map<String, List<Change>> changes, Map<String, String> moves) throws IOException {
         var written = new LinkedHashMap<String, String>();
         changes.forEach((name, list) -> written.put(moves.getOrDefault(name, name), rewrite(text(name), list)));
+        // Checked for all the files first, so a refusal writes none of them.
+        room(written, moves.keySet());
         for (var entry : written.entrySet()) {
             save(entry.getKey(), entry.getValue());
         }

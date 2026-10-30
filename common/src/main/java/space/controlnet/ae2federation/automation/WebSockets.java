@@ -361,6 +361,8 @@ public final class WebSockets {
         /** Done when the last send given to the JDK has finished; guarded by this. */
         CompletableFuture<?> free;
         volatile WebSocket socket;
+        /** The socket the handshake made, from {@link #onOpen}; guarded by this. */
+        WebSocket handshaken;
         volatile boolean closed;
         volatile long lastPing = System.nanoTime();
 
@@ -385,6 +387,11 @@ public final class WebSockets {
                     socket = made;
                     opening.complete(true);
                     return;
+                }
+                // The wait can end just before the JDK's handshake does: a socket it still makes is aborted.
+                closed = true;
+                if (made == null) {
+                    made = handshaken;
                 }
             }
             if (made != null) {
@@ -415,7 +422,7 @@ public final class WebSockets {
             WebSocket open;
             synchronized (this) {
                 closed = true;
-                open = socket;
+                open = socket != null ? socket : handshaken;
             }
             end();
             building.cancel(true);
@@ -429,7 +436,7 @@ public final class WebSockets {
             WebSocket open;
             synchronized (this) {
                 closed = true;
-                open = socket;
+                open = socket != null ? socket : handshaken;
             }
             end();
             building.cancel(true);
@@ -445,6 +452,15 @@ public final class WebSockets {
 
         @Override
         public void onOpen(WebSocket webSocket) {
+            boolean late;
+            synchronized (this) {
+                handshaken = webSocket;
+                late = closed;
+            }
+            if (late) {
+                webSocket.abort();
+                return;
+            }
             // Every message goes to the queue, which drops the oldest itself: no need to hold the server back.
             webSocket.request(Long.MAX_VALUE);
         }

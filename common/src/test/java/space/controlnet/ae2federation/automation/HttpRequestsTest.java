@@ -70,6 +70,13 @@ final class HttpRequestsTest {
             exchange.getResponseBody().write(body);
             exchange.close();
         });
+        server.createContext("/many-headers", exchange -> {
+            for (int i = 0; i < 200; i++) {
+                exchange.getResponseHeaders().add("X-Filler-" + i, "f".repeat(1000));
+            }
+            exchange.sendResponseHeaders(204, -1);
+            exchange.close();
+        });
         handlers = Executors.newCachedThreadPool();
         server.setExecutor(handlers);
         server.start();
@@ -158,6 +165,23 @@ final class HttpRequestsTest {
     @Test
     void aLongAnswerIsRefused() {
         var pending = requests.send("GET", url("/huge"), "", headers());
+        assertEquals("OSError: the response is longer than 100000 characters", error(() -> answer(pending)));
+    }
+
+    @Test
+    void headersHaveCapsBothWays() {
+        var many = new String[2 * (HttpRequests.MAX_HEADERS + 1)];
+        for (int i = 0; i < HttpRequests.MAX_HEADERS + 1; i++) {
+            many[2 * i] = "X-H" + i;
+            many[2 * i + 1] = "v";
+        }
+        assertEquals("ValueError: a request sends at most 100 headers",
+                error(() -> requests.send("GET", url("/echo"), "", headers(many))));
+        assertEquals("ValueError: a request's headers hold at most 100000 characters",
+                error(() -> requests.send("GET", url("/echo"), "", headers("X-A", "a".repeat(60_000), "X-B",
+                        "b".repeat(60_000)))));
+        assertEquals("", received.get(), "nothing reached the server");
+        var pending = requests.send("GET", url("/many-headers"), "", headers());
         assertEquals("OSError: the response is longer than 100000 characters", error(() -> answer(pending)));
     }
 

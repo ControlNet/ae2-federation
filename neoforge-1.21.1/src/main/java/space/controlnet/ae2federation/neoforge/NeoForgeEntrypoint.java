@@ -165,6 +165,10 @@ public final class NeoForgeEntrypoint {
 
     private static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         LevelObservabilityService.closePlayer(event.getEntity().getUUID());
+        if (event.getEntity().getServer() != null) {
+            space.controlnet.ae2federation.automation.ProgramSync.playerLeft(event.getEntity().getServer(),
+                    event.getEntity().getUUID());
+        }
     }
 
     private static void onContainerClosed(PlayerContainerEvent.Close event) {

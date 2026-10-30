@@ -7,7 +7,9 @@ import java.util.Map;
 import java.util.Set;
 import net.minecraft.server.MinecraftServer;
 import space.controlnet.ae2federation.domain.FederationDomainId;
+import space.controlnet.ae2federation.script.Catalog;
 import space.controlnet.ae2federation.script.DryRun;
+import space.controlnet.ae2federation.script.Library;
 import space.controlnet.ae2federation.script.RunError;
 import space.controlnet.ae2federation.script.ScriptParser;
 
@@ -23,6 +25,14 @@ import space.controlnet.ae2federation.script.ScriptParser;
 public final class ProgramDryRun {
     /** Room left in a request's answer, which carries at most 32767 characters. */
     static final int MAX_ANSWER = 30_000;
+    /** The failure's characters at most, so the lines after it still fit. */
+    static final int MAX_FAILURE = 2_000;
+
+    /** The library as the last dry run prepared it, by its texts: the tab asks again and again while nothing changes. */
+    private record Cached(Map<String, String> texts, ProgramRun.Prepared prepared) {
+    }
+
+    private static final Map<MinecraftServer, Cached> PREPARED = new java.util.WeakHashMap<>();
 
     public enum Status {
         DONE,
@@ -72,10 +82,24 @@ public final class ProgramDryRun {
         var values = ProgramScheduler.arguments(definition, args.subList(4, args.size()));
         try {
             var host = ProgramHost.dryRun(server, new FederationDomainId(domain));
-            return encode(version, ProgramRun.dryRun(library, host.catalog(), host, file, function, values));
+            return encode(version, ProgramRun.dryRun(prepared(server, library, host.catalog()), host.catalog(), host,
+                    file, function, values));
         } catch (RunError e) {
             throw new IllegalArgumentException(e.type() + ": " + e.getMessage());
         }
+    }
+
+    /** The library prepared to run; compiled again only when a text changed. */
+    private static ProgramRun.Prepared prepared(MinecraftServer server, Library library, Catalog catalog) {
+        var texts = new LinkedHashMap<String, String>();
+        library.names().forEach(name -> texts.put(name, library.text(name)));
+        var cached = PREPARED.get(server);
+        if (cached == null || !cached.texts().equals(texts)) {
+            // Compiling reads only the catalog's namespaces, which every domain's catalog shares.
+            cached = new Cached(texts, ProgramRun.prepare(texts, catalog));
+            PREPARED.put(server, cached);
+        }
+        return cached.prepared();
     }
 
     static String encode(String version, DryRun.Result result) {
@@ -85,10 +109,13 @@ public final class ProgramDryRun {
         if (result.failure() != null) {
             var error = result.failure().error();
             out.append(line(result.failure().node() == null ? "" : result.failure().node())).append('\t')
-                    .append(line(error.type() + ": " + error.getMessage()));
+                    .append(line(ProgramSync.fitted(error.type() + ": " + error.getMessage(), MAX_FAILURE)));
         }
         out.append('\n');
         for (var node : result.ran()) {
+            if (out.length() + node.length() + 2 > MAX_ANSWER) {
+                break;
+            }
             out.append('+').append(node).append('\n');
         }
         for (var entry : result.values().entrySet()) {
