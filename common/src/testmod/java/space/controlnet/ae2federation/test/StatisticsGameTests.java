@@ -111,15 +111,18 @@ public final class StatisticsGameTests {
                     "One finished job");
             helper.assertValueEqual(book.total(StatisticsNames.network(StatisticsNames.STARTED, consumer), range, now), 1d,
                     "The consumer's CPU started one job");
-            // Each network's own stock, read every ten seconds from its native storage only.
+            // Each network's own stock, read every ten seconds from its native storage only. A point of the minute
+            // range is the mean of that minute's readings, some from before the job ended: the newest second holds
+            // the newest reading.
+            var newest = StatisticsRange.SECONDS;
             double consumerOwn = fixture.held(fixture.consumerChest(), sticks()) + fixture.held(fixture.consumerChest(), planks());
             double providerOwn = fixture.held(fixture.providerChest(), cobblestone()) + sticksStoredOnProvider;
-            helper.assertValueEqual(book.latest(StatisticsNames.stored(consumer, ITEMS), range, now), consumerOwn,
+            helper.assertValueEqual(book.latest(StatisticsNames.stored(consumer, ITEMS), newest, now), consumerOwn,
                     "The consumer's stock is its own chest, not what the storage rule shows of the provider");
-            helper.assertValueEqual(book.latest(StatisticsNames.stored(provider, ITEMS), range, now), providerOwn,
+            helper.assertValueEqual(book.latest(StatisticsNames.stored(provider, ITEMS), newest, now), providerOwn,
                     "The provider's stock is its own chest");
             var providerStock = StatisticsNames.network(StatisticsNames.STOCK, provider);
-            helper.assertValueEqual(latest(book.keyGauge(providerStock, cobblestone(), range, now)),
+            helper.assertValueEqual(latest(book.keyGauge(providerStock, cobblestone(), newest, now)),
                     (double) fixture.held(fixture.providerChest(), cobblestone()), "The provider's cobblestone is kept by item");
             helper.assertTrue(!book.keys(StatisticsNames.network(StatisticsNames.STOCK, consumer)).contains(cobblestone()),
                     "The consumer holds no cobblestone of its own, whatever its storage rule shows");
