@@ -56,6 +56,12 @@ a beam per cell), 1a34a908 (rails open at joints), then the guide page `bundled-
   `BundleLook.Contacts#oneBody`, which reads the device's connection bit toward the next layer). It keeps the rim only
   at the stretch's two ends. Two devices side by side still get an arm each. Option A (an arm per layer, 6 voxels apart)
   was rejected.
+- Cost (not measured in game yet): `refreshFlow` rebuilds `BundleLook.of` each tick for a thick bundle's corner cells,
+  and the layer contacts add `whole()` row reads there. A face cell whose own outer side has no branch reuses its own
+  `dense` bit instead of reading again, which leaves about two extra row reads per corner cell per tick. Compare with
+  the 2028-cell refresh figure in `bundle-render-performance-2026-10-20.md` if bundle refresh shows up in a profile.
+- Review renders from any camera: `tools/visual/guide_views.py OUT VIEWS.json --extra DIR` (GuideME client on Xvfb,
+  extra SNBT structures copied into a scratch copy of the guide).
 
 ## Guide scenes with bundles
 

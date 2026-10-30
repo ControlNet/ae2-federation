@@ -96,6 +96,11 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
         for (var side : Direction.values()) {
             if (side.getAxis() == axis) continue;
             var face = faceCell(segment, pos, side);
+            if (face.equals(pos) && (joins & bit(side)) == 0) {
+                // This cell's own outer side, already judged above: no branch there, so dense says it all.
+                layerContacts |= dense & bit(side);
+                continue;
+            }
             var branch = segments.apply(face.relative(side));
             if (branch.isEmpty()) {
                 if (contacts.whole(segment, face, side)) layerContacts |= bit(side);
