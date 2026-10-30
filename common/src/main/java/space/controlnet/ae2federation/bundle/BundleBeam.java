@@ -12,7 +12,9 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  * the low corner of each layer draws it, as an ordinary cable's beam stretched over a box from that cell: {@code side}
  * cells wide across the bundle and {@code length} layers along it. Where a branch leaves, the box takes every layer the
  * branch covers, so the junction sits on the branch's own beam. The beam also turns toward a device that takes a whole
- * side row of its layer, as an ordinary cable's beam runs into a device. Every other cell draws none ({@code length} 0).
+ * side row of its layer, as an ordinary cable's beam runs into a device, once for every stretch of layers one device
+ * body takes: at the middle layer, or between the two middle ones, whose box then covers both. Every other cell draws
+ * none ({@code length} 0).
  *
  * @param mask the sides the stretched beam leaves through, as {@link CableVisualConnections#mask} encodes them
  */
@@ -36,11 +38,8 @@ public record BundleBeam(Direction.Axis axis, int mask, int length, int side) {
         var before = Direction.fromAxisAndDirection(axis, Direction.AxisDirection.NEGATIVE);
         var after = before.getOpposite();
         if (look.jointsBefore() != 0) return Optional.of(none);
+        if (look.jointsAfter() == 0) return Optional.of(plain(look, layer, before, after, side));
         int mask = (leaves(look, before) ? bit(before) : 0) | contacts(look);
-        if (look.jointsAfter() == 0) {
-            if (leaves(look, after)) mask |= bit(after);
-            return Optional.of(new BundleBeam(axis, mask, 1, side));
-        }
         // A branch covers as many layers as the bundle is wide; the far one decides whether the run goes on.
         if (layer.apply(side - 1).filter(far -> leaves(far, after)).isPresent()) mask |= bit(after);
         for (int next = 1; next < side; next++) mask |= layer.apply(next).map(BundleBeam::contacts).orElse(0);
@@ -61,6 +60,45 @@ public record BundleBeam(Direction.Axis axis, int mask, int length, int side) {
             if (pos.get(across) != segment.min().get(across)) return new BundleBeam(segment.axis(), 0, 0, side);
         }
         return null;
+    }
+
+    /**
+     * The beam of a layer with no branch. Where devices take its side rows, the layers whose rows the same bodies take
+     * make one stretch, and only its middle turns toward them.
+     */
+    private static BundleBeam plain(BundleLook look, IntFunction<Optional<BundleLook>> layer, Direction before,
+            Direction after, int side) {
+        var axis = look.axis();
+        int turns = contacts(look);
+        int back = 0;
+        for (var at = look; at.contactsBefore() != 0; back++) {
+            var previous = layer.apply(-back - 1).filter(BundleBeam::branchless);
+            if (previous.isEmpty()) break;
+            at = previous.get();
+            turns |= contacts(at);
+        }
+        int ahead = 0;
+        for (var at = look; at.contactsAfter() != 0; ahead++) {
+            var next = layer.apply(ahead + 1).filter(BundleBeam::branchless);
+            if (next.isEmpty()) break;
+            at = next.get();
+            turns |= contacts(at);
+        }
+        int stretch = back + 1 + ahead;
+        int middle = (stretch - 1) / 2;
+        int mask = leaves(look, before) ? bit(before) : 0;
+        if (stretch % 2 == 0 && back == middle + 1) return new BundleBeam(axis, 0, 0, side);
+        if (stretch % 2 == 0 && back == middle) {
+            // The two middle layers share one box, which turns at their boundary.
+            if (layer.apply(1).filter(next -> leaves(next, after)).isPresent()) mask |= bit(after);
+            return new BundleBeam(axis, mask | turns, 2, side);
+        }
+        if (leaves(look, after)) mask |= bit(after);
+        return new BundleBeam(axis, back == middle ? mask | turns : mask, 1, side);
+    }
+
+    private static boolean branchless(BundleLook look) {
+        return (look.jointsBefore() | look.jointsAfter()) == 0;
     }
 
     /** How far the box reaches along {@code toward}'s axis, in blocks: across the bundle, or its length along it. */

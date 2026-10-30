@@ -25,12 +25,15 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  * an end layer (bit 2). Where a branch leaves, the layers it covers carry the artist's corner rings instead. {@code jointsBefore} and
  * {@code jointsAfter} name the sides with such a branch, for every cell of those layers, and whether the branch goes on
  * into the previous or the next layer; the middle layer of a 3x3 branch has both. {@code contacts} names, for every cell of
- * the layer, the sides where a device takes the whole row of that side at this layer, so the one beam can turn toward it.
- * {@code armsBefore} and {@code armsAfter} name the cell's dense sides across the bundle whose device body also takes
- * the previous or the next layer's row, so one arm runs on along the whole stretch the body covers.
+ * the layer, the sides where a device takes the whole row of that side at this layer, so the one beam can turn toward it;
+ * {@code contactsBefore} and {@code contactsAfter} name those whose device body also takes the previous or the next
+ * layer's row, so the beam turns once for the whole stretch. {@code armsBefore} and {@code armsAfter} name the cell's
+ * dense sides across the bundle whose device body also takes the previous or the next layer's row, so one arm runs on
+ * along the whole stretch the body covers.
  */
 public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, int joinsBefore, int joinsAfter,
-        int side, int rings, int jointsBefore, int jointsAfter, int contacts, int armsBefore, int armsAfter) {
+        int side, int rings, int jointsBefore, int jointsAfter, int contacts, int contactsBefore, int contactsAfter,
+        int armsBefore, int armsAfter) {
     /** Layer boundaries between two rings of a straight 2x2 stretch, counted in world coordinates. */
     public static final int RING_SPACING = 2;
     /**
@@ -88,11 +91,14 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
         }
         int width = segment.shape().filter(shape -> shape.narrow() == shape.wide()).map(BundleShape::narrow).orElse(0);
         if (width == 0) {
-            return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, 0, 0, 0, 0, 0, 0, 0));
+            return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, 0, 0, 0, 0, 0, 0, 0, 0, 0));
         }
         int jointsBefore = 0;
         int jointsAfter = 0;
         int layerContacts = 0;
+        int contactsBefore = 0;
+        int contactsAfter = 0;
+        var lower = Direction.fromAxisAndDirection(axis, Direction.AxisDirection.NEGATIVE);
         for (var side : Direction.values()) {
             if (side.getAxis() == axis) continue;
             var face = faceCell(segment, pos, side);
@@ -103,7 +109,11 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
             }
             var branch = segments.apply(face.relative(side));
             if (branch.isEmpty()) {
-                if (contacts.whole(segment, face, side)) layerContacts |= bit(side);
+                if (contacts.whole(segment, face, side)) {
+                    layerContacts |= bit(side);
+                    if (armRunsOn(segment, face, side, lower, contacts)) contactsBefore |= bit(side);
+                    if (armRunsOn(segment, face, side, lower.getOpposite(), contacts)) contactsAfter |= bit(side);
+                }
                 continue;
             }
             if (!BundleSet.linked(face, segment, face.relative(side), branch.get())) continue;
@@ -139,8 +149,11 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
                 armsAfter |= bit(side);
             }
         }
+        // This cell's own outer sides: its arms already say whether the body runs on.
+        contactsBefore |= armsBefore & layerContacts;
+        contactsAfter |= armsAfter & layerContacts;
         return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, width, rings, jointsBefore,
-                jointsAfter, layerContacts, armsBefore, armsAfter));
+                jointsAfter, layerContacts, contactsBefore, contactsAfter, armsBefore, armsAfter));
     }
 
     /** {@link #of(BlockPos, Function, Contacts)} as either side sees the level. */

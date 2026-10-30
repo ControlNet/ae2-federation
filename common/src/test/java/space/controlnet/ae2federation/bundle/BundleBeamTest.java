@@ -60,6 +60,60 @@ final class BundleBeamTest {
                 layers -> looks.apply(next.relative(Direction.Axis.X, layers))).orElseThrow().mask());
     }
 
+    /** Devices taking the whole top row at x {@code from..to}: one body, or one device per layer. */
+    private static BundleLook.Contacts topDevices(int from, int to, boolean oneBody) {
+        return new BundleLook.Contacts() {
+            @Override
+            public boolean whole(BundleSegment segment, BlockPos pos, Direction face) {
+                return face == Direction.UP && pos.getX() >= from && pos.getX() <= to;
+            }
+
+            @Override
+            public boolean oneBody(BlockPos pos, Direction face, Direction toward) {
+                return oneBody;
+            }
+        };
+    }
+
+    /** The beam of the corner cell of layer {@code x} in {@link #RUN}, with {@code contacts}. */
+    private static BundleBeam cornerBeam(BundleLook.Contacts contacts, int x) {
+        var set = new BundleSet();
+        set.form(RUN);
+        java.util.function.Function<BlockPos, Optional<BundleLook>> looks =
+                pos -> BundleLook.of(pos, cell -> set.at(cell).map(BundleSet.Membership::segment), contacts);
+        var corner = new BlockPos(x, 0, 0);
+        return BundleBeam.of(corner, RUN, looks.apply(corner).orElseThrow(),
+                layers -> looks.apply(corner.relative(Direction.Axis.X, layers))).orElseThrow();
+    }
+
+    @Test
+    void theBeamTurnsOnceIntoADeviceOverTwoLayersBetweenThem() {
+        var contacts = topDevices(2, 3, true);
+        var through = mask(Direction.EAST, Direction.WEST);
+        assertEquals(new BundleBeam(Direction.Axis.X, through, 1), cornerBeam(contacts, 1));
+        // One box over both layers turns at its middle, the boundary between them; the second layer draws none.
+        assertEquals(new BundleBeam(Direction.Axis.X, through | mask(Direction.UP), 2), cornerBeam(contacts, 2));
+        assertEquals(new BundleBeam(Direction.Axis.X, 0, 0), cornerBeam(contacts, 3));
+        assertEquals(new BundleBeam(Direction.Axis.X, through, 1), cornerBeam(contacts, 4));
+    }
+
+    @Test
+    void theBeamTurnsOnceIntoADeviceOverThreeLayersAtTheMiddleOne() {
+        var contacts = topDevices(1, 3, true);
+        var through = mask(Direction.EAST, Direction.WEST);
+        assertEquals(new BundleBeam(Direction.Axis.X, through, 1), cornerBeam(contacts, 1));
+        assertEquals(new BundleBeam(Direction.Axis.X, through | mask(Direction.UP), 1), cornerBeam(contacts, 2));
+        assertEquals(new BundleBeam(Direction.Axis.X, through, 1), cornerBeam(contacts, 3));
+    }
+
+    @Test
+    void theBeamTurnsIntoEachOfTwoDevicesSideBySide() {
+        var contacts = topDevices(2, 3, false);
+        var turning = mask(Direction.EAST, Direction.WEST, Direction.UP);
+        assertEquals(new BundleBeam(Direction.Axis.X, turning, 1), cornerBeam(contacts, 2));
+        assertEquals(new BundleBeam(Direction.Axis.X, turning, 1), cornerBeam(contacts, 3));
+    }
+
     @Test
     void aCellOffItsLayersCornerKnowsFromItsOwnSegmentThatItDrawsNoBeam() {
         // A cell's renderer skips reading its neighbours when its own segment says it draws nothing: that must be

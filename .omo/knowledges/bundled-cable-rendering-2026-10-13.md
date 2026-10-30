@@ -56,6 +56,12 @@ a beam per cell), 1a34a908 (rails open at joints), then the guide page `bundled-
   `BundleLook.Contacts#oneBody`, which reads the device's connection bit toward the next layer). It keeps the rim only
   at the stretch's two ends. Two devices side by side still get an arm each. Option A (an arm per layer, 6 voxels apart)
   was rejected.
+- 2026-10-30 (owner approved): the beam turns once per such stretch too. `BundleLook.contactsBefore/contactsAfter`
+  (layer-wide, from `armRunsOn` on the face cell) link the layers; `BundleBeam.plain` walks the stretch and only its
+  middle turns: the middle layer for an odd stretch, or a 2-layer box over the two middle layers for an even one, which
+  turns at their boundary (the second of them draws none). Stretches stop at branch layers, whose joint box turns on
+  its own. Boxes stay at most 3 layers, so `BundleBeamMesh` is unchanged. Walking the stretch reads up to its length
+  in extra looks, only for corner cells of layers with a side contact. Check: `build/design-review-check/round5/`.
 - Cost (not measured in game yet): `refreshFlow` rebuilds `BundleLook.of` each tick for a thick bundle's corner cells,
   and the layer contacts add `whole()` row reads there. A face cell whose own outer side has no branch reuses its own
   `dense` bit instead of reading again, which leaves about two extra row reads per corner cell per tick. Compare with
