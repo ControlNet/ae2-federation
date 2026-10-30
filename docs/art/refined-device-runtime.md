@@ -12,7 +12,8 @@ Minecraft 1.21.1 / NeoForge runtime. This implements the selected direction from
 | 2x2 | 2x2x4 | 4x4x4 |
 | 3x3 | 3x3x6 | 5x5x5 |
 
-- Converters use the open collimator design. The creative variant has its own purple surface/emission atlas and
+- The ordinary converter's 1x1x2 body and its single blocks use the artist's models instead (2026-10-30, see
+  [operating power](../features/operating-power.md)); the other converters use the open collimator design. The creative variant has its own purple surface/emission atlas and
   purple internal carrier; ordinary converters and Quantum Cubes retain Federation teal. All six facings rotate both the chassis
   and internal carrier. FE is exposed only by members on the rear exterior plane, on their outward rear side.
   Front, sides, internal faces and unsided queries expose no FE input. Cached old input objects reject insertion after
@@ -22,7 +23,7 @@ Minecraft 1.21.1 / NeoForge runtime. This implements the selected direction from
   cable beam renderer supplies their geometry and alarm/load style, including the separate 3x3 core/glow scales.
 - The palette and pixel artwork come from the reviewed Blender assets. Surface and local emission use separate
   512x512 nearest-sampled atlases. Purple is reserved for the creative converter; the Quantum core stays teal.
-- Unformed blocks and inventory items use native six-face cube models with dedicated opaque 16x16 pixel textures.
+- Unformed creative converters, Quantum Cubes and their items use native six-face cube models with dedicated opaque 16x16 pixel textures.
   They render independently of the custom multiblock model wrapper. Creative single blocks also have purple accents
   and an infinity mark. Formed static meshes are clipped
   into each member's block cell with interpolated UVs, then cached and baked into the chunk mesh. The dynamic renderer

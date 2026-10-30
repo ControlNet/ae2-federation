@@ -27,3 +27,21 @@ the creative one; magenta squares on the sides look like ports although only the
 `build/pr8-check/tools/render_bbmodel.py OUT TEXDIR front|back|x,y,z SCALE model.bbmodel[@dx,dy,dz[@k]] ...` renders
 bbmodel cuboids orthographically with Minecraft's face UV/rotation convention (Pillow only, run with
 `tools/visual/.pixi/envs/default/bin/python`). Renders: `build/pr8-check/models-overview.png`, `models-extra.png`.
+
+## Owner decision and wiring (2026-10-30, option A)
+Owner: the 1x1x2 is the converter block (charging port) plus the spiked head that emits into the network. Option A
+chosen: one block type, look by position. Merged locally as 477380a9, wired in the next commit:
+- `tools/blockbench/export_beam_converter_models.py` (reuses the Beam Former exporter's `export_elements`/`ROT`) writes
+  `block/beam_converter` (artist converter) and `block/beam_converter_head` (`restraints_formed`) plus a 24-case
+  multipart: unformed -> converter; formed with only the front connection -> converter (rear member); only the back
+  connection -> head; any cross connection or both/none axial -> converter (particle only, the wrapper draws Blender).
+- `RefinedDeviceBakedModel.pixelMember`: ordinary converter states with exactly one axial connection fall through to
+  the blockstate model; larger bodies and every creative converter keep the Blender mesh. The internal carrier beam
+  of `RefinedDeviceRenderer` still runs and shows through the head's ring (kept, looks right).
+- The plain cage (`restraints`) is unused; its shipped texture and the old generated `beam_converter/{back,front,side,
+  top}.png` were deleted (validate_assets forbids unused textures; the bbmodels embed their textures).
+  `build_device_block_textures.py` no longer writes the ordinary converter.
+- Checks: `RefinedDeviceResourcesTest.ordinaryConverterStatesPickTheArtistsConverterOrHead`, validate_assets
+  regenerates the export. In game: `build/beam-converter-art-check/before-after.png` (tools/shoot.sh <worktree> <label>
+  on Xvfb :95 with a fresh copy of the guidetest save; /fill forms bodies on placement).
+- Open: 2x2x4/3x3x6 art, creative colours, side "ports" vs rear-only FE.

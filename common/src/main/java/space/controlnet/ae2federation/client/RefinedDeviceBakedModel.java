@@ -24,6 +24,7 @@ import net.neoforged.neoforge.client.model.data.ModelData;
 import net.neoforged.neoforge.client.model.data.ModelProperty;
 import net.neoforged.neoforge.client.model.pipeline.QuadBakingVertexConsumer;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.power.BeamConverterBlock;
 import space.controlnet.ae2federation.power.PowerRegistration;
 import space.controlnet.ae2federation.quantum.QuantumRegistration;
 import space.controlnet.ae2federation.router.RouterBlock;
@@ -37,14 +38,14 @@ public final class RefinedDeviceBakedModel extends BakedModelWrapper<BakedModel>
 
     public static void bake(ModelEvent.ModifyBakingResult event) {
         RefinedDeviceAssets.reload();
-        wrap(event,PowerRegistration.BEAM_CONVERTER.get(),true,false);
-        wrap(event,PowerRegistration.CREATIVE_BEAM_CONVERTER.get(),true,true);
-        wrap(event,QuantumRegistration.QUANTUM_CUBE.get(),false,false);
+        wrap(event,PowerRegistration.BEAM_CONVERTER.get(),true,false,true);
+        wrap(event,PowerRegistration.CREATIVE_BEAM_CONVERTER.get(),true,true,false);
+        wrap(event,QuantumRegistration.QUANTUM_CUBE.get(),false,false,false);
     }
-    private static void wrap(ModelEvent.ModifyBakingResult event,Block block,boolean laser,boolean creative) {
+    private static void wrap(ModelEvent.ModifyBakingResult event,Block block,boolean laser,boolean creative,boolean pixelPair) {
         var surface=event.getTextureGetter().apply(new Material(TextureAtlas.LOCATION_BLOCKS,creative ? RefinedDeviceAssets.CREATIVE_SURFACE : RefinedDeviceAssets.SURFACE));
         var emission=event.getTextureGetter().apply(new Material(TextureAtlas.LOCATION_BLOCKS,creative ? RefinedDeviceAssets.CREATIVE_EMISSION : RefinedDeviceAssets.EMISSION));
-        var shapes=new Shapes(laser,surface,emission);
+        var shapes=new Shapes(laser,pixelPair,surface,emission);
         for (var state:block.getStateDefinition().getPossibleStates()) {
             if (!RouterBlock.formed(state)) continue;
             var key=BlockModelShaper.stateToModelLocation(state);
@@ -52,8 +53,16 @@ public final class RefinedDeviceBakedModel extends BakedModelWrapper<BakedModel>
             if (base!=null) event.getModels().put(key,new RefinedDeviceBakedModel(base,shapes));
         }
     }
+    /** A 1x1x2 member connects only along its facing; its blockstate picks the artist's converter or head. */
+    private boolean pixelMember(BlockState state) {
+        if (!shapes.pixelPair || state==null) return false;
+        var facing=state.getValue(BeamConverterBlock.FACING);
+        int connections=RouterBlock.connections(state);
+        return connections==1<<facing.get3DDataValue() || connections==1<<facing.getOpposite().get3DDataValue();
+    }
     @Override
     public ModelData getModelData(BlockAndTintGetter level,BlockPos pos,BlockState state,ModelData data) {
+        if (pixelMember(state)) return super.getModelData(level,pos,state,data);
         var body=RefinedDeviceBody.find(level,pos,state);
         if (body==null) return ModelData.EMPTY;
         return ModelData.builder().with(MEMBER,new Key(body.section(),body.facing(),
@@ -67,7 +76,7 @@ public final class RefinedDeviceBakedModel extends BakedModelWrapper<BakedModel>
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state,@Nullable Direction side,RandomSource random,
             ModelData data,@Nullable RenderType renderType) {
-        if (state==null || !RouterBlock.formed(state)) {
+        if (state==null || !RouterBlock.formed(state) || pixelMember(state)) {
             return super.getQuads(state,side,random,data,renderType);
         }
         if (side!=null) return List.of();
@@ -82,11 +91,11 @@ public final class RefinedDeviceBakedModel extends BakedModelWrapper<BakedModel>
     @Override public boolean useAmbientOcclusion() { return false; }
 
     private static final class Shapes {
-        private final boolean laser;
+        private final boolean laser,pixelPair;
         private final TextureAtlasSprite surface,emission;
         private final Map<Key,List<BakedQuad>> members=new ConcurrentHashMap<>();
-        Shapes(boolean laser,TextureAtlasSprite surface,TextureAtlasSprite emission) {
-            this.laser=laser; this.surface=surface; this.emission=emission;
+        Shapes(boolean laser,boolean pixelPair,TextureAtlasSprite surface,TextureAtlasSprite emission) {
+            this.laser=laser; this.pixelPair=pixelPair; this.surface=surface; this.emission=emission;
         }
         List<BakedQuad> member(Key key) {
             return bake(RefinedDeviceMesh.cell(RefinedDeviceAssets.mesh((laser ? "laser-" : "quantum-")+key.section),

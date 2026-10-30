@@ -32,7 +32,7 @@ final class RefinedDeviceResourcesTest {
         }
     }
     @Test void standaloneBlocksHaveNativeCubeFacesAndOpaqueDedicatedTextures() throws Exception {
-        for (var name : new String[]{"beam_converter", "creative_beam_converter", "quantum_cube"}) {
+        for (var name : new String[]{"creative_beam_converter", "quantum_cube"}) {
             try (var input = getClass().getResourceAsStream("/assets/ae2federation/models/block/"+name+".json")) {
                 assertNotNull(input);
                 var model = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject();
@@ -51,6 +51,58 @@ final class RefinedDeviceResourcesTest {
                 }
             }
         }
+    }
+
+    /**
+     * The ordinary converter's blockstate picks exactly one model for every state: the artist's converter when unformed
+     * and as a 1x1x2 rear member, the artist's head as the front member, and the converter (only its particle) for a
+     * member of a larger body, whose look is the Blender mesh.
+     */
+    @Test void ordinaryConverterStatesPickTheArtistsConverterOrHead() throws Exception {
+        com.google.gson.JsonArray parts;
+        try (var input = getClass().getResourceAsStream("/assets/ae2federation/blockstates/beam_converter.json")) {
+            assertNotNull(input);
+            parts = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject()
+                    .getAsJsonArray("multipart");
+        }
+        var sides = new String[]{"down", "up", "north", "south", "west", "east"};
+        var opposite = java.util.Map.of("down", "up", "up", "down", "north", "south", "south", "north", "west", "east",
+                "east", "west");
+        int heads = 0;
+        for (var facing : sides) for (var formed : new String[]{"false", "true"}) for (int bits = 0; bits < 64; bits++) {
+            var state = new java.util.HashMap<String, String>();
+            state.put("facing", facing);
+            state.put("formed", formed);
+            for (int i = 0; i < 6; i++) state.put(sides[i], (bits >> i & 1) == 1 ? "true" : "false");
+            var selected = new java.util.ArrayList<String>();
+            for (var part : parts) {
+                if (matches(part.getAsJsonObject().get("when"), state)) {
+                    selected.add(part.getAsJsonObject().getAsJsonObject("apply").get("model").getAsString());
+                }
+            }
+            assertEquals(1, selected.size(), state.toString());
+            boolean head = formed.equals("true") && bits == 1 << java.util.List.of(sides).indexOf(opposite.get(facing));
+            if (head) heads++;
+            assertEquals(head ? "ae2federation:block/beam_converter_head" : "ae2federation:block/beam_converter",
+                    selected.get(0), state.toString());
+        }
+        assertEquals(6, heads);
+    }
+
+    private static boolean matches(com.google.gson.JsonElement condition, java.util.Map<String, String> state) {
+        var object = condition.getAsJsonObject();
+        if (object.has("AND")) {
+            for (var child : object.getAsJsonArray("AND")) if (!matches(child, state)) return false;
+            return true;
+        }
+        if (object.has("OR")) {
+            for (var child : object.getAsJsonArray("OR")) if (matches(child, state)) return true;
+            return false;
+        }
+        for (var entry : object.entrySet()) {
+            if (!state.get(entry.getKey()).equals(entry.getValue().getAsString())) return false;
+        }
+        return true;
     }
 
     @Test void creativeAtlasIsPurpleAndKeepsTheOrdinaryAtlasLayout() throws Exception {

@@ -99,6 +99,8 @@ with tempfile.TemporaryDirectory() as temp:
     subprocess.run([sys.executable, str(Path(__file__).with_name('build_assets.py')), '--output', temp], check=True)
     subprocess.run([sys.executable, str(REPO / 'tools/blockbench/export_beam_former_models.py'),
                     '--output', temp], check=True)
+    subprocess.run([sys.executable, str(REPO / 'tools/blockbench/export_beam_converter_models.py'),
+                    '--output', temp], check=True)
     for path in (Path(temp)/'assets/ae2federation').rglob('*'):
         if path.is_file():
             target = BASE / path.relative_to(Path(temp)/'assets/ae2federation')

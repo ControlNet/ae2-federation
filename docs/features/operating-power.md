@@ -3,7 +3,11 @@
 Status: the rule, the ME Federation Beam Converter, the power service, the red beam, the topology gauge, Jade, the
 guide page and the statistics metric are implemented on `dev` (2026-10-17). Design
 decisions: [operating power idea](../archive/ideas/federation-operating-power.md); plan: `.omo/plans/beam-converter.md`.
-The converter uses the textured open laser design exported from Blender, in all three body sizes.
+The ordinary converter's single block and its 1x1x2 body use the artist's models (2026-10-30, PR #8): the rear block
+is the converter with its rear FE port, the front block the spiked emitter head that faces the cable. They are
+exported by `tools/blockbench/export_beam_converter_models.py` into a multipart blockstate that tells the two apart by
+their connections. The 2x2x4 and 3x3x6 bodies and every creative converter keep the textured open laser design
+exported from Blender.
 FE input is restricted to the formed body's rear exterior plane; side, front, interior and unsided queries expose no FE input.
 
 ## Behavior

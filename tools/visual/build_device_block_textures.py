@@ -91,7 +91,8 @@ def face(kind, palette, creative=False):
 def main():
     ordinary = colors()
     purple = creative_palette(ordinary)
-    for name in ('beam_converter', 'creative_beam_converter', 'quantum_cube'):
+    # The ordinary converter's block model and textures are the artist's (tools/blockbench/export_beam_converter_models.py).
+    for name in ('creative_beam_converter', 'quantum_cube'):
         creative = name.startswith('creative_')
         palette = purple if creative else ordinary
         folder = ASSETS / 'textures/block' / name
@@ -118,7 +119,7 @@ def main():
         pixels = [(*replacements.get((r, g, b), (r, g, b)), a) for r, g, b, a in im.getdata()]
         im.putdata(pixels)
         im.save(folder / ('creative_'+name+'.png'))
-    print('DEVICE_BLOCK_TEXTURES_OK: 9 opaque standalone faces; 2 creative atlases; 3 native cube models')
+    print('DEVICE_BLOCK_TEXTURES_OK: 5 opaque standalone faces; 2 creative atlases; 2 native cube models')
 
 
 if __name__ == '__main__':
