@@ -57,6 +57,7 @@ import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
  * has a pattern and a free CPU. A resource is named by its ID only, so items with components read as their plain item.
  */
 final class DomainCalls {
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(DomainCalls.class);
     private static final TypeRef NETWORK = new TypeRef("Network", List.of());
 
     private final MinecraftServer server;
@@ -295,9 +296,22 @@ final class DomainCalls {
         }
         var taken = from.extract(key, accepted, Actionable.MODULATE, source);
         var stored = to.insert(key, taken, Actionable.MODULATE, source);
-        if (stored < taken) {
-            // The target took less than it promised: give the rest back rather than lose it.
-            from.insert(key, taken - stored, Actionable.MODULATE, source);
+        var left = taken - stored;
+        if (left > 0) {
+            // The target took less than it promised: give the rest back rather than lose it. Both simulations saw the
+            // same stored power, so a network may lack the power to take it back; then it goes back without power.
+            left -= from.insert(key, left, Actionable.MODULATE, source);
+            if (left > 0 && from instanceof DomainStorage domain) {
+                left -= domain.insertUnpowered(key, left);
+            }
+            if (left > 0) {
+                var retried = to.insert(key, left, Actionable.MODULATE, source);
+                stored += retried;
+                left -= retried;
+            }
+            if (left > 0) {
+                LOGGER.warn("A program's move of {} lost {}: neither side could take it back", key, left);
+            }
         }
         return stored;
     }
@@ -310,10 +324,29 @@ final class DomainCalls {
         return from.isPresent() && to.isPresent() && amount > 0 && transfer(from.get(), to.get(), key, amount) > 0;
     }
 
+    /** The storage of a network, or of the whole domain, through AE2's power. */
+    private interface DomainStorage extends MEStorage {
+        /** Puts back what was taken out, without the power it would cost: what went in. */
+        long insertUnpowered(AEKey what, long amount);
+    }
+
     /** The domain as one storage for {@link #transfer}: networks in order, paying power. */
     private MEStorage domainStorage(@Nullable Object network) {
         var grids = grids(network);
-        return new MEStorage() {
+        return new DomainStorage() {
+            @Override
+            public long insertUnpowered(AEKey what, long amount) {
+                var left = amount;
+                for (var grid : grids) {
+                    if (left <= 0) {
+                        break;
+                    }
+                    left -= HeldReturnTransfer.ownStorage(grid).insert(what, left, Actionable.MODULATE,
+                            IActionSource.empty());
+                }
+                return amount - left;
+            }
+
             @Override
             public long insert(AEKey what, long amount, Actionable mode, IActionSource source) {
                 return DomainCalls.this.insert(grids, what, amount, mode);
@@ -381,7 +414,15 @@ final class DomainCalls {
         if (!level.destroyBlock(place.position(), false)) {
             return false;
         }
-        keys.forEach(entry -> insert(grids, entry.getKey(), entry.getLongValue(), Actionable.MODULATE));
+        // Each drop was checked alone against the same free space; two new types can still meet one free slot. What
+        // no longer fits drops where the block was instead of being lost.
+        for (var drop : drops) {
+            var key = appeng.api.stacks.AEItemKey.of(drop);
+            long stored = key == null ? 0 : insert(grids, key, drop.getCount(), Actionable.MODULATE);
+            if (stored < drop.getCount()) {
+                Block.popResource(level, place.position(), drop.copyWithCount((int) (drop.getCount() - stored)));
+            }
+        }
         return true;
     }
 

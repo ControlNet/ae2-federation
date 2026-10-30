@@ -47,7 +47,8 @@ A move whose amount the game cannot bound, such as `stack.amount` read from a ch
 
 An elastic installation reserves no fixed bandwidth. The bandwidth left over after the fixed reservations is split
 evenly between the device's elastic installations, a Parallel one taking 4 shares, and each move of a run is cut to
-its share divided by 20. The shares are split again whenever installations or the device change.
+its share divided by 20. The shares are split again whenever installations or the device change; a run already going
+keeps the share it started with, and the next runs take the new one.
 
 ## Parallel
 

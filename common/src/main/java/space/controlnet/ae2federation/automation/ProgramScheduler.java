@@ -58,6 +58,8 @@ public final class ProgramScheduler {
         /** A websocket event's connection while it opens, and the last problem logged about it. */
         Pending connecting;
         String socketProblem;
+        /** The domain the runs and the condition started in; they act there, so they stop when the device leaves it. */
+        FederationDomainId domain;
 
         State(Installation installation) {
             this.installation = installation;
@@ -86,12 +88,13 @@ public final class ProgramScheduler {
         return SERVICES.computeIfAbsent(server, ProgramScheduler::new);
     }
 
+    /**
+     * Ticks the server's installations. The scheduler starts with the server's first tick: installations saved with
+     * the world run after a restart without anyone opening the tab.
+     */
     public static void tickAll(MinecraftServer server) {
-        var scheduler = SERVICES.get(server);
-        if (scheduler != null) {
-            scheduler.tick();
-        }
-        ProgramEvents.clear();
+        ProgramEvents.advance();
+        get(server).tick();
     }
 
     public static void closeServer(MinecraftServer server) {
@@ -145,6 +148,12 @@ public final class ProgramScheduler {
         });
         devices().push(file, texts);
         prepared.remove(file);
+        // Running versions are not what the device now holds or prices: they stop, and the next runs use the push.
+        for (var installation : devices().installations()) {
+            if (installation.file().equals(file)) {
+                stop(installation.id(), "a new version was pushed");
+            }
+        }
         return texts;
     }
 
@@ -482,6 +491,8 @@ public final class ProgramScheduler {
         logs.remove(id);
         costs.remove(id);
         WebSockets.ifPresent(server, sockets -> sockets.closeOwner(id));
+        // Plans not started yet go too; jobs already running on a CPU keep going, as when a run stops.
+        ProgramCrafting.get(server).forgetPlans(id);
     }
 
     private void stop(String id, String reason) {
@@ -532,6 +543,11 @@ public final class ProgramScheduler {
                 }
                 continue;
             }
+            if ((!state.runs.isEmpty() || state.condition != null) && !domain.get().equals(state.domain)) {
+                // A cut cable or a merge moved the device: runs act on the domain they started in, so they stop.
+                stop(installation.id(), "the device moved to another domain");
+                state = state(installation);
+            }
             var budget = budgets.computeIfAbsent(installation.device(), this::budget);
             if (budget.isEmpty()) {
                 continue;
@@ -568,14 +584,16 @@ public final class ProgramScheduler {
                 state.runs.clear();
             }
             if (action != TriggerGate.Action.NONE) {
-                start(installation, installation.function(), installation.args(), domain.get(),
-                        budget.get().perCall(installation.id()))
-                        .ifPresent(run -> {
-                            log(installation.id(), "started");
-                            state.runs.add(run);
-                        });
+                var started = start(installation, installation.function(), installation.args(), domain.get(),
+                        budget.get().perCall(installation.id()), false);
+                if (started.isPresent()) {
+                    log(installation.id(), "started");
+                    state.runs.add(started.get());
+                    state.domain = domain.get();
+                }
             }
-            state.runs.removeIf(run -> finished(installation.id(), run));
+            var running = state;
+            state.runs.removeIf(run -> finished(running.installation.id(), run));
         }
         states.entrySet().removeIf(entry -> {
             if (seen.contains(entry.getKey())) {
@@ -716,8 +734,11 @@ public final class ProgramScheduler {
         var id = state.installation.id();
         if (state.condition == null && now >= state.nextCondition) {
             state.nextCondition = now + state.installation.interval();
-            state.condition = start(state.installation, condition.function(), condition.args(), domain, 0)
+            state.condition = start(state.installation, condition.function(), condition.args(), domain, 0, true)
                     .orElse(null);
+            if (state.condition != null) {
+                state.domain = domain;
+            }
         }
         if (state.condition == null) {
             return;
@@ -737,9 +758,9 @@ public final class ProgramScheduler {
         }
     }
 
-    /** Starts a run whose moves take at most {@code perCall} bytes each. */
+    /** Starts a run, or a condition's, whose moves take at most {@code perCall} bytes each. */
     private Optional<ProgramRun> start(Installation installation, String function, List<Object> args,
-            FederationDomainId domain, long perCall) {
+            FederationDomainId domain, long perCall, boolean condition) {
         var texts = devices().pushed(installation.file());
         if (texts.isEmpty()) {
             log(installation.id(), "not started: " + installation.file() + " was never pushed");
@@ -750,9 +771,14 @@ public final class ProgramScheduler {
         try {
             var program = prepared.computeIfAbsent(installation.file(),
                     file -> ProgramRun.prepare(texts.get(), host.catalog()));
-            return Optional.of(ProgramRun.start(program, host.catalog(), host, installation.file(), function, args));
+            return Optional.of(ProgramRun.start(program, host.catalog(), host, installation.file(), function, args,
+                    condition));
         } catch (IllegalArgumentException e) {
             log(installation.id(), "not started: " + e.getMessage());
+            return Optional.empty();
+        } catch (RuntimeException e) {
+            // A fault outside the program must stop this start, never the server's tick.
+            log(installation.id(), "not started: internal error: " + e);
             return Optional.empty();
         }
     }
@@ -794,8 +820,9 @@ public final class ProgramScheduler {
         ServerLevel level = location == null ? null
                 : server.getLevel(ResourceKey.create(Registries.DIMENSION, location));
         var position = entry.get().position();
+        // The block there must be this device: a record left at a place another device now holds runs nothing.
         if (level == null || !level.isLoaded(position)
-                || !(level.getBlockEntity(position) instanceof ComputingHost host)) {
+                || !(level.getBlockEntity(position) instanceof ComputingHost host) || !device.equals(host.id())) {
             return Optional.empty();
         }
         return Optional.of(new Loaded(level, host));

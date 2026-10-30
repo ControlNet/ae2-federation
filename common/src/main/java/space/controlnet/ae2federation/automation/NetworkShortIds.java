@@ -32,6 +32,11 @@ public final class NetworkShortIds extends SavedData {
         return book.network(id);
     }
 
+    /** The IDs of networks merged into another, which name that one now. */
+    public java.util.Map<String, NetworkId> aliases() {
+        return book.aliases();
+    }
+
     /** See {@link NetworkShortIdBook#fold}. */
     public void fold(NetworkId folded, NetworkId survivor) {
         book.fold(folded, survivor);

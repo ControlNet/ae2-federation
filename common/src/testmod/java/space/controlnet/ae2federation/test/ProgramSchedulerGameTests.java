@@ -591,6 +591,127 @@ public final class ProgramSchedulerGameTests {
         });
     }
 
+    /** A push stops the runs of the old version, and arguments kept from before must fit the new parameters. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void aPushStopsOldRunsAndChecksKeptArguments(GameTestHelper helper) {
+        var scene = Scene.build(helper, "sched_push_args", SLOW);
+        scene.whenReady(() -> {
+            var installation = scene.scheduler().install(scene.device(), "sched_push_args", "slow", List.of());
+            scene.installed(installation);
+            scene.scheduler().setInterval(installation.id(), 1);
+            scene.scheduler().trigger(installation.id());
+        }).then(5, () -> {
+            helper.assertValueEqual(scene.running(0), 1, "The old version runs");
+            scene.write("""
+                    def slow(n: int) -> int:
+                        return n
+                    """);
+            scene.scheduler().push("sched_push_args");
+            helper.assertValueEqual(scene.running(0), 0, "The push stopped it");
+            scene.scheduler().trigger(scene.installations().get(0).id());
+        }).then(5, () -> {
+            helper.assertValueEqual(scene.log(0), List.of("started",
+                    "stopped 1 run(s): a new version was pushed",
+                    "not started: slow now needs n; change the installation's arguments"),
+                    "A missing argument is logged, never a crash of the tick");
+            scene.scheduler().setArgs(scene.installations().get(0).id(), List.of("7"));
+            scene.scheduler().trigger(scene.installations().get(0).id());
+        }).then(5, () -> helper.assertValueEqual(scene.log(0).subList(3, 5), List.of("started", "done: 7"),
+                "With its argument it runs")).finish(() -> {
+        });
+    }
+
+    /** A condition pushed so that it acts is refused when it would start, not run with a real host. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void aConditionPushedToActDoesNotRun(GameTestHelper helper) {
+        var scene = Scene.build(helper, "sched_condition_push", """
+                def never(port: Interface) -> bool:
+                    return False
+
+                def work() -> int:
+                    return 1
+                """);
+        scene.whenReady(() -> {
+            var installation = scene.scheduler().install(scene.device(), "sched_condition_push", "work", List.of());
+            scene.installed(installation);
+            scene.scheduler().setTrigger(installation.id(),
+                    new Installation.Trigger.Condition("never", List.of(scene.interfaceId())));
+            scene.scheduler().setInterval(installation.id(), 5);
+            scene.write("""
+                    def never(port: Interface) -> bool:
+                        mc.set_redstone(port, 15)
+                        return False
+
+                    def work() -> int:
+                        return 1
+                    """);
+            scene.scheduler().push("sched_condition_push");
+        }).then(20, () -> {
+            AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
+            helper.assertValueEqual(automationInterface.redstone(), 0, "The condition never acted");
+            helper.assertTrue(scene.log(0).contains(
+                    "not started: never acts on the world; a condition may only read"), "Logged: " + scene.log(0));
+        }).finish(() -> {
+        });
+    }
+
+    /** A run acts on the domain it started in; when the device leaves that domain, the run stops. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void aRunStopsWhenItsDeviceLeavesTheDomain(GameTestHelper helper) {
+        var scene = Scene.build(helper, "sched_domain_left", SLOW);
+        // A network on the cable: when the cable is cut, the domain's ID stays with the side holding it.
+        var fixtures = new RouterFixtures(helper);
+        var switchAt = CENTER.north();
+        fixtures.placeSwitch(switchAt);
+        fixtures.placeNativeDevice(switchAt, Direction.UP);
+        helper.setBlock(switchAt.above(2), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        scene.whenReady(() -> {
+            var level = helper.getLevel();
+            var domain = ComputingDevices.get(level).domainOf(level, scene.device()).orElseThrow();
+            helper.assertValueEqual(FederationDomainRegistryAccess.get(level).federationDomain(domain)
+                    .map(snapshot -> snapshot.memberships().size()).orElse(0), 1, "Waiting for the network");
+        }, () -> {
+            var installation = scene.scheduler().install(scene.device(), "sched_domain_left", "slow", List.of());
+            scene.installed(installation);
+            scene.scheduler().trigger(installation.id());
+        }).then(5, () -> {
+            helper.assertValueEqual(scene.running(0), 1, "Running");
+            helper.setBlock(CENTER, Blocks.AIR);
+        }).then(10, () -> {
+            helper.assertValueEqual(scene.running(0), 0, "The run stopped");
+            helper.assertTrue(scene.log(0).contains("stopped 1 run(s): the device moved to another domain"),
+                    "Logged: " + scene.log(0));
+        }).finish(fixtures::close);
+    }
+
+    /**
+     * A device record left at the place of a device that claims another ID (its saved ID was lost) hands its
+     * installations over and goes, instead of running them on that device under a second budget.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void aStaleDeviceRecordHandsItsInstallationsOver(GameTestHelper helper) {
+        var scene = Scene.build(helper, "sched_stale_device", SLOW);
+        scene.whenReady(() -> {
+            var level = helper.getLevel();
+            var devices = ComputingDevices.get(level);
+            var stale = scene.device();
+            var installation = scene.scheduler().install(stale, "sched_stale_device", "slow", List.of());
+            scene.installed(installation);
+            // The block entity comes back without its saved ID: it claims a new one at the same place.
+            var fresh = devices.claim(null, level, helper.absolutePos(DEVICE));
+            helper.assertFalse(fresh.equals(stale), "A new ID");
+            helper.assertTrue(devices.entry(stale).isEmpty(), "The stale record went");
+            helper.assertValueEqual(devices.installation(installation.id()).orElseThrow().device(), fresh,
+                    "Its installation moved to the device's new ID");
+            devices.release(fresh);
+        }).finish(() -> {
+        });
+    }
+
     private static String assertRefused(Runnable call) {
         try {
             call.run();

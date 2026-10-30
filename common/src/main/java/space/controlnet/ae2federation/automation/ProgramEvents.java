@@ -70,8 +70,14 @@ public final class ProgramEvents {
     record Happening(String dimension, long position, String name) {
     }
 
-    private static final Map<IGrid, Set<String>> GRID_EVENTS = new HashMap<>();
-    private static final Set<Happening> BLOCK_EVENTS = new HashSet<>();
+    /**
+     * The events the scheduler looks at in this tick, and those that come meanwhile, which it sees next tick: an event
+     * a program causes while the installations are gone through reaches every one of them, whatever their order.
+     */
+    private static Map<IGrid, Set<String>> GRID_EVENTS = new HashMap<>();
+    private static Set<Happening> BLOCK_EVENTS = new HashSet<>();
+    private static Map<IGrid, Set<String>> incomingGrid = new HashMap<>();
+    private static Set<Happening> incomingBlocks = new HashSet<>();
     /** Whether an installation waits for a network or a block event; nothing is recorded otherwise. */
     private static boolean gridListeners;
     private static boolean blockListeners;
@@ -98,16 +104,16 @@ public final class ProgramEvents {
         if (!gridListeners) {
             return;
         }
-        GRID_EVENTS.computeIfAbsent(grid, ignored -> new HashSet<>()).add(name);
+        incomingGrid.computeIfAbsent(grid, ignored -> new HashSet<>()).add(name);
     }
 
     private static void block(LevelAccessor accessor, BlockPos position, String name) {
         if (blockListeners && accessor instanceof ServerLevel level) {
-            BLOCK_EVENTS.add(new Happening(FederationDomainRegistryAccess.dimension(level), position.asLong(), name));
+            incomingBlocks.add(new Happening(FederationDomainRegistryAccess.dimension(level), position.asLong(), name));
         }
     }
 
-    /** Whether any of the grids posted the event since the last {@link #clear}. */
+    /** Whether any of the grids posted the event before this tick's {@link #advance}. */
     static boolean posted(Iterable<IGrid> grids, String name) {
         for (var grid : grids) {
             if (GRID_EVENTS.getOrDefault(grid, Set.of()).contains(name)) {
@@ -135,9 +141,19 @@ public final class ProgramEvents {
         blockListeners = blocks;
     }
 
-    /** Forgets this tick's events, once the scheduler has looked at them. */
+    /** Before the scheduler's tick: the events that came since the last one are the ones it looks at now. */
+    static void advance() {
+        GRID_EVENTS = incomingGrid;
+        BLOCK_EVENTS = incomingBlocks;
+        incomingGrid = new HashMap<>();
+        incomingBlocks = new HashSet<>();
+    }
+
+    /** Forgets every event, as when the server stops. */
     static void clear() {
         GRID_EVENTS.clear();
         BLOCK_EVENTS.clear();
+        incomingGrid.clear();
+        incomingBlocks.clear();
     }
 }

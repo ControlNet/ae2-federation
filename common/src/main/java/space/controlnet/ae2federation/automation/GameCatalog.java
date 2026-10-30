@@ -19,9 +19,14 @@ public final class GameCatalog implements Catalog {
     /**
      * An interface or network: its ID, its alias or name (empty when it has none), what completion shows beside its
      * ID, which may name it where it has no name, such as the topology's "Network 082A5C", and the long form a program
-     * may name it by too: a network's whole NetworkId (empty for an interface).
+     * may name it by too: a network's whole NetworkId (empty for an interface); and the IDs it had before, such as
+     * those of networks merged into it, which still name it.
      */
-    public record Named(String id, String name, String shown, String full) {
+    public record Named(String id, String name, String shown, String full, List<String> former) {
+        public Named(String id, String name, String shown, String full) {
+            this(id, name, shown, full, List.of());
+        }
+
         public Named(String id, String name) {
             this(id, name, name, "");
         }
@@ -86,7 +91,8 @@ public final class GameCatalog implements Catalog {
             // A network's ID is matched in either case, as the topology writes its digits in capitals.
             var id = NetworkShortIdBook.valid(value) ? NetworkShortIdBook.normalize(value) : null;
             var full = isNetworkId(value);
-            return networks.get().stream().filter(named -> id != null ? named.id().equals(id)
+            return networks.get().stream().filter(named -> id != null
+                    ? named.id().equals(id) || named.former().contains(id)
                     : full ? named.full().equalsIgnoreCase(value) : named.name().equals(value)).map(Named::id).toList();
         }
         var byId = ShortId.valid(prefix, value);

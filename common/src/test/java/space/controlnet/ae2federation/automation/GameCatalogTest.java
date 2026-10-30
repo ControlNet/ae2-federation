@@ -15,7 +15,8 @@ final class GameCatalogTest {
             new GameCatalog.Named("interface-r4tw9e", ""),
             new GameCatalog.Named("interface-b2c3dd", "mine_entry"));
     private static final List<GameCatalog.Named> NETWORKS = List.of(
-            new GameCatalog.Named("network-082a5c", "Main Base", "Main Base", "082a5c1e-0000-4000-8000-000000000001"),
+            new GameCatalog.Named("network-082a5c", "Main Base", "Main Base", "082a5c1e-0000-4000-8000-000000000001",
+                    List.of("network-7d3e01")),
             new GameCatalog.Named("network-4f1c9d", "network-082a5c", "network-082a5c", "4f1c9d2b-0000-4000-8000-000000000002"));
 
     /** TEST-ONLY stand-in for the registries: one item and one fluid. */
@@ -68,6 +69,12 @@ final class GameCatalogTest {
         assertEquals(List.of("network-4f1c9d"),
                 CATALOG.matches(type("Network"), "4F1C9D2B-0000-4000-8000-000000000002"));
         assertEquals(List.of(), CATALOG.matches(type("Network"), "ffffffff-0000-4000-8000-000000000002"));
+    }
+
+    @Test
+    void theIdOfANetworkMergedIntoAnotherNamesTheSurvivor() {
+        assertEquals(List.of("network-082a5c"), CATALOG.matches(type("Network"), "network-7d3e01"));
+        assertEquals(List.of("network-082a5c"), CATALOG.matches(type("Network"), "NETWORK-7D3E01"));
     }
 
     @Test

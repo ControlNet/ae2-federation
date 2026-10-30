@@ -69,10 +69,69 @@ public final class ProgramRun {
     /** Starts {@code file.function(args)}; throws {@link IllegalArgumentException} with the reason it cannot. */
     public static ProgramRun start(Prepared prepared, Catalog catalog, Evaluator.Host host, String file,
             String function, List<Object> args) {
-        check(prepared, catalog, file, function);
+        return start(prepared, catalog, host, file, function, args, false);
+    }
+
+    /**
+     * As {@link #start}; with {@code condition}, only a function that gives a {@code bool} and does not act starts, as
+     * a condition must. A push can change a condition after it was chosen, so it is checked again at every start.
+     */
+    public static ProgramRun start(Prepared prepared, Catalog catalog, Evaluator.Host host, String file,
+            String function, List<Object> args, boolean condition) {
+        var checked = check(prepared, catalog, file, function);
+        if (condition) {
+            var result = checked.results().get(function);
+            if (result == null || !result.name().equals("bool")) {
+                throw new IllegalArgumentException(function + " does not give a bool");
+            }
+            if (checked.effectfulFunctions().contains(function)) {
+                throw new IllegalArgumentException(function + " acts on the world; a condition may only read");
+            }
+        }
+        fits(prepared.parsed.get(file).program(), function, args);
         return new ProgramRun(prepared, new Runner(new Workspace(prepared.files, catalog), prepared.graphs, host,
                 (where, node, value) -> {
                 }, file, function, args));
+    }
+
+    /**
+     * Throws {@link IllegalArgumentException} unless the arguments, kept since they were typed in, still fit the
+     * function's parameters: a push can add a parameter or change its type.
+     */
+    private static void fits(Program program, String function, List<Object> args) {
+        var params = program.functions().stream().filter(f -> f.name().equals(function)).findFirst().orElseThrow()
+                .params();
+        if (args.size() > params.size()) {
+            throw new IllegalArgumentException(function + " now takes " + params.size()
+                    + " argument(s); change the installation's arguments");
+        }
+        for (int i = 0; i < params.size(); i++) {
+            var param = params.get(i);
+            if (i >= args.size()) {
+                if (param.defaultValue() == null) {
+                    throw new IllegalArgumentException(function + " now needs " + param.name()
+                            + "; change the installation's arguments");
+                }
+                continue;
+            }
+            var value = args.get(i);
+            var type = param.type();
+            var optional = type.name().equals("Optional") && type.args().size() == 1;
+            if (optional) {
+                type = type.args().get(0);
+            }
+            boolean fits = value == null ? optional : switch (type.name()) {
+                case "int" -> value instanceof Long;
+                case "float" -> value instanceof Double || value instanceof Long;
+                case "bool" -> value instanceof Boolean;
+                case "list", "dict", "set" -> false;
+                default -> value instanceof String;
+            };
+            if (!fits) {
+                throw new IllegalArgumentException(param.name() + " of " + function + " is now a " + param.type()
+                        + "; change the installation's arguments");
+            }
+        }
     }
 
     /**
@@ -90,7 +149,7 @@ public final class ProgramRun {
     }
 
     /** Throws {@link IllegalArgumentException} unless the file checks clean and has {@code function}. */
-    private static void check(Prepared prepared, Catalog catalog, String file, String function) {
+    private static Checker.Result check(Prepared prepared, Catalog catalog, String file, String function) {
         var parsed = prepared.parsed.get(file);
         if (parsed == null) {
             throw new IllegalArgumentException("there is no program " + file);
@@ -102,7 +161,8 @@ public final class ProgramRun {
         }
         var others = new LinkedHashMap<>(prepared.files);
         others.remove(file);
-        var problems = Checker.check(parsed.program(), new Workspace(others, catalog)).problems();
+        var checked = Checker.check(parsed.program(), new Workspace(others, catalog));
+        var problems = checked.problems();
         if (!problems.isEmpty()) {
             var first = problems.get(0);
             var at = parsed.positions().get(first.node());
@@ -112,6 +172,7 @@ public final class ProgramRun {
         if (parsed.program().functions().stream().noneMatch(f -> f.name().equals(function))) {
             throw new IllegalArgumentException(file + " has no function " + function);
         }
+        return checked;
     }
 
     public Runner.Status tick(int budget) {

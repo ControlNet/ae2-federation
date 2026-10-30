@@ -32,8 +32,11 @@ public final class AutomationInterfaces extends SavedData {
 
     public String claim(@Nullable String stored, ServerLevel level, BlockPos position) {
         var before = book.entries().size();
-        var id = book.claim(stored, FederationDomainRegistryAccess.dimension(level), position,
-                ThreadLocalRandom.current());
+        var dimension = FederationDomainRegistryAccess.dimension(level);
+        var id = book.claim(stored, dimension, position, ThreadLocalRandom.current());
+        for (var stale : book.othersAt(id, dimension, position)) {
+            book.release(stale);
+        }
         if (book.entries().size() != before || !id.equals(stored)) {
             setDirty();
         }

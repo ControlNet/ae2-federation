@@ -83,6 +83,10 @@ public record Installation(String id, String device, String file, String functio
         return Collections.unmodifiableList(new ArrayList<>(args));
     }
 
+    public Installation onDevice(String device) {
+        return new Installation(id, device, file, function, args, trigger, interval, overlap);
+    }
+
     public Installation withArgs(List<Object> args) {
         return new Installation(id, device, file, function, args, trigger, interval, overlap);
     }

@@ -86,10 +86,14 @@ public final class ProgramStore {
                             .filter(network -> !networks.contains(network)).forEach(networks::add));
             var shortIds = NetworkShortIds.get(server);
             var names = NetworkNames.get(overworld);
+            var former = new java.util.HashMap<NetworkId, List<String>>();
+            shortIds.aliases().forEach((alias, network) ->
+                    former.computeIfAbsent(network, ignored -> new ArrayList<>()).add(alias));
             List<GameCatalog.Named> named = new ArrayList<>();
             networks.forEach(network -> named.add(
                     new GameCatalog.Named(shortIds.id(network), names.name(network).orElse(""),
-                            names.name(network).orElse(""), network.value().toString())));
+                            names.name(network).orElse(""), network.value().toString(),
+                            List.copyOf(former.getOrDefault(network, List.of())))));
             return named;
         }, new RegistryResources(server.registryAccess()));
     }

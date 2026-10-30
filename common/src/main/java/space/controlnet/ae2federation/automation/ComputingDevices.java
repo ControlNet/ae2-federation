@@ -40,8 +40,16 @@ public final class ComputingDevices extends SavedData {
 
     public String claim(@Nullable String stored, ServerLevel level, BlockPos position) {
         var before = book.entries().size();
-        var id = book.claim(stored, FederationDomainRegistryAccess.dimension(level), position,
-                ThreadLocalRandom.current());
+        var dimension = FederationDomainRegistryAccess.dimension(level);
+        var id = book.claim(stored, dimension, position, ThreadLocalRandom.current());
+        // A stale record at this place belonged to this device before its saved ID was lost: its installations
+        // move here instead of running on this device under a second budget, or vanishing.
+        for (var stale : book.othersAt(id, dimension, position)) {
+            book.release(stale);
+            installations.replaceAll((key, installation) -> installation.device().equals(stale)
+                    ? installation.onDevice(id) : installation);
+            setDirty();
+        }
         if (book.entries().size() != before || !id.equals(stored)) {
             setDirty();
         }

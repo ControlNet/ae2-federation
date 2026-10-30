@@ -48,6 +48,18 @@ public final class CraftingCpuLifecycle {
         }
     }
 
+    /** The link of the job the CPU runs now, which names that one job; {@code null} when idle or it cannot say. */
+    public static @Nullable ICraftingLink jobLink(ICraftingCPU cpu) {
+        if (cpu instanceof CraftingCPUCluster nativeCpu) return nativeCpu.craftingLogic.getLastLink();
+        var access = ACCESS.get(cpu.getClass());
+        if (access == null) return null;
+        try {
+            return access.link().invoke(access.logic().read(cpu)) instanceof ICraftingLink link ? link : null;
+        } catch (ReflectiveOperationException | RuntimeException unavailable) {
+            return null;
+        }
+    }
+
     static long waiting(ICraftingCPU cpu, AEKey key) {
         if (cpu instanceof CraftingCPUCluster nativeCpu) return nativeCpu.craftingLogic.getWaitingFor(key);
         var access = ACCESS.get(cpu.getClass());

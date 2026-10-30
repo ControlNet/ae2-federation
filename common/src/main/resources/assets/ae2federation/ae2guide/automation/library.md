@@ -27,7 +27,7 @@ storage, whatever the rules share.
 | `ae2.patterns(network)` | everything that can be crafted |
 | `ae2.free_cpus(network)` | crafting CPUs not busy |
 | `ae2.energy(network)` | AE stored |
-| `ae2.craft(resource, amount, network)` | **action:** asks for a job; `False` if no pattern makes it or no CPU is free |
+| `ae2.craft(resource, amount, network)` | **action:** asks for a job; `False` if no pattern makes it or no CPU is free for it |
 | `ae2.cancel(resource, network)` | **action:** cancels the jobs this installation started on the network |
 | `ae2.import_from(block, resource, amount, network)` | **action:** moves from the block into storage |
 | `ae2.export_to(block, resource, amount, network)` | **action:** moves from storage into the block |
@@ -61,7 +61,7 @@ request until it reaches storage.
 | `mc.time()` | game time in ticks |
 | `mc.move(source, target, resource, amount)` | **action:** moves between two blocks |
 | `mc.set_redstone(interface, level)` | **action:** signal from the interface's front, kept until set again |
-| `mc.break_block(block)` | **action:** breaks it; the drops go into the domain's storage |
+| `mc.break_block(block)` | **action:** breaks it; the drops go into the domain's storage, what does not fit drops there |
 | `mc.place_block(block, item)` | **action:** places the item from the domain's storage |
 | `mc.move_fe(source, target, amount)` | **action:** moves FE between two blocks |
 | `mc.wait(ticks)` | **long action:** pauses the run for `ticks` ticks |

@@ -25,8 +25,9 @@ import space.controlnet.ae2federation.crafting.projection.CraftingCpuLifecycle;
 /**
  * Crafting jobs programs start. AE2 plans a job over later ticks, so {@code ae2.craft} only asks for the plan; the
  * server tick submits it to a free CPU when it is ready. Programs cannot be AE2 crafting requesters (those are grid
- * node services), so a job is tracked by the CPU it was given, which is how {@code ae2.cancel} finds the jobs of one
- * installation. The job's output goes into the network's storage, as a terminal's request does.
+ * node services), so a job is tracked by the CPU it was given and the link naming the job there, which is how
+ * {@code ae2.cancel} finds the jobs of one installation and never another job the CPU took later. The job's output
+ * goes into the network's storage, as a terminal's request does.
  */
 public final class ProgramCrafting {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProgramCrafting.class);
@@ -35,7 +36,8 @@ public final class ProgramCrafting {
     private record Pending(String owner, IGrid grid, AEKey key, long amount, Future<ICraftingPlan> plan) {
     }
 
-    private record Started(String owner, ICraftingCPU cpu, AEKey key) {
+    /** A job on its CPU; {@code link} names it there, {@code null} for a CPU that cannot say. */
+    private record Started(String owner, ICraftingCPU cpu, AEKey key, appeng.api.networking.crafting.ICraftingLink link) {
     }
 
     private final List<Pending> pending = new ArrayList<>();
@@ -59,11 +61,29 @@ public final class ProgramCrafting {
         }
     }
 
-    /** Whether {@link #request} would ask the grid to plan the job: something makes it there and a CPU is free. */
+    /**
+     * Whether {@link #request} would ask the grid to plan the job: something makes it there and a CPU is free that no
+     * plan still being worked out will take. Without that last part a loop could ask for plan after plan while the CPU
+     * stays idle, each one held in memory and worked out by AE2's threads.
+     */
     public boolean couldRequest(IGrid grid, AEKey key, long amount) {
         var pivot = grid.getPivot();
-        return amount > 0 && grid.getCraftingService().isCraftable(key) && freeCpus(grid) > 0 && pivot != null
-                && pivot.getLevel() != null;
+        return amount > 0 && grid.getCraftingService().isCraftable(key) && freeCpus(grid) > planning(grid)
+                && pivot != null && pivot.getLevel() != null;
+    }
+
+    private long planning(IGrid grid) {
+        return pending.stream().filter(request -> request.grid() == grid).count();
+    }
+
+    /** The installation went away: its plans not on a CPU yet go too. Running jobs keep going. */
+    public void forgetPlans(String owner) {
+        for (var request : List.copyOf(pending)) {
+            if (request.owner().equals(owner)) {
+                request.plan().cancel(true);
+                pending.remove(request);
+            }
+        }
     }
 
     /** Asks the grid to plan the job; false when nothing makes the resource there or no CPU is free. */
@@ -152,7 +172,8 @@ public final class ProgramCrafting {
 
     private static boolean running(Started job) {
         var status = job.cpu().isBusy() ? job.cpu().getJobStatus() : null;
-        return status != null && status.crafting().what().equals(job.key());
+        return status != null && status.crafting().what().equals(job.key())
+                && (job.link() == null || CraftingCpuLifecycle.jobLink(job.cpu()) == job.link());
     }
 
     private void tick() {
@@ -179,7 +200,7 @@ public final class ProgramCrafting {
             var crafting = request.grid().getCraftingService();
             for (var cpu : crafting.getCpus()) {
                 if (!cpu.isBusy() && crafting.submitJob(plan, null, cpu, false, IActionSource.empty()).successful()) {
-                    started.add(new Started(request.owner(), cpu, request.key()));
+                    started.add(new Started(request.owner(), cpu, request.key(), CraftingCpuLifecycle.jobLink(cpu)));
                     break;
                 }
             }

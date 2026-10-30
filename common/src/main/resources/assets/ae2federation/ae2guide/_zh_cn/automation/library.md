@@ -23,7 +23,7 @@ navigation:
 | `ae2.patterns(network)` | 所有能合成的东西 |
 | `ae2.free_cpus(network)` | 空闲的合成CPU数 |
 | `ae2.energy(network)` | 储存的AE |
-| `ae2.craft(resource, amount, network)` | **操作**： 请求合成任务； 没有样板能合成或没有空闲CPU时为`False` |
+| `ae2.craft(resource, amount, network)` | **操作**： 请求合成任务； 没有样板能合成或没有可用的空闲CPU时为`False` |
 | `ae2.cancel(resource, network)` | **操作**： 取消这个安装在该网络上发起的任务 |
 | `ae2.import_from(block, resource, amount, network)` | **操作**： 从方块搬进存储 |
 | `ae2.export_to(block, resource, amount, network)` | **操作**： 从存储搬进方块 |
@@ -55,7 +55,7 @@ AE2会在接下来几刻里规划任务， 规划好后交给空闲的CPU。 规
 | `mc.time()` | 游戏时间， 以刻计 |
 | `mc.move(source, target, resource, amount)` | **操作**： 在两个方块之间搬运 |
 | `mc.set_redstone(interface, level)` | **操作**： 从接口正面发出信号， 一直保持到再次设置 |
-| `mc.break_block(block)` | **操作**： 破坏方块； 掉落物进入联邦域的存储 |
+| `mc.break_block(block)` | **操作**： 破坏方块； 掉落物进入联邦域的存储， 放不下的掉在原地 |
 | `mc.place_block(block, item)` | **操作**： 用联邦域存储里的物品放置方块 |
 | `mc.move_fe(source, target, amount)` | **操作**： 在两个方块之间搬运FE |
 | `mc.wait(ticks)` | **长操作**： 暂停运行`ticks`刻 |

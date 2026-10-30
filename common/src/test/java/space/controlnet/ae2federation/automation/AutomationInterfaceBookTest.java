@@ -24,6 +24,18 @@ final class AutomationInterfaceBookTest {
     }
 
     @Test
+    void anotherIdAtTheSamePlaceIsStale() {
+        var book = new AutomationInterfaceBook();
+        var stale = book.claim(null, OVERWORLD, HERE, new Random(3));
+        var elsewhere = book.claim(null, OVERWORLD, THERE, new Random(5));
+        // The block lost its saved ID and claims anew where the book still holds the old one.
+        var fresh = book.claim(null, OVERWORLD, HERE, new Random(4));
+        assertEquals(java.util.List.of(stale), book.othersAt(fresh, OVERWORLD, HERE));
+        assertEquals(java.util.List.of(), book.othersAt(elsewhere, OVERWORLD, THERE));
+        assertEquals(java.util.List.of(), book.othersAt(fresh, "minecraft:the_nether", HERE), "another dimension");
+    }
+
+    @Test
     void aCopyElsewhereDrawsAnotherId() {
         var book = new AutomationInterfaceBook();
         var id = book.claim(null, OVERWORLD, HERE, new Random(3));

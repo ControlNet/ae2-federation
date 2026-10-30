@@ -58,6 +58,16 @@ public final class AutomationInterfaceBook {
         return id;
     }
 
+    /**
+     * The other IDs recorded at the place of {@code id}. A block holds one ID, so these are stale: left by a block
+     * whose saved ID was lost while the book kept its own, as when the server was killed between saving the two.
+     */
+    public java.util.List<String> othersAt(String id, String dimension, BlockPos position) {
+        return entries.entrySet().stream().filter(entry -> !entry.getKey().equals(id)
+                && entry.getValue().dimension().equals(dimension) && entry.getValue().position().equals(position))
+                .map(Map.Entry::getKey).sorted().toList();
+    }
+
     /** The interface was broken: its ID is free again. */
     public void release(String id) {
         entries.remove(id);
