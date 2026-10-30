@@ -426,6 +426,14 @@ public final class AutomationTabScenario implements UIScenario {
                         && editor(context).isVisible() && String.join("\n", editor(context).getLines()).isEmpty())
                 .checkServer("the new program is saved", context ->
                         ProgramStore.get(context.server()).library().text("scratch").isEmpty())
+                // One editor shows every program: an undo in the new one must not bring back the last one's text.
+                .step("focus the new program's editor", context -> editor(context).focus())
+                .key(GLFW.GLFW_KEY_Z, GLFW.GLFW_MOD_CONTROL)
+                .frames(30).screenshot("ui-automation-undo-new-program")
+                .check("undo in a newly opened program keeps it empty", context ->
+                        String.join("\n", editor(context).getLines()).isEmpty())
+                .checkServer("and nothing is saved under its name", context ->
+                        ProgramStore.get(context.server()).library().text("scratch").isEmpty())
                 // Delete asks first; Cancel keeps the program.
                 .step("press Delete", context -> pressAndRelease(context, "#auto_delete"))
                 .waitUntil("Delete asks before deleting", context -> context.all("#auto_delete_dialog").size() == 1)

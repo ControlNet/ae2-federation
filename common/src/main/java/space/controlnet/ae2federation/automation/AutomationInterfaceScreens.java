@@ -14,9 +14,10 @@ import org.jetbrains.annotations.Nullable;
 public final class AutomationInterfaceScreens {
     /**
      * What the screen shows: its title (the block's translation key), the ID and the alias; {@code refused} when the
-     * alias the player sent was not taken.
+     * alias the player sent was not taken. An {@code answer} to a sent alias updates an open screen and never opens
+     * one: the alias is also sent when the screen closes.
      */
-    public record View(BlockPos position, String title, String id, String alias, boolean refused) {
+    public record View(BlockPos position, String title, String id, String alias, boolean refused, boolean answer) {
     }
 
     @FunctionalInterface
@@ -46,7 +47,7 @@ public final class AutomationInterfaceScreens {
         if (id == null || toClient == null || !(device.getLevel() instanceof ServerLevel level)) {
             return false;
         }
-        toClient.send(player, new View(device.getBlockPos(), title(device), id, device.alias(level), false));
+        toClient.send(player, new View(device.getBlockPos(), title(device), id, device.alias(level), false, false));
         return true;
     }
 
@@ -76,6 +77,6 @@ public final class AutomationInterfaceScreens {
             ProgramSync.get(level.getServer()).changed();
         }
         toClient.send(player, new View(position, title(level.getBlockEntity(position)), device.id(), device.alias(level),
-                refused));
+                refused, true));
     }
 }

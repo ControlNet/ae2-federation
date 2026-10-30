@@ -5,9 +5,11 @@ import com.lowdragmc.lowdraglib2.gui.LDLibFonts;
 import com.lowdragmc.lowdraglib2.gui.ui.data.Cursor;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.codeeditor.CodeEditor;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.codeeditor.StyledText;
+import com.lowdragmc.lowdraglib2.gui.ui.event.CommandEvents;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
 import com.lowdragmc.lowdraglib2.gui.util.DrawerHelper;
+import com.lowdragmc.lowdraglib2.utils.HistoryStack;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +65,13 @@ public final class ScriptEditor extends CodeEditor {
     private static final float NOTE_GAP = 8;
     private static final String INDENT = "    ";
     private static final String COMMENT = "# ";
+
+    /**
+     * Undo and redo, kept here: TextArea keeps its history in a private stack no call clears, and this one editor shows
+     * every program in turn, so an undo after opening another program would bring back the last one's text and save it
+     * under the new name. Every edit records through {@link #pushHistory}, so the private stack stays unused.
+     */
+    private final HistoryStack<History> history = new HistoryStack<>(100);
 
     /** Completes at a place in a text (line and column from 1); the answer comes later, on the client thread. */
     public interface Completer {
@@ -132,6 +141,37 @@ public final class ScriptEditor extends CodeEditor {
             padded[line] = readOnly[line] + room().repeat(resources(line).size());
         }
         setValue(padded, false);
+    }
+
+    @Override
+    public void pushHistory() {
+        history.record(new History(getValue(), cursorPos()));
+    }
+
+    /** Another text is shown now: undo cannot go back past it. */
+    public void clearHistory() {
+        history.clear();
+    }
+
+    /** As TextArea's undo and redo, on this editor's own history; the view keeps its scroll. */
+    @Override
+    protected void onExecuteCommand(UIEvent event) {
+        boolean undo = CommandEvents.UNDO.equals(event.command);
+        if (!isEditable() || !undo && !CommandEvents.REDO.equals(event.command)) {
+            return;
+        }
+        var current = getValue();
+        if (history.getCurrent() == null || !java.util.Arrays.deepEquals(history.getCurrent().lines(), current)) {
+            history.record(new History(current, cursorPos()));
+        }
+        if (undo ? history.undo() : history.redo()) {
+            var back = history.getCurrent();
+            lines.clear();
+            lines.addAll(List.of(back.lines()));
+            onRawLinesUpdated();
+            setCursor(back.cursor().line(), back.cursor().col());
+            collapseSelectionToCursor();
+        }
     }
 
     /** The problems to mark, for the text as it is now. */

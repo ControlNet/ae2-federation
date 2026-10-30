@@ -102,8 +102,12 @@ final class LocalCopiesTest {
 
     @Test
     void aFolderKeyKeepsOnlySafeCharacters() {
-        assertEquals("server-play.example.org_25565", LocalCopies.key("server", "play.example.org:25565"));
-        assertEquals("world-New_World", LocalCopies.key("world", "New World"));
+        assertEquals("server-play.example.org_25565-06d55053", LocalCopies.key("server", "play.example.org:25565"));
+        assertEquals("world-New_World-411b5590", LocalCopies.key("world", "New World"));
+        assertEquals("world-New_World", LocalCopies.key("world", "New_World"), "a safe name is kept as it is");
+        // Two Chinese world names of one length were one folder before.
+        assertEquals("world-____-723bd584", LocalCopies.key("world", "新的世界"));
+        assertEquals("world-____-fb7e5827", LocalCopies.key("world", "测试世界"));
     }
 
     @Test

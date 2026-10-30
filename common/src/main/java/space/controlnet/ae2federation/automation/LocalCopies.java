@@ -3,7 +3,6 @@ package space.controlnet.ae2federation.automation;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,7 +55,9 @@ public final class LocalCopies {
 
     /** A folder name for a server or world: its kind and its name, with only letters, digits, dots, dashes and _. */
     public static String key(String kind, String name) {
-        return kind + "-" + name.replaceAll("[^A-Za-z0-9._-]", "_");
+        var safe = name.replaceAll("[^A-Za-z0-9._-]", "_");
+        // Names that differ only in replaced characters, as two Chinese world names of one length, stay apart.
+        return kind + "-" + (safe.equals(name) ? safe : safe + "-" + ProgramSync.version(name).substring(0, 8));
     }
 
     public Optional<Copy> read(String name) {
@@ -138,9 +139,7 @@ public final class LocalCopies {
             Files.deleteIfExists(file(name));
             var bases = bases();
             if (bases.remove(name) == null) return;
-            try (Writer writer = Files.newBufferedWriter(folder.resolve(BASES), StandardCharsets.UTF_8)) {
-                bases.store(writer, "The server version each local copy's edits started from");
-            }
+            store(bases);
         } catch (IOException e) {
             throw new UncheckedIOException("cannot delete the local copy of " + name, e);
         }
@@ -149,14 +148,33 @@ public final class LocalCopies {
     private void write(String name, String text, String base) {
         try {
             Files.createDirectories(folder);
-            Files.writeString(file(name), text, StandardCharsets.UTF_8);
+            replace(file(name), text);
             var bases = bases();
             bases.setProperty(name, base);
-            try (Writer writer = Files.newBufferedWriter(folder.resolve(BASES), StandardCharsets.UTF_8)) {
-                bases.store(writer, "The server version each local copy's edits started from");
-            }
+            store(bases);
         } catch (IOException e) {
             throw new UncheckedIOException("cannot write the local copy of " + name, e);
+        }
+    }
+
+    private void store(java.util.Properties bases) throws IOException {
+        var text = new java.io.StringWriter();
+        bases.store(text, "The server version each local copy's edits started from");
+        replace(folder.resolve(BASES), text.toString());
+    }
+
+    /**
+     * Writes through a temporary file and a rename, so a crash or an outside editor reading meanwhile sees the old
+     * text or the new, never half. The temporary name does not end in {@code .ae2f}, so it is never listed.
+     */
+    private static void replace(Path path, String text) throws IOException {
+        var temporary = path.resolveSibling("." + path.getFileName() + ".tmp");
+        Files.writeString(temporary, text, StandardCharsets.UTF_8);
+        try {
+            Files.move(temporary, path, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+            Files.move(temporary, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

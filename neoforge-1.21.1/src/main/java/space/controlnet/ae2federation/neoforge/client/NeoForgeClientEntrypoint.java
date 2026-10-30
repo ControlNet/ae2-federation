@@ -98,5 +98,7 @@ public final class NeoForgeClientEntrypoint {
 
     private static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         ObservationPayloads.clientStates().reset();
+        // The next server's programs are not this one's.
+        space.controlnet.ae2federation.automation.ClientPrograms.get().reset();
     }
 }

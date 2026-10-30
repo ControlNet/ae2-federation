@@ -79,8 +79,15 @@ public final class ClientPrograms {
 
     /** Uploads a program's text in chunks; {@code base} is the version the edit started from. */
     public void upload(String name, String base, String text, Consumer<ProgramSync.Answer> answer) {
-        var chunks = ChunkAssembler.split(text);
         var request = nextRequest++;
+        List<String> chunks;
+        try {
+            chunks = ChunkAssembler.split(text);
+        } catch (IllegalArgumentException tooLong) {
+            // Refused here as the server would, so the caller hears back as for any refusal.
+            answer.accept(new ProgramSync.Answer(request, false, tooLong.getMessage()));
+            return;
+        }
         waiting.put(request, answer);
         if (toServer != null) {
             for (int i = 0; i < chunks.size(); i++) {
@@ -96,6 +103,14 @@ public final class ClientPrograms {
         if (toServer != null) {
             toServer.request(request, action, args);
         }
+    }
+
+    /** The connection ended: what the last server sent and every answer still awaited are forgotten. */
+    public void reset() {
+        index = null;
+        texts.clear();
+        partial.clear();
+        waiting.clear();
     }
 
     public void receive(ProgramSync.Index index) {

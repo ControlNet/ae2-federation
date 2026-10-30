@@ -422,6 +422,8 @@ final class FederationGraphView {
     private void redraw() {
         rebuildTabs();
         var shownGraph = function == null ? null : graphs.get(function);
+        // A card's field can still be open when another text is drawn; what it writes belongs to this text only.
+        var from = drawnFrom;
         rebuildVariables(shownGraph == null ? List.of() : shownGraph.variables());
         graph.clearAllContentChildren();
         extentX = 0;
@@ -445,8 +447,8 @@ final class FederationGraphView {
         for (var card : shownGraph.cards()) {
             var place = boxes.get(card.id());
             graph.addContentChild(new CardElement(drawn.get(card.id()), place.x() + MARGIN, place.y() + MARGIN,
-                    (row, value) -> put(shownGraph, row, value), () -> remove(shownGraph, card.id()),
-                    edited -> edit(shownGraph, edited)));
+                    (row, value) -> put(from, shownGraph, row, value), () -> remove(from, shownGraph, card.id()),
+                    edited -> edit(from, shownGraph, edited)));
         }
         for (var draft : drafts.getOrDefault(function, List.of())) graph.addContentChild(new DraftElement(draft));
         extentX = right + 2 * MARGIN;
@@ -555,8 +557,8 @@ final class FederationGraphView {
     }
 
     /** Writes a value typed on a card into the script, or says on the status line why it cannot be. */
-    private void put(ScriptChecker.Graph shownGraph, GraphCards.Row row, String typed) {
-        if (!text.get().equals(drawnFrom)) return;
+    private void put(String from, ScriptChecker.Graph shownGraph, GraphCards.Row row, String typed) {
+        if (!from.equals(drawnFrom) || !text.get().equals(drawnFrom)) return;
         try {
             write.accept(GraphCards.put(drawnFrom, shownGraph.canvas(), row.node(), row.port(), row.type(), typed));
         } catch (IllegalArgumentException e) {
@@ -565,8 +567,8 @@ final class FederationGraphView {
     }
 
     /** Writes an edit of the shown function's canvas into the script, or says on the status line why it cannot be. */
-    private void edit(ScriptChecker.Graph shownGraph, Function<Canvas, String> edit) {
-        if (!text.get().equals(drawnFrom)) return;
+    private void edit(String from, ScriptChecker.Graph shownGraph, Function<Canvas, String> edit) {
+        if (!from.equals(drawnFrom) || !text.get().equals(drawnFrom)) return;
         try {
             write.accept(edit.apply(shownGraph.canvas()));
         } catch (IllegalArgumentException e) {
@@ -575,8 +577,8 @@ final class FederationGraphView {
     }
 
     /** Removes a card from the script, or says on the status line why it cannot be. */
-    private void remove(ScriptChecker.Graph shownGraph, String card) {
-        if (!text.get().equals(drawnFrom)) return;
+    private void remove(String from, ScriptChecker.Graph shownGraph, String card) {
+        if (!from.equals(drawnFrom) || !text.get().equals(drawnFrom)) return;
         try {
             write.accept(GraphCards.remove(drawnFrom, shownGraph.canvas(), card));
         } catch (IllegalArgumentException e) {
@@ -655,7 +657,7 @@ final class FederationGraphView {
     private void wired(UIEvent event, @Nullable GraphCards.Row row, @Nullable String card, @Nullable String output) {
         var shownGraph = function == null ? null : graphs.get(function);
         if (event.dragHandler.draggingObject instanceof VariableDrag variable && row != null && shownGraph != null) {
-            put(shownGraph, row, variable.name());
+            put(drawnFrom, shownGraph, row, variable.name());
             return;
         }
         if (!(event.dragHandler.draggingObject instanceof PinDrag drag) || drag.exec() != (row == null)) return;

@@ -31,9 +31,10 @@ public final class AutomationInterfacePayloads {
                     buffer.writeUtf(view.id());
                     buffer.writeUtf(view.alias());
                     buffer.writeBoolean(view.refused());
+                    buffer.writeBoolean(view.answer());
                 },
                 buffer -> new View(new AutomationInterfaceScreens.View(buffer.readBlockPos(), buffer.readUtf(),
-                        buffer.readUtf(), buffer.readUtf(), buffer.readBoolean())));
+                        buffer.readUtf(), buffer.readUtf(), buffer.readBoolean(), buffer.readBoolean())));
 
         @Override
         public Type<? extends CustomPacketPayload> type() {

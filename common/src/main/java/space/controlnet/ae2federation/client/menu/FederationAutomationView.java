@@ -238,6 +238,7 @@ final class FederationAutomationView {
             // Closing drops the answers still awaited: the next opening compares versions again instead.
             programs.open(false);
             sending = false;
+            dryWaiting = false;
             pushAfterSend = false;
             reconciled = false;
             asked.clear();
@@ -373,7 +374,7 @@ final class FederationAutomationView {
                 answer(answer);
                 return;
             }
-            copies.sent(name, text);
+            if (copies.outside(name, text).isEmpty()) copies.sent(name, text);
             select(name);
             refresh();
         });
@@ -403,12 +404,18 @@ final class FederationAutomationView {
             if (!answer.ok()) {
                 answer(answer);
                 pushAfterSend = false;
+                // The edits are still unsent: a server text must not replace them. Tried again after a pause.
+                if (name.equals(selected)) {
+                    dirty = true;
+                    idle = 0;
+                }
                 return;
             }
             if (name.equals(selected)) {
                 base = ProgramSync.version(text);
                 dryTicks = DRY_TICKS;
-                if (copies != null) {
+                // An outside editor's save since the upload is left for watch() to take, not overwritten.
+                if (copies != null && copies.outside(name, text()).isEmpty()) {
                     if (dirty) copies.edited(name, text(), base);
                     else copies.sent(name, text);
                 }
@@ -472,13 +479,21 @@ final class FederationAutomationView {
 
     /** Deletes a program on the server; its local copy goes once the server has. Unsent edits go with it. */
     private void delete(String name) {
+        boolean unsent = name.equals(selected) && dirty;
         if (name.equals(selected)) {
             dirty = false;
             pushAfterSend = false;
         }
         ClientPrograms.get().request("delete", List.of(name), answer -> {
             answer(answer);
-            if (!answer.ok()) return;
+            if (!answer.ok()) {
+                // Kept on the server, so its unsent edits are still to be sent.
+                if (unsent && name.equals(selected)) {
+                    dirty = true;
+                    idle = 0;
+                }
+                return;
+            }
             if (copies != null) copies.delete(name);
             opened.remove(name);
             if (name.equals(selected)) select(opened.stream().findFirst().orElse(null));
@@ -594,6 +609,8 @@ final class FederationAutomationView {
             fetch(selected, latest);
             return;
         }
+        // An outside editor's save not taken yet is newer than what the server sent: watch() uploads it instead.
+        if (copies.outside(selected, text()).isPresent()) return;
         editor.setValue(received.text().split("\n", -1), false);
         base = latest;
         copies.sent(selected, received.text());
@@ -728,6 +745,7 @@ final class FederationAutomationView {
         clearAnswer();
         if (name != null) opened.add(name);
         editor.setValue(new String[] {""}, false);
+        editor.clearHistory();
     }
 
     private void rebuildList(List<ProgramSync.FileInfo> files) {

@@ -39,18 +39,26 @@ public final class AutomationInterfaceScreen extends Screen {
         this.sent = view.alias();
     }
 
-    /** Opens the screen, or updates it when it is already open for the same interface. */
+    /**
+     * Opens the screen, or updates it when it is already open for the same interface. An answer to an alias sent as
+     * the screen closed finds it closed and opens nothing.
+     */
     public static void show(AutomationInterfaceScreens.View view) {
         var minecraft = Minecraft.getInstance();
         if (minecraft.screen instanceof AutomationInterfaceScreen open && open.view.position().equals(view.position())) {
             open.accept(view);
-        } else {
+        } else if (!view.answer()) {
             minecraft.setScreen(new AutomationInterfaceScreen(view));
         }
     }
 
     private void accept(AutomationInterfaceScreens.View answer) {
         view = answer;
+        // Typing since the alias was sent wins: the answer is about text the field no longer shows.
+        if (!alias.getValue().equals(sent)) {
+            if (!answer.refused()) sent = answer.alias();
+            return;
+        }
         if (!answer.refused()) {
             sent = answer.alias();
             alias.setValue(answer.alias());
