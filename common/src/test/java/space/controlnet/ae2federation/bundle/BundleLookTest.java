@@ -70,6 +70,26 @@ final class BundleLookTest {
         BundleLook.Contacts up = (segment, pos, face) -> face == Direction.UP;
         assertEquals(new AABB(3, 14, 0, 13, 16, 13), CableShapes.denseArm(look(set, new BlockPos(3, 1, 1), up),
                 Direction.UP));
+        // One device body over two layers' top rows: one arm runs on across the layer boundary.
+        BundleLook.Contacts body = new BundleLook.Contacts() {
+            @Override
+            public boolean whole(BundleSegment segment, BlockPos pos, Direction face) {
+                return face == Direction.UP && (pos.getX() == 2 || pos.getX() == 3);
+            }
+
+            @Override
+            public boolean oneBody(BlockPos pos, Direction face, Direction toward) {
+                return true;
+            }
+        };
+        assertEquals(new AABB(3, 14, 0, 16, 16, 13), CableShapes.denseArm(look(set, new BlockPos(2, 1, 1), body),
+                Direction.UP));
+        assertEquals(new AABB(0, 14, 0, 13, 16, 13), CableShapes.denseArm(look(set, new BlockPos(3, 1, 1), body),
+                Direction.UP));
+        // Two devices, one per layer: an arm each.
+        BundleLook.Contacts two = (segment, pos, face) -> face == Direction.UP && (pos.getX() == 2 || pos.getX() == 3);
+        assertEquals(new AABB(3, 14, 0, 13, 16, 13), CableShapes.denseArm(look(set, new BlockPos(2, 1, 1), two),
+                Direction.UP));
         // An ordinary bundle's cell has its own arm, as each of its beams has.
         var flat = new BundleSet();
         flat.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 1, 2), Direction.Axis.X));

@@ -70,7 +70,7 @@ final class BundleShellLayout {
 
     /**
      * The faces of a 2x2 or 3x3 cell's part of the one dense arm toward {@code side} ({@link CableShapes#denseArm}):
-     * none against the device, the shell, or the next cell of the same arm. Their tiles of the line texture draw what
+     * none against the device, the shell, or the next cell of the same arm, across the bundle or along it. Their tiles of the line texture draw what
      * the sides of an ordinary cable's dense arm show, stretched over the whole contact: across the arm, a 2-texel rim
      * where it ends and glass between; along it, the texture's row by the core next to the shell and the row by the
      * face next to the device.
@@ -80,6 +80,8 @@ final class BundleShellLayout {
         var faces = new ArrayList<ArmFace>();
         for (var face : Direction.values()) {
             if (face.getAxis() == side.getAxis() || face.getAxis() != look.axis() && !look.edge(face)) continue;
+            boolean before = face.getAxisDirection() == Direction.AxisDirection.NEGATIVE;
+            if (face.getAxis() == look.axis() && (before ? look.armBefore(side) : look.armAfter(side))) continue;
             var across = third(side.getAxis(), face.getAxis());
             int low = (int) box.min(across);
             int high = (int) box.max(across);

@@ -77,7 +77,8 @@ public final class CableShapes {
      * A bundled cell's dense arm toward {@code side}, in voxels, from the shell to the cell's face. An ordinary bundle's
      * cell has its own 10-voxel arm, as each of its beams has. A 2x2 or 3x3 bundle is one thick cable, so its cells
      * share one arm across the whole contact, 1 voxel inside the shell's outer edges as a cable's arm is inside its
-     * core. A side contact is one layer, so there the arm keeps 3 voxels from the layer's ends.
+     * core. Along the bundle a side arm runs on into the next layer when one device body takes that layer's row too, and
+     * otherwise keeps 3 voxels from the layer's end.
      */
     public static AABB denseArm(BundleLook look, Direction side) {
         double[] from = new double[3];
@@ -93,6 +94,9 @@ public final class CableShapes {
         boolean positive = side.getAxisDirection() == Direction.AxisDirection.POSITIVE;
         from[along] = positive ? 14 : 0;
         to[along] = positive ? 16 : 2;
+        int run = look.axis().ordinal();
+        if (look.armBefore(side)) from[run] = 0;
+        if (look.armAfter(side)) to[run] = 16;
         return new AABB(from[0], from[1], from[2], to[0], to[1], to[2]);
     }
 

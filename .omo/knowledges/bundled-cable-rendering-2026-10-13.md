@@ -51,6 +51,11 @@ a beam per cell), 1a34a908 (rails open at joints), then the guide page `bundled-
   the face cells, not to the corner cell that draws the beam). `BundleBeam` adds them to the beam's mask, over every
   layer of a branch's box too. The gallery's `bundled-cable.webp` was re-rendered with one arm per end
   (`tools/blender/gallery.py#thick_arm_quads`). Checks: `build/design-review-check/`.
+- 2026-10-30 (owner chose option B): where one device body takes the same side's rows of several adjacent layers, the
+  side arm runs on across those layers as one arm (`BundleLook.armsBefore/armsAfter`, from
+  `BundleLook.Contacts#oneBody`, which reads the device's connection bit toward the next layer). It keeps the rim only
+  at the stretch's two ends. Two devices side by side still get an arm each. Option A (an arm per layer, 6 voxels apart)
+  was rejected.
 
 ## Guide scenes with bundles
 

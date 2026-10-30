@@ -26,9 +26,11 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  * {@code jointsAfter} name the sides with such a branch, for every cell of those layers, and whether the branch goes on
  * into the previous or the next layer; the middle layer of a 3x3 branch has both. {@code contacts} names, for every cell of
  * the layer, the sides where a device takes the whole row of that side at this layer, so the one beam can turn toward it.
+ * {@code armsBefore} and {@code armsAfter} name the cell's dense sides across the bundle whose device body also takes
+ * the previous or the next layer's row, so one arm runs on along the whole stretch the body covers.
  */
 public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, int joinsBefore, int joinsAfter,
-        int side, int rings, int jointsBefore, int jointsAfter, int contacts) {
+        int side, int rings, int jointsBefore, int jointsAfter, int contacts, int armsBefore, int armsAfter) {
     /** Layer boundaries between two rings of a straight 2x2 stretch, counted in world coordinates. */
     public static final int RING_SPACING = 2;
     /**
@@ -41,6 +43,14 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
     @FunctionalInterface
     public interface Contacts {
         boolean whole(BundleSegment segment, BlockPos pos, Direction face);
+
+        /**
+         * Whether the device beside {@code face} of {@code pos} belongs to one body with the device beside the same face
+         * of the next cell {@code toward}.
+         */
+        default boolean oneBody(BlockPos pos, Direction face, Direction toward) {
+            return false;
+        }
     }
 
     /** The look of the cell at {@code pos}, or empty when it is not bundled. */
@@ -77,7 +87,9 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
             }
         }
         int width = segment.shape().filter(shape -> shape.narrow() == shape.wide()).map(BundleShape::narrow).orElse(0);
-        if (width == 0) return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, 0, 0, 0, 0, 0));
+        if (width == 0) {
+            return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, 0, 0, 0, 0, 0, 0, 0));
+        }
         int jointsBefore = 0;
         int jointsAfter = 0;
         int layerContacts = 0;
@@ -109,14 +121,46 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
                 && layer != segment.min().get(axis) && layer != segment.max().get(axis)) {
             rings |= 4;
         }
+        int armsBefore = 0;
+        int armsAfter = 0;
+        for (var side : Direction.values()) {
+            if (side.getAxis() == axis || (dense & bit(side)) == 0) continue;
+            if (armRunsOn(segment, pos, side, Direction.fromAxisAndDirection(axis, Direction.AxisDirection.NEGATIVE),
+                    contacts)) {
+                armsBefore |= bit(side);
+            }
+            if (armRunsOn(segment, pos, side, Direction.fromAxisAndDirection(axis, Direction.AxisDirection.POSITIVE),
+                    contacts)) {
+                armsAfter |= bit(side);
+            }
+        }
         return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, width, rings, jointsBefore,
-                jointsAfter, layerContacts));
+                jointsAfter, layerContacts, armsBefore, armsAfter));
     }
 
     /** {@link #of(BlockPos, Function, Contacts)} as either side sees the level. */
     public static Optional<BundleLook> of(BlockGetter level, BlockPos pos) {
-        return of(pos, cell -> BundleView.segmentAt(level, cell),
-                (segment, cell, face) -> BundleContacts.contact(level, segment, cell, face).whole());
+        return of(pos, cell -> BundleView.segmentAt(level, cell), new Contacts() {
+            @Override
+            public boolean whole(BundleSegment segment, BlockPos cell, Direction face) {
+                return BundleContacts.contact(level, segment, cell, face).whole();
+            }
+
+            @Override
+            public boolean oneBody(BlockPos cell, Direction face, Direction toward) {
+                return BundleContacts.oneBody(level, cell.relative(face), toward);
+            }
+        });
+    }
+
+    /**
+     * Whether the dense arm toward {@code side} of {@code pos} runs on into the next cell {@code toward}: that cell's row
+     * lies against a device too, of the same body.
+     */
+    private static boolean armRunsOn(BundleSegment segment, BlockPos pos, Direction side, Direction toward,
+            Contacts contacts) {
+        var next = pos.relative(toward);
+        return segment.contains(next) && contacts.whole(segment, next, side) && contacts.oneBody(pos, side, toward);
     }
 
     /** Whether the cell lies on the segment's boundary toward {@code side}: the shell, or the segment's end. */
@@ -192,6 +236,16 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
     /** Whether a device takes the whole row toward {@code side} at this layer of a 2x2 or 3x3 bundle. */
     public boolean contact(Direction side) {
         return (contacts & bit(side)) != 0;
+    }
+
+    /** Whether the dense arm toward {@code side} runs on into the previous cell along the bundle. */
+    public boolean armBefore(Direction side) {
+        return (armsBefore & bit(side)) != 0;
+    }
+
+    /** Whether the dense arm toward {@code side} runs on into the next cell along the bundle. */
+    public boolean armAfter(Direction side) {
+        return (armsAfter & bit(side)) != 0;
     }
 
     /** Whether a branch leaving toward {@code side} from this layer covers the next one too. */

@@ -50,6 +50,35 @@ final class BundleShellLayoutTest {
     }
 
     @Test
+    void aSideArmOverTwoLayersOfOneBodyHasNoRimBetweenThem() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 1, 1), Direction.Axis.X));
+        BundleLook.Contacts body = new BundleLook.Contacts() {
+            @Override
+            public boolean whole(BundleSegment segment, BlockPos pos, Direction face) {
+                return face == Direction.UP && (pos.getX() == 2 || pos.getX() == 3);
+            }
+
+            @Override
+            public boolean oneBody(BlockPos pos, Direction face, Direction toward) {
+                return true;
+            }
+        };
+        var look = BundleLook.of(new BlockPos(2, 1, 1), cell -> set.at(cell).map(BundleSet.Membership::segment), body)
+                .orElseThrow();
+        var faces = BundleShellLayout.armFaces(look, Direction.UP);
+        // The outer side and the layer's far end; not the end toward the next layer, where the arm runs on.
+        assertEquals(Set.of(Direction.SOUTH, Direction.WEST),
+                faces.stream().map(face -> face.panel().normal()).collect(Collectors.toSet()));
+        var south = faces.stream().filter(face -> face.panel().normal() == Direction.SOUTH).findFirst().orElseThrow();
+        for (var tile : south.tiles()) {
+            for (int at = tile.u0(); at < tile.u1(); at++) {
+                assertEquals(at < 5 ? at : 5, tile.texelU(), "rim only at the arm's west end, at " + at);
+            }
+        }
+    }
+
+    @Test
     void theMiddleOfAThreeByThreeDrawsNothing() {
         var set = new BundleSet();
         set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(2, 2, 4), Direction.Axis.Z));

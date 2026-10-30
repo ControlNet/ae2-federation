@@ -131,6 +131,11 @@ public final class BundleContacts {
     }
 
     /** Whether the devices beside {@code cells} are joined into one body along every edge between them. */
+    /** Whether the formed device at {@code device} belongs to one body with its neighbour {@code toward}. */
+    public static boolean oneBody(BlockGetter level, BlockPos device, Direction toward) {
+        return (RouterBlock.connections(level.getBlockState(device)) & 1 << toward.get3DDataValue()) != 0;
+    }
+
     private static boolean oneBody(BlockGetter level, List<BlockPos> cells, Direction face) {
         for (var cell : cells) {
             int connections = RouterBlock.connections(level.getBlockState(cell.relative(face)));
