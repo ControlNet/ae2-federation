@@ -13,7 +13,7 @@ import java.util.Map;
 public final class StandardLibrary {
     /** Strings whose static type says what they name; completion and the checker know their values. */
     public static final List<String> TYPED_STRINGS = List.of("Item", "Fluid", "Resource", "Interface", "Network",
-            "Side", "Capability", "RuleMode", "FilterMode", "HttpMethod");
+            "Side", "Capability", "RuleMode", "FilterMode", "HttpMethod", "CpuMode");
 
     /** Typed strings with a fixed set of values, known without the game. */
     public static final Map<String, List<String>> ENUMERATIONS = Map.of(
@@ -21,7 +21,8 @@ public final class StandardLibrary {
             "Capability", List.of("storage", "crafting", "power"),
             "RuleMode", List.of("off", "on", "reexport"),
             "FilterMode", List.of("all", "allow", "deny"),
-            "HttpMethod", List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"));
+            "HttpMethod", List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"),
+            "CpuMode", List.of("any", "player_only", "machine_only"));
 
     /** Values the program can hold but not build: a block selected through an interface. */
     public static final List<String> OPAQUE = List.of("Block");
@@ -29,7 +30,10 @@ public final class StandardLibrary {
     /** Built-in records and their fields, all read-only. */
     public static final Map<String, List<Signature.Arg>> RECORDS = Map.of(
             "Stack", List.of(arg("resource", "Resource"), arg("amount", "int")),
-            "Response", List.of(arg("status", "int"), arg("text", "str"), arg("headers", "dict[str, str]")));
+            "Response", List.of(arg("status", "int"), arg("text", "str"), arg("headers", "dict[str, str]")),
+            "Cpu", List.of(arg("name", "Optional[str]"), arg("network", "Network"), arg("busy", "bool"),
+                    arg("mode", "CpuMode"), arg("storage", "int"), arg("co_processors", "int"),
+                    arg("job", "Optional[Stack]"), arg("progress", "int"), arg("total", "int")));
 
     public static final Map<String, List<Signature>> NAMESPACES = Map.of(
             "ae2", List.of(
@@ -64,11 +68,13 @@ public final class StandardLibrary {
                                         ae2.craft(resource, missing)
                             """, network()),
                     act("craft", "bool",
-                            "Asks for a crafting job; False if nothing makes the resource or no CPU is free.", """
+                            "Asks for a crafting job, on the named CPU if given; False if nothing makes the resource "
+                                    + "or no CPU is free.", """
                             def keep_iron() -> None:
                                 if ae2.amount("minecraft:iron_ingot") < 64:
                                     ae2.craft("minecraft:iron_ingot", 64)
-                            """, arg("resource", "Resource"), amount(), network()),
+                            """, arg("resource", "Resource"), amount(), network(),
+                            new Signature.Arg("cpu", type("Optional[str]"), "None")),
                     act("cancel", "bool", "Cancels the jobs this installation started for the resource.", """
                             def stop_iron_when_full() -> None:
                                 if ae2.amount("minecraft:iron_ingot") >= 1000:
@@ -95,6 +101,14 @@ public final class StandardLibrary {
                                     ae2.move(base, farm, item, 64)
                             """, arg("source", "Network"), arg("target", "Network"), arg("resource", "Resource"),
                             amount()),
+                    fn("cpus", "list[Cpu]", "The crafting CPUs and the jobs they run.", """
+                            def busy_cpus() -> int:
+                                count = 0
+                                for cpu in ae2.cpus():
+                                    if cpu.busy:
+                                        count += 1
+                                return count
+                            """, network()),
                     fn("free_cpus", "int", "Free crafting CPUs that take automation requests.", """
                             def craft_when_idle(item: Item, amount: int) -> None:
                                 if ae2.free_cpus() > 0:

@@ -488,6 +488,53 @@ public final class ProgramHostGameTests {
     }
 
     /**
+     * The crafting scene with a second CPU named "Spare": {@code ae2.cpus} lists both, and a job asked for on "Spare"
+     * runs there, which the program sees from the CPU's job while it runs. The first CPU takes machine requests only,
+     * so AE2 left to itself would pick that one.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void programCraftsOnTheCpuItNames(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true);
+        crafting.addNamedCpu("Spare");
+        var switchAt = new BlockPos(1, 3, 1);
+        var interfaceAt = switchAt.above(2);
+        new RouterFixtures(helper).placeSwitch(switchAt);
+        helper.setBlock(switchAt.above(), RouterRegistration.FEDERATION_CABLE.get());
+        helper.setBlock(interfaceAt, AutomationRegistration.INTERFACE.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.UP));
+        var stocked = new boolean[] { false };
+        run(helper, interfaceAt, 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the pattern");
+            if (!stocked[0]) {
+                crafting.insertMaterials(2);
+                crafting.cpuSelectionMode(CpuSelectionMode.MACHINE_ONLY);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the planks");
+            }
+        }, "host_named_cpu", """
+                def run() -> str:
+                    listed: list[str] = []
+                    for cpu in ae2.cpus():
+                        listed.append(str(cpu.name) + "/" + cpu.mode + "/" + str(cpu.storage) + "/" + str(cpu.busy))
+                    listed.sort()
+                    started = ae2.craft("minecraft:stick", 4, cpu="Spare")
+                    seen = "none"
+                    waited = 0
+                    while ae2.amount("minecraft:stick") < 4 and waited < 200:
+                        for cpu in ae2.cpus():
+                            job = cpu.job
+                            if job is not None:
+                                seen = str(cpu.name) + ":" + job.resource + "x" + str(job.amount)
+                        mc.wait(1)
+                        waited += 1
+                    return " ".join([",".join(listed), str(started), seen, str(ae2.amount("minecraft:stick"))])
+                """, "None/machine_only/1024/False,Spare/any/1024/False True Spare:minecraft:stickx4 4",
+                "Both CPUs are listed; the job asked for on Spare ran there and made four sticks",
+                crafting::close);
+    }
+
+    /**
      * The crafting scene with a second network (a powered ME Chest north of the Switch). A job counts in
      * {@code ae2.crafting} from the moment it is asked for, while AE2 still plans it, and {@code ae2.cancel} cancels it
      * only on the network it names.

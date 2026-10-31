@@ -54,7 +54,8 @@ import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
  * storage (its drives, cells and storage buses, never what the Federation mounts from other networks), so a sum over
  * the domain counts each item once. Moving into or out of the domain goes through the networks one by one, in the
  * order of their IDs, each paying AE power as an import or export bus does. Crafting runs on the first network that
- * has a pattern and a free CPU. A resource is named by its ID only, so items with components read as their plain item.
+ * has a pattern and a free CPU, one of the name given if a CPU is named. A resource is named by its ID only, so items
+ * with components read as their plain item.
  */
 final class DomainCalls {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(DomainCalls.class);
@@ -91,7 +92,7 @@ final class DomainCalls {
                     .anyMatch(grid -> grid.getCraftingService().isCraftable(key(args.get(0))));
             case "ae2.crafting" -> ProgramCrafting.get(server).delivering(grids(args.get(1)), key(args.get(0)));
             case "ae2.patterns" -> patterns(args.get(0));
-            case "ae2.craft" -> craft(key(args.get(0)), (Long) args.get(1), args.get(2));
+            case "ae2.craft" -> craft(key(args.get(0)), (Long) args.get(1), args.get(2), (String) args.get(3));
             // A dry run has no jobs of its own to cancel.
             case "ae2.cancel" -> !simulate
                     && ProgramCrafting.get(server).cancel(owner, key(args.get(0)), grids(args.get(1)));
@@ -100,6 +101,7 @@ final class DomainCalls {
             case "ae2.export_to" -> exportTo(host, args.get(0), key(args.get(1)),
                     host.movable(key(args.get(1)), (Long) args.get(2)), args.get(3));
             case "ae2.move" -> moveWithin(host, args.get(0), args.get(1), key(args.get(2)), (Long) args.get(3));
+            case "ae2.cpus" -> cpus(args.get(0));
             case "ae2.free_cpus" -> grids(args.get(0)).stream().mapToLong(ProgramCrafting::freeCpus).sum();
             case "ae2.energy" -> grids(args.get(0)).stream()
                     .mapToDouble(grid -> grid.getEnergyService().getStoredPower()).sum();
@@ -202,6 +204,43 @@ final class DomainCalls {
         return total;
     }
 
+    /** The CPUs of the networks, network by network in the order of their IDs. */
+    private ListValue cpus(@Nullable Object network) {
+        var live = live();
+        var shortIds = NetworkShortIds.get(server);
+        var ids = network != null ? List.of(network((String) network))
+                : members().stream().sorted(Comparator.comparing(shortIds::id)).toList();
+        var items = new ArrayList<Object>();
+        for (var id : ids) {
+            var grid = live.get(id);
+            if (grid == null) {
+                continue;
+            }
+            for (var cpu : grid.getCraftingService().getCpus()) {
+                var status = cpu.isBusy() ? cpu.getJobStatus() : null;
+                var fields = new LinkedHashMap<String, Object>();
+                fields.put("name", ProgramCrafting.name(cpu));
+                fields.put("network", shortIds.id(id));
+                fields.put("busy", cpu.isBusy());
+                fields.put("mode", cpu.getSelectionMode().name().toLowerCase(java.util.Locale.ROOT));
+                fields.put("storage", cpu.getAvailableStorage());
+                fields.put("co_processors", (long) cpu.getCoProcessors());
+                fields.put("job", status == null ? null : stack(status.crafting().what(), status.crafting().amount()));
+                fields.put("progress", status == null ? 0L : status.progress());
+                fields.put("total", status == null ? 0L : status.totalItems());
+                items.add(new RecordValue("Cpu", fields, true));
+            }
+        }
+        return new ListValue(items);
+    }
+
+    private static RecordValue stack(AEKey key, long amount) {
+        var fields = new LinkedHashMap<String, Object>();
+        fields.put("resource", id(key));
+        fields.put("amount", amount);
+        return new RecordValue("Stack", fields, true);
+    }
+
     /** Stacks largest first, then by ID. */
     private static ListValue stacks(KeyCounter counter) {
         var entries = new ArrayList<Map.Entry<AEKey, Long>>();
@@ -214,10 +253,7 @@ final class DomainCalls {
                 .thenComparing(entry -> id(entry.getKey())));
         var items = new ArrayList<Object>();
         for (var entry : entries) {
-            var fields = new LinkedHashMap<String, Object>();
-            fields.put("resource", id(entry.getKey()));
-            fields.put("amount", entry.getValue());
-            items.add(new RecordValue("Stack", fields, true));
+            items.add(stack(entry.getKey(), entry.getValue()));
         }
         return new ListValue(items);
     }
@@ -229,10 +265,16 @@ final class DomainCalls {
         return new ListValue(new ArrayList<>(ids));
     }
 
-    private boolean craft(AEKey key, long amount, @Nullable Object network) {
+    private boolean craft(AEKey key, long amount, @Nullable Object network, @Nullable String cpu) {
         var crafting = ProgramCrafting.get(server);
-        for (var grid : grids(network)) {
-            if (simulate ? crafting.couldRequest(grid, key, amount) : crafting.request(owner, grid, key, amount)) {
+        var grids = grids(network);
+        if (cpu != null && grids.stream().noneMatch(grid -> ProgramCrafting.hasCpu(grid, cpu))) {
+            throw new RunError("ValueError", "no crafting CPU named '" + cpu + "' "
+                    + (network == null ? "in this domain" : "on network '" + network + "'"));
+        }
+        for (var grid : grids) {
+            if (simulate ? crafting.couldRequest(grid, key, amount, cpu)
+                    : crafting.request(owner, grid, key, amount, cpu)) {
                 return true;
             }
         }

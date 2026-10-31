@@ -216,6 +216,13 @@ public final class NativeCraftingFixtures implements AutoCloseable {
 
     private CraftingBlockEntity cpu() { return helper.getBlockEntity(CPU_POS); }
 
+    /** A second 1k CPU north of the chest, named as an anvil names its block. */
+    public void addNamedCpu(String name) {
+        helper.setBlock(CHEST_POS.north(), AEBlocks.CRAFTING_STORAGE_1K.block());
+        CraftingBlockEntity cpu = helper.getBlockEntity(CHEST_POS.north());
+        cpu.setName(name);
+    }
+
     /** Sets the CPU's selection mode, as its screen's button does; the CPU must have formed. */
     public void cpuSelectionMode(CpuSelectionMode mode) {
         cpu().getConfigManager().putSetting(Settings.CPU_SELECTION_MODE, mode);

@@ -25,9 +25,10 @@ storage, whatever the rules share.
 | `ae2.craftable(resource, network)` | whether a pattern makes it |
 | `ae2.crafting(resource, network)` | how much running and requested jobs will still put into storage |
 | `ae2.patterns(network)` | everything that can be crafted |
+| `ae2.cpus(network)` | the crafting CPUs, as `Cpu`s, with the jobs they run |
 | `ae2.free_cpus(network)` | free crafting CPUs that take automation requests |
 | `ae2.energy(network)` | AE stored |
-| `ae2.craft(resource, amount, network)` | **action:** asks for a job; `False` if no pattern makes it or no CPU is free for it |
+| `ae2.craft(resource, amount, network, cpu=None)` | **action:** asks for a job, on a CPU of that name if `cpu` is given; `False` if no pattern makes it or no CPU is free for it |
 | `ae2.cancel(resource, network)` | **action:** cancels the jobs this installation started on the network |
 | `ae2.import_from(block, resource, amount, network)` | **action:** moves from the block into storage |
 | `ae2.export_to(block, resource, amount, network)` | **action:** moves from storage into the block |
@@ -37,6 +38,9 @@ AE2 plans a job over the next ticks, then picks a free CPU for it as for any aut
 requests only, and CPUs too small for the job, are left out. A plan that misses ingredients, or finds no such CPU by
 then, starts nothing, and `ae2.crafting` drops back. The job's final output counts in `ae2.crafting` from the
 request until it reaches storage.
+
+With `cpu`, the job runs on a free CPU of that name, the smallest one it fits, never on one set to player requests
+only. A crafting unit renamed in an anvil names its CPU. A name no CPU has stops the run with a `ValueError`.
 
 ## ae2f: the Federation
 

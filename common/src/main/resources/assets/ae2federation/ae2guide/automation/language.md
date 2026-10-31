@@ -43,7 +43,8 @@ Every value has a static type, checked before a program runs. Besides Python's o
 | `Block` | a block selected through an interface by `ae2f.select` |
 | `Stack` | a resource and an amount, as `mc.storage` lists them |
 | `Response` | an HTTP answer from `net.http`: `status`, `text` and `headers` |
-| `Side`, `Capability`, `RuleMode`, `FilterMode`, `HttpMethod` | fixed words such as `"down"`, `"storage"`, `"on"`, `"allow"`, `"GET"` |
+| `Cpu` | a crafting CPU from `ae2.cpus`: `name`, `network`, `busy`, `mode`, `storage`, `co_processors`, and its `job` with `progress` of `total` |
+| `Side`, `Capability`, `RuleMode`, `FilterMode`, `HttpMethod`, `CpuMode` | fixed words such as `"down"`, `"storage"`, `"on"`, `"allow"`, `"GET"`, `"machine_only"` |
 
 Amounts are in each resource's own unit: items one by one, fluids in mB.
 

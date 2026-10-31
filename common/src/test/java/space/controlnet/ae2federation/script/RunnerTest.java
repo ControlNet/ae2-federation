@@ -191,7 +191,7 @@ final class RunnerTest {
                     ok = ae2.craft("minecraft:iron_ingot", ae2.amount("minecraft:gold_ingot")) and mc.set_redstone("north_gate", 15)
                     return ok
                 """, "main", List.of(),
-                        List.of("ae2.amount('minecraft:gold_ingot', None)", "ae2.craft('minecraft:iron_ingot', 200, None)"),
+                        List.of("ae2.amount('minecraft:gold_ingot', None)", "ae2.craft('minecraft:iron_ingot', 200, None, None)"),
                         "False"),
                 Arguments.of("or skips an action when the left side is true", """
                 def main() -> bool:
@@ -199,7 +199,7 @@ final class RunnerTest {
                     second = ae2.craft("minecraft:iron_ingot", 500) or mc.set_redstone("mine_entry", 3)
                     return first and second
                 """, "main", List.of(),
-                        List.of("ae2.craft('minecraft:iron_ingot', 1, None)", "ae2.craft('minecraft:iron_ingot', 500, None)", "mc.set_redstone('mine_entry', 3)"),
+                        List.of("ae2.craft('minecraft:iron_ingot', 1, None, None)", "ae2.craft('minecraft:iron_ingot', 500, None, None)", "mc.set_redstone('mine_entry', 3)"),
                         "True"),
                 Arguments.of("the value is computed before the target index", """
                 def f(log: list[str]) -> int:
@@ -293,7 +293,7 @@ final class RunnerTest {
                         n += 1
                     return n
                 """, "main", List.of(),
-                        List.of("ae2.craft('minecraft:iron_ingot', 0, None)", "ae2.craft('minecraft:iron_ingot', 40, None)", "ae2.craft('minecraft:iron_ingot', 80, None)", "ae2.craft('minecraft:iron_ingot', 120, None)"),
+                        List.of("ae2.craft('minecraft:iron_ingot', 0, None, None)", "ae2.craft('minecraft:iron_ingot', 40, None, None)", "ae2.craft('minecraft:iron_ingot', 80, None, None)", "ae2.craft('minecraft:iron_ingot', 120, None, None)"),
                         "3"),
                 Arguments.of("recursion returns through frames", """
                 def fact(n: int) -> int:
@@ -417,7 +417,7 @@ final class RunnerTest {
                     xs.insert(0, len(xs) > 1)
                     return xs
                 """, "main", List.of(),
-                        List.of("ae2.craft('minecraft:iron_ingot', 1, None)", "mc.set_redstone('north_gate', 2)", "ae2.craft('minecraft:iron_ingot', 200, None)"),
+                        List.of("ae2.craft('minecraft:iron_ingot', 1, None, None)", "mc.set_redstone('north_gate', 2)", "ae2.craft('minecraft:iron_ingot', 200, None, None)"),
                         "[True, True, False]"),
                 Arguments.of("a slice target and an attribute target with calls", """
                 class Box:

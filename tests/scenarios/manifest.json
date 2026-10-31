@@ -213,6 +213,7 @@
     {"id":"programs.host-switches","backend":"gametest","testId":"theserverturnsoutsidecallsoff","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-crafting","backend":"gametest","testId":"programcraftsthroughitsdomain","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-players-only-cpu","backend":"gametest","testId":"programleavesaplayersonlycpualone","structure":"ae2federation_test:harness_native_smoke","assertions":1},
+    {"id":"programs.host-named-cpu","backend":"gametest","testId":"programcraftsonthecpuitnames","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.installed-run","backend":"gametest","testId":"installedfunctionlightsalampwhenrun","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.rate-limit","backend":"gametest","testId":"aschedulekeepstotheratelimit","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.redstone-edge","backend":"gametest","testId":"redstonestartsonceperrisingedge","structure":"ae2federation_test:harness_native_smoke","assertions":1},

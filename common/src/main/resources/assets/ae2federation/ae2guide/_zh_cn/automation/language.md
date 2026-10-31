@@ -36,7 +36,8 @@ navigation:
 | `Block` | 用`ae2f.select`通过接口选中的方块 |
 | `Stack` | 一种资源和数量， `mc.storage`列出的就是它 |
 | `Response` | `net.http`给出的HTTP回答： `status`、`text`和`headers` |
-| `Side`、`Capability`、`RuleMode`、`FilterMode`、`HttpMethod` | 固定的词， 例如`"down"`、`"storage"`、`"on"`、`"allow"`、`"GET"` |
+| `Cpu` | `ae2.cpus`给出的合成CPU： `name`、`network`、`busy`、`mode`、`storage`、`co_processors`， 以及它的任务`job`和进度`progress`/`total` |
+| `Side`、`Capability`、`RuleMode`、`FilterMode`、`HttpMethod`、`CpuMode` | 固定的词， 例如`"down"`、`"storage"`、`"on"`、`"allow"`、`"GET"`、`"machine_only"` |
 
 数量用各资源自己的单位： 物品按个， 流体按mB。
 

@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import net.minecraft.server.MinecraftServer;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.controlnet.ae2federation.crafting.projection.CraftingCpuLifecycle;
@@ -34,7 +35,9 @@ public final class ProgramCrafting {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProgramCrafting.class);
     private static final Map<MinecraftServer, ProgramCrafting> SERVICES = new HashMap<>();
 
-    private record Pending(String owner, IGrid grid, AEKey key, long amount, Future<ICraftingPlan> plan) {
+    /** A plan being worked out; {@code cpu} is the name of the CPU it must run on, {@code null} for AE2's choice. */
+    private record Pending(String owner, IGrid grid, AEKey key, long amount, @Nullable String cpu,
+            Future<ICraftingPlan> plan) {
     }
 
     /** A job on its CPU; {@code link} names it there, {@code null} for a CPU that cannot say. */
@@ -64,17 +67,41 @@ public final class ProgramCrafting {
 
     /**
      * Whether {@link #request} would ask the grid to plan the job: something makes it there and a CPU is free that no
-     * plan still being worked out will take. Without that last part a loop could ask for plan after plan while the CPU
-     * stays idle, each one held in memory and worked out by AE2's threads.
+     * plan still being worked out will take, one named {@code cpu} if that is given. Without that last part a loop
+     * could ask for plan after plan while the CPU stays idle, each one held in memory and worked out by AE2's threads.
      */
-    public boolean couldRequest(IGrid grid, AEKey key, long amount) {
+    public boolean couldRequest(IGrid grid, AEKey key, long amount, @Nullable String cpu) {
         var pivot = grid.getPivot();
-        return amount > 0 && grid.getCraftingService().isCraftable(key) && freeCpus(grid) > planning(grid)
+        var free = cpu == null ? freeCpus(grid) : usable(grid, cpu).count();
+        return amount > 0 && grid.getCraftingService().isCraftable(key) && free > planning(grid, cpu)
                 && pivot != null && pivot.getLevel() != null;
     }
 
-    private long planning(IGrid grid) {
-        return pending.stream().filter(request -> request.grid() == grid).count();
+    /** Plans on the grid that will take a CPU: any of them, or those for the CPU named {@code cpu}. */
+    private long planning(IGrid grid, @Nullable String cpu) {
+        return pending.stream().filter(request -> request.grid() == grid
+                && (cpu == null || cpu.equals(request.cpu()))).count();
+    }
+
+    /** Whether a CPU on the grid has this name, busy or not. */
+    public static boolean hasCpu(IGrid grid, String name) {
+        return grid.getCraftingService().getCpus().stream().anyMatch(cpu -> named(cpu, name));
+    }
+
+    /** The grid's CPUs with this name that a program's job could start on now. */
+    private static java.util.stream.Stream<ICraftingCPU> usable(IGrid grid, String name) {
+        return grid.getCraftingService().getCpus().stream().filter(cpu -> named(cpu, name) && !cpu.isBusy()
+                && cpu.getSelectionMode() != CpuSelectionMode.PLAYER_ONLY);
+    }
+
+    /** The CPU's name as its screen shows it; {@code null} for a CPU nobody named. */
+    public static @Nullable String name(ICraftingCPU cpu) {
+        var name = cpu.getName();
+        return name == null ? null : name.getString();
+    }
+
+    private static boolean named(ICraftingCPU cpu, String name) {
+        return name.equals(name(cpu));
     }
 
     /** The installation went away: its plans not on a CPU yet go too. Running jobs keep going. */
@@ -87,9 +114,12 @@ public final class ProgramCrafting {
         }
     }
 
-    /** Asks the grid to plan the job; false when nothing makes the resource there or no CPU is free. */
-    public boolean request(String owner, IGrid grid, AEKey key, long amount) {
-        if (!couldRequest(grid, key, amount)) {
+    /**
+     * Asks the grid to plan the job, to run on a CPU named {@code cpu} if that is given; false when nothing makes the
+     * resource there or no such CPU is free.
+     */
+    public boolean request(String owner, IGrid grid, AEKey key, long amount, @Nullable String cpu) {
+        if (!couldRequest(grid, key, amount, cpu)) {
             return false;
         }
         var crafting = grid.getCraftingService();
@@ -107,8 +137,8 @@ public final class ProgramCrafting {
                 return pivot;
             }
         };
-        pending.add(new Pending(owner, grid, key, amount, crafting.beginCraftingCalculation(level, requester, key,
-                amount, CalculationStrategy.REPORT_MISSING_ITEMS)));
+        pending.add(new Pending(owner, grid, key, amount, cpu, crafting.beginCraftingCalculation(level, requester,
+                key, amount, CalculationStrategy.REPORT_MISSING_ITEMS)));
         return true;
     }
 
@@ -202,9 +232,19 @@ public final class ProgramCrafting {
             }
             var crafting = request.grid().getCraftingService();
             var idle = crafting.getCpus().stream().filter(cpu -> !cpu.isBusy()).toList();
-            // No target: AE2 picks the CPU as it does for any machine, leaving out players-only CPUs and ones too
-            // small for the job. The job's CPU is the one that was idle and is busy now.
-            if (crafting.submitJob(plan, null, null, false, IActionSource.empty()).successful()) {
+            // Without a name, no target: AE2 picks the CPU as it does for any machine, leaving out players-only CPUs
+            // and ones too small for the job. With one, the smallest CPU of that name the job fits, as AE2 would.
+            ICraftingCPU target = null;
+            if (request.cpu() != null) {
+                target = usable(request.grid(), request.cpu()).filter(cpu -> cpu.getAvailableStorage() >= plan.bytes())
+                        .min(java.util.Comparator.comparingLong(ICraftingCPU::getAvailableStorage)).orElse(null);
+                if (target == null) {
+                    LOGGER.debug("No CPU named {} is free for a program's job for {}", request.cpu(), request.key());
+                    continue;
+                }
+            }
+            // The job's CPU is the one that was idle and is busy now.
+            if (crafting.submitJob(plan, null, target, false, IActionSource.empty()).successful()) {
                 idle.stream().filter(ICraftingCPU::isBusy).findFirst().ifPresent(cpu -> started.add(
                         new Started(request.owner(), cpu, request.key(), CraftingCpuLifecycle.jobLink(cpu))));
             }
