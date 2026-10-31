@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.automation;
 
+import appeng.api.config.CpuSelectionMode;
 import appeng.api.networking.crafting.CalculationStrategy;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
@@ -166,8 +167,10 @@ public final class ProgramCrafting {
                 + started.stream().filter(job -> job.owner().equals(owner) && running(job)).count());
     }
 
+    /** CPUs a program's job could start on: not busy and not kept for players. */
     public static int freeCpus(IGrid grid) {
-        return (int) grid.getCraftingService().getCpus().stream().filter(cpu -> !cpu.isBusy()).count();
+        return (int) grid.getCraftingService().getCpus().stream()
+                .filter(cpu -> !cpu.isBusy() && cpu.getSelectionMode() != CpuSelectionMode.PLAYER_ONLY).count();
     }
 
     private static boolean running(Started job) {
@@ -198,11 +201,12 @@ public final class ProgramCrafting {
                 continue;
             }
             var crafting = request.grid().getCraftingService();
-            for (var cpu : crafting.getCpus()) {
-                if (!cpu.isBusy() && crafting.submitJob(plan, null, cpu, false, IActionSource.empty()).successful()) {
-                    started.add(new Started(request.owner(), cpu, request.key(), CraftingCpuLifecycle.jobLink(cpu)));
-                    break;
-                }
+            var idle = crafting.getCpus().stream().filter(cpu -> !cpu.isBusy()).toList();
+            // No target: AE2 picks the CPU as it does for any machine, leaving out players-only CPUs and ones too
+            // small for the job. The job's CPU is the one that was idle and is busy now.
+            if (crafting.submitJob(plan, null, null, false, IActionSource.empty()).successful()) {
+                idle.stream().filter(ICraftingCPU::isBusy).findFirst().ifPresent(cpu -> started.add(
+                        new Started(request.owner(), cpu, request.key(), CraftingCpuLifecycle.jobLink(cpu))));
             }
         }
     }

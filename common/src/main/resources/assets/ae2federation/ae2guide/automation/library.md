@@ -25,7 +25,7 @@ storage, whatever the rules share.
 | `ae2.craftable(resource, network)` | whether a pattern makes it |
 | `ae2.crafting(resource, network)` | how much running and requested jobs will still put into storage |
 | `ae2.patterns(network)` | everything that can be crafted |
-| `ae2.free_cpus(network)` | crafting CPUs not busy |
+| `ae2.free_cpus(network)` | free crafting CPUs that take automation requests |
 | `ae2.energy(network)` | AE stored |
 | `ae2.craft(resource, amount, network)` | **action:** asks for a job; `False` if no pattern makes it or no CPU is free for it |
 | `ae2.cancel(resource, network)` | **action:** cancels the jobs this installation started on the network |
@@ -33,8 +33,9 @@ storage, whatever the rules share.
 | `ae2.export_to(block, resource, amount, network)` | **action:** moves from storage into the block |
 | `ae2.move(source, target, resource, amount)` | **action:** moves between two networks of the domain |
 
-AE2 plans a job over the next ticks, then starts it on a free CPU. A plan that misses ingredients, or finds every CPU
-busy by then, starts nothing, and `ae2.crafting` drops back. The job's final output counts in `ae2.crafting` from the
+AE2 plans a job over the next ticks, then picks a free CPU for it as for any automation request: CPUs set to player
+requests only, and CPUs too small for the job, are left out. A plan that misses ingredients, or finds no such CPU by
+then, starts nothing, and `ae2.crafting` drops back. The job's final output counts in `ae2.crafting` from the
 request until it reaches storage.
 
 ## ae2f: the Federation

@@ -414,7 +414,7 @@
   "ae2federation.function.ae2.import_from": "把该资源从方块移入网络。",
   "ae2federation.function.ae2.export_to": "把该资源从网络移入方块。",
   "ae2federation.function.ae2.move": "把该资源从联邦域的一个网络移到另一个网络。",
-  "ae2federation.function.ae2.free_cpus": "空闲的合成 CPU 数量。",
+  "ae2federation.function.ae2.free_cpus": "空闲且接受自动化请求的合成 CPU 数量。",
   "ae2federation.function.ae2.energy": "存储的 AE 能量。",
   "ae2federation.function.ae2f.select": "自动化接口正前方第 reach 格的方块，可指定从哪一面访问。",
   "ae2federation.function.ae2f.networks": "联邦域中的所有网络。",

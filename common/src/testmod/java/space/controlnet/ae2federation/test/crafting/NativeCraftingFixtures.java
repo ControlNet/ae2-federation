@@ -1,6 +1,8 @@
 package space.controlnet.ae2federation.test.crafting;
 
 import appeng.api.config.Actionable;
+import appeng.api.config.CpuSelectionMode;
+import appeng.api.config.Settings;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.crafting.CalculationStrategy;
 import appeng.api.networking.crafting.ICraftingLink;
@@ -213,6 +215,11 @@ public final class NativeCraftingFixtures implements AutoCloseable {
     public MolecularAssemblerBlockEntity assembler() { return helper.getBlockEntity(ASSEMBLER_POS); }
 
     private CraftingBlockEntity cpu() { return helper.getBlockEntity(CPU_POS); }
+
+    /** Sets the CPU's selection mode, as its screen's button does; the CPU must have formed. */
+    public void cpuSelectionMode(CpuSelectionMode mode) {
+        cpu().getConfigManager().putSetting(Settings.CPU_SELECTION_MODE, mode);
+    }
 
     private ItemStack stickPattern() {
         var items = NonNullList.withSize(9, ItemStack.EMPTY);

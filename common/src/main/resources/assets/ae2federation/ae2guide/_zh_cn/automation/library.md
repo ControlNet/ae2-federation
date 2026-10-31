@@ -21,7 +21,7 @@ navigation:
 | `ae2.craftable(resource, network)` | 是否有样板能合成它 |
 | `ae2.crafting(resource, network)` | 正在运行和已请求的任务还会送入存储多少 |
 | `ae2.patterns(network)` | 所有能合成的东西 |
-| `ae2.free_cpus(network)` | 空闲的合成CPU数 |
+| `ae2.free_cpus(network)` | 空闲且接受自动化请求的合成CPU数 |
 | `ae2.energy(network)` | 储存的AE |
 | `ae2.craft(resource, amount, network)` | **操作**： 请求合成任务； 没有样板能合成或没有可用的空闲CPU时为`False` |
 | `ae2.cancel(resource, network)` | **操作**： 取消这个安装在该网络上发起的任务 |
@@ -29,7 +29,7 @@ navigation:
 | `ae2.export_to(block, resource, amount, network)` | **操作**： 从存储搬进方块 |
 | `ae2.move(source, target, resource, amount)` | **操作**： 在联邦域的两个网络之间搬运 |
 
-AE2会在接下来几刻里规划任务， 规划好后交给空闲的CPU。 规划时缺材料， 或者到那时CPU都忙， 任务就不会开始， `ae2.crafting`也随之回落。 任务的最终产物从请求起计入`ae2.crafting`， 直到送进存储。
+AE2会在接下来几刻里规划任务， 规划好后像对待其他自动化请求一样挑选空闲的CPU： 只接受玩家请求的CPU和容量不够的CPU都不会用。 规划时缺材料， 或者到那时没有这样的CPU， 任务就不会开始， `ae2.crafting`也随之回落。 任务的最终产物从请求起计入`ae2.crafting`， 直到送进存储。
 
 ## ae2f： 联邦
 

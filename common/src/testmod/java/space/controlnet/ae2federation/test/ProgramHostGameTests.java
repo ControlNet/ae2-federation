@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.test;
 
 import appeng.api.config.Actionable;
+import appeng.api.config.CpuSelectionMode;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.storage.StorageCells;
@@ -448,6 +449,41 @@ public final class ProgramHostGameTests {
                                      str(ae2.amount("minecraft:oak_planks"))])
                 """, "True minecraft:stick 1 True 4 0",
                 "The program's job planned, started on the CPU and put four sticks in storage from the two planks",
+                crafting::close);
+    }
+
+    /**
+     * The crafting scene with its only CPU set to "players only": a program does not see it as free and its job does
+     * not start there, as AE2 itself picks no such CPU for a machine.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void programLeavesAPlayersOnlyCpuAlone(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true);
+        var switchAt = new BlockPos(1, 3, 1);
+        var interfaceAt = switchAt.above(2);
+        new RouterFixtures(helper).placeSwitch(switchAt);
+        helper.setBlock(switchAt.above(), RouterRegistration.FEDERATION_CABLE.get());
+        helper.setBlock(interfaceAt, AutomationRegistration.INTERFACE.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.UP));
+        var stocked = new boolean[] { false };
+        run(helper, interfaceAt, 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the pattern");
+            if (!stocked[0]) {
+                crafting.insertMaterials(2);
+                crafting.cpuSelectionMode(CpuSelectionMode.PLAYER_ONLY);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the planks");
+            }
+        }, "host_players_cpu", """
+                def run() -> str:
+                    free = ae2.free_cpus()
+                    started = ae2.craft("minecraft:stick", 4)
+                    mc.wait(40)
+                    return " ".join([str(free), str(started), str(ae2.amount("minecraft:stick")),
+                                     str(ae2.amount("minecraft:oak_planks"))])
+                """, "0 False 0 2",
+                "A players-only CPU is not free for the program, which starts no job and uses none of the planks",
                 crafting::close);
     }
 

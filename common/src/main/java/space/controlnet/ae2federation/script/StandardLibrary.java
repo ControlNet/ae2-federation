@@ -95,7 +95,7 @@ public final class StandardLibrary {
                                     ae2.move(base, farm, item, 64)
                             """, arg("source", "Network"), arg("target", "Network"), arg("resource", "Resource"),
                             amount()),
-                    fn("free_cpus", "int", "Crafting CPUs not busy.", """
+                    fn("free_cpus", "int", "Free crafting CPUs that take automation requests.", """
                             def craft_when_idle(item: Item, amount: int) -> None:
                                 if ae2.free_cpus() > 0:
                                     ae2.craft(item, amount)

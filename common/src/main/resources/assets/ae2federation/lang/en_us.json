@@ -414,7 +414,7 @@
   "ae2federation.function.ae2.import_from": "Moves the resource from the block into the network.",
   "ae2federation.function.ae2.export_to": "Moves the resource from the network into the block.",
   "ae2federation.function.ae2.move": "Moves the resource from one network of the domain to another.",
-  "ae2federation.function.ae2.free_cpus": "Crafting CPUs not busy.",
+  "ae2federation.function.ae2.free_cpus": "Free crafting CPUs that take automation requests.",
   "ae2federation.function.ae2.energy": "AE stored.",
   "ae2federation.function.ae2f.select": "The block in front of the interface, reach blocks away, seen from a side.",
   "ae2federation.function.ae2f.networks": "The networks of the domain.",
