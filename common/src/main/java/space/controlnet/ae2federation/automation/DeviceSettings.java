@@ -56,6 +56,13 @@ public final class DeviceSettings {
 
     private static final List<Setting<?>> KNOWN = known();
     private static final Map<String, Button> BUTTONS = buttons();
+    /**
+     * The settings completion offers: those some AE2 device has. io_direction and level_emitter_mode stay in AE2's
+     * registry with no device, so they are left out; an addon device that has them still takes them at run time
+     * (user, 2026-10-31).
+     */
+    private static final List<Setting<?>> OFFERED = KNOWN.stream()
+            .filter(setting -> !devices(setting.getName()).isEmpty()).toList();
 
     private DeviceSettings() {
     }
@@ -88,12 +95,12 @@ public final class DeviceSettings {
 
     /** The names completion offers, in order. */
     public static List<String> names() {
-        return KNOWN.stream().map(Setting::getName).toList();
+        return OFFERED.stream().map(Setting::getName).toList();
     }
 
     /** A setting of AE2's registry by its name, if completion offers it. */
     public static Optional<Setting<?>> known(String name) {
-        return KNOWN.stream().filter(setting -> setting.getName().equals(name)).findFirst();
+        return OFFERED.stream().filter(setting -> setting.getName().equals(name)).findFirst();
     }
 
     /** A value as programs write it: its enum name in lower case. */
@@ -132,7 +139,7 @@ public final class DeviceSettings {
         var typed = prefix.toLowerCase(Locale.ROOT);
         var starting = new ArrayList<Candidate>();
         var containing = new ArrayList<Candidate>();
-        for (var setting : KNOWN) {
+        for (var setting : OFFERED) {
             var name = setting.getName();
             var title = title(name);
             var candidate = new Candidate(name, Candidate.Kind.VALUE, title, devicesNote(name), false, "", false);

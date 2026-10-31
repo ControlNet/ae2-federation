@@ -613,6 +613,13 @@ public final class AutomationTabScenario implements UIScenario {
                 .waitUntil("a setting name lists AE2's device settings, without the terminals'", context ->
                         popupLabels(context).containsAll(java.util.List.of("fuzzy_mode", "redstone_controlled",
                                 "blocking_mode")) && !popupLabels(context).contains("sort_by"))
+                .type("io")
+                .waitUntil("a setting no AE2 device has is not offered", context ->
+                        popupLabels(context).contains("operation_mode")
+                                && !popupLabels(context).contains("io_direction"))
+                .frames(2).screenshot("ui-automation-completion-setting-io")
+                .key(GLFW.GLFW_KEY_BACKSPACE)
+                .key(GLFW.GLFW_KEY_BACKSPACE)
                 .type("fuz")
                 .waitUntil("a setting shows its button's title, and below the list the devices that have it",
                         context -> popupLabels(context).equals(java.util.List.of("fuzzy_mode"))

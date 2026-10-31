@@ -85,8 +85,6 @@ to stock.
 | `fuzzy_mode` | Fuzzy Comparison | `ignore_all`, `percent_99`, `percent_75`, `percent_50`, `percent_25` | ME Import Bus, ME Export Bus, ME Storage Bus, ME Formation Plane, ME Level Emitter, ME Interface |
 | `inscriber_input_capacity` | Input Slot Stack Size | `one`, `four`, `sixty_four` | Inscriber |
 | `inscriber_separate_sides` | Automation Access Mode | `yes`, `no` | Inscriber |
-| `io_direction` | Transfer Direction | `left`, `right` | none in AE2 |
-| `level_emitter_mode` | | `stored_amount`, `storable_amount` | none in AE2 |
 | `lock_crafting_mode` | Lock Crafting | `none`, `lock_until_pulse`, `lock_while_high`, `lock_while_low`, `lock_until_result` | ME Pattern Provider |
 | `operation_mode` | Transfer Direction | `fill`, `empty` | ME IO Port |
 | `overlay_mode` | Overlay Mode | `yes`, `no` | Spatial Anchor |

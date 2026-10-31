@@ -67,8 +67,6 @@ AE2会在接下来几刻里规划任务， 规划好后像对待其他自动化�
 | `fuzzy_mode` | 模糊匹配 | `ignore_all`、`percent_99`、`percent_75`、`percent_50`、`percent_25` | ME输入总线、ME输出总线、ME存储总线、ME成型面板、ME标准发信器、ME接口 |
 | `inscriber_input_capacity` | 输入堆叠上限 | `one`、`four`、`sixty_four` | 压印器 |
 | `inscriber_separate_sides` | 自动化访问模式 | `yes`、`no` | 压印器 |
-| `io_direction` | 传输方向 | `left`、`right` | AE2里没有 |
-| `level_emitter_mode` | | `stored_amount`、`storable_amount` | AE2里没有 |
 | `lock_crafting_mode` | 锁定合成 | `none`、`lock_until_pulse`、`lock_while_high`、`lock_while_low`、`lock_until_result` | ME样板供应器 |
 | `operation_mode` | 传输方向 | `fill`、`empty` | ME IO端口 |
 | `overlay_mode` | 区块加载显示模式 | `yes`、`no` | 空间锚 |

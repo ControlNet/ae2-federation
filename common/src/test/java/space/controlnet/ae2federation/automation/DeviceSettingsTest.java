@@ -54,11 +54,16 @@ final class DeviceSettingsTest {
         assertEquals(List.of("ae2:import_bus", "ae2:export_bus", "ae2:io_port"),
                 DeviceSettings.devices("redstone_controlled").stream().map(Object::toString).toList());
         for (var name : DeviceSettings.names()) {
-            // io_direction and level_emitter_mode stay in AE2's registry, but no AE2 device has them.
-            if (!name.equals("io_direction") && !name.equals("level_emitter_mode")) {
-                assertFalse(DeviceSettings.titleKey(name).isEmpty(), name);
-                assertFalse(DeviceSettings.devices(name).isEmpty(), name);
-            }
+            assertFalse(DeviceSettings.titleKey(name).isEmpty(), name);
+            assertFalse(DeviceSettings.devices(name).isEmpty(), name);
         }
+    }
+
+    /** io_direction and level_emitter_mode stay in AE2's registry, but no AE2 device has them (user, 2026-10-31). */
+    @Test
+    void completionLeavesOutSettingsNoAe2DeviceHas() {
+        assertFalse(DeviceSettings.names().contains("io_direction"));
+        assertFalse(DeviceSettings.names().contains("level_emitter_mode"));
+        assertTrue(DeviceSettings.known("io_direction").isEmpty());
     }
 }
