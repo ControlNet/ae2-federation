@@ -23,6 +23,12 @@ same day (`1dd81c1d`). The former idea is preserved as an
   hand shows the reason on the action bar (`ae2federation.structure.*`); with anything in hand the click passes to the
   item (`SKIP_DEFAULT_BLOCK_INTERACTION`), so a held block is placed on it. Jade shows "Structure: WxHxD" or the reason it is not
   formed.
+- **Wrench.** Shift+right-click with a wrench (`c:tools/wrench`) puts one block straight into the inventory, as AE2's
+  `WrenchHook` does for AE2 block entities (Provider and Endpoint go through AE2's own hook). `WrenchDismantle` covers
+  every `FormableDevice` (Router, Switch, Beam Converter, Beam Former, Quantum Cube); `BundleInteraction` routes
+  Federation Cables, bundled or not, to it. One member of a body comes out and the rest re-forms or unforms as on a
+  break; break particles are skipped and AE2's frame-removal sound plays. GameTest `wrenchdismantleseveryfederationblock`
+  (2026-10-31).
 - **Unloaded chunks.** A body across unloaded chunks keeps its last validated state and is checked again when its
   chunks load; chunks are never force-loaded.
 - **Appearance.** The artist's connected tiles (`router_*`, `switch_*`) draw one continuous outer frame per body;

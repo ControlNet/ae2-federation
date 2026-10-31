@@ -21,10 +21,12 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.router.FederationCableBlock;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.router.WrenchDismantle;
 
 /**
  * What a wrench and Federation Cables do to Federation Cables. A wrench's right-clicks select a bundle on the client,
- * which sends the three clicks to {@link #form}; Shift+right-click with a wrench dismantles one bundled cell. Federation
+ * which sends the three clicks to {@link #form}; Shift+right-click with a wrench dismantles one cable, bundled or not
+ * ({@link WrenchDismantle}). Federation
  * Cables right-clicked onto a bundle extend it from an end face or branch it from a side, using one cable per cell;
  * sneaking places a single cable as usual.
  */
@@ -54,11 +56,13 @@ public final class BundleInteraction {
         var stack = event.getItemStack();
         if (stack.is(Tags.Items.TOOLS_WRENCH)) {
             if (player.isSecondaryUseActive()) {
-                if (!BundleView.bundled(level, pos)) return;
-                if (level instanceof ServerLevel serverLevel) dismantle(serverLevel, player, pos);
-            } else if (level.isClientSide() && clientClick != null) {
-                clientClick.click(level, pos, event.getHitVec());
+                var result = WrenchDismantle.dismantle(player, level, event.getHand(), event.getHitVec());
+                if (result == InteractionResult.PASS) return;
+                event.setCanceled(true);
+                event.setCancellationResult(result);
+                return;
             }
+            if (level.isClientSide() && clientClick != null) clientClick.click(level, pos, event.getHitVec());
             consume(event);
             return;
         }
@@ -155,10 +159,6 @@ public final class BundleInteraction {
         int taken = Math.min(wanted, stack.getCount());
         stack.shrink(taken);
         return taken;
-    }
-
-    private static void dismantle(ServerLevel level, Player player, BlockPos pos) {
-        level.destroyBlock(pos, !player.getAbilities().instabuild, player);
     }
 
     /**

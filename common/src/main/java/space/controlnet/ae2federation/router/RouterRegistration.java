@@ -57,6 +57,7 @@ public final class RouterRegistration {
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(DeviceStructureUpdater::onLevelTick);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
                 space.controlnet.ae2federation.bundle.BundleInteraction::onRightClickBlock);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(WrenchDismantle::onRightClickBlock);
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {

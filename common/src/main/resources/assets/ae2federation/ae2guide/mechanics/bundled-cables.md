@@ -81,6 +81,7 @@ many ends and sides are connected, and names a device that covers only part of a
 
 ## Taking a bundle apart
 
-Breaking a bundled cable, or Shift+right-clicking it with a wrench, removes that one cable and drops it. The rest of
+Breaking a bundled cable removes that one cable and drops it; Shift+right-clicking it with a wrench puts it in your
+inventory instead. The rest of
 its layer turns back into ordinary Federation Cables, and the bundle splits there into two. To repair it, put the
 cable back and form that layer again with the wrench: bundles of the same cross-section whose ends meet join into one.
