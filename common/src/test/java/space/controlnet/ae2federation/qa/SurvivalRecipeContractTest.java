@@ -138,7 +138,7 @@ final class SurvivalRecipeContractTest {
                 + "\"F\":{\"tag\":\"c:gems/fluix\"},\"L\":" + CORE + "}"), recipe);
     }
 
-    // Like the Router, around AE2's own FE input, the Energy Acceptor; the creative converter has no recipe.
+    // Like the Router, around AE2's own FE input, the Energy Acceptor.
     @Test
     void beamConverterHasEnergyAcceptorsAroundANexusCore() throws IOException {
         var recipe = recipes().get("beam_converter");
@@ -146,7 +146,6 @@ final class SurvivalRecipeContractTest {
         assertTrue(recipe.contains("\"pattern\":[\"CEC\",\"ELE\",\"CEC\"]"), recipe);
         assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},"
                 + "\"E\":{\"item\":\"ae2:energy_acceptor\"},\"L\":" + CORE + "}"), recipe);
-        assertFalse(recipes().containsKey("creative_beam_converter"));
     }
 
     // After ME Beam Former's block: cable down both sides, a fluix pearl over AE2's wireless receiver, a Nexus Core below.

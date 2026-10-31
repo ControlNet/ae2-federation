@@ -45,3 +45,13 @@ chosen: one block type, look by position. Merged locally as 477380a9, wired in t
   regenerates the export. In game: `build/beam-converter-art-check/before-after.png` (tools/shoot.sh <worktree> <label>
   on Xvfb :95 with a fresh copy of the guidetest save; /fill forms bodies on placement).
 - Open: 2x2x4/3x3x6 art, creative colours, side "ports" vs rear-only FE.
+
+## Creative converter removed (owner, 2026-10-31)
+After PR #8 was merged (330b2e18) the owner first asked for a dark + violet creative variant of the artist's models,
+then dropped the creative converter: most FE mods ship a creative energy source, which feeds an ordinary converter.
+Removed: block, item, block entity binding, the `creative` codec field, the ledger's unlimited branch, the purple
+carrier tint, the creative atlases and cube faces, loot, pickaxe tag, lang, guide mentions. The power guide now says
+creative energy sources from other mods work. GameTest `operatingpowerneedsamatchingconverter` ends with a fed 1x1x2
+instead; the refined-device review scene turns `OperatingPowerRule` off in its settle step.
+The dark + violet recolour (artist palette mapped texel by texel, `CREATIVE` table in the exporter) was built and shot in
+game, then discarded uncommitted; the shots stay in `build/creative-converter-check/` (local only).

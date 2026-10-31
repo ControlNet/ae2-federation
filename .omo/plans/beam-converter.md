@@ -10,7 +10,7 @@ exist yet, and each adds its own cost row when it is built.
 | # | Question | Proposal |
 |---|---|---|
 | D1 | A converter of the wrong size in a domain that also has a correct one | It supplies nothing; the correct one keeps the domain running. The domain stops only when the correct ones cannot pay. |
-| D2 | Creative converter (owner, 2026-10-17) | Same sizes and rules as the ordinary converter; only the supply is unlimited, and it wears the creative purple. |
+| D2 | Creative converter (owner, 2026-10-17; removed 2026-10-31) | Was: same sizes and rules as the ordinary converter, unlimited supply, creative purple. Removed by the owner: most FE mods ship a creative energy source that feeds an ordinary converter. |
 | D3 | Which faces take FE | Every face of every converter block except the front. |
 | D4 | Survival recipe (one block per craft, as Router and Switch) | `CEC / ELE / CEC`: C Federation Cable, E `ae2:energy_acceptor`, L Nexus Core. |
 | D5 | Textures before the artist delivers (owner, 2026-10-17) | Temporary: the Pattern Provider's textures recoloured, since they show a front; purple for the creative one. Listed as temporary in the commit and the art hand-off note. |

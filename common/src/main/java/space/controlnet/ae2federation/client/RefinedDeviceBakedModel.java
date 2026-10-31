@@ -38,13 +38,12 @@ public final class RefinedDeviceBakedModel extends BakedModelWrapper<BakedModel>
 
     public static void bake(ModelEvent.ModifyBakingResult event) {
         RefinedDeviceAssets.reload();
-        wrap(event,PowerRegistration.BEAM_CONVERTER.get(),true,false,true);
-        wrap(event,PowerRegistration.CREATIVE_BEAM_CONVERTER.get(),true,true,false);
-        wrap(event,QuantumRegistration.QUANTUM_CUBE.get(),false,false,false);
+        wrap(event,PowerRegistration.BEAM_CONVERTER.get(),true,true);
+        wrap(event,QuantumRegistration.QUANTUM_CUBE.get(),false,false);
     }
-    private static void wrap(ModelEvent.ModifyBakingResult event,Block block,boolean laser,boolean creative,boolean pixelPair) {
-        var surface=event.getTextureGetter().apply(new Material(TextureAtlas.LOCATION_BLOCKS,creative ? RefinedDeviceAssets.CREATIVE_SURFACE : RefinedDeviceAssets.SURFACE));
-        var emission=event.getTextureGetter().apply(new Material(TextureAtlas.LOCATION_BLOCKS,creative ? RefinedDeviceAssets.CREATIVE_EMISSION : RefinedDeviceAssets.EMISSION));
+    private static void wrap(ModelEvent.ModifyBakingResult event,Block block,boolean laser,boolean pixelPair) {
+        var surface=event.getTextureGetter().apply(new Material(TextureAtlas.LOCATION_BLOCKS,RefinedDeviceAssets.SURFACE));
+        var emission=event.getTextureGetter().apply(new Material(TextureAtlas.LOCATION_BLOCKS,RefinedDeviceAssets.EMISSION));
         var shapes=new Shapes(laser,pixelPair,surface,emission);
         for (var state:block.getStateDefinition().getPossibleStates()) {
             if (!RouterBlock.formed(state)) continue;

@@ -3,7 +3,6 @@ package space.controlnet.ae2federation.power;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Rarity;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -24,19 +23,13 @@ public final class PowerRegistration {
             DeferredRegister.create(BuiltInRegistries.BLOCK_ENTITY_TYPE, MOD_ID);
 
     public static final DeferredBlock<BeamConverterBlock> BEAM_CONVERTER = BLOCKS.registerBlock("beam_converter",
-            properties -> new BeamConverterBlock(false, properties),
-            BlockBehaviour.Properties.of().strength(4.0F).sound(SoundType.METAL));
-    public static final DeferredBlock<BeamConverterBlock> CREATIVE_BEAM_CONVERTER = BLOCKS.registerBlock(
-            "creative_beam_converter", properties -> new BeamConverterBlock(true, properties),
+            BeamConverterBlock::new,
             BlockBehaviour.Properties.of().strength(4.0F).sound(SoundType.METAL));
     public static final DeferredItem<BlockItem> BEAM_CONVERTER_ITEM = ITEMS.registerSimpleBlockItem(BEAM_CONVERTER,
             new Item.Properties());
-    public static final DeferredItem<BlockItem> CREATIVE_BEAM_CONVERTER_ITEM = ITEMS.registerSimpleBlockItem(
-            CREATIVE_BEAM_CONVERTER, new Item.Properties().rarity(Rarity.EPIC));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<BeamConverterBlockEntity>>
             BEAM_CONVERTER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register("beam_converter",
-                    () -> BlockEntityType.Builder.of(BeamConverterBlockEntity::new, BEAM_CONVERTER.get(),
-                            CREATIVE_BEAM_CONVERTER.get()).build(null));
+                    () -> BlockEntityType.Builder.of(BeamConverterBlockEntity::new, BEAM_CONVERTER.get()).build(null));
 
     private PowerRegistration() {
     }

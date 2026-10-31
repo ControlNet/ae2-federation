@@ -72,8 +72,7 @@ for path in (BASE / 'textures').rglob('*.png'):
     # The artist's 2x2 and 3x3 Beam Formers are modelled over two and three blocks, on 64- and 128-pixel sheets.
     size = {NS + 'block/beam_emitter/large_light_emitter': 64, NS + 'block/beam_emitter/huge_light_emitter': 128,
             NS + 'block/large_cable/large_cable': 32,
-            NS + 'block/refined_devices/surface': 512, NS + 'block/refined_devices/emission': 512,
-            NS + 'block/refined_devices/creative_surface': 512, NS + 'block/refined_devices/creative_emission': 512}.get(ref, 16)
+            NS + 'block/refined_devices/surface': 512, NS + 'block/refined_devices/emission': 512}.get(ref, 16)
     assert im.width == size, ref
     if meta.exists() and ref.startswith(NS + 'item/'):
         # The artist's animated item icons: every listed frame must exist in the strip.

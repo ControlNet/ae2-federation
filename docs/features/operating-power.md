@@ -3,11 +3,11 @@
 Status: the rule, the ME Federation Beam Converter, the power service, the red beam, the topology gauge, Jade, the
 guide page and the statistics metric are implemented on `dev` (2026-10-17). Design
 decisions: [operating power idea](../archive/ideas/federation-operating-power.md); plan: `.omo/plans/beam-converter.md`.
-The ordinary converter's single block and its 1x1x2 body use the artist's models (2026-10-30, PR #8): the rear block
+The converter's single block and its 1x1x2 body use the artist's models (2026-10-30, PR #8): the rear block
 is the converter with its rear FE port, the front block the spiked emitter head that faces the cable. They are
 exported by `tools/blockbench/export_beam_converter_models.py` into a multipart blockstate that tells the two apart by
-their connections. The 2x2x4 and 3x3x6 bodies and every creative converter keep the textured open laser design
-exported from Blender.
+their connections. The 2x2x4 and 3x3x6 bodies keep the textured open laser design exported from Blender.
+There is no creative converter (removed 2026-10-31): other mods' creative FE sources feed an ordinary one.
 FE input is restricted to the formed body's rear exterior plane; side, front, interior and unsided queries expose no FE input.
 
 ## Behavior
@@ -19,7 +19,7 @@ FE input is restricted to the formed body's rear exterior plane; side, front, in
   charges the tunnel). A Beam Former block costs 0; each linked pair costs M·N × max(2, L)^1.05 AE/t once
   ([Beam Former](beam-former.md)). A formed Quantum Cube block costs 44 FE/t (22 AE/t, as AE2's bridge), linked or
   not; an unformed one costs 0 ([Quantum Cube](quantum-cube.md)).
-- **Converter.** `beam_converter` and `creative_beam_converter`: solid-cuboid devices like Router and Switch
+- **Converter.** `beam_converter`: solid-cuboid devices like Router and Switch
   (`FormableDevice`), its members facing any way. The front's M x N must be a cable cross-section and the body
   2·max(M, N) long toward it (`BeamConverterShape`), of a cross-section players can build today
   (`CableCrossSection.BUILDABLE`): 1x1x2, 2x2x4, 3x3x6. The 1x2x4, 1x3x6 and 2x3x6 sizes stay in the code but do
@@ -35,8 +35,7 @@ FE input is restricted to the formed body's rear exterior plane; side, front, in
   and supplies nothing.
 - **Ledger.** Each tick a domain pools its matching converters' buffers and drains its use in proportion
   (`PowerLedger`). It stops when they cannot pay and keeps drawing. As AE2's `EnergyService`, a new domain runs at once
-  if it can pay; a stopped one runs again on its 32nd paid tick (more than 30 ticks after the change). A creative
-  converter pays any use and reports the use as its input.
+  if it can pay; a stopped one runs again on its 32nd paid tick (more than 30 ticks after the change).
 - **Stop.** An unpowered domain stops as one over capacity: `FederationDomainRegistry.setUnpowered`, a second stop
   cause beside `overCapacity`, read through `stopped(id)` by activation (`UNPOWERED`), diagnostics
   (`domain_unpowered`), provider targets and energy sharing.

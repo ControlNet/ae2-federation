@@ -45,7 +45,6 @@
   "block.ae2federation.router": "ME Federation Router",
   "block.ae2federation.switch": "ME Federation Switch",
   "block.ae2federation.beam_converter": "ME Federation Beam Converter",
-  "block.ae2federation.creative_beam_converter": "Creative ME Federation Beam Converter",
   "block.ae2federation.beam_former": "ME Federation Beam Former",
   "block.ae2federation.quantum_cube": "ME Federation Quantum Cube",
   "ae2federation.structure.forming": "This %s is forming; use it again in a moment.",

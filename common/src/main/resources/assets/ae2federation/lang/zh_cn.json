@@ -45,7 +45,6 @@
   "block.ae2federation.router": "ME联邦路由器",
   "block.ae2federation.switch": "ME联邦交换机",
   "block.ae2federation.beam_converter": "ME联邦光束转换器",
-  "block.ae2federation.creative_beam_converter": "创造ME联邦光束转换器",
   "block.ae2federation.beam_former": "ME联邦光束成型器",
   "block.ae2federation.quantum_cube": "ME联邦量子立方",
   "ae2federation.structure.forming": "该%s正在成形，请稍后再试。",

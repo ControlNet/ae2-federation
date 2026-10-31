@@ -118,8 +118,8 @@ public final class OperatingPowerGameTests {
     }
 
     /**
-     * A 2x2x4 converter does not match a domain of plain cable and supplies nothing, however full; a creative 1x1x2
-     * converter added on the other cable runs the domain without FE and never empties.
+     * A 2x2x4 converter does not match a domain of plain cable and supplies nothing, however full; a 1x1x2 converter
+     * added on the other cable matches, and its FE runs the domain.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 600, required = true, manualOnly = true)
@@ -157,19 +157,24 @@ public final class OperatingPowerGameTests {
                     var stored = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK,
                             helper.absolutePos(SWITCH.east(6)), Direction.EAST).getEnergyStored();
                     helper.assertValueEqual(stored, 16000, "a converter that does not match is not drawn on");
-                    scene.creative(SWITCH.east(1).above(), Direction.DOWN);
-                    scene.creative(SWITCH.east(1).above(2), Direction.DOWN);
+                    scene.converter(SWITCH.east(1).above(), Direction.DOWN);
+                    scene.converter(SWITCH.east(1).above(2), Direction.DOWN);
                     phase[0] = 3;
-                    throw new GameTestAssertException("Waiting for the creative converter to run the domain");
+                    throw new GameTestAssertException("Waiting for the 1x1x2 converter to form");
+                }
+                case 3 -> {
+                    helper.assertTrue(RouterBlock.formed(helper.getBlockState(SWITCH.east(1).above(2))),
+                            "Waiting for it to form");
+                    helper.assertValueEqual(scene.insert(SWITCH.east(1).above(2), Direction.UP, 16000), 16000, "FE in");
+                    phase[0] = 4;
+                    throw new GameTestAssertException("Waiting for the 1x1x2 converter to run the domain");
                 }
                 default -> {
                     helper.assertTrue(!scene.registry().unpowered(domain) && scene.running(),
-                            "Waiting for the creative converter to run the domain");
-                    var creative = (BeamConverterBlockEntity) helper.getBlockEntity(SWITCH.east(1).above());
-                    helper.assertValueEqual(creative.stored(), BeamConverterBlockEntity.CAPACITY, "it never empties");
+                            "Waiting for the 1x1x2 converter to run the domain");
                     RouterEvidence.write("operatingpowerneedsamatchingconverter", 4, Map.of(
                             "wrongSize", "stopped", "wrongSizeListed", "not matching", "wrongSizeDrawn", "false",
-                            "creative", "running"));
+                            "matching", "running"));
                     scene.close();
                 }
             }
@@ -422,11 +427,6 @@ public final class OperatingPowerGameTests {
 
         void converter(BlockPos position, Direction facing) {
             helper.setBlock(position, PowerRegistration.BEAM_CONVERTER.get().defaultBlockState()
-                    .setValue(BeamConverterBlock.FACING, facing));
-        }
-
-        void creative(BlockPos position, Direction facing) {
-            helper.setBlock(position, PowerRegistration.CREATIVE_BEAM_CONVERTER.get().defaultBlockState()
                     .setValue(BeamConverterBlock.FACING, facing));
         }
 

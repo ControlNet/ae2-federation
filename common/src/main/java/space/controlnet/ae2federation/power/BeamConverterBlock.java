@@ -1,8 +1,6 @@
 package space.controlnet.ae2federation.power;
 
-import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.function.UnaryOperator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -41,27 +39,17 @@ import space.controlnet.ae2federation.router.RouterBlockEntity;
  * Router's do, and the body must be exactly M x N across its front and 2·max(M, N) long, M x N being a cable
  * cross-section ({@link BeamConverterShape}), whichever way its blocks face. Formed, all its blocks face one end of its
  * length ({@link #forming}), and a wrench turns it end for end; an unformed block's facing means nothing. Only the
- * front links to Federation cable; only the rear exterior face takes FE. The creative converter follows the same rules and never
- * runs out.
+ * front links to Federation cable; only the rear exterior face takes FE.
  */
 public final class BeamConverterBlock extends BaseEntityBlock implements FormableDevice, CableLinkedBlock {
-    public static final MapCodec<BeamConverterBlock> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            Codec.BOOL.fieldOf("creative").forGetter(BeamConverterBlock::creative), propertiesCodec())
-            .apply(instance, BeamConverterBlock::new));
+    public static final MapCodec<BeamConverterBlock> CODEC = simpleCodec(BeamConverterBlock::new);
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
 
-    private final boolean creative;
-
-    public BeamConverterBlock(boolean creative, Properties properties) {
+    public BeamConverterBlock(Properties properties) {
         super(properties);
-        this.creative = creative;
         var state = stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(RouterBlock.FORMED, false);
         for (var property : RouterBlock.CONNECTED) state = state.setValue(property, false);
         registerDefaultState(state);
-    }
-
-    public boolean creative() {
-        return creative;
     }
 
     /** The open device mesh must not hide neighbours or cast a solid cuboid shadow. */
