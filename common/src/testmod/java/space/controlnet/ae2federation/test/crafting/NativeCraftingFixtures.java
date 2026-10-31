@@ -11,6 +11,7 @@ import appeng.api.networking.crafting.ICraftingSimulationRequester;
 import appeng.api.networking.crafting.ICraftingSubmitResult;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
 import appeng.api.storage.StorageCells;
 import appeng.blockentity.crafting.CraftingBlockEntity;
 import appeng.blockentity.crafting.MolecularAssemblerBlockEntity;
@@ -41,6 +42,8 @@ public final class NativeCraftingFixtures implements AutoCloseable {
     private static final BlockPos REQUESTER_POS = CHEST_POS.above();
     private final GameTestHelper helper;
     private final boolean withCpu;
+    /** Whether the provider gets the stick pattern once the network is up. */
+    private final boolean withPattern;
     private Future<ICraftingPlan> planFuture;
     private ICraftingPlan plan;
     private ICraftingSubmitResult submitResult;
@@ -51,8 +54,14 @@ public final class NativeCraftingFixtures implements AutoCloseable {
     private boolean initialized;
 
     public NativeCraftingFixtures(GameTestHelper helper, boolean withCpu) {
+        this(helper, withCpu, true);
+    }
+
+    /** The scene; without the pattern the provider starts empty, for programs that write their own. */
+    public NativeCraftingFixtures(GameTestHelper helper, boolean withCpu, boolean withPattern) {
         this.helper = helper;
         this.withCpu = withCpu;
+        this.withPattern = withPattern;
         helper.setBlock(ENERGY_POS, AEBlocks.CREATIVE_ENERGY_CELL.block());
         helper.setBlock(CHEST_POS, AEBlocks.ME_CHEST.block());
         if (withCpu) {
@@ -73,12 +82,55 @@ public final class NativeCraftingFixtures implements AutoCloseable {
         if (withCpu && (cpu().getCluster() == null || service().getCpus().isEmpty())) {
             return false;
         }
+        if (!withPattern) {
+            return true;
+        }
         if (!initialized) {
             provider().getLogic().getPatternInv().addItems(stickPattern());
             provider().getLogic().updatePatterns();
             initialized = true;
         }
         return service().isCraftable(outputKey()) && provider().getLogic().getAvailablePatterns().size() == 1;
+    }
+
+    /** Puts blank patterns into the chest's cell. */
+    public void insertBlankPatterns(long amount) {
+        helper.assertValueEqual(gridInventory().insert(AEItemKey.of(AEItems.BLANK_PATTERN), amount,
+                Actionable.MODULATE, IActionSource.empty()), amount, "Native chest must accept blank patterns");
+    }
+
+    public long blankPatternAmount() {
+        return gridInventory().extract(AEItemKey.of(AEItems.BLANK_PATTERN), Long.MAX_VALUE, Actionable.SIMULATE,
+                IActionSource.empty());
+    }
+
+    /** Fills every slot of the provider with a stick pattern. */
+    public void fillProvider() {
+        var patterns = provider().getLogic().getPatternInv();
+        for (int slot = 0; slot < patterns.size(); slot++) {
+            patterns.setItemDirect(slot, stickPattern());
+        }
+        provider().getLogic().updatePatterns();
+    }
+
+    /** A processing pattern, cobblestone into stone, in the provider's first slot. */
+    public void putProcessingPattern() {
+        provider().getLogic().getPatternInv().setItemDirect(0, PatternDetailsHelper.encodeProcessingPattern(
+                java.util.List.of(new GenericStack(AEItemKey.of(Items.COBBLESTONE), 1)),
+                java.util.List.of(new GenericStack(AEItemKey.of(Items.STONE), 1))));
+        provider().getLogic().updatePatterns();
+    }
+
+    /** The patterns in the provider's slots, decoded; empty slots left out. */
+    public java.util.List<appeng.api.crafting.IPatternDetails> providerPatterns() {
+        var found = new java.util.ArrayList<appeng.api.crafting.IPatternDetails>();
+        for (var stack : provider().getLogic().getPatternInv()) {
+            var details = PatternDetailsHelper.decodePattern(stack, helper.getLevel());
+            if (details != null) {
+                found.add(details);
+            }
+        }
+        return found;
     }
 
     public void insertMaterials(long amount) {

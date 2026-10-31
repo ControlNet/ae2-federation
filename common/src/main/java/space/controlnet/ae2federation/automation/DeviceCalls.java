@@ -69,7 +69,7 @@ final class DeviceCalls {
      * The device of the given kind at the place: the part on the place's side of a cable, or else the block entity
      * itself.
      */
-    private static <T> Optional<T> device(ProgramHost.Place place, Class<T> kind) {
+    static <T> Optional<T> device(ProgramHost.Place place, Class<T> kind) {
         var entity = place.level().getBlockEntity(place.position());
         if (entity instanceof IPartHost parts && kind.isInstance(parts.getPart(place.side()))) {
             return Optional.of(kind.cast(parts.getPart(place.side())));

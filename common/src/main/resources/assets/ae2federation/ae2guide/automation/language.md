@@ -45,8 +45,10 @@ Every value has a static type, checked before a program runs. Besides Python's o
 | `Response` | an HTTP answer from `net.http`: `status`, `text` and `headers` |
 | `Cpu` | a crafting CPU from `ae2.cpus`: `name`, `network`, `busy`, `mode`, `storage`, `co_processors`, and its `job` with `progress` of `total` |
 | `Setting` | a device setting from `ae2.settings`: `name`, `value` and the `values` it takes |
+| `Recipe` | a recipe or a pattern from `mc.recipes_for` or `ae2.provider_patterns`: `id`, `kind`, `inputs` slot by slot, `outputs`, `width` and `height` |
+| `Provider` | a pattern provider from `ae2.providers`: `id`, `name`, `targets`, `group`, `block`, `network`, `x`, `y`, `z`, `dimension`, `slots`, `free`, `makes` and `in_terminal` |
 | `SettingName`, `SettingValue` | a device setting's name such as `"fuzzy_mode"`, and one of its values such as `"ignore_all"` |
-| `Side`, `Capability`, `RuleMode`, `FilterMode`, `HttpMethod`, `CpuMode` | fixed words such as `"down"`, `"storage"`, `"on"`, `"allow"`, `"GET"`, `"machine_only"` |
+| `Side`, `Capability`, `RuleMode`, `FilterMode`, `HttpMethod`, `CpuMode`, `RecipeKind` | fixed words such as `"down"`, `"storage"`, `"on"`, `"allow"`, `"GET"`, `"machine_only"`, `"crafting"` |
 
 Amounts are in each resource's own unit: items one by one, fluids in mB.
 

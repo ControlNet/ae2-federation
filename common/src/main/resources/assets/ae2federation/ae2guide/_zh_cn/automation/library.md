@@ -20,7 +20,7 @@ navigation:
 | `ae2.storage(network)` | 存储的全部内容， 以`Stack`列出 |
 | `ae2.craftable(resource, network)` | 是否有样板能合成它 |
 | `ae2.crafting(resource, network)` | 正在运行和已请求的任务还会送入存储多少 |
-| `ae2.patterns(network)` | 所有能合成的东西 |
+| `ae2.craftables(network)` | 所有能合成的东西 |
 | `ae2.cpus(network)` | 合成CPU列表， 以`Cpu`列出， 带上各自正在运行的任务 |
 | `ae2.free_cpus(network)` | 空闲且接受自动化请求的合成CPU数 |
 | `ae2.energy(network)` | 储存的AE |
@@ -79,6 +79,26 @@ AE2会在接下来几刻里规划任务， 规划好后像对待其他自动化�
 | `scheduling_mode` | 调度模式 | `default`、`roundrobin`、`random` | ME输出总线 |
 | `storage_filter` | 报告不可交互的物品 | `none`、`extractable_only` | ME存储总线 |
 
+## ae2： 样板
+
+这里的样板供应器是联邦域里某个网络上的样板供应器， 和样板管理终端列出的一样， 附属模组的样板供应器也算。
+
+| 函数 | 结果 |
+| --- | --- |
+| `mc.recipes_for(item)` | 能做出该物品的合成、 切石和锻造配方， 以`Recipe`列出 |
+| `ae2.providers(network)` | 样板供应器， 以`Provider`列出 |
+| `ae2.provider_at(block)` | 选中方块处的样板供应器； 不是本联邦域的样板供应器时为`None` |
+| `ae2.provider_patterns(provider)` | 样板供应器里的样板， 每个都以它的`Recipe`列出 |
+| `ae2.write_pattern(provider, recipe, items={}, substitutes=False)` | **操作**： 用存储中的一张空白样板写下配方， 放进样板供应器的空槽位 |
+
+合成、 切石和锻造样板都在样板供应器旁边的分子装配室里完成， 分子装配室需要你自己在那里搭好。 样板供应器的`targets`列出它面对的机器， 所以`"ae2:molecular_assembler" in provider.targets`能找出可以用这些样板的样板供应器。
+
+`Recipe`给出`id`、 种类`kind`（`"crafting"`、`"stonecutting"`、`"smithing"`或`"processing"`）、 产物`outputs`， 以及按槽位排列的`inputs`， 每个槽位列出它接受的物品堆： 合成网格的九个槽位按行排列， 切石机一个槽位， 锻造台依次是模板、 基础物品和附加物品。 有序配方放在网格左上角， `width`和`height`给出它的大小； 其他配方这两项为0。 AE2写不成样板的配方不会列出， 例如地图复制和盔甲纹饰； 产物带额外数据的配方也不列出， 因为程序无法只用ID指明它。
+
+`ae2.write_pattern`从联邦域的存储里取一张空白样板， 写成配方对应种类的样板。 `items`按槽位编号为接受多种物品的槽位选定物品， 例如`{0: "minecraft:birch_planks"}`； 其余槽位用存储里存得最多的那种， 都没有时用它接受的第一种。 `substitutes=True`就是AE2的“允许替代”。 存储里没有空白样板、 样板供应器没有空槽位， 或者现在够不到样板供应器时， 调用给出`False`， 也不会用掉空白样板。 槽位不接受的物品会让运行以`ValueError`停下。 处理样板暂时还不能写： 处理配方会让运行以`NotImplementedError`停下。
+
+`ae2.provider_patterns`把由配方写成的样板读作那个配方， 与`mc.recipes_for`给出的相等； 处理样板读出来没有`id`， 只有输入和输出。 `Provider`有`id`（之后的调用用它指明这个样板供应器）、 铁砧改的名字`name`（没有时为`None`）、 `targets`、 在样板管理终端里的分组`group`、 自身的物品`block`、 `network`、 `x`、`y`、`z`和`dimension`、 样板槽位数`slots`和其中空着的`free`、 它的样板能做出的`makes`， 以及是否显示在终端里的`in_terminal`。
+
 ## ae2f： 联邦
 
 | 函数 | 结果 |
@@ -106,6 +126,7 @@ AE2会在接下来几刻里规划任务， 规划好后像对待其他自动化�
 | `mc.break_block(block)` | **操作**： 破坏方块； 掉落物进入联邦域的存储， 放不下的掉在原地 |
 | `mc.place_block(block, item)` | **操作**： 用联邦域存储里的物品放置方块 |
 | `mc.move_fe(source, target, amount)` | **操作**： 在两个方块之间搬运FE |
+| `mc.recipes_for(item)` | 能做出该物品、 且AE2能写成样板的配方； 见“ae2： 样板” |
 | `mc.wait(ticks)` | **长操作**： 暂停运行`ticks`刻 |
 
 ## fs： 文件

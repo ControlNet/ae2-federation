@@ -413,7 +413,7 @@ public final class ProgramHostGameTests {
                     networks = ae2f.networks()
                     powered = ae2.energy() > 0
                     return " ".join([str(ae2f.online(networks[0])), str(ae2f.online(networks[1])), str(powered),
-                                     str(ae2.craftable("minecraft:iron_ingot")), str(len(ae2.patterns())),
+                                     str(ae2.craftable("minecraft:iron_ingot")), str(len(ae2.craftables())),
                                      str(ae2.free_cpus()), str(ae2.craft("minecraft:iron_ingot", 1)),
                                      str(ae2.cancel("minecraft:iron_ingot"))])
                 """, "True True True False 0 0 False False",
@@ -447,7 +447,7 @@ public final class ProgramHostGameTests {
             }
         }, "host_crafting", """
                 def run() -> str:
-                    before = " ".join([str(ae2.craftable("minecraft:stick")), ",".join(ae2.patterns()),
+                    before = " ".join([str(ae2.craftable("minecraft:stick")), ",".join(ae2.craftables()),
                                        str(ae2.free_cpus())])
                     started = ae2.craft("minecraft:stick", 4)
                     waited = 0
@@ -727,6 +727,334 @@ public final class ProgramHostGameTests {
                     fixtures.close();
                 })
                 .thenSucceed();
+    }
+
+    /**
+     * {@code mc.recipes_for} gives the recipes AE2 can write on patterns: crafting (shaped as a 3x3 grid, row by row,
+     * each slot with the items it accepts), stonecutting and smithing, by recipe ID. Armor trims and the special
+     * map recipes are left out.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void programReadsTheRecipesThatMakeAnItem(GameTestHelper helper) {
+        var fixtures = build(helper, Blocks.AIR.defaultBlockState());
+        run(helper, fixtures, "host_recipes", """
+                def run() -> str:
+                    found: list[str] = []
+                    items: list[Item] = ["minecraft:stick", "minecraft:stone_slab", "minecraft:netherite_sword",
+                                         "minecraft:iron_chestplate", "minecraft:filled_map"]
+                    for item in items:
+                        for recipe in mc.recipes_for(item):
+                            sizes: list[str] = []
+                            for slot in recipe.inputs:
+                                sizes.append(str(len(slot)))
+                            out = recipe.outputs[0]
+                            found.append("/".join([str(recipe.id), recipe.kind, str(recipe.width) + "x" + str(recipe.height),
+                                                   ",".join(sizes), out.resource + "x" + str(out.amount)]))
+                    planks: list[str] = []
+                    for stack in mc.recipes_for("minecraft:stick")[0].inputs[0]:
+                        planks.append(stack.resource)
+                    return " ".join(found) + " " + str("minecraft:oak_planks" in planks)
+                """, "minecraft:stick/crafting/1x2/11,0,0,11,0,0,0,0,0/minecraft:stickx4 "
+                        + "minecraft:stick_from_bamboo_item/crafting/1x2/1,0,0,1,0,0,0,0,0/minecraft:stickx1 "
+                        + "minecraft:stone_slab/crafting/3x1/1,1,1,0,0,0,0,0,0/minecraft:stone_slabx6 "
+                        + "minecraft:stone_slab_from_stone_stonecutting/stonecutting/0x0/1/minecraft:stone_slabx2 "
+                        + "minecraft:netherite_sword_smithing/smithing/0x0/1,1,1/minecraft:netherite_swordx1 "
+                        + "minecraft:iron_chestplate/crafting/3x3/1,0,1,1,1,1,1,1,1/minecraft:iron_chestplatex1 True",
+                "Crafting, stonecutting and smithing recipes are listed by ID with their slots; trims and map copies "
+                        + "are not", () -> {
+                });
+    }
+
+    /**
+     * The crafting scene seen through {@code ae2.providers}: its Pattern Provider with the stick pattern, the
+     * Molecular Assembler it faces among its targets; {@code ae2.provider_at} finds the same provider through the
+     * interface two blocks above it, and nothing in the air between.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void programListsThePatternProvidersOfItsDomain(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true);
+        run(helper, patternScene(helper), 1, () -> helper.assertTrue(crafting.ready(), "Waiting for the pattern"),
+                "host_providers", """
+                def run(port: Interface) -> str:
+                    listed: list[str] = []
+                    for provider in ae2.providers():
+                        listed.append(" ".join([provider.block, str(provider.name), ",".join(provider.targets),
+                                                provider.group, str(provider.slots), str(provider.free),
+                                                ",".join(provider.makes), str(provider.in_terminal), provider.dimension]))
+                    below = ae2.provider_at(ae2f.select(port, reach=2))
+                    air = ae2.provider_at(ae2f.select(port))
+                    return " | ".join(listed) + " / " + str(below == ae2.providers()[0]) + " " + str(air is None)
+                """, "ae2:pattern_provider None ae2:chest,ae2:molecular_assembler ME Pattern Provider 9 8 "
+                        + "minecraft:stick True minecraft:overworld / True True",
+                "The provider is listed with the assembler among its targets and its stick pattern, and found at "
+                        + "the block below the interface", crafting::close);
+    }
+
+    /**
+     * A program writes the stick recipe on a blank pattern into the empty Pattern Provider, then crafts sticks
+     * through it in the Molecular Assembler; the pattern reads back as the same recipe.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 800, required = true, manualOnly = true)
+    public static void programWritesAPatternAndCraftsWithIt(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        var stocked = new boolean[] { false };
+        run(helper, patternScene(helper), 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the network");
+            if (!stocked[0]) {
+                crafting.insertMaterials(2);
+                crafting.insertBlankPatterns(2);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the planks");
+            }
+        }, "host_write_pattern", """
+                def run() -> str:
+                    provider = ae2.providers()[0]
+                    recipe = mc.recipes_for("minecraft:stick")[0]
+                    before = str(ae2.craftable("minecraft:stick")) + " " + str(provider.free)
+                    written = ae2.write_pattern(provider, recipe)
+                    waited = 0
+                    while not ae2.craftable("minecraft:stick") and waited < 100:
+                        mc.wait(1)
+                        waited += 1
+                    started = ae2.craft("minecraft:stick", 4)
+                    while ae2.amount("minecraft:stick") < 4 and waited < 300:
+                        mc.wait(5)
+                        waited += 5
+                    back = ae2.provider_patterns(provider)
+                    after = ae2.providers()[0]
+                    return " ".join([before, str(written), str(ae2.amount("ae2:blank_pattern")), str(len(back)),
+                                     str(back[0] == recipe), str(started), str(ae2.amount("minecraft:stick")),
+                                     str(ae2.amount("minecraft:oak_planks")), str(after.free), ",".join(after.makes)])
+                """, "False 9 True 1 1 True True 4 0 8 minecraft:stick",
+                "One blank pattern became the stick pattern, which reads back as the recipe and crafted four sticks",
+                () -> {
+                    helper.assertValueEqual(crafting.blankPatternAmount(), 1L, "One blank pattern is left");
+                    helper.assertValueEqual(crafting.providerPatterns().size(), 1, "The provider holds one pattern");
+                    crafting.close();
+                });
+    }
+
+    /**
+     * Stonecutting and smithing recipes become their own pattern kinds, and a crafting recipe takes the items picked
+     * for its slots and AE2's "allow substitutes"; all three read back by recipe ID.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void programWritesStonecuttingAndSmithingPatterns(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        var stocked = new boolean[] { false };
+        run(helper, patternScene(helper), 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the network");
+            if (!stocked[0]) {
+                crafting.insertBlankPatterns(3);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the blank patterns");
+            }
+        }, "host_pattern_kinds", """
+                def run() -> str:
+                    provider = ae2.providers()[0]
+                    wrote: list[str] = []
+                    items: list[Item] = ["minecraft:stone_slab", "minecraft:netherite_sword"]
+                    for item in items:
+                        for recipe in mc.recipes_for(item):
+                            if recipe.kind != "crafting":
+                                wrote.append(recipe.kind + "=" + str(ae2.write_pattern(provider, recipe)))
+                    birch: dict[int, Item] = {0: "minecraft:birch_planks", 3: "minecraft:birch_planks"}
+                    stick = mc.recipes_for("minecraft:stick")[0]
+                    wrote.append("birch=" + str(ae2.write_pattern(provider, stick, items=birch, substitutes=True)))
+                    back: list[str] = []
+                    for recipe in ae2.provider_patterns(provider):
+                        back.append(recipe.kind + ":" + str(recipe.id))
+                    return " ".join([",".join(wrote), ",".join(back), str(ae2.amount("ae2:blank_pattern"))])
+                """, "stonecutting=True,smithing=True,birch=True "
+                        + "stonecutting:minecraft:stone_slab_from_stone_stonecutting,"
+                        + "smithing:minecraft:netherite_sword_smithing,crafting:minecraft:stick 0",
+                "A stonecutting, a smithing and a crafting pattern were written and read back by recipe",
+                () -> {
+                    var patterns = crafting.providerPatterns();
+                    helper.assertValueEqual(patterns.size(), 3, "The provider holds three patterns");
+                    helper.assertTrue(patterns.get(0) instanceof appeng.crafting.pattern.AEStonecuttingPattern,
+                            "The first is a stonecutting pattern");
+                    helper.assertTrue(patterns.get(1) instanceof appeng.crafting.pattern.AESmithingTablePattern,
+                            "The second is a smithing pattern");
+                    var stick = (appeng.crafting.pattern.AECraftingPattern) patterns.get(2);
+                    helper.assertValueEqual(stick.getInputs()[0].getPossibleInputs()[0].what(),
+                            AEItemKey.of(Items.BIRCH_PLANKS), "The stick pattern takes birch planks");
+                    helper.assertTrue(stick.canSubstitute, "The stick pattern allows substitutes");
+                    crafting.close();
+                });
+    }
+
+    /** Without a blank pattern in storage nothing is written and the provider stays empty. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void writingWithoutABlankPatternChangesNothing(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        run(helper, patternScene(helper), 1, () -> helper.assertTrue(crafting.ready(), "Waiting for the network"),
+                "host_no_blank", """
+                def run() -> str:
+                    provider = ae2.providers()[0]
+                    written = ae2.write_pattern(provider, mc.recipes_for("minecraft:stick")[0])
+                    return " ".join([str(written), str(ae2.providers()[0].free), str(len(ae2.provider_patterns(provider)))])
+                """, "False 9 0", "No blank pattern, no pattern",
+                () -> {
+                    helper.assertTrue(crafting.providerPatterns().isEmpty(), "The provider is still empty");
+                    crafting.close();
+                });
+    }
+
+    /** A full provider takes no pattern, and the blank pattern stays in storage. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void writingIntoAFullProviderKeepsTheBlankPattern(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        var stocked = new boolean[] { false };
+        run(helper, patternScene(helper), 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the network");
+            if (!stocked[0]) {
+                crafting.fillProvider();
+                crafting.insertBlankPatterns(1);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the blank pattern");
+            }
+        }, "host_full_provider", """
+                def run() -> str:
+                    provider = ae2.providers()[0]
+                    written = ae2.write_pattern(provider, mc.recipes_for("minecraft:stone_slab")[1])
+                    return " ".join([str(written), str(ae2.providers()[0].free), str(len(ae2.provider_patterns(provider))),
+                                     str(ae2.amount("ae2:blank_pattern"))])
+                """, "False 0 9 1", "The full provider took nothing and the blank pattern stayed",
+                () -> {
+                    helper.assertValueEqual(crafting.blankPatternAmount(), 1L, "The blank pattern is still stored");
+                    crafting.close();
+                });
+    }
+
+    /** A processing pattern reads back without an ID, with its inputs and outputs, and cannot be written yet. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void aProcessingPatternReadsBackButIsNotWritten(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        var stocked = new boolean[] { false };
+        run(helper, patternScene(helper), 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the network");
+            if (!stocked[0]) {
+                crafting.putProcessingPattern();
+                crafting.insertBlankPatterns(1);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the blank pattern");
+            }
+        }, "host_processing_pattern", """
+                def run() -> bool:
+                    provider = ae2.providers()[0]
+                    pattern = ae2.provider_patterns(provider)[0]
+                    if pattern.kind != "processing" or pattern.id is not None or len(pattern.inputs) != 1:
+                        return False
+                    if pattern.inputs[0][0].resource != "minecraft:cobblestone" or pattern.outputs[0].resource != "minecraft:stone":
+                        return False
+                    return ae2.write_pattern(provider, pattern)
+                """, new Stops("NotImplementedError: processing patterns are not supported yet"),
+                "A processing pattern read from the provider stops the run when written",
+                () -> {
+                    helper.assertValueEqual(crafting.blankPatternAmount(), 1L, "The blank pattern is still stored");
+                    crafting.close();
+                });
+    }
+
+    /** An item picked for a slot that the slot does not take stops the run. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void anItemASlotDoesNotTakeStopsTheWrite(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        var stocked = new boolean[] { false };
+        run(helper, patternScene(helper), 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the network");
+            if (!stocked[0]) {
+                crafting.insertBlankPatterns(1);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the blank pattern");
+            }
+        }, "host_wrong_slot_item", """
+                def run() -> bool:
+                    stick = mc.recipes_for("minecraft:stick")[0]
+                    return ae2.write_pattern(ae2.providers()[0], stick, items={3: "minecraft:stone"})
+                """, new Stops("ValueError: slot 3 of minecraft:stick does not take 'minecraft:stone'"),
+                "The wrong item stops the run before anything is written",
+                () -> {
+                    helper.assertValueEqual(crafting.blankPatternAmount(), 1L, "The blank pattern is still stored");
+                    helper.assertTrue(crafting.providerPatterns().isEmpty(), "The provider is still empty");
+                    crafting.close();
+                });
+    }
+
+    /** The editor's dry run of a pattern write says it would land and leaves the blank pattern and provider alone. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void dryRunWritesNoPattern(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        var interfaceAt = patternScene(helper);
+        var level = helper.getLevel();
+        var server = level.getServer();
+        var store = ProgramStore.get(server);
+        var file = "host_dry_pattern";
+        var text = """
+                def run(port: Interface) -> str:
+                    provider = ae2.providers()[0]
+                    written = ae2.write_pattern(provider, mc.recipes_for("minecraft:stick")[0])
+                    return " ".join([str(written), str(ae2.providers()[0].free), str(ae2.amount("ae2:blank_pattern"))])
+                """;
+        var stocked = new boolean[] { false };
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    helper.assertTrue(crafting.ready(), "Waiting for the network");
+                    if (!stocked[0]) {
+                        crafting.insertBlankPatterns(1);
+                        stocked[0] = true;
+                        helper.fail("Waiting for the storage cache to see the blank pattern");
+                    }
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(interfaceAt);
+                    helper.assertTrue(automationInterface.id() != null, "Waiting for the interface's ID");
+                    helper.assertTrue(AutomationInterfaces.get(level).domainOf(level, automationInterface.id())
+                            .isPresent(), "Waiting for the interface's domain");
+                })
+                .thenExecute(() -> {
+                    write(store, file, text);
+                    store.reload();
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(interfaceAt);
+                    var domain = AutomationInterfaces.get(level).domainOf(level, automationInterface.id())
+                            .orElseThrow();
+                    var answer = ProgramSync.get(server).handle(1, "dry", List.of(domain.value(), file, "run",
+                            ProgramSync.version(text), automationInterface.id()));
+                    helper.assertTrue(answer.ok(), "The dry run answered: " + answer.message());
+                    var dry = ProgramDryRun.decode(answer.message());
+                    helper.assertValueEqual(dry.status(), ProgramDryRun.Status.DONE, "The dry run finished");
+                    helper.assertTrue(dry.values().containsValue("'True 9 1'"),
+                            "The pattern would be written, and was not: " + dry.values());
+                    helper.assertValueEqual(crafting.blankPatternAmount(), 1L, "The blank pattern is still stored");
+                    helper.assertTrue(crafting.providerPatterns().isEmpty(), "The provider is still empty");
+                    RouterEvidence.write("hostdrypattern", 1, Map.of("result", answer.message().split("\n")[1]));
+                    delete(store, file);
+                    store.reload();
+                    crafting.close();
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * The crafting scene joined to a domain: a Switch on the ME Chest with a Federation Cable on top, and an
+     * interface south of the cable that looks down at the Pattern Provider two blocks below it.
+     */
+    private static BlockPos patternScene(GameTestHelper helper) {
+        var switchAt = new BlockPos(1, 3, 1);
+        var interfaceAt = new BlockPos(1, 4, 2);
+        new RouterFixtures(helper).placeSwitch(switchAt);
+        helper.setBlock(switchAt.above(), RouterRegistration.FEDERATION_CABLE.get());
+        helper.setBlock(interfaceAt, AutomationRegistration.INTERFACE.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.DOWN));
+        return interfaceAt;
     }
 
     /**

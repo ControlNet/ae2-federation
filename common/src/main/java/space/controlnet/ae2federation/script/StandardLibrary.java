@@ -13,7 +13,7 @@ import java.util.Map;
 public final class StandardLibrary {
     /** Strings whose static type says what they name; completion and the checker know their values. */
     public static final List<String> TYPED_STRINGS = List.of("Item", "Fluid", "Resource", "Interface", "Network",
-            "Side", "Capability", "RuleMode", "FilterMode", "HttpMethod", "CpuMode", "SettingName", "SettingValue");
+            "Side", "Capability", "RuleMode", "FilterMode", "HttpMethod", "CpuMode", "SettingName", "SettingValue", "RecipeKind");
 
     /** Typed strings with a fixed set of values, known without the game. */
     public static final Map<String, List<String>> ENUMERATIONS = Map.of(
@@ -22,7 +22,8 @@ public final class StandardLibrary {
             "RuleMode", List.of("off", "on", "reexport"),
             "FilterMode", List.of("all", "allow", "deny"),
             "HttpMethod", List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"),
-            "CpuMode", List.of("any", "player_only", "machine_only"));
+            "CpuMode", List.of("any", "player_only", "machine_only"),
+            "RecipeKind", List.of("crafting", "stonecutting", "smithing", "processing"));
 
     /**
      * Typed strings whose values depend on another argument of the same call: a {@code SettingValue} is one of the
@@ -42,7 +43,17 @@ public final class StandardLibrary {
                     arg("mode", "CpuMode"), arg("storage", "int"), arg("co_processors", "int"),
                     arg("job", "Optional[Stack]"), arg("progress", "int"), arg("total", "int")),
             "Setting", List.of(arg("name", "SettingName"), arg("value", "SettingValue"),
-                    arg("values", "list[SettingValue]")));
+                    arg("values", "list[SettingValue]")),
+            // One type for a recipe and a pattern: the slots of the crafting grid (9, row by row), the stonecutter (1),
+            // the smithing table (template, base, addition) or a processing pattern's inputs, each with the stacks it
+            // accepts. A processing pattern has no id; width and height are 0 but for a shaped crafting recipe.
+            "Recipe", List.of(arg("id", "Optional[str]"), arg("kind", "RecipeKind"),
+                    arg("inputs", "list[list[Stack]]"), arg("outputs", "list[Stack]"), arg("width", "int"),
+                    arg("height", "int")),
+            "Provider", List.of(arg("id", "str"), arg("name", "Optional[str]"), arg("targets", "list[Item]"),
+                    arg("group", "str"), arg("block", "Item"), arg("network", "Network"), arg("x", "int"),
+                    arg("y", "int"), arg("z", "int"), arg("dimension", "str"), arg("slots", "int"), arg("free", "int"),
+                    arg("makes", "list[Resource]"), arg("in_terminal", "bool")));
 
     public static final Map<String, List<Signature>> NAMESPACES = Map.of(
             "ae2", List.of(
@@ -69,9 +80,9 @@ public final class StandardLibrary {
                             def iron_on_the_way() -> int:
                                 return ae2.amount("minecraft:iron_ingot") + ae2.crafting("minecraft:iron_ingot")
                             """, arg("resource", "Resource"), network()),
-                    fn("patterns", "list[Resource]", "Everything that can be crafted.", """
+                    fn("craftables", "list[Resource]", "Everything that can be crafted.", """
                             def keep_everything_stocked(target: int) -> None:
-                                for resource in ae2.patterns():
+                                for resource in ae2.craftables():
                                     missing = target - ae2.amount(resource) - ae2.crafting(resource)
                                     if missing > 0:
                                         ae2.craft(resource, missing)
@@ -178,7 +189,48 @@ public final class StandardLibrary {
                             """, arg("block", "Block"), new Signature.Arg("slot", type("int"), null,
                                     new Signature.Range(0, Long.MAX_VALUE)),
                             new Signature.Arg("resource", type("Resource"), "None"),
-                            new Signature.Arg("amount", type("int"), "1", new Signature.Range(1, Long.MAX_VALUE)))),
+                            new Signature.Arg("amount", type("int"), "1", new Signature.Range(1, Long.MAX_VALUE))),
+                    fn("providers", "list[Provider]", "The pattern providers, as the Pattern Access Terminal lists them.",
+                            """
+                            def providers_with_room() -> list[Provider]:
+                                found: list[Provider] = []
+                                for provider in ae2.providers():
+                                    if "ae2:molecular_assembler" in provider.targets and provider.free > 0:
+                                        found.append(provider)
+                                return found
+                            """, network()),
+                    fn("provider_at", "Optional[Provider]",
+                            "The pattern provider at the block; None if there is none of this domain.", """
+                            def free_slots(port: Interface) -> int:
+                                provider = ae2.provider_at(ae2f.select(port))
+                                if provider is None:
+                                    return 0
+                                return provider.free
+                            """, arg("block", "Block")),
+                    fn("provider_patterns", "list[Recipe]", "The provider's patterns, each read as its recipe.", """
+                            def written(port: Interface) -> list[str]:
+                                ids: list[str] = []
+                                provider = ae2.provider_at(ae2f.select(port))
+                                if provider is not None:
+                                    for recipe in ae2.provider_patterns(provider):
+                                        if recipe.id is not None:
+                                            ids.append(recipe.id)
+                                return ids
+                            """, arg("provider", "Provider")),
+                    act("write_pattern", "bool",
+                            "Writes the recipe on a blank pattern from storage and puts it in the provider; False if "
+                                    + "there is no blank pattern or no free slot.", """
+                            def learn(port: Interface, item: Item) -> bool:
+                                provider = ae2.provider_at(ae2f.select(port))
+                                if provider is None or ae2.craftable(item):
+                                    return False
+                                for recipe in mc.recipes_for(item):
+                                    if recipe.kind == "crafting":
+                                        return ae2.write_pattern(provider, recipe)
+                                return False
+                            """, arg("provider", "Provider"), arg("recipe", "Recipe"),
+                            new Signature.Arg("items", type("dict[int, Item]"), "{}"),
+                            new Signature.Arg("substitutes", type("bool"), "False"))),
             "ae2f", List.of(
                     fn("select", "Block", "The block in front of the interface, reach blocks away, seen from a side.",
                             """
@@ -300,7 +352,17 @@ public final class StandardLibrary {
                     act("move_fe", "bool", "Moves FE from one block to another.", """
                             def charge(port_from: Interface, port_to: Interface) -> None:
                                 mc.move_fe(ae2f.select(port_from), ae2f.select(port_to), 10000)
-                            """, arg("source", "Block"), arg("target", "Block"), amount())),
+                            """, arg("source", "Block"), arg("target", "Block"), amount()),
+                    fn("recipes_for", "list[Recipe]",
+                            "The crafting, stonecutting and smithing recipes that make the item, as AE2 can write them "
+                                    + "on patterns.", """
+                            def crafting_recipes(item: Item) -> int:
+                                count = 0
+                                for recipe in mc.recipes_for(item):
+                                    if recipe.kind == "crafting":
+                                        count += 1
+                                return count
+                            """, arg("item", "Item"))),
             "fs", List.of(
                     fn("read", "Optional[str]",
                             "The text of a file in the world's workspace folder; None if there is none.", """

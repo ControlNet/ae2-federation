@@ -536,7 +536,7 @@ public final class AutomationTabScenario implements UIScenario {
                                 && context.all("#tab_automation").size() == 1)
                 .type("cra")
                 .waitUntil("typing narrows the list", context ->
-                        popupLabels(context).equals(java.util.List.of("craft", "craftable", "crafting")))
+                        popupLabels(context).equals(java.util.List.of("craft", "craftable", "craftables", "crafting")))
                 .key(GLFW.GLFW_KEY_DOWN)
                 .key(GLFW.GLFW_KEY_ENTER)
                 .check("Enter puts the chosen function in place of what is typed", context ->
@@ -633,15 +633,31 @@ public final class AutomationTabScenario implements UIScenario {
                         lastLine(context, 0).startsWith("    ae2.set_setting(bus, \"fuzzy_mode\", \""))
                 .frames(2).screenshot("ui-automation-completion-setting-value")
                 .key(GLFW.GLFW_KEY_ESCAPE)
+                // Pattern writing: the fields of a pattern provider and of a recipe.
+                .key(GLFW.GLFW_KEY_END)
+                .key(GLFW.GLFW_KEY_ENTER)
+                .type("ae2.providers()[0].")
+                .waitUntil("a provider lists its fields", context -> popupLabels(context).equals(java.util.List.of(
+                        "block", "dimension", "free", "group", "id", "in_terminal", "makes", "name", "network",
+                        "slots", "targets", "x", "y", "z")))
+                .frames(2).screenshot("ui-automation-completion-provider")
+                .key(GLFW.GLFW_KEY_ESCAPE)
+                .key(GLFW.GLFW_KEY_END)
+                .key(GLFW.GLFW_KEY_ENTER)
+                .type("mc.recipes_for(\"minecraft:stick\")[0].")
+                .waitUntil("a recipe lists its fields", context -> popupLabels(context).equals(java.util.List.of(
+                        "height", "id", "inputs", "kind", "outputs", "width")))
+                .frames(2).screenshot("ui-automation-completion-recipe")
+                .key(GLFW.GLFW_KEY_ESCAPE)
                 // The Library: namespaces with their counts, a function's page and the way back, a search.
                 .check("the library lists the namespaces with their counts", context ->
-                        context.el("#auto_library_ns_ae2 .library-count").text().equals("20")
+                        context.el("#auto_library_ns_ae2 .library-count").text().equals("24")
                                 && context.el("#auto_library_ns_ae2f .library-count").text().equals("6")
-                                && context.el("#auto_library_ns_mc .library-count").text().equals("13")
+                                && context.el("#auto_library_ns_mc .library-count").text().equals("14")
                                 && context.all("#auto_library_tree .library-function").isEmpty())
                 .click("#auto_library_ns_ae2")
                 .check("opening a namespace lists its functions", context ->
-                        context.all("#auto_library_tree .library-function").size() == 20
+                        context.all("#auto_library_tree .library-function").size() == 24
                                 && context.all("#auto_library_fn_ae2_craft .library-acts").size() == 1
                                 && context.all("#auto_library_fn_ae2_amount .library-acts").isEmpty())
                 .frames(2).screenshot("ui-automation-library")
@@ -663,7 +679,7 @@ public final class AutomationTabScenario implements UIScenario {
                 .click("#auto_library_back")
                 .check("back returns to the list as it was", context ->
                         !context.el("#auto_library_doc").isVisible()
-                                && context.all("#auto_library_tree .library-function").size() == 20)
+                                && context.all("#auto_library_tree .library-function").size() == 24)
                 .step("search the library", context ->
                         context.el("#auto_library_search").as(TextField.class).setText("redstone", true))
                 .check("a search lists only the matches, under their namespace", context ->
@@ -680,6 +696,21 @@ public final class AutomationTabScenario implements UIScenario {
                                 && context.all("#auto_library_fn_ae2_setting").size() == 1
                                 && context.all("#auto_library_fn_ae2_set_setting .library-acts").size() == 1)
                 .frames(2).screenshot("ui-automation-library-settings")
+                .step("search the library for pattern providers", context ->
+                        context.el("#auto_library_search").as(TextField.class).setText("provider", true))
+                .check("the provider reads are found", context ->
+                        context.el("#auto_library_ns_ae2 .library-count").text().equals("3")
+                                && context.all("#auto_library_fn_ae2_providers").size() == 1
+                                && context.all("#auto_library_fn_ae2_provider_at").size() == 1
+                                && context.all("#auto_library_fn_ae2_provider_patterns").size() == 1)
+                .frames(2).screenshot("ui-automation-library-providers")
+                .step("search the library for recipes and patterns", context ->
+                        context.el("#auto_library_search").as(TextField.class).setText("_pattern", true))
+                .check("writing a pattern is found, marked as an action", context ->
+                        context.el("#auto_library_ns_ae2 .library-count").text().equals("2")
+                                && context.all("#auto_library_fn_ae2_provider_patterns").size() == 1
+                                && context.all("#auto_library_fn_ae2_write_pattern .library-acts").size() == 1)
+                .frames(2).screenshot("ui-automation-library-patterns")
                 // The Install view: a device in this domain, beside the Router, with a function installed on it.
                 .click("#tab_automation")
                 .check("the Automation tab shows the install view, without Push or Delete", context ->

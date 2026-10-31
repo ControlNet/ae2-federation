@@ -48,7 +48,8 @@ import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
 
 /**
  * The library calls that reach ME networks: the domain's storage, crafting, energy and rules, inventories at a
- * selected block, and the settings of a device there ({@link DeviceCalls}). A program reaches every network of its domain directly, whatever the rules share (user decision).
+ * selected block, the settings of a device there ({@link DeviceCalls}), and pattern providers and the recipes written
+ * into them ({@link PatternCalls}). A program reaches every network of its domain directly, whatever the rules share (user decision).
  *
  * <p>Assistant choices: {@code network=None} is every network of the domain. Amounts are read from each network's own
  * storage (its drives, cells and storage buses, never what the Federation mounts from other networks), so a sum over
@@ -71,6 +72,7 @@ final class DomainCalls {
     private final RegistryResources resources;
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
     private final DeviceCalls devices;
+    private final PatternCalls patterns;
     private Map<NetworkId, IGrid> grids = Map.of();
     private int gridsTick = -1;
 
@@ -84,6 +86,7 @@ final class DomainCalls {
         this.simulate = simulate;
         this.resources = new RegistryResources(server.registryAccess());
         this.devices = new DeviceCalls(simulate, this::key);
+        this.patterns = new PatternCalls(server, simulate, this);
     }
 
     Object call(ProgramHost host, String namespace, String name, List<Object> args) {
@@ -93,7 +96,7 @@ final class DomainCalls {
             case "ae2.craftable" -> grids(args.get(1)).stream()
                     .anyMatch(grid -> grid.getCraftingService().isCraftable(key(args.get(0))));
             case "ae2.crafting" -> ProgramCrafting.get(server).delivering(grids(args.get(1)), key(args.get(0)));
-            case "ae2.patterns" -> patterns(args.get(0));
+            case "ae2.craftables" -> craftables(args.get(0));
             case "ae2.craft" -> craft(key(args.get(0)), (Long) args.get(1), args.get(2), (String) args.get(3));
             // A dry run has no jobs of its own to cancel.
             case "ae2.cancel" -> !simulate
@@ -109,6 +112,8 @@ final class DomainCalls {
                     .mapToDouble(grid -> grid.getEnergyService().getStoredPower()).sum();
             case "ae2.settings", "ae2.setting", "ae2.set_setting", "ae2.priority", "ae2.set_priority", "ae2.config",
                     "ae2.set_config" -> devices.call(host, name, args);
+            case "ae2.providers", "ae2.provider_at", "ae2.provider_patterns", "ae2.write_pattern", "mc.recipes_for" ->
+                    patterns.call(host, namespace + "." + name, args);
             case "ae2f.online" -> online((String) args.get(0));
             case "ae2f.rule" -> ruleName(PolicyChanges.mode(policies(), policyKey(args)));
             case "ae2f.set_rule" -> setRule(policyKey(args), (String) args.get(3));
@@ -129,7 +134,7 @@ final class DomainCalls {
 
     // ---- names ----
 
-    private AEKey key(Object resource) {
+    AEKey key(Object resource) {
         var id = (String) resource;
         return resources.key(id).orElseThrow(() -> new RunError("ValueError", "unknown resource '" + id + "'"));
     }
@@ -149,21 +154,35 @@ final class DomainCalls {
         return NetworkShortIds.get(server).network(ids.get(0)).orElseThrow();
     }
 
-    /** The domain's networks in the order of their IDs, or the one named; loaded and settled ones only. */
     /** The networks of the domain, in the order of their IDs. */
     List<IGrid> domainGrids() {
         return grids(null);
     }
 
+    /** The domain's networks in the order of their IDs, or the one named; loaded and settled ones only. */
     private List<IGrid> grids(@Nullable Object network) {
+        return networks(network).stream().map(Map.Entry::getValue).toList();
+    }
+
+    /** {@link #grids} with each network's identity. */
+    List<Map.Entry<NetworkId, IGrid>> networks(@Nullable Object network) {
         var live = live();
-        if (network != null) {
-            var grid = live.get(network((String) network));
-            return grid == null ? List.of() : List.of(grid);
-        }
         var shortIds = NetworkShortIds.get(server);
-        return members().stream().sorted(Comparator.comparing(shortIds::id)).map(live::get)
-                .filter(grid -> grid != null).toList();
+        var ids = network != null ? List.of(network((String) network))
+                : members().stream().sorted(Comparator.comparing(shortIds::id)).toList();
+        var found = new ArrayList<Map.Entry<NetworkId, IGrid>>();
+        for (var id : ids) {
+            var grid = live.get(id);
+            if (grid != null) {
+                found.add(Map.entry(id, grid));
+            }
+        }
+        return found;
+    }
+
+    /** A network's ID as programs name it, such as {@code network-082a5c}. */
+    String shortId(NetworkId network) {
+        return NetworkShortIds.get(server).id(network);
     }
 
     private List<NetworkId> members() {
@@ -202,7 +221,7 @@ final class DomainCalls {
         return grids(network).stream().mapToLong(grid -> nativeStock(grid).get(key)).sum();
     }
 
-    private KeyCounter stock(@Nullable Object network) {
+    KeyCounter stock(@Nullable Object network) {
         var total = new KeyCounter();
         grids(network).forEach(grid -> total.addAll(nativeStock(grid)));
         return total;
@@ -210,21 +229,13 @@ final class DomainCalls {
 
     /** The CPUs of the networks, network by network in the order of their IDs. */
     private ListValue cpus(@Nullable Object network) {
-        var live = live();
-        var shortIds = NetworkShortIds.get(server);
-        var ids = network != null ? List.of(network((String) network))
-                : members().stream().sorted(Comparator.comparing(shortIds::id)).toList();
         var items = new ArrayList<Object>();
-        for (var id : ids) {
-            var grid = live.get(id);
-            if (grid == null) {
-                continue;
-            }
-            for (var cpu : grid.getCraftingService().getCpus()) {
+        for (var entry : networks(network)) {
+            for (var cpu : entry.getValue().getCraftingService().getCpus()) {
                 var status = cpu.isBusy() ? cpu.getJobStatus() : null;
                 var fields = new LinkedHashMap<String, Object>();
                 fields.put("name", ProgramCrafting.name(cpu));
-                fields.put("network", shortIds.id(id));
+                fields.put("network", shortId(entry.getKey()));
                 fields.put("busy", cpu.isBusy());
                 fields.put("mode", cpu.getSelectionMode().name().toLowerCase(java.util.Locale.ROOT));
                 fields.put("storage", cpu.getAvailableStorage());
@@ -262,7 +273,7 @@ final class DomainCalls {
         return new ListValue(items);
     }
 
-    private ListValue patterns(@Nullable Object network) {
+    private ListValue craftables(@Nullable Object network) {
         var ids = new TreeSet<String>();
         grids(network).forEach(grid -> grid.getCraftingService().getCraftables(AEKeyFilter.none())
                 .forEach(key -> ids.add(id(key))));
@@ -286,7 +297,7 @@ final class DomainCalls {
     }
 
     /** Puts as much as fits into the domain, network by network; what went in. */
-    private long insert(List<IGrid> grids, AEKey key, long amount, Actionable mode) {
+    long insert(List<IGrid> grids, AEKey key, long amount, Actionable mode) {
         var left = amount;
         for (var grid : grids) {
             if (left <= 0) {
@@ -299,7 +310,7 @@ final class DomainCalls {
     }
 
     /** Takes as much as there is from the domain, network by network; what came out. */
-    private long extract(List<IGrid> grids, AEKey key, long amount, Actionable mode) {
+    long extract(List<IGrid> grids, AEKey key, long amount, Actionable mode) {
         var left = amount;
         for (var grid : grids) {
             if (left <= 0) {

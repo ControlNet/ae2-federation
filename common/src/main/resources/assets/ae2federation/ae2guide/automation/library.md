@@ -24,7 +24,7 @@ storage, whatever the rules share.
 | `ae2.storage(network)` | everything stored, as `Stack`s |
 | `ae2.craftable(resource, network)` | whether a pattern makes it |
 | `ae2.crafting(resource, network)` | how much running and requested jobs will still put into storage |
-| `ae2.patterns(network)` | everything that can be crafted |
+| `ae2.craftables(network)` | everything that can be crafted |
 | `ae2.cpus(network)` | the crafting CPUs, as `Cpu`s, with the jobs they run |
 | `ae2.free_cpus(network)` | free crafting CPUs that take automation requests |
 | `ae2.energy(network)` | AE stored |
@@ -97,6 +97,43 @@ to stock.
 | `scheduling_mode` | Scheduling Mode | `default`, `roundrobin`, `random` | ME Export Bus |
 | `storage_filter` | Report Inaccessible Items | `none`, `extractable_only` | ME Storage Bus |
 
+## ae2: patterns
+
+A provider here is a pattern provider on a network of the domain, as the Pattern Access Terminal lists them, addon
+providers too.
+
+| Function | Gives |
+| --- | --- |
+| `mc.recipes_for(item)` | the crafting, stonecutting and smithing recipes that make the item, as `Recipe`s |
+| `ae2.providers(network)` | the pattern providers, as `Provider`s |
+| `ae2.provider_at(block)` | the provider at a selected block, or `None` if there is none of this domain |
+| `ae2.provider_patterns(provider)` | the provider's patterns, each as its `Recipe` |
+| `ae2.write_pattern(provider, recipe, items={}, substitutes=False)` | **action:** writes the recipe on a blank pattern from storage and puts it in a free slot of the provider |
+
+Crafting, stonecutting and smithing patterns run in a Molecular Assembler next to the provider, which you build
+there yourself. A provider's `targets` list the machines it faces, so `"ae2:molecular_assembler" in provider.targets`
+finds the providers that can use such patterns.
+
+A `Recipe` gives its `id`, its `kind` (`"crafting"`, `"stonecutting"`, `"smithing"` or `"processing"`), its `outputs`
+and its `inputs` slot by slot, each slot with the stacks it accepts: the crafting grid's nine slots row by row, the
+stonecutter's one, or the smithing table's template, base and addition. A shaped recipe sits in the grid's top-left
+corner, and `width` and `height` give its size; they are 0 for the other recipes. Recipes AE2 cannot write on a
+pattern are left out, such as map copies and armor trims, and so are recipes whose result carries extra data, which a
+program cannot name by its ID.
+
+`ae2.write_pattern` takes one blank pattern from the domain's storage and writes the recipe's kind of pattern. `items`
+picks the item for a slot that accepts several, by slot number, as in `{0: "minecraft:birch_planks"}`; any other slot
+takes the item storage holds most of, or the first it accepts. `substitutes=True` is AE2's "allow substitutes". The
+call gives `False`, and takes no blank pattern, when storage holds none, the provider has no free slot, or the provider
+cannot be reached now. An item a slot does not take stops the run with a `ValueError`. Processing patterns cannot be
+written yet: a processing recipe stops the run with `NotImplementedError`.
+
+`ae2.provider_patterns` reads a pattern written from a recipe as that recipe, equal to the one `mc.recipes_for` gives;
+a processing pattern reads with no `id`, its inputs and outputs only. A `Provider` has its `id`, which names it in
+later calls, its anvil `name` or `None`, `targets`, its `group` in the Pattern Access Terminal, its own `block` item,
+`network`, `x`, `y`, `z` and `dimension`, its pattern `slots` and how many are `free`, what its patterns `makes`, and
+whether it is shown `in_terminal`.
+
 ## ae2f: the Federation
 
 | Function | Gives |
@@ -124,6 +161,7 @@ to stock.
 | `mc.break_block(block)` | **action:** breaks it; the drops go into the domain's storage, what does not fit drops there |
 | `mc.place_block(block, item)` | **action:** places the item from the domain's storage |
 | `mc.move_fe(source, target, amount)` | **action:** moves FE between two blocks |
+| `mc.recipes_for(item)` | the recipes that make the item and AE2 can write on patterns; see "ae2: patterns" |
 | `mc.wait(ticks)` | **long action:** pauses the run for `ticks` ticks |
 
 ## fs: files

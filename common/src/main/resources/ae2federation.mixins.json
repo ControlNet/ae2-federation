@@ -7,6 +7,7 @@
     "CableBusIdentityInitializationMixin",
     "PatternProviderLogicAccess",
     "PatternProviderLogicTargetBinding",
+    "SmithingTransformRecipeAccess",
     "StorageServiceNotificationMixin",
     "compat.DelegatingMEInventoryAccessMixin",
     "compat.StorageServiceMountLedgerMixin",

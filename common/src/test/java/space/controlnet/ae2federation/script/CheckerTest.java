@@ -180,7 +180,7 @@ final class CheckerTest {
                     name = mc.block_id(port)
                     age: Optional[str] = mc.state(b, "age")
                     ripe = int(mc.state(b, "age")) == 7
-                    made: list[Resource] = ae2.patterns()
+                    made: list[Resource] = ae2.craftables()
                     mc.set_redstone(port, 15)
                 """));
         assertEquals(List.of("2: argument 'interface' of mc.set_redstone() must be Interface, not Block"),
@@ -188,6 +188,33 @@ final class CheckerTest {
                         def h(b: Block) -> None:
                             mc.set_redstone(b, 15)
                         """));
+    }
+
+    @Test
+    void patternWritingTakesAProviderAndARecipe() {
+        assertEquals(List.of(), problems("""
+                def h(port: Interface) -> None:
+                    found = ae2.provider_at(ae2f.select(port, reach=2))
+                    if found is not None:
+                        for recipe in mc.recipes_for("minecraft:iron_block"):
+                            if recipe.kind == "crafting" and recipe.width == 3:
+                                ae2.write_pattern(found, recipe, items={0: "minecraft:iron_ingot"}, substitutes=True)
+                        written: list[Recipe] = ae2.provider_patterns(found)
+                        first: list[Stack] = written[0].inputs[0]
+                        made: list[Item] = found.targets
+                        named: Optional[str] = found.name
+                        kind: RecipeKind = written[0].kind
+                    for provider in ae2.providers():
+                        ae2.write_pattern(provider, mc.recipes_for("minecraft:iron_block")[0])
+                """));
+        assertEquals(List.of("2: argument 'provider' of ae2.write_pattern() must be Provider, not Block"), problems("""
+                def h(port: Interface, recipe: Recipe) -> None:
+                    ae2.write_pattern(ae2f.select(port), recipe)
+                """));
+        assertEquals(List.of("2: ae2 has no function 'patterns'"), problems("""
+                def h() -> None:
+                    x = ae2.patterns()
+                """), "renamed to ae2.craftables");
     }
 
     static Stream<Arguments> rules() {

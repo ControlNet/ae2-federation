@@ -111,7 +111,7 @@ final class CompletionTest {
                 def f() -> None:
                     ae2.cr|
                 """);
-        assertEquals(List.of("craft", "craftable", "crafting"), labels(c));
+        assertEquals(List.of("craft", "craftable", "craftables", "crafting"), labels(c));
         assertEquals("cr", c.prefix());
         assertEquals(new Position(2, 9), new Position(c.line(), c.column()));
         assertEquals("(resource: Resource, amount: int, network: Network = None, cpu: Optional[str] = None) -> bool",
@@ -119,7 +119,7 @@ final class CompletionTest {
         assertEquals("Asks for a crafting job, on the named CPU if given; False if nothing makes the resource "
                 + "or no CPU is free.",
                 c.candidates().get(0).doc());
-        assertEquals(List.of(true, false, false), c.candidates().stream().map(Candidate::acts).toList());
+        assertEquals(List.of(true, false, false, false), c.candidates().stream().map(Candidate::acts).toList());
     }
 
     @Test
@@ -338,6 +338,24 @@ final class CompletionTest {
                 def f() -> None:
                     iron_tools.Order("minecraft:iron_ingot").|
                 """)), "a record returned from another file");
+    }
+
+    @Test
+    void theFieldsOfRecipesAndProviders() {
+        assertEquals(List.of("height", "id", "inputs", "kind", "outputs", "width"), labels(at("""
+                def f() -> None:
+                    for recipe in mc.recipes_for("minecraft:iron_block"):
+                        recipe.|
+                """)));
+        assertEquals(List.of("amount", "resource"), labels(at("""
+                def f(recipe: Recipe) -> None:
+                    x = recipe.inputs[0][0].|
+                """)), "a slot's alternatives are stacks");
+        assertEquals(List.of("block", "dimension", "free", "group", "id", "in_terminal", "makes", "name", "network",
+                "slots", "targets", "x", "y", "z"), labels(at("""
+                def f() -> None:
+                    x = ae2.providers()[0].|
+                """)));
     }
 
     @Test
