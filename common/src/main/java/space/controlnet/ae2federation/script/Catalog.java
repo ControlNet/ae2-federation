@@ -19,6 +19,15 @@ public interface Catalog {
     List<Candidate> values(TypeRef type, String prefix);
 
     /**
+     * Values of a typed string that depends on another argument of the call ({@link StandardLibrary#DEPENDENT}), when
+     * that argument is the literal {@code of}: the values of the setting {@code of} names. Empty when {@code of} is
+     * unknown, so a value for it is left to the run.
+     */
+    default List<Candidate> values(TypeRef type, String of, String prefix) {
+        return List.of();
+    }
+
+    /**
      * The kinds of resource an ID names: {@code Item}, {@code Fluid}, or an addon's key type. Empty when nothing has
      * that ID; more than one when it is, say, both an item and a fluid.
      */

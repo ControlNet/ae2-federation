@@ -2,12 +2,21 @@ package space.controlnet.ae2federation.test;
 
 import appeng.api.config.Actionable;
 import appeng.api.config.CpuSelectionMode;
+import appeng.api.config.FuzzyMode;
+import appeng.api.config.RedstoneMode;
+import appeng.api.config.Settings;
 import appeng.api.networking.security.IActionSource;
+import appeng.api.parts.PartHelper;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
 import appeng.api.storage.StorageCells;
+import appeng.blockentity.misc.InterfaceBlockEntity;
 import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
+import appeng.core.definitions.AEParts;
+import appeng.parts.automation.ImportBusPart;
+import appeng.parts.storagebus.StorageBusPart;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -580,6 +589,147 @@ public final class ProgramHostGameTests {
     }
 
     /**
+     * A cable bus in front of the interface with an import bus facing it and a storage bus on top. A program reads
+     * the import bus's settings, changes two of them, and sets the storage bus's priority and a filter slot, reached
+     * through {@code side="up"}; the parts themselves hold the new values.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void programChangesTheSettingsOfBusesInFrontOfIt(GameTestHelper helper) {
+        var fixtures = build(helper, Blocks.AIR.defaultBlockState());
+        var level = helper.getLevel();
+        ImportBusPart bus = PartHelper.setPart(level, helper.absolutePos(TARGET), Direction.WEST, null,
+                AEParts.IMPORT_BUS.asItem());
+        StorageBusPart storage = PartHelper.setPart(level, helper.absolutePos(TARGET), Direction.UP, null,
+                AEParts.STORAGE_BUS.asItem());
+        run(helper, fixtures, "host_settings", """
+                def run(port: Interface) -> str:
+                    bus = ae2f.select(port)
+                    storage = ae2f.select(port, side="up")
+                    listed: list[str] = []
+                    for setting in ae2.settings(bus):
+                        listed.append(setting.name + "=" + setting.value + "/" + str(len(setting.values)))
+                    ae2.set_setting(bus, "redstone_controlled", "high_signal")
+                    ae2.set_setting(bus, "fuzzy_mode", "percent_50")
+                    ae2.set_priority(storage, 7)
+                    ae2.set_config(storage, 1, "minecraft:iron_ingot")
+                    filters: list[str] = []
+                    for slot in ae2.config(storage):
+                        if slot is not None:
+                            filters.append(slot.resource)
+                    return " ".join([",".join(listed), str(ae2.setting(bus, "redstone_controlled")),
+                                     str(ae2.setting(bus, "fuzzy_mode")), str(ae2.setting(bus, "blocking_mode")),
+                                     str(ae2.priority(storage)), str(ae2.priority(bus)), ",".join(filters),
+                                     str(len(ae2.config(storage))), str(len(ae2.settings(port)))])
+                """, "fuzzy_mode=ignore_all/5,redstone_controlled=ignore/4 high_signal percent_50 None 7 None "
+                        + "minecraft:iron_ingot 63 0",
+                "The import bus lists its settings and takes new ones; the storage bus on top takes a priority and a "
+                        + "filter; the interface's own block has none",
+                () -> {
+                    helper.assertValueEqual(bus.getConfigManager().getSetting(Settings.REDSTONE_CONTROLLED),
+                            RedstoneMode.HIGH_SIGNAL, "The import bus is redstone controlled");
+                    helper.assertValueEqual(bus.getConfigManager().getSetting(Settings.FUZZY_MODE),
+                            FuzzyMode.PERCENT_50, "The import bus compares fuzzily");
+                    helper.assertValueEqual(storage.getPriority(), 7, "The storage bus has priority 7");
+                    helper.assertValueEqual(storage.getConfig().getKey(1), AEItemKey.of(Items.IRON_INGOT),
+                            "The storage bus filters iron in its second slot");
+                    helper.assertTrue(storage.getConfig().getKey(0) == null, "Its first slot stays empty");
+                });
+    }
+
+    /**
+     * An ME Interface block in front of the interface: the block entity itself takes the settings, priority and
+     * config of a program, and a setting it does not have stops the run with a ValueError naming those it has.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void programConfiguresAnMeInterfaceAndStopsAtASettingItLacks(GameTestHelper helper) {
+        var fixtures = build(helper, AEBlocks.INTERFACE.block().defaultBlockState());
+        run(helper, fixtures, "host_interface_settings", """
+                def run(port: Interface) -> bool:
+                    box = ae2f.select(port)
+                    ae2.set_setting(box, "fuzzy_mode", "percent_99")
+                    ae2.set_priority(box, -3)
+                    ae2.set_config(box, 0, "minecraft:iron_ingot", 32)
+                    ae2.set_config(box, 2, "minecraft:gold_ingot", 5)
+                    ae2.set_config(box, 2)
+                    return ae2.set_setting(box, "redstone_controlled", "high_signal")
+                """, new Stops("ValueError: the block has no setting 'redstone_controlled'; it has fuzzy_mode"),
+                "A setting the ME Interface lacks stops the run, naming the one it has",
+                () -> {
+                    InterfaceBlockEntity box = helper.getBlockEntity(TARGET);
+                    helper.assertValueEqual(box.getConfigManager().getSetting(Settings.FUZZY_MODE),
+                            FuzzyMode.PERCENT_99, "The interface compares fuzzily");
+                    helper.assertValueEqual(box.getPriority(), -3, "The interface has priority -3");
+                    helper.assertValueEqual(box.getConfig().getStack(0),
+                            new GenericStack(AEItemKey.of(Items.IRON_INGOT), 32), "It stocks 32 iron");
+                    helper.assertTrue(box.getConfig().getStack(2) == null, "The emptied slot is empty");
+                });
+    }
+
+    /**
+     * The editor's dry run of setting changes: every change says it would be made, nothing changes, and a value
+     * the bus does not take still stops the dry run.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void dryRunLeavesDeviceSettingsAlone(GameTestHelper helper) {
+        var fixtures = build(helper, Blocks.AIR.defaultBlockState());
+        var level = helper.getLevel();
+        ImportBusPart bus = PartHelper.setPart(level, helper.absolutePos(TARGET), Direction.WEST, null,
+                AEParts.IMPORT_BUS.asItem());
+        var file = "host_dry_settings";
+        var text = """
+                def run(port: Interface) -> str:
+                    bus = ae2f.select(port)
+                    changed = ae2.set_setting(bus, "redstone_controlled", "high_signal")
+                    filtered = ae2.set_config(bus, 0, "minecraft:iron_ingot")
+                    return " ".join([str(changed), str(filtered), str(ae2.setting(bus, "redstone_controlled")),
+                                     str(ae2.config(bus)[0])])
+
+                def wrong(port: Interface) -> bool:
+                    mode: SettingValue = "upp"
+                    return ae2.set_setting(ae2f.select(port), "redstone_controlled", mode)
+                """;
+        var server = level.getServer();
+        var store = ProgramStore.get(server);
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
+                    helper.assertTrue(automationInterface.id() != null, "Waiting for the interface's ID");
+                    helper.assertTrue(AutomationInterfaces.get(level).domainOf(level, automationInterface.id())
+                            .isPresent(), "Waiting for the interface's domain");
+                })
+                .thenExecute(() -> {
+                    write(store, file, text);
+                    store.reload();
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
+                    var domain = AutomationInterfaces.get(level).domainOf(level, automationInterface.id())
+                            .orElseThrow();
+                    var answer = ProgramSync.get(server).handle(1, "dry", List.of(domain.value(), file, "run",
+                            ProgramSync.version(text), automationInterface.id()));
+                    helper.assertTrue(answer.ok(), "The dry run answered: " + answer.message());
+                    var dry = ProgramDryRun.decode(answer.message());
+                    helper.assertValueEqual(dry.status(), ProgramDryRun.Status.DONE, "The dry run finished");
+                    helper.assertTrue(dry.values().containsValue("'True True ignore None'"),
+                            "Both changes would be made, and neither was: " + dry.values());
+                    helper.assertValueEqual(bus.getConfigManager().getSetting(Settings.REDSTONE_CONTROLLED),
+                            RedstoneMode.IGNORE, "The bus still ignores redstone");
+                    helper.assertTrue(bus.getConfig().getKey(0) == null, "The bus's filter is still empty");
+                    var wrong = ProgramDryRun.decode(ProgramSync.get(server).handle(2, "dry", List.of(domain.value(),
+                            file, "wrong", ProgramSync.version(text), automationInterface.id())).message());
+                    helper.assertValueEqual(wrong.status(), ProgramDryRun.Status.FAILED, "The wrong value stops it");
+                    helper.assertValueEqual(wrong.failure(), "ValueError: redstone_controlled takes ignore, "
+                            + "low_signal, high_signal, signal_pulse, not 'upp'", "The error lists the values");
+                    RouterEvidence.write("hostdrysettings", 1, Map.of("result", answer.message().split("\n")[1]));
+                    delete(store, file);
+                    store.reload();
+                    fixtures.close();
+                })
+                .thenSucceed();
+    }
+
+    /**
      * Switch at the centre's west with an ME Chest (item cell) and a Creative Energy Cell on top and a second ME
      * Chest to the north with its own cell (two networks; the cells must not touch), cable at the centre, interface
      * east of it facing the {@code target} block.
@@ -655,20 +805,31 @@ public final class ProgramHostGameTests {
                     var status = holder[0].tick(1000);
                     if (status == Runner.Status.FAILED) {
                         var failure = holder[0].runner().failure();
-                        helper.fail("The program failed: " + failure.error().type() + ": "
-                                + failure.error().getMessage());
+                        var error = failure.error().type() + ": " + failure.error().getMessage();
+                        if (expected instanceof Stops stops) {
+                            helper.assertValueEqual(error, stops.error(), message);
+                            return;
+                        }
+                        helper.fail("The program failed: " + error);
                     }
-                    helper.assertTrue(status == Runner.Status.DONE, "Running " + file);
+                    helper.assertTrue(status == Runner.Status.DONE && !(expected instanceof Stops),
+                            "Running " + file);
                 })
                 .thenExecute(() -> {
-                    helper.assertValueEqual(holder[0].runner().result(), expected, message);
+                    if (!(expected instanceof Stops)) {
+                        helper.assertValueEqual(holder[0].runner().result(), expected, message);
+                    }
                     after.run();
-                    RouterEvidence.write(file.replace("_", ""), 1, Map.of("result",
-                            String.valueOf(holder[0].runner().result())));
+                    RouterEvidence.write(file.replace("_", ""), 1, Map.of("result", expected instanceof Stops stops
+                            ? stops.error() : String.valueOf(holder[0].runner().result())));
                     delete(store, file);
                     store.reload();
                 })
                 .thenSucceed();
+    }
+
+    /** What {@code run} expects of a program that stops with {@code error} ("ValueError: ...") instead of a result. */
+    private record Stops(String error) {
     }
 
     private static space.controlnet.ae2federation.test.automation.WebSocketEchoServer echoServer() {

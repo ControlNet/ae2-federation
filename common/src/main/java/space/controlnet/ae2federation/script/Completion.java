@@ -33,6 +33,11 @@ public final class Completion {
     private final Map<String, Map<String, TypeRef>> results = new java.util.HashMap<>();
     /** The player functions that are long actions ({@link Checker#lastingFunctions}), worked out when first asked. */
     private java.util.Set<String> lasting;
+    /**
+     * The literal an argument of a dependent type ({@link StandardLibrary#DEPENDENT}) depends on, as the call gives it
+     * before the cursor; {@code null} when it is not a plain string literal there.
+     */
+    private String dependency;
 
     private Completion(Workspace workspace, Program program) {
         this.workspace = workspace;
@@ -104,6 +109,10 @@ public final class Completion {
     private List<Candidate> candidates(List<Token> context, String prefix, boolean inString, TypeRef expected,
             String linePrefix) {
         if (inString) {
+            if (expected != null && StandardLibrary.DEPENDENT.containsKey(Types.unwrap(expected).name())) {
+                return dependency == null ? List.of()
+                        : workspace.catalog().values(Types.unwrap(expected), dependency, prefix);
+            }
             return expected == null ? List.of() : workspace.catalog().values(expected, prefix);
         }
         int size = context.size();
@@ -349,9 +358,9 @@ public final class Completion {
             }
             qualifier = context.get(open - 3).text();
         }
-        int index = 0;
         int depth = 0;
-        int argumentStart = open + 1;
+        // Where each argument starts; the last one is the argument being typed.
+        var starts = new ArrayList<Integer>(List.of(open + 1));
         for (int i = open + 1; i < context.size(); i++) {
             var token = context.get(i);
             if (token.kind() != Kind.OP) {
@@ -362,8 +371,7 @@ public final class Completion {
                 case ")", "]", "}" -> depth--;
                 case "," -> {
                     if (depth == 0) {
-                        index++;
-                        argumentStart = i + 1;
+                        starts.add(i + 1);
                     }
                 }
                 default -> {
@@ -371,16 +379,51 @@ public final class Completion {
             }
         }
         var signature = signature(qualifier, context.get(open - 1).text());
+        int argumentStart = starts.get(starts.size() - 1);
+        Optional<Signature.Arg> param;
         if (argumentStart + 1 < context.size() && context.get(argumentStart).kind() == Kind.NAME
                 && context.get(argumentStart + 1).is(Kind.OP, "=")) {
             var keyword = context.get(argumentStart).text();
-            return signature.flatMap(s -> s.args().stream().filter(a -> a.name().equals(keyword)).findFirst())
-                    .map(Signature.Arg::type).orElse(null);
+            param = signature.flatMap(s -> s.args().stream().filter(a -> a.name().equals(keyword)).findFirst());
+        } else {
+            int argument = starts.size() - 1;
+            param = signature.filter(s -> argument < s.args().size()).map(s -> s.args().get(argument));
         }
-        int argument = index;
-        return signature.filter(s -> argument < s.args().size())
-                .map(s -> s.args().get(argument).type())
-                .orElse(null);
+        if (param.isPresent()) {
+            dependency = literal(signature.get(), param.get(), context, starts);
+        }
+        return param.map(Signature.Arg::type).orElse(null);
+    }
+
+    /**
+     * The string literal given before the cursor, positionally or by keyword, for the argument that {@code param}'s
+     * values depend on; {@code null} when {@code param} depends on none, or that argument is not a plain literal.
+     */
+    private static String literal(Signature signature, Signature.Arg param, List<Token> context,
+            List<Integer> starts) {
+        var source = param.type() == null ? null : StandardLibrary.DEPENDENT.get(Types.unwrap(param.type()).name());
+        if (source == null) {
+            return null;
+        }
+        int position = -1;
+        for (int i = 0; i < signature.args().size() && position < 0; i++) {
+            if (Types.unwrap(signature.args().get(i).type()).name().equals(source)) {
+                position = i;
+            }
+        }
+        if (position < 0) {
+            return null;
+        }
+        var name = signature.args().get(position).name();
+        for (int k = 0; k + 1 < starts.size(); k++) {
+            var tokens = context.subList(starts.get(k), starts.get(k + 1) - 1);
+            boolean keyword = tokens.size() >= 2 && tokens.get(0).kind() == Kind.NAME && tokens.get(1).is(Kind.OP, "=");
+            if (keyword ? tokens.get(0).text().equals(name) : k == position) {
+                var value = keyword ? tokens.subList(2, tokens.size()) : tokens;
+                return value.size() == 1 && value.get(0).kind() == Kind.STRING ? (String) value.get(0).value() : null;
+            }
+        }
+        return null;
     }
 
     /** A type hint written as tokens ({@code list[Item]}); {@code null} if it is not one. */

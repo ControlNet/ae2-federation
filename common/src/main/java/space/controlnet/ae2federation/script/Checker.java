@@ -1164,6 +1164,7 @@ public final class Checker {
                 problem(arg.id(), message);
             }
         }
+        dependents(params, bound, display);
         for (int i = params.size(); i < positional; i++) {
             expr(c.args().get(i), null);
         }
@@ -1173,6 +1174,33 @@ public final class Checker {
             }
         }
         return signature.result();
+    }
+
+    /**
+     * Checks a literal of a dependent typed string ({@link StandardLibrary#DEPENDENT}) against the values the catalogue
+     * knows for the literal it depends on, as a setting's value against the setting's values. One the catalogue does
+     * not know, such as an addon's setting, is left to the run.
+     */
+    private void dependents(List<Signature.Arg> params, Map<String, Expr> bound, String display) {
+        for (var param : params) {
+            var arg = bound.get(param.name());
+            var source = param.type() == null ? null : StandardLibrary.DEPENDENT.get(Types.unwrap(param.type()).name());
+            if (source == null || arg == null || !(constants.get(arg.id()) instanceof String value)) {
+                continue;
+            }
+            var of = params.stream().filter(other -> Types.unwrap(other.type()).name().equals(source)).findFirst()
+                    .map(other -> bound.get(other.name())).map(other -> constants.get(other.id()))
+                    .filter(String.class::isInstance).map(String.class::cast);
+            if (of.isEmpty()) {
+                continue;
+            }
+            var allowed = workspace.catalog().values(Types.unwrap(param.type()), of.get(), "").stream()
+                    .map(Candidate::label).toList();
+            if (!allowed.isEmpty() && !allowed.contains(value)) {
+                problem(arg.id(), param.name() + " of " + display + " for " + of.get() + " must be one of "
+                        + String.join(", ", allowed) + ", not " + Ops.repr(value));
+            }
+        }
     }
 
     /** {@code 'a'}, {@code 'a' and 'b'}, {@code 'a', 'b', and 'c'}, as CPython lists missing arguments. */

@@ -606,15 +606,42 @@ public final class AutomationTabScenario implements UIScenario {
                         java.util.Set.copyOf(popupLabels(context)).equals(context.get(DOMAIN_NETWORKS)))
                 .check("Ctrl+Space typed nothing", context -> lastLine(context, 0).equals("    net: Network = \"network-\""))
                 .key(GLFW.GLFW_KEY_ENTER)
+                // Device settings: AE2's names with their buttons' titles, then only the named setting's values.
+                .key(GLFW.GLFW_KEY_END)
+                .key(GLFW.GLFW_KEY_ENTER)
+                .type("ae2.set_setting(bus, \"")
+                .waitUntil("a setting name lists AE2's device settings, without the terminals'", context ->
+                        popupLabels(context).containsAll(java.util.List.of("fuzzy_mode", "redstone_controlled",
+                                "blocking_mode")) && !popupLabels(context).contains("sort_by"))
+                .type("fuz")
+                .waitUntil("a setting shows its button's title, and below the list the devices that have it",
+                        context -> popupLabels(context).equals(java.util.List.of("fuzzy_mode"))
+                                && editor(context).completionPopup().details().equals(
+                                        java.util.List.of("Fuzzy Comparison"))
+                                && editor(context).completionPopup().footerText().equals("On: ME Import Bus, "
+                                        + "ME Export Bus, ME Storage Bus, ME Formation Plane, ME Level Emitter, "
+                                        + "ME Interface")
+                                && editor(context).completionPopup().footerLineCount() > 1)
+                .frames(2).screenshot("ui-automation-completion-setting")
+                .key(GLFW.GLFW_KEY_ENTER)
+                .type(", \"")
+                .waitUntil("the value lists only fuzzy_mode's values, each with its button's line", context ->
+                        popupLabels(context).equals(java.util.List.of("ignore_all", "percent_99", "percent_75",
+                                "percent_50", "percent_25"))
+                                && editor(context).completionPopup().details().get(0).equals("Match Any"))
+                .check("the setting went in as a string", context ->
+                        lastLine(context, 0).startsWith("    ae2.set_setting(bus, \"fuzzy_mode\", \""))
+                .frames(2).screenshot("ui-automation-completion-setting-value")
+                .key(GLFW.GLFW_KEY_ESCAPE)
                 // The Library: namespaces with their counts, a function's page and the way back, a search.
                 .check("the library lists the namespaces with their counts", context ->
-                        context.el("#auto_library_ns_ae2 .library-count").text().equals("13")
+                        context.el("#auto_library_ns_ae2 .library-count").text().equals("20")
                                 && context.el("#auto_library_ns_ae2f .library-count").text().equals("6")
                                 && context.el("#auto_library_ns_mc .library-count").text().equals("13")
                                 && context.all("#auto_library_tree .library-function").isEmpty())
                 .click("#auto_library_ns_ae2")
                 .check("opening a namespace lists its functions", context ->
-                        context.all("#auto_library_tree .library-function").size() == 13
+                        context.all("#auto_library_tree .library-function").size() == 20
                                 && context.all("#auto_library_fn_ae2_craft .library-acts").size() == 1
                                 && context.all("#auto_library_fn_ae2_amount .library-acts").isEmpty())
                 .frames(2).screenshot("ui-automation-library")
@@ -636,7 +663,7 @@ public final class AutomationTabScenario implements UIScenario {
                 .click("#auto_library_back")
                 .check("back returns to the list as it was", context ->
                         !context.el("#auto_library_doc").isVisible()
-                                && context.all("#auto_library_tree .library-function").size() == 13)
+                                && context.all("#auto_library_tree .library-function").size() == 20)
                 .step("search the library", context ->
                         context.el("#auto_library_search").as(TextField.class).setText("redstone", true))
                 .check("a search lists only the matches, under their namespace", context ->
@@ -645,6 +672,14 @@ public final class AutomationTabScenario implements UIScenario {
                                 && context.all("#auto_library_fn_mc_redstone").size() == 1
                                 && context.all("#auto_library_fn_mc_set_redstone").size() == 1)
                 .frames(2).screenshot("ui-automation-library-search")
+                .step("search the library for device settings", context ->
+                        context.el("#auto_library_search").as(TextField.class).setText("setting", true))
+                .check("the setting functions are found, the change marked as an action", context ->
+                        context.el("#auto_library_ns_ae2 .library-count").text().equals("3")
+                                && context.all("#auto_library_fn_ae2_settings").size() == 1
+                                && context.all("#auto_library_fn_ae2_setting").size() == 1
+                                && context.all("#auto_library_fn_ae2_set_setting .library-acts").size() == 1)
+                .frames(2).screenshot("ui-automation-library-settings")
                 // The Install view: a device in this domain, beside the Router, with a function installed on it.
                 .click("#tab_automation")
                 .check("the Automation tab shows the install view, without Push or Delete", context ->

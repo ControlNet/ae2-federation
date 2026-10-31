@@ -15,10 +15,10 @@ final class StandardLibraryTest {
                 signatures.stream().flatMap(s -> s.args().stream().map(Signature.Arg::type)),
                 signatures.stream().map(Signature::result)).toList();
         for (var type : types) {
-            var inner = type.args().isEmpty() ? type : type.args().get(0);
             // Optional wraps a type, as list does; the checker knows it apart from the plain type names.
-            assertTrue(Completion.TYPES.contains(type.name()) || type.name().equals("Optional"), type.toString());
-            assertTrue(Completion.TYPES.contains(inner.name()), type.toString());
+            for (var part = type; part != null; part = part.args().isEmpty() ? null : part.args().get(0)) {
+                assertTrue(Completion.TYPES.contains(part.name()) || part.name().equals("Optional"), type.toString());
+            }
         }
     }
 
@@ -64,7 +64,7 @@ final class StandardLibraryTest {
         StandardLibrary.NAMESPACES.forEach((namespace, signatures) -> signatures.stream().filter(Signature::effect)
                 .forEach(s -> actions.add(namespace + "." + s.name())));
         assertEquals(java.util.Set.of("ae2.craft", "ae2.cancel", "ae2.import_from", "ae2.export_to", "ae2.move",
-                "ae2f.set_rule", "ae2f.set_filter", "mc.move", "mc.set_redstone", "mc.break_block", "mc.place_block", "mc.wait",
+                "ae2.set_setting", "ae2.set_priority", "ae2.set_config", "ae2f.set_rule", "ae2f.set_filter", "mc.move", "mc.set_redstone", "mc.break_block", "mc.place_block", "mc.wait",
                 "mc.move_fe", "fs.write", "fs.append", "fs.delete", "net.http",
                 "net.connect", "net.send", "net.disconnect"), actions);
     }
@@ -106,5 +106,17 @@ final class StandardLibraryTest {
     @Test
     void everyEnumerationIsATypedString() {
         assertTrue(StandardLibrary.TYPED_STRINGS.containsAll(StandardLibrary.ENUMERATIONS.keySet()));
+    }
+
+    @Test
+    void aDependentTypedStringDependsOnATypedStringBesideItInEverySignature() {
+        assertTrue(StandardLibrary.TYPED_STRINGS.containsAll(StandardLibrary.DEPENDENT.keySet()));
+        assertTrue(StandardLibrary.TYPED_STRINGS.containsAll(StandardLibrary.DEPENDENT.values()));
+        StandardLibrary.NAMESPACES.forEach((namespace, signatures) -> signatures.forEach(s -> s.args().stream()
+                .filter(a -> StandardLibrary.DEPENDENT.containsKey(a.type().name())).forEach(a -> {
+                    var source = StandardLibrary.DEPENDENT.get(a.type().name());
+                    assertTrue(s.args().subList(0, s.args().indexOf(a)).stream()
+                            .anyMatch(earlier -> earlier.type().name().equals(source)), namespace + "." + s.name());
+                })));
     }
 }

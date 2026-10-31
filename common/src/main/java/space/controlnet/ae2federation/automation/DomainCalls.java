@@ -47,8 +47,8 @@ import space.controlnet.ae2federation.storage.provenance.NativeSourceDomainRegis
 import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
 
 /**
- * The library calls that reach ME networks: the domain's storage, crafting, energy and rules, and inventories at a
- * selected block. A program reaches every network of its domain directly, whatever the rules share (user decision).
+ * The library calls that reach ME networks: the domain's storage, crafting, energy and rules, inventories at a
+ * selected block, and the settings of a device there ({@link DeviceCalls}). A program reaches every network of its domain directly, whatever the rules share (user decision).
  *
  * <p>Assistant choices: {@code network=None} is every network of the domain. Amounts are read from each network's own
  * storage (its drives, cells and storage buses, never what the Federation mounts from other networks), so a sum over
@@ -70,6 +70,7 @@ final class DomainCalls {
     private final boolean simulate;
     private final RegistryResources resources;
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
+    private final DeviceCalls devices;
     private Map<NetworkId, IGrid> grids = Map.of();
     private int gridsTick = -1;
 
@@ -82,6 +83,7 @@ final class DomainCalls {
         this.catalog = catalog;
         this.simulate = simulate;
         this.resources = new RegistryResources(server.registryAccess());
+        this.devices = new DeviceCalls(simulate, this::key);
     }
 
     Object call(ProgramHost host, String namespace, String name, List<Object> args) {
@@ -105,6 +107,8 @@ final class DomainCalls {
             case "ae2.free_cpus" -> grids(args.get(0)).stream().mapToLong(ProgramCrafting::freeCpus).sum();
             case "ae2.energy" -> grids(args.get(0)).stream()
                     .mapToDouble(grid -> grid.getEnergyService().getStoredPower()).sum();
+            case "ae2.settings", "ae2.setting", "ae2.set_setting", "ae2.priority", "ae2.set_priority", "ae2.config",
+                    "ae2.set_config" -> devices.call(host, name, args);
             case "ae2f.online" -> online((String) args.get(0));
             case "ae2f.rule" -> ruleName(PolicyChanges.mode(policies(), policyKey(args)));
             case "ae2f.set_rule" -> setRule(policyKey(args), (String) args.get(3));
@@ -234,7 +238,7 @@ final class DomainCalls {
         return new ListValue(items);
     }
 
-    private static RecordValue stack(AEKey key, long amount) {
+    static RecordValue stack(AEKey key, long amount) {
         var fields = new LinkedHashMap<String, Object>();
         fields.put("resource", id(key));
         fields.put("amount", amount);

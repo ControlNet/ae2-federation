@@ -121,7 +121,8 @@ final class LibraryRowsTest {
         var labels = labels(LibraryRows.rows(Palette.groups(new Program(List.of(), List.of()), WORKSPACE), "in",
                 Set.of()));
         assertEquals(List.of("statements v 1", "  continue", "operators v 2", "  in", "  not in", "builtins v 3",
-                "  int", "  min", "  print", "ae2 v 1", "  crafting"), labels.subList(0, 11));
+                "  int", "  min", "  print", "ae2 v 4", "  crafting", "  settings", "  setting", "  set_setting *"),
+                labels.subList(0, 14));
     }
 
     @Test

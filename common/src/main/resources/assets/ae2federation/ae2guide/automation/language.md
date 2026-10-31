@@ -44,6 +44,8 @@ Every value has a static type, checked before a program runs. Besides Python's o
 | `Stack` | a resource and an amount, as `mc.storage` lists them |
 | `Response` | an HTTP answer from `net.http`: `status`, `text` and `headers` |
 | `Cpu` | a crafting CPU from `ae2.cpus`: `name`, `network`, `busy`, `mode`, `storage`, `co_processors`, and its `job` with `progress` of `total` |
+| `Setting` | a device setting from `ae2.settings`: `name`, `value` and the `values` it takes |
+| `SettingName`, `SettingValue` | a device setting's name such as `"fuzzy_mode"`, and one of its values such as `"ignore_all"` |
 | `Side`, `Capability`, `RuleMode`, `FilterMode`, `HttpMethod`, `CpuMode` | fixed words such as `"down"`, `"storage"`, `"on"`, `"allow"`, `"GET"`, `"machine_only"` |
 
 Amounts are in each resource's own unit: items one by one, fluids in mB.

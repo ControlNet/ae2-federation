@@ -11,7 +11,8 @@ import space.controlnet.ae2federation.script.Catalog;
 import space.controlnet.ae2federation.script.TypeRef;
 
 /**
- * The game's {@link Catalog}: interfaces and networks named by ID or by alias, and resources from the registries. The
+ * The game's {@link Catalog}: interfaces and networks named by ID or by alias, resources from the registries, and AE2's
+ * device settings ({@link DeviceSettings}). The
  * lists are read on every query, since a library checks its files on demand and aliases change while it is loaded.
  * A string shaped like an ID is only ever that ID, even when something else carries it as a name.
  */
@@ -63,8 +64,15 @@ public final class GameCatalog implements Catalog {
             case "Item", "Fluid", "Resource" -> resources.values(type.name(), prefix);
             case "Interface" -> named(interfaces.get(), prefix);
             case "Network" -> named(completedNetworks.get(), prefix);
+            case "SettingName" -> DeviceSettings.names(prefix);
             default -> List.of();
         };
+    }
+
+    /** The values of the setting {@code of} names, for a {@code SettingValue}. */
+    @Override
+    public List<Candidate> values(TypeRef type, String of, String prefix) {
+        return type.name().equals("SettingValue") ? DeviceSettings.values(of, prefix) : List.of();
     }
 
     @Override

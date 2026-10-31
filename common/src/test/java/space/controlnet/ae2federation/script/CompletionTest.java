@@ -48,9 +48,24 @@ final class CompletionTest {
                 case "Interface" -> List.of(
                         new Candidate("north_gate", Candidate.Kind.VALUE, "interface-k7m2qx"),
                         new Candidate("mine_entry", Candidate.Kind.VALUE, "interface-r4tw9e"));
+                case "SettingName" -> List.of(
+                        new Candidate("fuzzy_mode", Candidate.Kind.VALUE, "Fuzzy Comparison"),
+                        new Candidate("redstone_controlled", Candidate.Kind.VALUE, "Redstone Mode"));
                 default -> List.of();
             };
             return all.stream().filter(c -> c.label().contains(prefix)).toList();
+        }
+
+        /** Two of AE2's settings with their values, as AE2 spells them in lower case. */
+        @Override
+        public List<Candidate> values(TypeRef type, String of, String prefix) {
+            List<String> all = !type.name().equals("SettingValue") ? List.of() : switch (of) {
+                case "fuzzy_mode" -> List.of("ignore_all", "percent_99", "percent_75", "percent_50", "percent_25");
+                case "redstone_controlled" -> List.of("ignore", "low_signal", "high_signal", "signal_pulse");
+                default -> List.of();
+            };
+            return all.stream().filter(value -> value.contains(prefix))
+                    .map(value -> new Candidate(value, Candidate.Kind.VALUE, "")).toList();
         }
     };
 
@@ -437,6 +452,51 @@ final class CompletionTest {
                 """);
         assertEquals(List.of("north_gate", "mine_entry"), labels(c));
         assertEquals("interface-k7m2qx", c.candidates().get(0).detail());
+    }
+
+    @Test
+    void aSettingNameOffersTheSettings() {
+        var c = at("""
+                def f(b: Block) -> None:
+                    ae2.set_setting(b, "|
+                """);
+        assertEquals(t("SettingName"), c.expected());
+        assertEquals(List.of("fuzzy_mode", "redstone_controlled"), labels(c));
+        assertEquals("Redstone Mode", c.candidates().get(1).detail());
+    }
+
+    @Test
+    void aSettingValueOffersOnlyTheValuesOfTheSettingNamedBeforeIt() {
+        var c = at("""
+                def f(b: Block) -> None:
+                    ae2.set_setting(b, "redstone_controlled", "|
+                """);
+        assertEquals(t("SettingValue"), c.expected());
+        assertEquals(List.of("ignore", "low_signal", "high_signal", "signal_pulse"), labels(c));
+        assertEquals(List.of("percent_50"), labels(at("""
+                def f(b: Block) -> None:
+                    ae2.set_setting(b, name="fuzzy_mode", value="percent_5|
+                """)), "the setting given by keyword");
+        assertEquals(List.of("ignore_all", "percent_99", "percent_75", "percent_50", "percent_25"), labels(at("""
+                def f(b: Block) -> None:
+                    x = ae2.set_setting(ae2f.select("north_gate", side="up"), "fuzzy_mode", "|
+                """)), "the setting found past a call among the earlier arguments");
+    }
+
+    @Test
+    void aSettingValueOffersNothingWithoutALiteralSetting() {
+        assertEquals(List.of(), labels(at("""
+                def f(b: Block, name: SettingName) -> None:
+                    ae2.set_setting(b, name, "|
+                """)), "the setting is only known at run time");
+        assertEquals(List.of(), labels(at("""
+                def f(b: Block) -> None:
+                    ae2.set_setting(b, "fuzzy" + "_mode", "|
+                """)), "only a plain literal names the setting");
+        assertEquals(List.of(), labels(at("""
+                def f(b: Block) -> None:
+                    ae2.set_setting(b, "unknown_mode", "|
+                """)), "a setting the catalogue does not know");
     }
 
     @Test

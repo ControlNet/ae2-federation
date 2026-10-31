@@ -37,6 +37,8 @@ navigation:
 | `Stack` | 一种资源和数量， `mc.storage`列出的就是它 |
 | `Response` | `net.http`给出的HTTP回答： `status`、`text`和`headers` |
 | `Cpu` | `ae2.cpus`给出的合成CPU： `name`、`network`、`busy`、`mode`、`storage`、`co_processors`， 以及它的任务`job`和进度`progress`/`total` |
+| `Setting` | `ae2.settings`给出的设备设置： `name`、 当前值`value`和可选值`values` |
+| `SettingName`、`SettingValue` | 设备设置的名字， 例如`"fuzzy_mode"`， 以及它的一个值， 例如`"ignore_all"` |
 | `Side`、`Capability`、`RuleMode`、`FilterMode`、`HttpMethod`、`CpuMode` | 固定的词， 例如`"down"`、`"storage"`、`"on"`、`"allow"`、`"GET"`、`"machine_only"` |
 
 数量用各资源自己的单位： 物品按个， 流体按mB。

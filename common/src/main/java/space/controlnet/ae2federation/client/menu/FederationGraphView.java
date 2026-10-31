@@ -746,7 +746,7 @@ final class FederationGraphView {
             case "Item", "Fluid", "Resource" -> 0xfff7b13a;
             case "int", "float" -> 0xff5aa9ff;
             case "bool" -> FederationTheme.ERROR;
-            case "str", "Side", "Capability", "RuleMode", "FilterMode" -> 0xff98c379;
+            case "str", "Side", "Capability", "RuleMode", "FilterMode", "SettingName", "SettingValue" -> 0xff98c379;
             case "Interface", "Block" -> FederationTheme.REEXPORT;
             case "Network" -> 0xffc678dd;
             case "list", "Optional" -> type.args().isEmpty() ? LABEL : color(type.args().get(0));

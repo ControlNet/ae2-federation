@@ -403,7 +403,13 @@ final class CheckerTest {
                 Arguments.of("mc.set_redstone(\"south_gate\", 1)", "no interface 'south_gate' in this domain"),
                 Arguments.of("y = ae2.amount(\"minecraft:iron_ingot\", \"nowhere\")", "no network 'nowhere' in this domain"),
                 Arguments.of("ae2f.set_filter(\"main_base\", \"main_base\", \"storage\", \"allow\", [\"minecraft:iron\"])",
-                        "unknown resource 'minecraft:iron'"));
+                        "unknown resource 'minecraft:iron'"),
+                Arguments.of("ae2.set_setting(b, \"redstone_controlled\", \"on\")",
+                        "value of ae2.set_setting() for redstone_controlled must be one of ignore, low_signal, "
+                                + "high_signal, signal_pulse, not 'on'"),
+                Arguments.of("ae2.set_setting(b, value=\"Ignore_All\", name=\"fuzzy_mode\")",
+                        "value of ae2.set_setting() for fuzzy_mode must be one of ignore_all, percent_99, percent_75, "
+                                + "percent_50, percent_25, not 'Ignore_All'"));
     }
 
     @ParameterizedTest
@@ -422,6 +428,12 @@ final class CheckerTest {
                     w = ae2.amount("minecraft:water", network="network-082a5c")
                     big = 9223372036854775807 - 1 + n * 2
                     q = 7 // -2 + 7 % -2 + 7.5 // 2.0
+                    ae2.set_setting(b, "redstone_controlled", "high_signal")
+                    ae2.set_setting(b, "addon_mode", "anything")
+                    mode: SettingValue = s
+                    ae2.set_setting(b, "fuzzy_mode", mode)
+                    wanted: SettingName = s
+                    ae2.set_setting(b, wanted, "anything")
                 """));
     }
 

@@ -34,6 +34,51 @@ AE2会在接下来几刻里规划任务， 规划好后像对待其他自动化�
 
 给了`cpu`时， 任务在这个名字的空闲CPU上运行， 选放得下任务的最小那个， 只接受玩家请求的CPU不会用。 在铁砧里改过名的合成单元， 名字就是它所在CPU的名字。 没有CPU叫这个名字时， 运行以`ValueError`停下。
 
+## ae2： 设备设置
+
+这里的`block`是接口前方的设备： 在线缆上时， 是所选那一面的部件（默认是朝向接口的那个）； 否则就是方块本身， 例如ME接口或ME样板供应器。 附属模组的设备也一样。
+
+| 函数 | 结果 |
+| --- | --- |
+| `ae2.settings(block)` | 设备的各项设置， 以`Setting`列出， 带`name`、 当前值`value`和可选值`values`； 没有设置的方块给出空列表 |
+| `ae2.setting(block, name)` | 某项设置的值， 设备没有这项设置时为`None` |
+| `ae2.set_setting(block, name, value)` | **操作**： 修改一项设置， 效果和设备界面里的按钮相同 |
+| `ae2.priority(block)` | 设备的优先级， 没有优先级时为`None` |
+| `ae2.set_priority(block, priority)` | **操作**： 设置优先级 |
+| `ae2.config(block)` | 按顺序列出配置或过滤槽位， 以`Stack`列出； 空槽位为`None` |
+| `ae2.set_config(block, slot, resource=None, amount=1)` | **操作**： 把资源放进第`slot`个槽位（从0数起）； 不给资源时清空该槽位 |
+
+设置名沿用AE2自己的名字， 值写成小写。 补全会列出设置名， 每个都附有设备界面里对应按钮的标题， 列表下方写着哪些设备有这项设置； 填值时只列出前面那个参数所指设置的可选值。 设备有哪些设置由设备自己决定， 所以附属模组的设置也能用， `ae2.settings`也会列出来。 设备没有的设置或值、 没有优先级或配置槽位的设备、 超出最后一个的槽位， 都会让运行以`ValueError`停下， 并说明设备有什么。 现在够不到的方块给出空列表或`None`， 对它的修改给出`False`； 槽位不接受的资源也给出`False`， 例如物品过滤槽里的流体。 终端的显示设置（例如排序）不在其中。
+
+`ae2.config`列出设备的全部槽位， 包括界面上要装容量卡才显示的那些； 设备暂时不用的槽位也会保留放进去的东西。 过滤槽位不记数量； ME接口的槽位记的是要备货的数量。
+
+| 设置 | AE2按钮 | 值 | 设备 |
+| --- | --- | --- | --- |
+| `access` | 输入/输出模式 | `read`、`write`、`read_write` | ME存储总线 |
+| `auto_export` | 自动输出 | `yes`、`no` | 压印器 |
+| `blocking_mode` | 阻挡模式 | `yes`、`no` | ME样板供应器 |
+| `condenser_output` | 物质聚合器 - 输出 | `trash`、`matter_balls`、`singularity` | 物质聚合器 |
+| `copy_mode` | 复制模式 | `clear_on_remove`、`keep_on_remove` | 元件工作台 |
+| `craft_only` | 合成行为 | `yes`、`no` | ME输出总线 |
+| `craft_via_redstone` | 合成发信模式 | `yes`、`no` | ME标准发信器 |
+| `crafting_scheduling_mode` | CPU自动分配模式 | `any`、`player_only`、`machine_only` | 合成单元 |
+| `filter_on_extract` | 操作过滤 | `yes`、`no` | ME存储总线 |
+| `fullness_mode` | 操作模式 | `empty`、`half`、`full` | ME IO端口 |
+| `fuzzy_mode` | 模糊匹配 | `ignore_all`、`percent_99`、`percent_75`、`percent_50`、`percent_25` | ME输入总线、ME输出总线、ME存储总线、ME成型面板、ME标准发信器、ME接口 |
+| `inscriber_input_capacity` | 输入堆叠上限 | `one`、`four`、`sixty_four` | 压印器 |
+| `inscriber_separate_sides` | 自动化访问模式 | `yes`、`no` | 压印器 |
+| `io_direction` | 传输方向 | `left`、`right` | AE2里没有 |
+| `level_emitter_mode` | | `stored_amount`、`storable_amount` | AE2里没有 |
+| `lock_crafting_mode` | 锁定合成 | `none`、`lock_until_pulse`、`lock_while_high`、`lock_while_low`、`lock_until_result` | ME样板供应器 |
+| `operation_mode` | 传输方向 | `fill`、`empty` | ME IO端口 |
+| `overlay_mode` | 区块加载显示模式 | `yes`、`no` | 空间锚 |
+| `pattern_access_terminal` | 样板管理终端 | `yes`、`no` | ME样板供应器 |
+| `place_block` | 方块成型 | `yes`、`no` | ME成型面板 |
+| `redstone_controlled` | 红石模式 | `ignore`、`low_signal`、`high_signal`、`signal_pulse` | ME输入总线、ME输出总线、ME IO端口 |
+| `redstone_emitter` | 红石模式 | `low_signal`、`high_signal` | ME标准发信器、ME能源发信器 |
+| `scheduling_mode` | 调度模式 | `default`、`roundrobin`、`random` | ME输出总线 |
+| `storage_filter` | 报告不可交互的物品 | `none`、`extractable_only` | ME存储总线 |
+
 ## ae2f： 联邦
 
 | 函数 | 结果 |

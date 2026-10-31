@@ -40,6 +40,8 @@ public final class CompletionPopup extends UIElement {
     private static final float ICON = 8;
     private static final float MIN_WIDTH = 120;
     private static final float MAX_WIDTH = 480;
+    /** Rows under the list a value's note may wrap onto. */
+    private static final int NOTE_ROWS = 4;
     /** Room at a row's right end for the square of a function that acts. */
     private static final float MARKER = 9;
     private static final int BACKGROUND = FederationTheme.WELL;
@@ -59,6 +61,8 @@ public final class CompletionPopup extends UIElement {
     private java.util.function.Function<String, String> resourceNote = id -> "";
     private int chosen;
     private int top;
+    /** Rows the text under the list takes: one, or as many as the longest note of a value wraps onto. */
+    private int footerRows = 1;
 
     CompletionPopup(Font font, ResourceLocation textFont, float scale, float row, Consumer<Candidate> accept) {
         this.font = font;
@@ -93,10 +97,21 @@ public final class CompletionPopup extends UIElement {
         chosen = 0;
         top = 0;
         float width = MIN_WIDTH;
-        for (var candidate : completions.candidates()) width = Math.max(width, rowWidth(candidate));
-        float height = Math.min(ROWS, completions.candidates().size()) * row + 2 * PAD
-                + (footer().isEmpty() ? 0 : row + PAD);
+        for (var candidate : completions.candidates()) {
+            width = Math.max(width, rowWidth(candidate));
+            // Room for a note in about two lines, so a list of devices is not a tall column.
+            if (isNote(candidate)) width = Math.max(width, width(note(candidate)) / 2);
+        }
         float clamped = Math.min(MAX_WIDTH, width + 2 * TEXT_INSET);
+        footerRows = 1;
+        for (var candidate : completions.candidates()) {
+            if (isNote(candidate)) {
+                footerRows = Math.max(footerRows, Math.min(NOTE_ROWS, wrap(note(candidate), clamped - 2 * TEXT_INSET)
+                        .size()));
+            }
+        }
+        float height = Math.min(ROWS, completions.candidates().size()) * row + 2 * PAD
+                + (footer().isEmpty() ? 0 : footerRows * row + PAD);
         layout(layout -> {
             layout.width(clamped);
             layout.height(height);
@@ -156,6 +171,48 @@ public final class CompletionPopup extends UIElement {
     /** Room between a name and its type or ID; a function's signature follows its name directly. */
     private static float separation(Candidate candidate) {
         return candidate.detail().isEmpty() || candidate.detail().startsWith("(") ? 0 : GAP;
+    }
+
+    /** A value with a note of its own, such as the devices that have a setting: read whole, so it wraps. */
+    private static boolean isNote(Candidate candidate) {
+        return candidate.kind() == Candidate.Kind.VALUE && !candidate.doc().isEmpty();
+    }
+
+    private static String note(Candidate candidate) {
+        return candidate.doc().lines().findFirst().orElse("");
+    }
+
+    /** The text under the rows, line by line: a value's note wrapped to the popup's width. */
+    @OnlyIn(Dist.CLIENT)
+    private List<String> footerLines() {
+        var candidate = chosen();
+        if (candidate == null || !isNote(candidate)) {
+            var footer = footer();
+            return footer.isEmpty() ? List.of() : List.of(footer);
+        }
+        var lines = wrap(note(candidate), getSizeWidth() - 2 * TEXT_INSET);
+        return lines.size() <= footerRows ? lines : lines.subList(0, footerRows);
+    }
+
+    /**
+     * The text in lines no wider than {@code room}, broken after the commas of a list so each item stays whole; an item
+     * wider than that is cut when drawn.
+     */
+    @OnlyIn(Dist.CLIENT)
+    private List<String> wrap(String text, float room) {
+        var lines = new java.util.ArrayList<String>();
+        var line = "";
+        for (var item : text.split("(?<=, )")) {
+            var longer = line + item;
+            if (!line.isEmpty() && width(longer.stripTrailing()) > room) {
+                lines.add(line.stripTrailing());
+                line = item;
+            } else {
+                line = longer;
+            }
+        }
+        if (!line.isEmpty()) lines.add(line.stripTrailing());
+        return lines;
     }
 
     /**
@@ -232,11 +289,14 @@ public final class CompletionPopup extends UIElement {
                         candidate.lasts() ? LASTS : ACTS);
             }
         }
-        var footer = footer();
+        var footer = footerLines();
         if (!footer.isEmpty()) {
             float ruleY = y + PAD + (last - top) * row + PAD / 2;
             DrawerHelper.drawSolidRect(graphics, x + 1, ruleY, width - 2, 1, RULE);
-            draw(context, footer, x + TEXT_INSET, ruleY + 1 + (row - 9 * scale) / 2, FederationTheme.DARK_TEXT);
+            for (int line = 0; line < footer.size(); line++) {
+                draw(context, isNote(chosen()) ? fit(footer.get(line), width - 2 * TEXT_INSET) : footer.get(line),
+                        x + TEXT_INSET, ruleY + 1 + line * row + (row - 9 * scale) / 2, FederationTheme.DARK_TEXT);
+            }
         }
         context.graphics.flush();
         context.disableScissor();
@@ -260,9 +320,15 @@ public final class CompletionPopup extends UIElement {
         context.pose.popPose();
     }
 
-    /** The text under the rows; for tests. */
+    /** The text under the rows, its lines joined by spaces; for tests. */
     public String footerText() {
-        return footer();
+        var candidate = chosen();
+        return candidate != null && isNote(candidate) ? note(candidate) : footer();
+    }
+
+    /** How many lines the text under the rows takes now; for tests. */
+    public int footerLineCount() {
+        return footerLines().size();
     }
 
     /** The candidates' details, for tests. */

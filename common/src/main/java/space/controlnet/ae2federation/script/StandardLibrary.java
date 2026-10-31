@@ -13,7 +13,7 @@ import java.util.Map;
 public final class StandardLibrary {
     /** Strings whose static type says what they name; completion and the checker know their values. */
     public static final List<String> TYPED_STRINGS = List.of("Item", "Fluid", "Resource", "Interface", "Network",
-            "Side", "Capability", "RuleMode", "FilterMode", "HttpMethod", "CpuMode");
+            "Side", "Capability", "RuleMode", "FilterMode", "HttpMethod", "CpuMode", "SettingName", "SettingValue");
 
     /** Typed strings with a fixed set of values, known without the game. */
     public static final Map<String, List<String>> ENUMERATIONS = Map.of(
@@ -24,6 +24,13 @@ public final class StandardLibrary {
             "HttpMethod", List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"),
             "CpuMode", List.of("any", "player_only", "machine_only"));
 
+    /**
+     * Typed strings whose values depend on another argument of the same call: a {@code SettingValue} is one of the
+     * values of the call's {@code SettingName}. Completion offers, and the checker allows, only those when that
+     * argument is a literal.
+     */
+    public static final Map<String, String> DEPENDENT = Map.of("SettingValue", "SettingName");
+
     /** Values the program can hold but not build: a block selected through an interface. */
     public static final List<String> OPAQUE = List.of("Block");
 
@@ -33,7 +40,9 @@ public final class StandardLibrary {
             "Response", List.of(arg("status", "int"), arg("text", "str"), arg("headers", "dict[str, str]")),
             "Cpu", List.of(arg("name", "Optional[str]"), arg("network", "Network"), arg("busy", "bool"),
                     arg("mode", "CpuMode"), arg("storage", "int"), arg("co_processors", "int"),
-                    arg("job", "Optional[Stack]"), arg("progress", "int"), arg("total", "int")));
+                    arg("job", "Optional[Stack]"), arg("progress", "int"), arg("total", "int")),
+            "Setting", List.of(arg("name", "SettingName"), arg("value", "SettingValue"),
+                    arg("values", "list[SettingValue]")));
 
     public static final Map<String, List<Signature>> NAMESPACES = Map.of(
             "ae2", List.of(
@@ -117,7 +126,59 @@ public final class StandardLibrary {
                     fn("energy", "float", "AE stored.", """
                             def low_power() -> bool:
                                 return ae2.energy() < 10000
-                            """, network())),
+                            """, network()),
+                    fn("settings", "list[Setting]", "The device's settings, each with its value and the values it takes.",
+                            """
+                            def setting_names(port: Interface) -> list[str]:
+                                names: list[str] = []
+                                for setting in ae2.settings(ae2f.select(port)):
+                                    names.append(setting.name + "=" + setting.value)
+                                return names
+                            """, arg("block", "Block")),
+                    fn("setting", "Optional[SettingValue]", "A setting's value; None if the device has no such setting.",
+                            """
+                            def bus_is_fuzzy(port: Interface) -> bool:
+                                fuzzy = ae2.setting(ae2f.select(port), "fuzzy_mode")
+                                return fuzzy is not None and fuzzy != "ignore_all"
+                            """, arg("block", "Block"), arg("name", "SettingName")),
+                    act("set_setting", "bool", "Changes a setting of the device, as its button in the device's screen does.",
+                            """
+                            def pause_bus(port: Interface, paused: bool) -> None:
+                                bus = ae2f.select(port)
+                                if paused:
+                                    ae2.set_setting(bus, "redstone_controlled", "low_signal")
+                                else:
+                                    ae2.set_setting(bus, "redstone_controlled", "ignore")
+                            """, arg("block", "Block"), arg("name", "SettingName"), arg("value", "SettingValue")),
+                    fn("priority", "Optional[int]", "The device's priority; None if it has none.", """
+                            def bus_priority(port: Interface) -> int:
+                                priority = ae2.priority(ae2f.select(port))
+                                if priority is None:
+                                    return 0
+                                return priority
+                            """, arg("block", "Block")),
+                    act("set_priority", "bool", "Sets the device's priority.", """
+                            def prefer_bus(port: Interface) -> None:
+                                ae2.set_priority(ae2f.select(port), 100)
+                            """, arg("block", "Block"), new Signature.Arg("priority", type("int"), null,
+                                    new Signature.Range(Integer.MIN_VALUE, Integer.MAX_VALUE))),
+                    fn("config", "list[Optional[Stack]]",
+                            "The device's config or filter slots in order; None for an empty slot.", """
+                            def filtered(port: Interface) -> list[Resource]:
+                                resources: list[Resource] = []
+                                for slot in ae2.config(ae2f.select(port)):
+                                    if slot is not None:
+                                        resources.append(slot.resource)
+                                return resources
+                            """, arg("block", "Block")),
+                    act("set_config", "bool",
+                            "Sets a config or filter slot of the device; without a resource it empties the slot.", """
+                            def stock_iron(port: Interface) -> None:
+                                ae2.set_config(ae2f.select(port), 0, "minecraft:iron_ingot", 64)
+                            """, arg("block", "Block"), new Signature.Arg("slot", type("int"), null,
+                                    new Signature.Range(0, Long.MAX_VALUE)),
+                            new Signature.Arg("resource", type("Resource"), "None"),
+                            new Signature.Arg("amount", type("int"), "1", new Signature.Range(1, Long.MAX_VALUE)))),
             "ae2f", List.of(
                     fn("select", "Block", "The block in front of the interface, reach blocks away, seen from a side.",
                             """

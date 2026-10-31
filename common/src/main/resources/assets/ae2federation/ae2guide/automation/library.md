@@ -42,6 +42,61 @@ request until it reaches storage.
 With `cpu`, the job runs on a free CPU of that name, the smallest one it fits, never on one set to player requests
 only. A crafting unit renamed in an anvil names its CPU. A name no CPU has stops the run with a `ValueError`.
 
+## ae2: device settings
+
+A `block` here is a device in front of an interface: on a cable, the part on the selected side (by default the one
+facing the interface); otherwise the block itself, such as an ME Interface or an ME Pattern Provider. Addon devices
+work the same way.
+
+| Function | Gives |
+| --- | --- |
+| `ae2.settings(block)` | the device's settings, as `Setting`s with their `name`, `value` and the `values` they take; empty for a block with none |
+| `ae2.setting(block, name)` | a setting's value, or `None` if the device has no such setting |
+| `ae2.set_setting(block, name, value)` | **action:** changes a setting, as the device's button does |
+| `ae2.priority(block)` | the device's priority, or `None` if it has none |
+| `ae2.set_priority(block, priority)` | **action:** sets the priority |
+| `ae2.config(block)` | the config or filter slots in order, as `Stack`s; `None` for an empty slot |
+| `ae2.set_config(block, slot, resource=None, amount=1)` | **action:** puts the resource in the slot, counted from 0; without a resource, empties it |
+
+Settings are named as AE2 names them, and their values are written in lower case. Completion offers the names, each
+with the title of its button in the device's screen and, below the list, the devices that have it; for the value it
+offers only the values of the setting named before it. The device itself decides what it has, so an addon's settings
+work too, and `ae2.settings` lists them. A setting or value the device does not have, a device without a priority or
+config slots, or a slot past its last stops the run with a `ValueError` that says what the device has. A block that
+cannot be reached now gives an empty list or `None`, and a change to it gives `False`, as does a resource a slot does
+not take, such as a fluid in an item filter. The terminals' display settings, such as sorting, are left out.
+
+`ae2.config` lists every slot a device has, also those its screen shows only with capacity cards; a slot the device
+does not use yet still keeps what is put in it. A filter slot keeps no amount; the ME Interface's slots keep the amount
+to stock.
+
+| Setting | AE2 button | Values | Devices |
+| --- | --- | --- | --- |
+| `access` | Input/Output Mode | `read`, `write`, `read_write` | ME Storage Bus |
+| `auto_export` | Auto-Export | `yes`, `no` | Inscriber |
+| `blocking_mode` | Blocking Mode | `yes`, `no` | ME Pattern Provider |
+| `condenser_output` | ME Condenser - Output | `trash`, `matter_balls`, `singularity` | Matter Condenser |
+| `copy_mode` | Copy Mode | `clear_on_remove`, `keep_on_remove` | Cell Workbench |
+| `craft_only` | Crafting Behavior | `yes`, `no` | ME Export Bus |
+| `craft_via_redstone` | Crafting Emitter Mode | `yes`, `no` | ME Level Emitter |
+| `crafting_scheduling_mode` | CPU Auto-Selection Mode | `any`, `player_only`, `machine_only` | Crafting Unit |
+| `filter_on_extract` | Filtered Operations | `yes`, `no` | ME Storage Bus |
+| `fullness_mode` | Operation Mode | `empty`, `half`, `full` | ME IO Port |
+| `fuzzy_mode` | Fuzzy Comparison | `ignore_all`, `percent_99`, `percent_75`, `percent_50`, `percent_25` | ME Import Bus, ME Export Bus, ME Storage Bus, ME Formation Plane, ME Level Emitter, ME Interface |
+| `inscriber_input_capacity` | Input Slot Stack Size | `one`, `four`, `sixty_four` | Inscriber |
+| `inscriber_separate_sides` | Automation Access Mode | `yes`, `no` | Inscriber |
+| `io_direction` | Transfer Direction | `left`, `right` | none in AE2 |
+| `level_emitter_mode` | | `stored_amount`, `storable_amount` | none in AE2 |
+| `lock_crafting_mode` | Lock Crafting | `none`, `lock_until_pulse`, `lock_while_high`, `lock_while_low`, `lock_until_result` | ME Pattern Provider |
+| `operation_mode` | Transfer Direction | `fill`, `empty` | ME IO Port |
+| `overlay_mode` | Overlay Mode | `yes`, `no` | Spatial Anchor |
+| `pattern_access_terminal` | Pattern Access Terminal | `yes`, `no` | ME Pattern Provider |
+| `place_block` | Block Placement | `yes`, `no` | ME Formation Plane |
+| `redstone_controlled` | Redstone Mode | `ignore`, `low_signal`, `high_signal`, `signal_pulse` | ME Import Bus, ME Export Bus, ME IO Port |
+| `redstone_emitter` | Redstone Mode | `low_signal`, `high_signal` | ME Level Emitter, ME Energy Level Emitter |
+| `scheduling_mode` | Scheduling Mode | `default`, `roundrobin`, `random` | ME Export Bus |
+| `storage_filter` | Report Inaccessible Items | `none`, `extractable_only` | ME Storage Bus |
+
 ## ae2f: the Federation
 
 | Function | Gives |
