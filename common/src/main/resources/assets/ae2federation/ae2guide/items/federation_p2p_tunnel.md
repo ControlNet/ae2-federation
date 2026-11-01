@@ -31,7 +31,8 @@ in your hand: it turns into a Federation P2P tunnel and keeps its frequency.
 
 Pair them as you pair AE2's tunnels: sneak and right-click the input with a <ItemLink id="ae2:memory_card" />, then
 right-click each output with it. One input can have many outputs. The link works both ways, and the outputs reach each
-other too, as long as the input works.
+other too, as long as the input works. A [program](../automation/library.md) can link and unlink tunnels the same way;
+a relink changes the domain's cables just as the card's does.
 
 <GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/federation_p2p_tunnel.snbt" />

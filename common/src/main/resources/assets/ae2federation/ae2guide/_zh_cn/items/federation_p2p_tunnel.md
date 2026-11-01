@@ -24,7 +24,7 @@ item_ids:
 
 ## 连接通道
 
-配对方法和AE2的通道相同： 手持<ItemLink id="ae2:memory_card" />潜行右键输入端， 再用它右键每个输出端。 一个输入端可以带多个输出端。 连接是双向的， 只要输入端正常工作， 输出端之间也互相连通。
+配对方法和AE2的通道相同： 手持<ItemLink id="ae2:memory_card" />潜行右键输入端， 再用它右键每个输出端。 一个输入端可以带多个输出端。 连接是双向的， 只要输入端正常工作， 输出端之间也互相连通。 [程序](../automation/library.md)也能用同样的方式连接和断开通道； 重新连接对联邦域线缆的影响和用内存卡一样。
 
 <GameScene zoom="3.25" interactive={true} background="transparent">
   <ImportStructure src="../assets/federation_p2p_tunnel.snbt" />

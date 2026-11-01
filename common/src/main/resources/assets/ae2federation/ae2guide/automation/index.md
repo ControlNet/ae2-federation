@@ -15,7 +15,8 @@ navigation:
 
 Federation Automation runs Python programs for a Federation domain. A program reads the domain's storage, crafting,
 rules and the world around it, and acts on them: it starts crafting jobs, moves resources between networks and
-blocks, changes rules and gives off redstone.
+blocks, changes rules and gives off redstone. It also reaches AE2's own devices: it watches crafting CPUs and channels,
+changes device settings, writes crafting patterns into pattern providers and links P2P tunnels.
 
 <FederationProgram src="../assets/programs/low_iron_alarm.ae2f" />
 
@@ -33,7 +34,7 @@ Automation has three parts:
 
 * [Writing Programs](writing-programs.md): the Programs tab, the script and graph views, and Push.
 * [The Language](language.md): the part of Python that programs use.
-* [Library](library.md): the `ae2`, `ae2f` and `mc` functions.
+* [Library](library.md): the `ae2`, `ae2f`, `mc`, `fs` and `net` functions.
 * [Installing and Triggers](installing.md): putting a function on a device, and what starts it.
 * [Compute and Bandwidth](compute.md): what an installation costs a survival computing device.
 * [Example Programs](examples.md): programs to copy.

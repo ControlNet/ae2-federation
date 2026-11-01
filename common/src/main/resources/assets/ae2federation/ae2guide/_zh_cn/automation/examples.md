@@ -33,3 +33,33 @@ navigation:
 主网络储存超过100,000 AE时， 打开主网络到农场网络的能量规则， 否则关闭。
 
 <FederationProgram src="../assets/programs/share_power.ae2f" />
+
+## 补写缺少的合成样板
+
+从存储里取一张空白样板， 写上这种物品的合成样板， 放进旁边有分子装配室的样板供应器。 已经有样板能做的物品会被跳过， 所以每张样板只写一次。 存储里需要有空白样板。 安装时填入这种物品， 触发选**定时**200刻。
+
+<FederationProgram src="../assets/programs/learn_pattern.ae2f" />
+
+## 所有CPU都忙时亮灯
+
+联邦域里没有空闲的合成CPU时， 接口点亮它前方的灯。 安装时触发选**定时**20刻。
+
+<FederationProgram src="../assets/programs/all_cpus_busy.ae2f" />
+
+## 销毁过剩物品
+
+接口前方的线缆顶面装着一个ME输出总线， 朝上对着垃圾桶。 存储里这种物品多于`keep`时， 程序把它填进总线的第一个过滤槽， 否则清空这个槽。 安装时填入这种物品， 并对它选事件`stock_changed`。
+
+<FederationProgram src="../assets/programs/trash_surplus.ae2f" />
+
+## 自动连接新的P2P通道
+
+面朝接口的通道是输入端。 每次运行时， 同一网络上所有同类、尚未连接的通道都会被连成它的输出端， 所以之后新放的通道不用内存卡也会接上。 其他种类的通道和已经连接的通道保持不变。 安装时触发选**定时**100刻。
+
+<FederationProgram src="../assets/programs/link_new_tunnels.ae2f" />
+
+## 频道不足报警
+
+联邦域里任何地方有设备在等频道时， 点亮灯。 返回的数量会显示在日志里。 安装时触发选**定时**100刻。
+
+<FederationProgram src="../assets/programs/channel_alarm.ae2f" />

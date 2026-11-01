@@ -17,6 +17,7 @@ import appeng.core.definitions.AEItems;
 import appeng.core.definitions.AEParts;
 import appeng.api.parts.IPartHost;
 import appeng.parts.automation.ImportBusPart;
+import appeng.parts.automation.ExportBusPart;
 import appeng.parts.p2p.ItemP2PTunnelPart;
 import appeng.parts.p2p.P2PTunnelPart;
 import appeng.parts.storagebus.StorageBusPart;
@@ -1166,6 +1167,154 @@ public final class ProgramHostGameTests {
         sides.forEach((bus, faces) -> faces.forEach(face -> PartHelper.setPart(helper.getLevel(),
                 helper.absolutePos(bus), face, null, AEParts.IMPORT_BUS.asItem())));
         return fixtures;
+    }
+
+    // ---- the guide's example programs, run as the guide shows them ----
+
+    /** The guide's {@code learn_pattern} writes the stick pattern once, then leaves the item alone. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void guideLearnPatternExample(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        var stocked = new boolean[] { false };
+        run(helper, patternScene(helper), 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the network");
+            if (!stocked[0]) {
+                crafting.insertBlankPatterns(2);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the blank patterns");
+            }
+        }, "guide_learn_pattern", guideExample("learn_pattern", """
+                def run() -> str:
+                    first = learn_pattern("minecraft:stick")
+                    waited = 0
+                    while not ae2.craftable("minecraft:stick") and waited < 100:
+                        mc.wait(1)
+                        waited += 1
+                    again = learn_pattern("minecraft:stick")
+                    return " ".join([str(first), str(again), str(ae2.craftable("minecraft:stick"))])
+                """), "True False True", "The pattern is written once and makes sticks craftable", () -> {
+                    helper.assertValueEqual(crafting.providerPatterns().size(), 1, "The provider holds one pattern");
+                    helper.assertValueEqual(crafting.blankPatternAmount(), 1L, "One blank pattern is left");
+                    crafting.close();
+                });
+    }
+
+    /** The guide's {@code all_cpus_busy} leaves the lamp off while the CPU is free and lights it during a job. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void guideAllCpusBusyExample(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true);
+        var stocked = new boolean[] { false };
+        var interfaceAt = patternScene(helper);
+        run(helper, interfaceAt, 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the pattern");
+            if (!stocked[0]) {
+                crafting.insertMaterials(32);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the planks");
+            }
+        }, "guide_all_cpus_busy", guideExample("all_cpus_busy", """
+                def run(port: Interface) -> str:
+                    idle = all_cpus_busy(port)
+                    started = ae2.craft("minecraft:stick", 64)
+                    lit = False
+                    waited = 0
+                    while not lit and waited < 100:
+                        mc.wait(1)
+                        waited += 1
+                        lit = all_cpus_busy(port)
+                    return " ".join([str(idle), str(started), str(lit)])
+                """), "False True True", "The lamp stays off while the CPU is free and lights while it crafts", () -> {
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(interfaceAt);
+                    helper.assertValueEqual(automationInterface.redstone(), 15, "The interface gives off 15");
+                    automationInterface.setRedstone(0);
+                    crafting.close();
+                });
+    }
+
+    /** The guide's {@code trash_surplus} sets the export bus's filter to the item above the limit, and clears it. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void guideTrashSurplusExample(GameTestHelper helper) {
+        var fixtures = build(helper, Blocks.AIR.defaultBlockState());
+        var cell = AEItems.ITEM_CELL_1K.stack();
+        StorageCells.getCellInventory(cell, null).insert(AEItemKey.of(Items.COBBLESTONE), 50, Actionable.MODULATE,
+                IActionSource.empty());
+        MEChestBlockEntity north = helper.getBlockEntity(CENTER.west().north());
+        north.setCell(cell);
+        PartHelper.setPart(helper.getLevel(), helper.absolutePos(TARGET), null, null,
+                AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT));
+        ExportBusPart bus = PartHelper.setPart(helper.getLevel(), helper.absolutePos(TARGET), Direction.UP, null,
+                AEParts.EXPORT_BUS.asItem());
+        run(helper, fixtures, "guide_trash_surplus", guideExample("trash_surplus", """
+                def run(port: Interface) -> str:
+                    trash_surplus(port, "minecraft:cobblestone", 10)
+                    over = ae2.config(ae2f.select(port, side="up"))[0]
+                    trash_surplus(port, "minecraft:cobblestone", 100)
+                    under = ae2.config(ae2f.select(port, side="up"))[0]
+                    return str(ae2.amount("minecraft:cobblestone")) + " " + str(over.resource) + " " + str(under)
+                """), "50 minecraft:cobblestone None",
+                "The filter takes cobblestone above the limit and is emptied below it",
+                () -> helper.assertTrue(bus.getConfig().getKey(0) == null, "The bus's filter is empty"));
+    }
+
+    /** The guide's {@code link_new_tunnels} links the unlinked item tunnel and leaves the energy tunnel alone. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void guideLinkNewTunnelsExample(GameTestHelper helper) {
+        var fixtures = tunnelScene(helper);
+        var bus = TUNNEL_BUS;
+        run(helper, TUNNEL_INTERFACE, 1, () -> helper.assertTrue(
+                        tunnel(helper, bus, Direction.UP) != null && tunnel(helper, bus, Direction.UP).isActive()
+                                && tunnel(helper, bus, Direction.NORTH).isActive()
+                                && tunnel(helper, bus, Direction.SOUTH).isActive(),
+                        "Waiting for the tunnels' channels"),
+                "guide_link_new_tunnels", guideExample("link_new_tunnels", """
+                def run(port: Interface) -> str:
+                    first = link_new_tunnels(port)
+                    mc.wait(2)
+                    second = link_new_tunnels(port)
+                    source = ae2.tunnel_at(ae2f.select(port))
+                    return " ".join([str(first), str(second), str(len(source.linked))])
+                """), "1 0 1", "The item tunnel becomes the source's output once; the energy tunnel stays as it is",
+                () -> {
+                    helper.assertTrue(tunnel(helper, bus, Direction.SOUTH).isOutput(),
+                            "The other item tunnel is an output");
+                    var energy = tunnel(helper, bus, Direction.NORTH);
+                    helper.assertTrue(!(energy instanceof ItemP2PTunnelPart) && energy.getFrequency() == 0,
+                            "The energy tunnel is unchanged");
+                    fixtures.close();
+                });
+    }
+
+    /** The guide's {@code channel_alarm} counts the ten buses waiting for a channel and lights the lamp. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void guideChannelAlarmExample(GameTestHelper helper) {
+        var fixtures = channelScene(helper);
+        run(helper, TUNNEL_INTERFACE, 1, () -> {
+                }, "guide_channel_alarm", guideExample("channel_alarm", """
+                def run(port: Interface) -> str:
+                    return str(channel_alarm(port))
+                """), "10", "The alarm counts ten buses without a channel", () -> {
+                    AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(TUNNEL_INTERFACE);
+                    helper.assertValueEqual(automationInterface.redstone(), 15, "The interface gives off 15");
+                    automationInterface.setRedstone(0);
+                    fixtures.close();
+                });
+    }
+
+    /** A guide example program as the guide shows it, followed by {@code run}, which calls it. */
+    private static String guideExample(String name, String run) {
+        // The guide is a client asset of the mod's own file, which this test mod's class loader does not reach.
+        var path = net.neoforged.fml.ModList.get().getModFileById("ae2federation").getFile()
+                .findResource("assets", "ae2federation", "ae2guide", "assets", "programs", name + ".ae2f");
+        try {
+            return Files.readString(path) + "\n\n" + run;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /** The editor's dry run of a pattern write says it would land and leaves the blank pattern and provider alone. */

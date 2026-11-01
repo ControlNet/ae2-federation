@@ -1,0 +1,10 @@
+def channel_alarm(lamp: Interface) -> int:
+    # Light the lamp while devices anywhere in the domain wait for a channel.
+    missing = 0
+    for network in ae2.channels():
+        missing += network.missing
+    if missing > 0:
+        mc.set_redstone(lamp, 15)
+    else:
+        mc.set_redstone(lamp, 0)
+    return missing

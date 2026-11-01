@@ -1,0 +1,12 @@
+def link_new_tunnels(port: Interface) -> int:
+    # The tunnel in front of the interface is the input. Every unlinked tunnel
+    # of its kind on its network becomes one of its outputs.
+    source = ae2.tunnel_at(ae2f.select(port))
+    if source is None:
+        return 0
+    linked = 0
+    for tunnel in ae2.tunnels(source.network):
+        if tunnel.id != source.id and tunnel.type == source.type and tunnel.frequency == 0:
+            if ae2.link_tunnel(source, tunnel):
+                linked += 1
+    return linked

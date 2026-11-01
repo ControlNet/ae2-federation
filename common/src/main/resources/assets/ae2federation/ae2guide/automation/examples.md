@@ -38,3 +38,41 @@ Turns the power rule from the base network to the farm on while the base holds m
 otherwise.
 
 <FederationProgram src="../assets/programs/share_power.ae2f" />
+
+## Write a missing crafting pattern
+
+Writes a crafting pattern for the item on a blank pattern from storage and puts it in a pattern provider beside a
+Molecular Assembler. An item a pattern already makes is left alone, so the program writes each pattern once. Storage
+needs blank patterns. Install it with the item and the trigger **Every** 200 ticks.
+
+<FederationProgram src="../assets/programs/learn_pattern.ae2f" />
+
+## Light a lamp while every CPU is busy
+
+The interface lights a lamp in front of it while no crafting CPU of the domain is free. Install it with the trigger
+**Every** 20 ticks.
+
+<FederationProgram src="../assets/programs/all_cpus_busy.ae2f" />
+
+## Trash a surplus
+
+A cable in front of the interface carries an ME Export Bus on top, facing a trash can above it. The program fills the
+bus's first filter slot with the item while storage holds more than `keep`, and empties the slot otherwise. Install it
+with the item and the event `stock_changed` for the item.
+
+<FederationProgram src="../assets/programs/trash_surplus.ae2f" />
+
+## Connect new P2P tunnels
+
+The tunnel facing the interface is the input. Each run links every unlinked tunnel of the same kind on its network as
+one of its outputs, so a tunnel placed later joins it without a memory card. Tunnels of other kinds and tunnels already
+linked stay as they are. Install it with the trigger **Every** 100 ticks.
+
+<FederationProgram src="../assets/programs/link_new_tunnels.ae2f" />
+
+## Channel alarm
+
+Lights the lamp while devices anywhere in the domain wait for a channel. The count it returns shows in the log.
+Install it with the trigger **Every** 100 ticks.
+
+<FederationProgram src="../assets/programs/channel_alarm.ae2f" />

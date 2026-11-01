@@ -1,0 +1,8 @@
+def trash_surplus(port: Interface, item: Item, keep: int = 10000) -> None:
+    # An ME Export Bus on top of the cable in front of the interface feeds a trash can
+    # above it: it exports the item while storage holds more than keep, and nothing otherwise.
+    bus = ae2f.select(port, side="up")
+    if ae2.amount(item) > keep:
+        ae2.set_config(bus, 0, item)
+    else:
+        ae2.set_config(bus, 0)

@@ -1,0 +1,8 @@
+def all_cpus_busy(lamp: Interface) -> bool:
+    # Light the lamp while every crafting CPU is busy.
+    for cpu in ae2.cpus():
+        if not cpu.busy:
+            mc.set_redstone(lamp, 0)
+            return False
+    mc.set_redstone(lamp, 15)
+    return True
