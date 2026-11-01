@@ -1145,6 +1145,61 @@ public final class ProgramHostGameTests {
     }
 
     /**
+     * A viewer recipe that carries a server recipe's ID under another machine's category (Create packs the crafting
+     * table's iron block in a basin) is written as the processing recipe it reads as, not as the server's crafting
+     * recipe of that ID.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void aViewerRecipeWithAServerRecipeIdIsWrittenAsItReads(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        var server = helper.getLevel().getServer();
+        var stocked = new boolean[] { false };
+        var previous = new ArrayList<BiConsumer<ServerPlayer, Integer>>();
+        run(helper, patternScene(helper), 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the network");
+            if (!stocked[0]) {
+                crafting.insertBlankPatterns(1);
+                var packing = new ViewerRecipes.Recipe("testviewer:packing", Optional.of("minecraft:iron_block"),
+                        List.of(new ViewerRecipes.Slot(List.of(new GenericStack(AEItemKey.of(Items.IRON_INGOT), 9)),
+                                Optional.empty())), List.of(new GenericStack(AEItemKey.of(Items.IRON_BLOCK), 1)),
+                        List.of());
+                previous.add(standInViewerSends(helper, List.of(new ViewerRecipes.Category("testviewer:packing",
+                        List.of("minecraft:cauldron"))), List.of(List.of(packing))));
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the blank pattern");
+            }
+        }, "host_viewer_server_id", """
+                def run() -> str:
+                    provider = ae2.providers()[0]
+                    found = mc.recipes_for("minecraft:iron_block")
+                    kinds: list[str] = []
+                    packing = 0
+                    for index in range(len(found)):
+                        kinds.append(found[index].kind + "/" + str(found[index].type))
+                        if found[index].type == "testviewer:packing":
+                            packing = index
+                    written = ae2.write_pattern(provider, found[packing], items={0: "minecraft:iron_ingot"})
+                    return ",".join(kinds) + " " + str(written)
+                """, "crafting/minecraft:crafting,processing/testviewer:packing True",
+                "The packing recipe is listed after the crafting one and written",
+                () -> {
+                    ViewerScans.requestWith(previous.get(0));
+                    ViewerRecipes.get(server).replace(List.of(), List.of());
+                    var patterns = crafting.providerPatterns();
+                    helper.assertValueEqual(patterns.size(), 1, "The provider holds one pattern");
+                    helper.assertTrue(patterns.get(0) instanceof appeng.crafting.pattern.AEProcessingPattern,
+                            "It is a processing pattern, not the crafting table's");
+                    var pattern = (appeng.crafting.pattern.AEProcessingPattern) patterns.get(0);
+                    helper.assertValueEqual(pattern.getSparseInputs(), List.of(
+                            new GenericStack(AEItemKey.of(Items.IRON_INGOT), 9)), "It takes nine ingots");
+                    helper.assertValueEqual(pattern.getOutputs(), List.of(
+                            new GenericStack(AEItemKey.of(Items.IRON_BLOCK), 1)), "It makes the block");
+                    crafting.close();
+                });
+    }
+
+    /**
      * A viewer scan whose page comes out of order is dropped and the next ready viewer is asked; what that one sends
      * replaces the saved recipes, and a page from the dropped scan changes nothing afterwards.
      */
@@ -1228,24 +1283,8 @@ public final class ProgramHostGameTests {
                 });
     }
 
-    /**
-     * Stands in for a player's recipe viewer: a mock player says it is ready, and the scan the server asks for is
-     * sent back in two pages, each through the payload's codec. Returns the server's way of asking a client, to put
-     * back.
-     */
-    @SuppressWarnings("removal") // The only mock player a server sees in its player list in 1.21.1.
+    /** A viewer's scan of a crushing recipe and a polishing recipe, in two pages ({@link #standInViewerSends}). */
     private static BiConsumer<ServerPlayer, Integer> scanFromAStandInViewer(GameTestHelper helper) {
-        var server = helper.getLevel().getServer();
-        var player = helper.makeMockServerPlayerInLevel();
-        var asked = new int[] { -1 };
-        var previous = ViewerScans.requestWith((to, scan) -> {
-            if (to == player) {
-                asked[0] = scan;
-            }
-        });
-        ViewerScans.reloaded(server);
-        ViewerScans.ready(player);
-        helper.assertTrue(asked[0] > 0, "The server asked the ready viewer for its recipes");
         var named = new ItemStack(Items.PRISMARINE_CRYSTALS, 2);
         named.set(DataComponents.CUSTOM_NAME, Component.literal("Polished"));
         var crushing = new ViewerRecipes.Recipe("testviewer:crushing", Optional.of("testviewer:crushing/prismarine"),
@@ -1261,11 +1300,34 @@ public final class ProgramHostGameTests {
         var categories = List.of(new ViewerRecipes.Category("testviewer:crushing", List.of("minecraft:grindstone")),
                 new ViewerRecipes.Category("minecraft:smelting", List.of("minecraft:furnace", "minecraft:smoker")),
                 new ViewerRecipes.Category("minecraft:crafting", List.of("minecraft:crafting_table")));
-        ViewerScans.page(player, throughCodec(server, new ViewerScans.Page(asked[0], 0, false, List.of(),
-                List.of(crushing))));
-        ViewerScans.page(player, throughCodec(server, new ViewerScans.Page(asked[0], 1, true, categories,
-                List.of(polishing))));
-        helper.assertValueEqual(ViewerRecipes.get(server).size(), 2, "Both recipes were kept");
+        return standInViewerSends(helper, categories, List.of(List.of(crushing), List.of(polishing)));
+    }
+
+    /**
+     * A mock player says its viewer is ready, and sends the scan the server asks for page by page, each through the
+     * payload's codec, the categories on the last page. Returns the server's way of asking a client, to put back.
+     */
+    @SuppressWarnings("removal") // The only mock player a server sees in its player list in 1.21.1.
+    private static BiConsumer<ServerPlayer, Integer> standInViewerSends(GameTestHelper helper,
+            List<ViewerRecipes.Category> categories, List<List<ViewerRecipes.Recipe>> pages) {
+        var server = helper.getLevel().getServer();
+        var player = helper.makeMockServerPlayerInLevel();
+        var asked = new int[] { -1 };
+        var previous = ViewerScans.requestWith((to, scan) -> {
+            if (to == player) {
+                asked[0] = scan;
+            }
+        });
+        ViewerScans.reloaded(server);
+        ViewerScans.ready(player);
+        helper.assertTrue(asked[0] > 0, "The server asked the ready viewer for its recipes");
+        for (int index = 0; index < pages.size(); index++) {
+            var last = index == pages.size() - 1;
+            ViewerScans.page(player, throughCodec(server, new ViewerScans.Page(asked[0], index, last,
+                    last ? categories : List.of(), pages.get(index))));
+        }
+        helper.assertValueEqual(ViewerRecipes.get(server).size(), pages.stream().mapToInt(List::size).sum(),
+                "Every recipe was kept");
         server.getPlayerList().remove(player);
         return previous;
     }

@@ -313,11 +313,15 @@ final class PatternCalls {
 
     /**
      * Writes a recipe the index holds as the server has it; any other processing recipe as its record gives its
-     * inputs and outputs.
+     * inputs and outputs. A recipe viewer may show a server recipe under another machine's category (Create packs the
+     * crafting table's iron block in a basin): with another type than the server's, the record is its own recipe.
      */
     private boolean write(RecordValue provider, RecordValue recipe, DictValue items, boolean substitutes) {
         var id = (String) recipe.field("id");
         var entry = id == null ? null : RecipeIndex.of(server).byId(id);
+        if (entry != null && !entry.type().equals(recipe.field("type"))) {
+            entry = null;
+        }
         if (entry == null && !"processing".equals(recipe.field("kind"))) {
             throw new RunError("ValueError", "AE2 cannot write recipe " + Ops.repr(id) + " on a pattern");
         }

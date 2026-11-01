@@ -230,6 +230,7 @@
     {"id":"programs.host-viewer-pattern","backend":"gametest","testId":"programwritesarecipeviewerrecipe","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.viewer-scan-out-of-order","backend":"gametest","testId":"aviewerscanoutoforderasksthenextviewer","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.saved-viewer-scan","backend":"gametest","testId":"asavedviewerscanislistedwithnoplayeronline","structure":"ae2federation_test:harness_native_smoke","assertions":1},
+    {"id":"programs.viewer-recipe-server-id","backend":"gametest","testId":"aviewerrecipewithaserverrecipeidiswrittenasitreads","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-processing-no-outputs","backend":"gametest","testId":"aprocessingrecipewithoutoutputsstopsthewrite","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-pattern-wrong-item","backend":"gametest","testId":"anitemaslotdoesnottakestopsthewrite","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-dry-pattern","backend":"gametest","testId":"dryrunwritesnopattern","structure":"ae2federation_test:harness_native_smoke","assertions":1},
