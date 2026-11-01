@@ -6,9 +6,13 @@ with the same mods, loaded fine, and the commit only added a library read.
 
 - Crash: `Mod loading issue for: mmcr` (Modular Machinery CR 0.1.3), `ExceptionInInitializerError` caused by a
   `ConcurrentModificationException` in `LinkedHashMap.forEach` at `cn.howxu.mmcr.registry.ModItems.<clinit>`
-  (ModItems.java:49). The same log shows the pack's KubeJS startup script (`mmcr.startup`) registering machines
-  through `MachineBuilderJS.register` -> `StartupContentRegistration.registerDynamicControllers` at that time, so
-  the map ModItems walks is being added to while it is walked. The bug is in mmcr, not in the harness or our mod.
+  (ModItems.java:49). Bytecode: `ModItems.<clinit>` walks `ModBlocks.BLOCKS`, a plain `LinkedHashMap`, with
+  `forEach` to make each block's item. `ModBlocks.registerMachineControllers` puts into that map, and the pack's
+  KubeJS startup script (`mmcr.startup`) reaches it through `MachineBuilderJS.register` ->
+  `StartupContentRegistration.registerDynamicControllers`. NeoForge constructs mods in parallel, so when the script
+  runs on another loading thread while ModItems is first loaded, the walk fails; hence only now and then. Which
+  thread did the put is not in the log (only `modloading-worker-0` logs there), so that part is inferred from the
+  code. The bug is in mmcr, not in the harness or our mod.
 - Where to look: the run's `playthrough-machines-projection` artifact, `crash-reports/crash-*-fml.txt` and
   `logs/latest.log` (search for `ModItems.<clinit>`).
 - Upstream fix to propose (owner submits): walk a copy of the map in `ModItems.<clinit>`, or register the
