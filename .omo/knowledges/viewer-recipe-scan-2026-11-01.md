@@ -15,7 +15,8 @@ JEI, scanned on the client and cached in the world save.
   `/reload` (OnDatapackSyncEvent with null player clears ready players; JEI restarts and re-announces).
   `requestWith` swaps the transport (GameTests stand in for a client; a mock player cannot receive our payload
   because NeoForge refuses unnegotiated channels with UnsupportedOperationException).
-- `client/automation/ViewerScanClient` - 4 ms per client tick, pages <= 30,000 bytes measured by encoding.
+- `client/automation/ViewerScanClient` - 2.5 ms per client tick (AE All Pattern's budget, owner decision), pages <=
+  30,000 bytes measured by encoding.
 - `compat/jei/FederationJeiPlugin` + `JeiRecipeScanner` - all categories; the six vanilla types map to the server's
   recipe type IDs and are not read (machines only). Chance outputs: slot cycles several stacks or a tooltip line the
   slot adds to the ingredient's own reads as a chance. `IRecipeSlotDrawable.getTooltip(...)` is forRemoval in JEI
@@ -68,6 +69,20 @@ JEI, scanned on the client and cached in the world save.
   `aviewerrecipewithaserverrecipeidiswrittenasitreads`, UI `ui.automation-viewer-create`).
 - Ponder's tooltip handler measures text on vanilla's search-tree worker thread; the test-only font-thread guard logs
   it (only one claim-conflict scenario checks the count).
+
+## ATM10 8.3 (2026-11-01, production client via portablemc under Xvfb, server pack mods minus IrisSearch)
+
+- 202,381 recipes in 543 categories (400 with recipes). Biggest: create:automatic_shaped 38,414,
+  sawmill:woodcutting 18,657, minecolonies:* about 56,000 together, irons_spellbooks:arcane_anvil 8,889.
+- Old scanner: 40,551 recipes in 35 min (about 19/s). JEI's `IRecipeSlotView.getTagKey` walks every item tag per
+  slot; a per-scan table (items in order -> tag, smallest ID among equal tags) made it 1589 s for all (about 127/s,
+  4 ms budget). Same 5,482 recipes in the Create pack before/after (ignoring which of equal tags and JEI's order).
+- What remains is JEI itself: layout per recipe and the slot tooltip (every mod's tooltip handler) for chance outputs.
+- 49.8% of recipes have an ID, unique within their category; 187 categories have none (JEI-side generated:
+  sawmill, MineColonies, anvil, FTB Quests). The anvil category's order changes between runs (Create pack).
+- JEI has no lookup by ID; `IRecipeLookup.get()` streams a category.
+- After the last page the server fell 35 s behind (replace + index + save of 202k recipes); cache file 6.2 MB,
+  `save-all` about 2 s.
 
 ## Open (assistant choices, not owner decisions)
 

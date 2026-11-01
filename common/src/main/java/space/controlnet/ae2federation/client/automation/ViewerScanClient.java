@@ -18,13 +18,15 @@ import space.controlnet.ae2federation.automation.ViewerScans;
  * reads them a few milliseconds a tick and sends them in pages small enough for one packet each, the categories after
  * the recipes. A viewer plugin hands its {@link ViewerScanner} over when its recipes are ready.
  *
- * <p>Assistant choices: 4 ms a tick, so the scan costs a frame or two of time spread over seconds; pages of at most
- * 30,000 bytes, under the 32,767 bytes of a packet a client sends; a recipe larger than a page alone is left out.
+ * <p>2.5 ms a tick, the budget the AE All Pattern mod settled on for the same JEI reads (owner decision, 2026-11-01):
+ * building a recipe's JEI layout runs the mod's own category code on the render thread, so it cannot move to another
+ * thread. Assistant choice: pages of at most 30,000 bytes, under the 32,767 bytes of a packet a client sends, measured
+ * by encoding each entry; a recipe larger than a page alone is left out.
  */
 public final class ViewerScanClient {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(ViewerScanClient.class);
     static final int PAGE_BYTES = 30_000;
-    private static final long BUDGET_NANOS = 4_000_000L;
+    private static final long BUDGET_NANOS = 2_500_000L;
 
     private static @Nullable ViewerScanner scanner;
     private static @Nullable Running running;
@@ -78,8 +80,8 @@ public final class ViewerScanClient {
             if (done) {
                 scan.job.categories().forEach(scan::add);
                 scan.send(true);
-                LOGGER.info("Sent {} recipes from the recipe viewer, {} left out as too large", scan.recipes,
-                        scan.tooLarge);
+                LOGGER.info("Sent {} recipes from the recipe viewer in {} s, {} left out as too large", scan.recipes,
+                        (System.nanoTime() - scan.started) / 1_000_000_000L, scan.tooLarge);
             }
         } catch (RuntimeException failure) {
             LOGGER.warn("The recipe viewer scan failed", failure);
@@ -96,6 +98,7 @@ public final class ViewerScanClient {
         final int scan;
         final ViewerScanner.Job job;
         final RegistryFriendlyByteBuf measure;
+        final long started = System.nanoTime();
         final List<ViewerRecipes.Category> categories = new ArrayList<>();
         final List<ViewerRecipes.Recipe> page = new ArrayList<>();
         int bytes;
