@@ -51,6 +51,24 @@ JEI, scanned on the client and cached in the world save.
   -PfederationUiWatchdogSec=600` under `xvfb-run`; source set `viewerTest` (`common/src/viewertest/java`), game
   directory `run-viewer-uitest`.
 
+## Create 6.0.10 (scan read 2026-11-01)
+
+- With Create added to the viewer client: 5482 recipes in 77 categories, about 20 s under xvfb (Mekanism alone
+  1964 in 54, about 7 s). The scenario's scan wait is 240 s.
+- Read right: crushing, milling, washing chances become byproducts (Create's slot tooltip says "Chance"), e.g.
+  `create:crushing/raw_iron` -> crushed raw iron, byproduct experience nugget; tag slots kept (`#c:ingots/iron`);
+  fluid inputs (spout filling, mixing) kept. Catalysts give machines (crushing_wheel, millstone, encased_fan,
+  mechanical_press + basin, ...).
+- Not carried by JEI slots: a mixing recipe's heat (blaze burner), sequenced assembly's steps and loops (read as one
+  recipe of all step inputs; no catalyst, so no machines), item application (no catalyst).
+- Create shows server recipes again under its own categories with the server's IDs: automatic_shaped (1703,
+  mechanical crafter), automatic_shapeless and automatic_packing (mixer/press + basin), block_cutting (saw),
+  fan_blasting/smoking. `write_pattern` used to take the server's recipe of that ID and wrote a crafting pattern for a
+  basin; it now uses the server's recipe only when the record's type matches (GameTest
+  `aviewerrecipewithaserverrecipeidiswrittenasitreads`, UI `ui.automation-viewer-create`).
+- Ponder's tooltip handler measures text on vanilla's search-tree worker thread; the test-only font-thread guard logs
+  it (only one claim-conflict scenario checks the count).
+
 ## Open (assistant choices, not owner decisions)
 
 - Trust: any player's JEI replaces the catalog for the whole world.

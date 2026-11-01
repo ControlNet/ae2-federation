@@ -107,6 +107,7 @@ repositories {
             includeModule('maven.modrinth', 'u6dRKJwZ')
             includeModule('maven.modrinth', 'Ce6I4WUE')
             includeModule('maven.modrinth', 'IiATswDj')
+            includeModule('maven.modrinth', 'LNytGWDc')
         }
     }
     maven {
@@ -617,7 +618,7 @@ configurations {
         canBeConsumed = false
         canBeResolved = true
         transitive = false
-        description = 'Isolated recipe viewer runtime: JEI, Mekanism, Applied Mekanistics and AE2 JEI Integration.'
+        description = 'Isolated recipe viewer runtime: JEI, Mekanism, Applied Mekanistics, Create and AE2 JEI Integration.'
     }
     viewerTestImplementation.extendsFrom(viewerCompatibility)
     functionalStorageCompatibility {
@@ -672,10 +673,12 @@ dependencies {
     appliedFluxCompatibility('org.appliedenergistics:guideme:21.1.1')
     appliedFluxCompatibility('maven.modrinth:glodium:1.21-2.2-neoforge')
     // The compat profiles' pins: Mekanism 10.7.19.85 (Modrinth Ce6I4WUE/5KzzycBT), Applied Mekanistics 1.6.3
-    // (IiATswDj/TpUCzFaW), and the JEI and AE2 JEI Integration above.
+    // (IiATswDj/TpUCzFaW), Create 6.0.10 (LNytGWDc/UjX6dr61, with Flywheel, Ponder and Registrate inside), and the
+    // JEI and AE2 JEI Integration above.
     viewerCompatibility('maven.modrinth:u6dRKJwZ:iv3KiVkE')
     viewerCompatibility('maven.modrinth:Ce6I4WUE:5KzzycBT')
     viewerCompatibility('maven.modrinth:IiATswDj:TpUCzFaW')
+    viewerCompatibility('maven.modrinth:LNytGWDc:UjX6dr61')
     viewerCompatibility('curse.maven:ae2-jei-integration-1074338:7727898')
     functionalStorageCompatibility('maven.modrinth:cO40ZIg3:qyocTQUb')
     functionalStorageCompatibility('maven.modrinth:1Ro7m06l:IeKDJ7R3')
