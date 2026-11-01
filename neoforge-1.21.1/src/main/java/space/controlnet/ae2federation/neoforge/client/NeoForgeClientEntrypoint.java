@@ -30,6 +30,7 @@ public final class NeoForgeClientEntrypoint {
             NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onArtifactJoin);
         }
         NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onLoggingOut);
+        space.controlnet.ae2federation.neoforge.network.ViewerRecipePayloads.registerClient();
         NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onScreenInit);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.WorldHighlight::render);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::flush);

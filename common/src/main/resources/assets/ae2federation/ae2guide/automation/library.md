@@ -128,9 +128,24 @@ other recipes. `machines` lists the machines that run the recipe: `ae2:molecular
 pattern are left out, such as map copies and armor trims, and so are recipes whose result carries extra data, which a
 program cannot name by its ID.
 
-The processing recipes are the furnace's (`minecraft:smelting`), the blast furnace's (`minecraft:blasting`) and the
-smoker's (`minecraft:smoking`). Their pattern takes the item to cook only: the furnace's fuel is yours to supply.
-Campfire recipes are left out, as a provider cannot put items on a campfire.
+The server reads the furnace's processing recipes itself: the furnace's (`minecraft:smelting`), the blast furnace's
+(`minecraft:blasting`) and the smoker's (`minecraft:smoking`). Their pattern takes the item to cook only: the
+furnace's fuel is yours to supply. Campfire recipes are left out, as a provider cannot put items on a campfire.
+
+Other machines' recipes come from JEI. A player's JEI sends the server the recipes it shows in every category the
+server does not read itself, and the world keeps them: the server asks the first player with JEI after each start and
+each `/reload`, and the scan takes a few seconds while they play. Until then the saved recipes are listed. JEI also
+names each category's machines, the items it shows beside the category; they are the recipes' `machines`, and for the
+furnace types they add to the furnace's own. Any player's JEI may send the recipes, and what it sends replaces them for
+every program of the world, as any player can encode any processing pattern in AE2's terminal. EMI on its own sends
+none.
+
+A JEI recipe's `type` is its JEI category, as `mekanism:enriching`, and its `id` the recipe's ID, or `None` when JEI
+gives none. An input slot JEI shows as an item tag reads as the tag's items. JEI does not say which outputs come only
+sometimes: an output whose slot cycles through several items, or whose tooltip names a chance, is listed in
+`byproducts`, and an output it misses is listed in `outputs`. A recipe with an input AE2 cannot store, such as energy,
+is left out; Mekanism's chemicals count when Applied Mekanistics and AE2 JEI Integration are installed. Recipes are
+found by an item they make, so one that makes only fluids or chemicals is not listed.
 
 `ae2.write_pattern` takes one blank pattern from the domain's storage and writes the recipe's kind of pattern. `items`
 picks the item for a slot that accepts several, by slot number, as in `{0: "minecraft:birch_planks"}`; any other slot

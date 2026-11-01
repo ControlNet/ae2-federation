@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -225,8 +226,12 @@ public final class RecipeIndex {
 
     // ---- records ----
 
-    /** The {@code Recipe} record of a recipe; new lists each time, as a program may change them. */
-    static RecordValue record(Entry entry) {
+    /**
+     * The {@code Recipe} record of a recipe, a processing recipe's machines with {@code more} added (a recipe viewer's
+     * crafting stations would not take a crafting pattern, which AE2 pushes into assemblers only); new lists each
+     * time, as a program may change them.
+     */
+    static RecordValue record(Entry entry, List<String> more) {
         var inputs = new ArrayList<Object>();
         for (var slot : entry.slots()) {
             var accepted = new ArrayList<Object>();
@@ -237,8 +242,12 @@ public final class RecipeIndex {
         }
         var outputs = new ArrayList<Object>();
         outputs.add(DomainCalls.stack(AEItemKey.of(entry.output()), entry.output().getCount()));
-        return record(entry.id(), entry.kind(), entry.type(), new ArrayList<>(entry.machines()), inputs, outputs,
-                entry.width(), entry.height());
+        var machines = new LinkedHashSet<Object>(entry.machines());
+        if (entry.kind().equals("processing")) {
+            machines.addAll(more);
+        }
+        return record(entry.id(), entry.kind(), entry.type(), new ArrayList<>(machines), inputs, outputs,
+                new ArrayList<>(), entry.width(), entry.height());
     }
 
     /**
@@ -248,7 +257,8 @@ public final class RecipeIndex {
      * one stack. Null for a processing pattern whose resources do not all read back as themselves by their IDs
      * ({@code named}), such as an item with components: written again, its record would make another pattern.
      */
-    @Nullable RecordValue read(ItemStack pattern, IPatternDetails details, Function<String, Optional<AEKey>> named) {
+    @Nullable RecordValue read(ItemStack pattern, IPatternDetails details, Function<String, Optional<AEKey>> named,
+            Function<String, List<String>> more) {
         ResourceLocation recipeId = null;
         String kind = "processing";
         var crafting = pattern.get(AEComponents.ENCODED_CRAFTING_PATTERN);
@@ -266,7 +276,7 @@ public final class RecipeIndex {
         }
         var known = recipeId == null ? null : byId.get(recipeId);
         if (known != null) {
-            return record(known);
+            return record(known, more.apply(known.type()));
         }
         var slots = new ArrayList<List<GenericStack>>();
         var made = new ArrayList<GenericStack>();
@@ -301,22 +311,23 @@ public final class RecipeIndex {
             outputs.add(DomainCalls.stack(stack.what(), stack.amount()));
         }
         return record(recipeId == null ? null : recipeId.toString(), kind, null, new ArrayList<>(), inputs, outputs,
-                0, 0);
+                new ArrayList<>(), 0, 0);
     }
 
-    private static boolean named(GenericStack stack, Function<String, Optional<AEKey>> named) {
+    /** Whether the stack's resource reads back as itself by its ID. */
+    static boolean named(GenericStack stack, Function<String, Optional<AEKey>> named) {
         return named.apply(stack.what().getId().toString()).filter(stack.what()::equals).isPresent();
     }
 
-    private static RecordValue record(@Nullable String id, String kind, @Nullable String type, List<Object> machines,
-            List<Object> inputs, List<Object> outputs, int width, int height) {
+    static RecordValue record(@Nullable String id, String kind, @Nullable String type, List<Object> machines,
+            List<Object> inputs, List<Object> outputs, List<Object> byproducts, int width, int height) {
         var fields = new LinkedHashMap<String, Object>();
         fields.put("id", id);
         fields.put("kind", kind);
         fields.put("type", type);
         fields.put("inputs", new ListValue(inputs));
         fields.put("outputs", new ListValue(outputs));
-        fields.put("byproducts", new ListValue(new ArrayList<>()));
+        fields.put("byproducts", new ListValue(byproducts));
         fields.put("machines", new ListValue(machines));
         fields.put("width", (long) width);
         fields.put("height", (long) height);

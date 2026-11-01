@@ -407,7 +407,8 @@ public final class StandardLibrary {
                             """, arg("source", "Block"), arg("target", "Block"), amount()),
                     fn("recipes_for", "list[Recipe]",
                             "The recipes that make the item, as AE2 can write them on patterns: crafting, "
-                                    + "stonecutting, smithing and processing.", """
+                                    + "stonecutting, smithing and processing, other machines' from a player's JEI.",
+                            """
                             def crafting_recipes(item: Item) -> int:
                                 count = 0
                                 for recipe in mc.recipes_for(item):

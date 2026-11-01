@@ -104,10 +104,14 @@ final class PatternCalls {
 
     // ---- recipes ----
 
+    /** The server's recipes for the item, then those a player's recipe viewer showed ({@link ViewerRecipes}). */
     private ListValue recipesFor(Object item) {
         var out = new ArrayList<Object>();
         if (domain.key(item) instanceof AEItemKey key) {
-            RecipeIndex.of(server).making(key.getItem()).forEach(entry -> out.add(RecipeIndex.record(entry)));
+            var viewer = ViewerRecipes.get(server);
+            RecipeIndex.of(server).making(key.getItem())
+                    .forEach(entry -> out.add(RecipeIndex.record(entry, viewer.machines(entry.type()))));
+            out.addAll(viewer.making(key.getItem(), domain::named));
         }
         return new ListValue(out);
     }
@@ -297,7 +301,8 @@ final class PatternCalls {
             for (int slot = 0; slot < inventory.size(); slot++) {
                 var stack = inventory.getStackInSlot(slot);
                 var details = stack.isEmpty() ? null : PatternDetailsHelper.decodePattern(stack, found.level());
-                var recipe = details == null ? null : index.read(stack, details, domain::named);
+                var recipe = details == null ? null : index.read(stack, details, domain::named,
+                        ViewerRecipes.get(server)::machines);
                 if (recipe != null) {
                     out.add(recipe);
                 }

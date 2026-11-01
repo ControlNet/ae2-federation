@@ -70,6 +70,7 @@ public final class NeoForgeEntrypoint {
         FederationDomainPolicyActionPayloads.register(modBus);
         space.controlnet.ae2federation.neoforge.network.BundleFormPayload.register(modBus);
         space.controlnet.ae2federation.neoforge.network.AutomationInterfacePayloads.register(modBus);
+        space.controlnet.ae2federation.neoforge.network.ViewerRecipePayloads.register(modBus);
         space.controlnet.ae2federation.neoforge.network.ProgramPayloads.register(modBus);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.crafting.projection.ReturnRecoveryCommands::register);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.automation.ProgramCommands::register);

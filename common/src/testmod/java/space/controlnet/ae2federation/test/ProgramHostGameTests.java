@@ -7,6 +7,7 @@ import appeng.api.config.RedstoneMode;
 import appeng.api.config.Settings;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.parts.PartHelper;
+import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.storage.StorageCells;
@@ -24,6 +25,7 @@ import appeng.parts.storagebus.StorageBusPart;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
@@ -34,6 +36,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -47,6 +50,8 @@ import space.controlnet.ae2federation.automation.ProgramHost;
 import space.controlnet.ae2federation.automation.ProgramRun;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
+import space.controlnet.ae2federation.automation.ViewerRecipes;
+import space.controlnet.ae2federation.automation.ViewerScans;
 import space.controlnet.ae2federation.domain.CableCapacityLimit;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.script.DictValue;
@@ -59,6 +64,18 @@ import space.controlnet.ae2federation.test.crafting.NativeCraftingFixtures;
 import space.controlnet.ae2federation.test.p2p.FederationP2PScene;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
+import io.netty.buffer.Unpooled;
+import java.util.ArrayList;
+import java.util.Optional;
+import java.util.function.BiConsumer;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.connection.ConnectionType;
+import space.controlnet.ae2federation.neoforge.network.ViewerRecipePayloads;
 
 /**
  * Programs run against a real domain: a Switch with two ME Chests (two networks, one with an item cell) and a
@@ -1062,6 +1079,153 @@ public final class ProgramHostGameTests {
                     helper.assertValueEqual(crafting.providerPatterns().size(), 2, "No pattern was added");
                     crafting.close();
                 });
+    }
+
+    /**
+     * A recipe viewer's scan, sent in two pages through the payload codec by a stand-in client, is listed by
+     * {@code mc.recipes_for}: an input slot that is an item tag reads as the tag's items, a fluid input and a chance
+     * output (a byproduct) come with it, and a program writes it with the item it picks. The viewer's machines for
+     * smelting add to the furnace while its crafting table does not reach crafting recipes, and its recipe making an
+     * item with components is not listed.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void programWritesARecipeViewerRecipe(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        var server = helper.getLevel().getServer();
+        var stocked = new boolean[] { false };
+        var previous = new ArrayList<BiConsumer<ServerPlayer, Integer>>();
+        run(helper, patternScene(helper), 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the network");
+            if (!stocked[0]) {
+                crafting.insertBlankPatterns(1);
+                previous.add(scanFromAStandInViewer(helper));
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the blank pattern");
+            }
+        }, "host_viewer_pattern", """
+                def run() -> str:
+                    provider = ae2.providers()[0]
+                    found = mc.recipes_for("minecraft:prismarine_crystals")
+                    recipe = found[0]
+                    sands: list[str] = []
+                    for stack in recipe.inputs[0]:
+                        sands.append(stack.resource + "x" + str(stack.amount))
+                    made = recipe.outputs[0].resource + "x" + str(recipe.outputs[0].amount)
+                    extra = recipe.byproducts[0].resource + "x" + str(recipe.byproducts[0].amount)
+                    water = recipe.inputs[1][0].resource + "x" + str(recipe.inputs[1][0].amount)
+                    smelting = ",".join(mc.recipes_for("minecraft:charcoal")[0].machines)
+                    crafting = ",".join(mc.recipes_for("minecraft:stick")[0].machines)
+                    written = ae2.write_pattern(provider, recipe, items={0: "minecraft:sand"})
+                    return " ".join([str(len(found)), recipe.kind, str(recipe.id), str(recipe.type),
+                                     ",".join(recipe.machines), str("minecraft:sandx2" in sands), water, made, extra,
+                                     smelting, crafting, str(written)])
+                """, "1 processing testviewer:crushing/prismarine testviewer:crushing minecraft:grindstone True "
+                        + "minecraft:waterx1000 minecraft:prismarine_crystalsx2 minecraft:prismarine_shardx1 "
+                        + "minecraft:furnace,minecraft:smoker ae2:molecular_assembler True",
+                "The viewer's recipe is listed and written with sand",
+                () -> {
+                    ViewerScans.requestWith(previous.get(0));
+                    ViewerRecipes.get(server).replace(List.of(), List.of());
+                    var patterns = crafting.providerPatterns();
+                    helper.assertValueEqual(patterns.size(), 1, "The provider holds one pattern");
+                    var pattern = (appeng.crafting.pattern.AEProcessingPattern) patterns.get(0);
+                    helper.assertValueEqual(pattern.getSparseInputs(), List.of(
+                            new GenericStack(AEItemKey.of(Items.SAND), 2),
+                            new GenericStack(AEFluidKey.of(Fluids.WATER), 1000)), "It takes sand and water");
+                    helper.assertValueEqual(pattern.getOutputs(), List.of(
+                            new GenericStack(AEItemKey.of(Items.PRISMARINE_CRYSTALS), 2)),
+                            "It promises the crystals only");
+                    crafting.close();
+                });
+    }
+
+    /**
+     * A viewer scan whose page comes out of order is dropped and the next ready viewer is asked; what that one sends
+     * replaces the saved recipes, and a page from the dropped scan changes nothing afterwards.
+     */
+    @SuppressWarnings("removal") // The only mock player a server sees in its player list in 1.21.1.
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 100, required = true, manualOnly = true)
+    public static void aViewerScanOutOfOrderAsksTheNextViewer(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var first = helper.makeMockServerPlayerInLevel();
+        var second = helper.makeMockServerPlayerInLevel();
+        var asked = new ArrayList<String>();
+        var scans = new HashMap<ServerPlayer, Integer>();
+        var previous = ViewerScans.requestWith((to, scan) -> {
+            asked.add(to == first ? "first" : to == second ? "second" : "other");
+            scans.put(to, scan);
+        });
+        try {
+            ViewerScans.reloaded(server);
+            ViewerScans.ready(first);
+            ViewerScans.ready(second);
+            helper.assertValueEqual(asked, List.of("first"), "Only the first ready viewer is asked");
+            var recipe = new ViewerRecipes.Recipe("testviewer:crushing", Optional.of("testviewer:crushing/glass"),
+                    List.of(new ViewerRecipes.Slot(List.of(new GenericStack(AEItemKey.of(Items.SAND), 1)),
+                            Optional.empty())), List.of(new GenericStack(AEItemKey.of(Items.GLASS), 1)), List.of());
+            ViewerScans.page(first, new ViewerScans.Page(scans.get(first), 1, true, List.of(), List.of(recipe)));
+            helper.assertValueEqual(asked, List.of("first", "second"), "The second viewer is asked after the drop");
+            ViewerScans.page(second, new ViewerScans.Page(scans.get(second), 0, true, List.of(),
+                    List.of(recipe, recipe)));
+            ViewerScans.page(first, new ViewerScans.Page(scans.get(first), 0, true, List.of(), List.of(recipe)));
+            helper.assertValueEqual(ViewerRecipes.get(server).size(), 2, "The second viewer's two recipes are kept");
+        } finally {
+            ViewerScans.requestWith(previous);
+            ViewerRecipes.get(server).replace(List.of(), List.of());
+            server.getPlayerList().remove(first);
+            server.getPlayerList().remove(second);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Stands in for a player's recipe viewer: a mock player says it is ready, and the scan the server asks for is
+     * sent back in two pages, each through the payload's codec. Returns the server's way of asking a client, to put
+     * back.
+     */
+    @SuppressWarnings("removal") // The only mock player a server sees in its player list in 1.21.1.
+    private static BiConsumer<ServerPlayer, Integer> scanFromAStandInViewer(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var player = helper.makeMockServerPlayerInLevel();
+        var asked = new int[] { -1 };
+        var previous = ViewerScans.requestWith((to, scan) -> {
+            if (to == player) {
+                asked[0] = scan;
+            }
+        });
+        ViewerScans.reloaded(server);
+        ViewerScans.ready(player);
+        helper.assertTrue(asked[0] > 0, "The server asked the ready viewer for its recipes");
+        var named = new ItemStack(Items.PRISMARINE_CRYSTALS, 2);
+        named.set(DataComponents.CUSTOM_NAME, Component.literal("Polished"));
+        var crushing = new ViewerRecipes.Recipe("testviewer:crushing", Optional.of("testviewer:crushing/prismarine"),
+                List.of(new ViewerRecipes.Slot(List.of(new GenericStack(AEItemKey.of(Items.SAND), 2)),
+                                Optional.of(ResourceLocation.withDefaultNamespace("sand"))),
+                        new ViewerRecipes.Slot(List.of(new GenericStack(AEFluidKey.of(Fluids.WATER), 1000)),
+                                Optional.empty())),
+                List.of(new GenericStack(AEItemKey.of(Items.PRISMARINE_CRYSTALS), 2)),
+                List.of(new GenericStack(AEItemKey.of(Items.PRISMARINE_SHARD), 1)));
+        var polishing = new ViewerRecipes.Recipe("testviewer:crushing", Optional.empty(), List.of(
+                new ViewerRecipes.Slot(List.of(new GenericStack(AEItemKey.of(Items.PRISMARINE_SHARD), 1)),
+                        Optional.empty())), List.of(GenericStack.fromItemStack(named)), List.of());
+        var categories = List.of(new ViewerRecipes.Category("testviewer:crushing", List.of("minecraft:grindstone")),
+                new ViewerRecipes.Category("minecraft:smelting", List.of("minecraft:furnace", "minecraft:smoker")),
+                new ViewerRecipes.Category("minecraft:crafting", List.of("minecraft:crafting_table")));
+        ViewerScans.page(player, throughCodec(server, new ViewerScans.Page(asked[0], 0, false, List.of(),
+                List.of(crushing))));
+        ViewerScans.page(player, throughCodec(server, new ViewerScans.Page(asked[0], 1, true, categories,
+                List.of(polishing))));
+        helper.assertValueEqual(ViewerRecipes.get(server).size(), 2, "Both recipes were kept");
+        server.getPlayerList().remove(player);
+        return previous;
+    }
+
+    private static ViewerScans.Page throughCodec(MinecraftServer server, ViewerScans.Page page) {
+        var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), server.registryAccess(), ConnectionType.NEOFORGE);
+        ViewerRecipePayloads.Page.STREAM_CODEC.encode(buffer, new ViewerRecipePayloads.Page(page));
+        return ViewerRecipePayloads.Page.STREAM_CODEC.decode(buffer).page();
     }
 
     /** An item picked for a slot that the slot does not take stops the run. */

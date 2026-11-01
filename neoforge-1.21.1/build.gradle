@@ -47,6 +47,13 @@ def appfluxTest = sourceSets.create('appfluxTest') {
     runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
 }
 
+// A client with JEI, Mekanism, Applied Mekanistics and AE2 JEI Integration, for the recipe viewer scan's UI scenario.
+def viewerTest = sourceSets.create('viewerTest') {
+    java.srcDir(rootProject.file('common/src/viewertest/java'))
+    compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
+    runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
+}
+
 def functionalStorageTest = sourceSets.create('functionalStorageTest') {
     java.srcDir(rootProject.file('common/src/functionalstoragetest/java'))
     compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
@@ -97,6 +104,9 @@ repositories {
             includeModule('maven.modrinth', 'jade')
             includeModule('maven.modrinth', 'udZtKfzP')
             includeModule('maven.modrinth', '3HO3APHb')
+            includeModule('maven.modrinth', 'u6dRKJwZ')
+            includeModule('maven.modrinth', 'Ce6I4WUE')
+            includeModule('maven.modrinth', 'IiATswDj')
         }
     }
     maven {
@@ -153,6 +163,17 @@ def prepareReleaseServer = tasks.register('prepareReleaseServer') {
 
 def prepareUiTestClientOptions = tasks.register('prepareUiTestClientOptions') {
     def optionsFile = layout.projectDirectory.file('run-uitest/options.txt')
+    outputs.file(optionsFile)
+
+    doLast {
+        def file = optionsFile.asFile
+        file.parentFile.mkdirs()
+        file.setText('onboardAccessibility:false\n', StandardCharsets.UTF_8.name())
+    }
+}
+
+def prepareViewerUiTestClientOptions = tasks.register('prepareViewerUiTestClientOptions') {
+    def optionsFile = layout.projectDirectory.file('run-viewer-uitest/options.txt')
     outputs.file(optionsFile)
 
     doLast {
@@ -476,6 +497,20 @@ neoForge {
             logLevel = org.slf4j.event.Level.INFO
             taskBefore(prepareUiTestClientOptions)
         }
+        viewerUiTestClient {
+            client()
+            gameDirectory = project.file('run-viewer-uitest')
+            sourceSet = viewerTest
+            systemProperty('ldlib2.uitest.run', providers.gradleProperty('federationUiSelection').getOrElse(''))
+            systemProperty('ldlib2.uitest.out', providers.gradleProperty('federationUiOutputDir').getOrElse(''))
+            systemProperty('ldlib2.uitest.guiScale', providers.gradleProperty('federationUiGuiScale').getOrElse('3'))
+            systemProperty('ldlib2.uitest.window', providers.gradleProperty('federationUiWindow').getOrElse('1280x720'))
+            systemProperty('ldlib2.uitest.inputMode', 'SYNTHETIC')
+            systemProperty('ldlib2.uitest.watchdogSec', providers.gradleProperty('federationUiWatchdogSec').getOrElse('90'))
+            systemProperty('ae2federation.ui.runId', providers.gradleProperty('federationUiRunId').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareViewerUiTestClientOptions)
+        }
         multiclientServer {
             server()
             gameDirectory = multiClientGameDirectory
@@ -528,6 +563,9 @@ neoForge {
             if (providers.gradleProperty('enableAppfluxCompatibility').getOrElse('false').toBoolean()) {
                 sourceSet(appfluxTest)
             }
+            if (providers.gradleProperty('enableViewerCompatibility').getOrElse('false').toBoolean()) {
+                sourceSet(viewerTest)
+            }
             if (providers.gradleProperty('enableFunctionalStorageCompatibility').getOrElse('false').toBoolean()) {
                 sourceSet(functionalStorageTest)
             }
@@ -558,6 +596,12 @@ configurations {
         transitive = false
         description = 'Neo ECO AE Extension and Neo ECO Prototype, compiled against by the optional compat.neoecoae.computation package only; on no run or test classpath.'
     }
+    jeiApi {
+        canBeConsumed = false
+        canBeResolved = true
+        transitive = false
+        description = 'JEI and AE2 JEI Integration, compiled against by the optional compat.jei and compat.ae2jeiintegration packages only; on no run or test classpath.'
+    }
     dataEnergisticsApi {
         canBeConsumed = false
         canBeResolved = true
@@ -569,6 +613,13 @@ configurations {
         description = 'Isolated Task 25 Applied Flux compatibility runtime.'
     }
     appfluxTestImplementation.extendsFrom(appliedFluxCompatibility)
+    viewerCompatibility {
+        canBeConsumed = false
+        canBeResolved = true
+        transitive = false
+        description = 'Isolated recipe viewer runtime: JEI, Mekanism, Applied Mekanistics and AE2 JEI Integration.'
+    }
+    viewerTestImplementation.extendsFrom(viewerCompatibility)
     functionalStorageCompatibility {
         canBeConsumed = false
         canBeResolved = true
@@ -591,6 +642,7 @@ configurations {
 
 sourceSets.main.compileClasspath += configurations.jadeApi + configurations.dataEnergisticsApi
 sourceSets.main.compileClasspath += configurations.neoEcoApi
+sourceSets.main.compileClasspath += configurations.jeiApi
 
 dependencies {
     implementation("org.appliedenergistics:appliedenergistics2:${ae2_version}")
@@ -608,12 +660,23 @@ dependencies {
     // Data Energistics 3.3.5 (CurseForge project 1565514, file 9095664), the compat runs' pin; only its plugin class
     // refers to it.
     dataEnergisticsApi('curse.maven:data-energistics-1565514:9095664')
+    // JEI 19.64.0.455 for 1.21.1 NeoForge (Modrinth project u6dRKJwZ, version iv3KiVkE) and AE2 JEI Integration 1.2.1
+    // (CurseForge project 1074338, file 7727898), the recipe-viewers profile's pins; only compat.jei and
+    // compat.ae2jeiintegration refer to them, the latter reached only when its mod is loaded.
+    jeiApi('maven.modrinth:u6dRKJwZ:iv3KiVkE')
+    jeiApi('curse.maven:ae2-jei-integration-1074338:7727898')
     testImplementation(platform('org.junit:junit-bom:5.10.1'))
     testImplementation('org.junit.jupiter:junit-jupiter')
     testRuntimeOnly('org.junit.platform:junit-platform-launcher')
     appliedFluxCompatibility('maven.modrinth:appflux:1.21-2.1.4-neoforge')
     appliedFluxCompatibility('org.appliedenergistics:guideme:21.1.1')
     appliedFluxCompatibility('maven.modrinth:glodium:1.21-2.2-neoforge')
+    // The compat profiles' pins: Mekanism 10.7.19.85 (Modrinth Ce6I4WUE/5KzzycBT), Applied Mekanistics 1.6.3
+    // (IiATswDj/TpUCzFaW), and the JEI and AE2 JEI Integration above.
+    viewerCompatibility('maven.modrinth:u6dRKJwZ:iv3KiVkE')
+    viewerCompatibility('maven.modrinth:Ce6I4WUE:5KzzycBT')
+    viewerCompatibility('maven.modrinth:IiATswDj:TpUCzFaW')
+    viewerCompatibility('curse.maven:ae2-jei-integration-1074338:7727898')
     functionalStorageCompatibility('maven.modrinth:cO40ZIg3:qyocTQUb')
     functionalStorageCompatibility('maven.modrinth:1Ro7m06l:IeKDJ7R3')
     prettyPipesCompatibility('maven.modrinth:XExdLWCQ:wboQrdtH')

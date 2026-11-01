@@ -4,6 +4,7 @@ build/
 **/run-server/
 **/run-gametest/
 **/run-uitest/
+**/run-viewer-uitest/
 **/run-manual-client/
 **/run-guide/
 **/run-logo/

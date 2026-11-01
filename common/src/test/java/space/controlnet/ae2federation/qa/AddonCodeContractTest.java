@@ -25,11 +25,12 @@ final class AddonCodeContractTest {
     private static final String COMPAT = "space/controlnet/ae2federation/compat/";
     /**
      * Reverse-domain packages of the platform and the required libraries, by their first two segments. ICU4J
-     * ({@code com.ibm}) ships with Minecraft and Maven's artifact versions ({@code org.apache}) with NeoForge's loader.
+     * ({@code com.ibm}) and Netty's buffers ({@code io.netty}) ship with Minecraft, and Maven's artifact versions
+     * ({@code org.apache}) with NeoForge's loader.
      */
     private static final Set<String> REQUIRED = Set.of("net.minecraft", "net.neoforged", "com.mojang", "com.lowdragmc",
             "dev.vfyjxf", "com.llamalad7", "org.spongepowered", "org.jetbrains", "org.joml", "org.lwjgl", "org.slf4j",
-            "com.google", "it.unimi", "com.ibm", "org.apache");
+            "com.google", "it.unimi", "com.ibm", "io.netty", "org.apache");
     private static final Pattern IMPORT = Pattern.compile("(?m)^import\\s+(?:static\\s+)?([\\w.]+)");
     private static final Pattern STRING = Pattern.compile("\"((?:[^\"\\\\\\n]|\\\\.)*)\"");
     /** A reverse-domain name: a first segment of two or three letters, such as {@code com} or {@code cn}. */
