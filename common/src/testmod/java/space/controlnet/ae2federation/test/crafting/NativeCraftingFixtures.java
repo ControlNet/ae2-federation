@@ -113,11 +113,23 @@ public final class NativeCraftingFixtures implements AutoCloseable {
         provider().getLogic().updatePatterns();
     }
 
-    /** A processing pattern, cobblestone into stone, in the provider's first slot. */
+    /**
+     * Two processing patterns in the provider's first slots: two cobblestone and 250 mB of water into two stone and a
+     * gravel, then a water bottle into a glass bottle.
+     */
     public void putProcessingPattern() {
         provider().getLogic().getPatternInv().setItemDirect(0, PatternDetailsHelper.encodeProcessingPattern(
-                java.util.List.of(new GenericStack(AEItemKey.of(Items.COBBLESTONE), 1)),
-                java.util.List.of(new GenericStack(AEItemKey.of(Items.STONE), 1))));
+                java.util.List.of(new GenericStack(AEItemKey.of(Items.COBBLESTONE), 2),
+                        new GenericStack(appeng.api.stacks.AEFluidKey.of(net.minecraft.world.level.material.Fluids.WATER),
+                                250)),
+                java.util.List.of(new GenericStack(AEItemKey.of(Items.STONE), 2),
+                        new GenericStack(AEItemKey.of(Items.GRAVEL), 1))));
+        // A water bottle is a potion item with components, which a program cannot name by its ID.
+        var bottle = net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION,
+                net.minecraft.world.item.alchemy.Potions.WATER);
+        provider().getLogic().getPatternInv().setItemDirect(1, PatternDetailsHelper.encodeProcessingPattern(
+                java.util.List.of(new GenericStack(AEItemKey.of(bottle), 1)),
+                java.util.List.of(new GenericStack(AEItemKey.of(Items.GLASS_BOTTLE), 1))));
         provider().getLogic().updatePatterns();
     }
 

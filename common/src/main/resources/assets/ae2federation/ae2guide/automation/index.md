@@ -16,7 +16,7 @@ navigation:
 Federation Automation runs Python programs for a Federation domain. A program reads the domain's storage, crafting,
 rules and the world around it, and acts on them: it starts crafting jobs, moves resources between networks and
 blocks, changes rules and gives off redstone. It also reaches AE2's own devices: it watches crafting CPUs and channels,
-changes device settings, writes crafting patterns into pattern providers and links P2P tunnels.
+changes device settings, writes crafting and processing patterns into pattern providers and links P2P tunnels.
 
 <FederationProgram src="../assets/programs/low_iron_alarm.ae2f" />
 

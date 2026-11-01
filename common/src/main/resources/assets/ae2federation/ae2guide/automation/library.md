@@ -108,32 +108,43 @@ providers too.
 
 | Function | Gives |
 | --- | --- |
-| `mc.recipes_for(item)` | the crafting, stonecutting and smithing recipes that make the item, as `Recipe`s |
+| `mc.recipes_for(item)` | the recipes that make the item, as `Recipe`s: crafting, stonecutting, smithing and processing |
 | `ae2.providers(network)` | the pattern providers, as `Provider`s |
 | `ae2.provider_at(block)` | the provider at a selected block, or `None` if there is none of this domain |
 | `ae2.provider_patterns(provider)` | the provider's patterns, each as its `Recipe` |
 | `ae2.write_pattern(provider, recipe, items={}, substitutes=False)` | **action:** writes the recipe on a blank pattern from storage and puts it in a free slot of the provider |
 
 Crafting, stonecutting and smithing patterns run in a Molecular Assembler next to the provider, which you build
-there yourself. A provider's `targets` list the machines it faces, so `"ae2:molecular_assembler" in provider.targets`
-finds the providers that can use such patterns.
+there yourself. A processing pattern pushes its inputs into the machine the provider faces; the machine's products
+come back as you set it up, as for a pattern you encode yourself. A provider's `targets` list the machines it faces
+and a recipe's `machines` the machines that run it, so a machine in both finds a provider that can use the recipe.
 
-A `Recipe` gives its `id`, its `kind` (`"crafting"`, `"stonecutting"`, `"smithing"` or `"processing"`), its `outputs`
-and its `inputs` slot by slot, each slot with the stacks it accepts: the crafting grid's nine slots row by row, the
-stonecutter's one, or the smithing table's template, base and addition. A shaped recipe sits in the grid's top-left
-corner, and `width` and `height` give its size; they are 0 for the other recipes. Recipes AE2 cannot write on a
+A `Recipe` gives its `id`, its `kind` (`"crafting"`, `"stonecutting"`, `"smithing"` or `"processing"`), its recipe
+`type`, its `outputs` and its `inputs` slot by slot, each slot with the stacks it accepts: the crafting grid's nine
+slots row by row, the stonecutter's one, the smithing table's template, base and addition, or a processing recipe's
+inputs. A shaped recipe sits in the grid's top-left corner, and `width` and `height` give its size; they are 0 for the
+other recipes. `machines` lists the machines that run the recipe: `ae2:molecular_assembler` for the crafting kinds.
+`byproducts` lists outputs that may not come every time; a pattern never promises them. Recipes AE2 cannot write on a
 pattern are left out, such as map copies and armor trims, and so are recipes whose result carries extra data, which a
 program cannot name by its ID.
+
+The processing recipes are the furnace's (`minecraft:smelting`), the blast furnace's (`minecraft:blasting`) and the
+smoker's (`minecraft:smoking`). Their pattern takes the item to cook only: the furnace's fuel is yours to supply.
+Campfire recipes are left out, as a provider cannot put items on a campfire.
 
 `ae2.write_pattern` takes one blank pattern from the domain's storage and writes the recipe's kind of pattern. `items`
 picks the item for a slot that accepts several, by slot number, as in `{0: "minecraft:birch_planks"}`; any other slot
 takes the item storage holds most of, or the first it accepts. `substitutes=True` is AE2's "allow substitutes". The
 call gives `False`, and takes no blank pattern, when storage holds none, the provider has no free slot, or the provider
-cannot be reached now. An item a slot does not take stops the run with a `ValueError`. Processing patterns cannot be
-written yet: a processing recipe stops the run with `NotImplementedError`.
+cannot be reached now. An item a slot does not take stops the run with a `ValueError`. A processing recipe from a
+pattern, which has no `id`, is written as it reads: its `inputs` and `outputs` as they are, each slot putting in the
+stack chosen as above. A processing pattern takes 1 to 81 inputs and makes 1 to 27 outputs; other counts stop the run
+with a `ValueError`.
 
 `ae2.provider_patterns` reads a pattern written from a recipe as that recipe, equal to the one `mc.recipes_for` gives;
-a processing pattern reads with no `id`, its inputs and outputs only. A `Provider` has its `id`, which names it in
+a processing pattern reads with no `id` or `type`, input by input in the order the provider pushes them, so writing it
+again makes the same pattern. A processing pattern with an item that carries extra data, such as a water bottle, is
+not listed, as its record would name another item. A `Provider` has its `id`, which names it in
 later calls, its anvil `name` or `None`, `targets`, its `group` in the Pattern Access Terminal, its own `block` item,
 `network`, `x`, `y`, `z` and `dimension`, its pattern `slots` and how many are `free`, what its patterns `makes`, and
 whether it is shown `in_terminal`.

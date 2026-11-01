@@ -3,6 +3,9 @@ package space.controlnet.ae2federation.automation;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.ids.AEComponents;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.GenericStack;
+import appeng.crafting.pattern.AEProcessingPattern;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -10,17 +13,21 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.WeakHashMap;
+import java.util.function.Function;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.AbstractCookingRecipe;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.SmithingTransformRecipe;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
@@ -33,19 +40,22 @@ import space.controlnet.ae2federation.script.ListValue;
 import space.controlnet.ae2federation.script.RecordValue;
 
 /**
- * The recipes AE2 can write on patterns, found by the item they make: crafting-table recipes, stonecutting, and
- * smithing upgrades. Built from the server's recipes when the server has started, and again after a datapack reload,
+ * The recipes AE2 can write on patterns, found by the item they make: crafting-table recipes, stonecutting, smithing
+ * upgrades, and the furnace's, blast furnace's and smoker's as processing recipes. Built from the server's recipes when the server has started, and again after a datapack reload,
  * which replaces the server's recipe manager: a large pack's take about a second (ATM10's 94,646 recipes, 1.1 s), which
  * a program's first call would otherwise stop the running server for.
  *
  * <p>A recipe reads as its slots, each with the stacks it accepts: the crafting grid's nine row by row (a shaped recipe
- * in its top-left corner), the stonecutter's one, the smithing table's template, base and addition.
+ * in its top-left corner), the stonecutter's one, the smithing table's template, base and addition, a furnace's one.
+ * Each names its recipe type and the machines that run its pattern: a Molecular Assembler for the crafting kinds, the
+ * vanilla block of its type for the furnace kinds.
  *
  * <p>Assistant choices: a recipe is left out when AE2 could not use its pattern or a program could not name what it
  * makes: special recipes (map copies, fireworks, dyed armor), recipes with an ingredient that matches nothing, results
  * with components (an armor trim's result is a trimmed chestplate, and a program names items by ID only), and smithing
  * recipes other than upgrades, as AE2 decodes no others. A crafting recipe other than {@link ShapedRecipe} fills the
- * grid in order, as a shapeless one; writing it checks that the recipe matches.
+ * grid in order, as a shapeless one; writing it checks that the recipe matches. Campfire recipes are left out: a pattern
+ * provider cannot put items on a campfire. A furnace pattern's input is the item to cook only; fuel is the player's.
  */
 public final class RecipeIndex {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(RecipeIndex.class);
@@ -58,7 +68,22 @@ public final class RecipeIndex {
         String id() {
             return holder.id().toString();
         }
+
+        String type() {
+            return String.valueOf(BuiltInRegistries.RECIPE_TYPE.getKey(holder.value().getType()));
+        }
+
+        /** The items of the machines that run the recipe's pattern. */
+        List<String> machines() {
+            var type = holder.value().getType();
+            if (type == RecipeType.SMELTING) return List.of("minecraft:furnace");
+            if (type == RecipeType.BLASTING) return List.of("minecraft:blast_furnace");
+            if (type == RecipeType.SMOKING) return List.of("minecraft:smoker");
+            return List.of(ASSEMBLER);
+        }
     }
+
+    private static final String ASSEMBLER = "ae2:molecular_assembler";
 
     private final Map<Item, List<Entry>> byOutput;
     private final Map<ResourceLocation, Entry> byId;
@@ -125,6 +150,13 @@ public final class RecipeIndex {
         }
         if (recipe instanceof CraftingRecipe) {
             return crafting(holder, output);
+        }
+        var type = recipe.getType();
+        if (recipe instanceof AbstractCookingRecipe cooking
+                && (type == RecipeType.SMELTING || type == RecipeType.BLASTING || type == RecipeType.SMOKING)) {
+            var slots = slots(List.of(cooking.getIngredients().get(0)));
+            return slots == null || slots.get(0).isEmpty() ? null
+                    : new Entry(holder, "processing", slots, output, 0, 0);
         }
         if (recipe instanceof StonecutterRecipe stonecutting) {
             var slots = slots(List.of(stonecutting.getIngredients().get(0)));
@@ -205,15 +237,18 @@ public final class RecipeIndex {
         }
         var outputs = new ArrayList<Object>();
         outputs.add(DomainCalls.stack(AEItemKey.of(entry.output()), entry.output().getCount()));
-        return record(entry.id(), entry.kind(), inputs, outputs, entry.width(), entry.height());
+        return record(entry.id(), entry.kind(), entry.type(), new ArrayList<>(entry.machines()), inputs, outputs,
+                entry.width(), entry.height());
     }
 
     /**
      * A pattern read back: its recipe when AE2 wrote it from one this index holds; otherwise what it takes and makes,
-     * input by input, as a processing pattern (no ID) or, for a crafting-family pattern of a recipe no program could
-     * write, with that recipe's ID and kind.
+     * as a processing pattern (no ID) or, for a crafting-family pattern of a recipe no program could write, with that
+     * recipe's ID and kind. AE2's processing pattern reads input by input in the order it pushes them, each slot with
+     * one stack. Null for a processing pattern whose resources do not all read back as themselves by their IDs
+     * ({@code named}), such as an item with components: written again, its record would make another pattern.
      */
-    RecordValue read(ItemStack pattern, IPatternDetails details) {
+    @Nullable RecordValue read(ItemStack pattern, IPatternDetails details, Function<String, Optional<AEKey>> named) {
         ResourceLocation recipeId = null;
         String kind = "processing";
         var crafting = pattern.get(AEComponents.ENCODED_CRAFTING_PATTERN);
@@ -233,28 +268,56 @@ public final class RecipeIndex {
         if (known != null) {
             return record(known);
         }
-        var inputs = new ArrayList<Object>();
-        for (var input : details.getInputs()) {
-            var accepted = new ArrayList<Object>();
-            for (var stack : input.getPossibleInputs()) {
-                accepted.add(DomainCalls.stack(stack.what(), stack.amount() * input.getMultiplier()));
+        var slots = new ArrayList<List<GenericStack>>();
+        var made = new ArrayList<GenericStack>();
+        if (details instanceof AEProcessingPattern processing) {
+            for (var stack : processing.getSparseInputs()) {
+                if (stack != null) {
+                    slots.add(List.of(stack));
+                }
             }
-            inputs.add(new ListValue(accepted));
+            processing.getSparseOutputs().stream().filter(java.util.Objects::nonNull).forEach(made::add);
+        } else {
+            for (var input : details.getInputs()) {
+                var accepted = new ArrayList<GenericStack>();
+                for (var stack : input.getPossibleInputs()) {
+                    accepted.add(new GenericStack(stack.what(), stack.amount() * input.getMultiplier()));
+                }
+                slots.add(accepted);
+            }
+            made.addAll(details.getOutputs());
+        }
+        if (kind.equals("processing") && (slots.stream().flatMap(List::stream).anyMatch(stack -> !named(stack, named))
+                || made.stream().anyMatch(stack -> !named(stack, named)))) {
+            return null;
+        }
+        var inputs = new ArrayList<Object>();
+        for (var slot : slots) {
+            inputs.add(new ListValue(new ArrayList<>(slot.stream()
+                    .map(stack -> (Object) DomainCalls.stack(stack.what(), stack.amount())).toList())));
         }
         var outputs = new ArrayList<Object>();
-        for (var stack : details.getOutputs()) {
+        for (var stack : made) {
             outputs.add(DomainCalls.stack(stack.what(), stack.amount()));
         }
-        return record(recipeId == null ? null : recipeId.toString(), kind, inputs, outputs, 0, 0);
+        return record(recipeId == null ? null : recipeId.toString(), kind, null, new ArrayList<>(), inputs, outputs,
+                0, 0);
     }
 
-    private static RecordValue record(@Nullable String id, String kind, List<Object> inputs, List<Object> outputs,
-            int width, int height) {
+    private static boolean named(GenericStack stack, Function<String, Optional<AEKey>> named) {
+        return named.apply(stack.what().getId().toString()).filter(stack.what()::equals).isPresent();
+    }
+
+    private static RecordValue record(@Nullable String id, String kind, @Nullable String type, List<Object> machines,
+            List<Object> inputs, List<Object> outputs, int width, int height) {
         var fields = new LinkedHashMap<String, Object>();
         fields.put("id", id);
         fields.put("kind", kind);
+        fields.put("type", type);
         fields.put("inputs", new ListValue(inputs));
         fields.put("outputs", new ListValue(outputs));
+        fields.put("byproducts", new ListValue(new ArrayList<>()));
+        fields.put("machines", new ListValue(machines));
         fields.put("width", (long) width);
         fields.put("height", (long) height);
         return new RecordValue("Recipe", fields, true);

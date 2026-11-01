@@ -86,19 +86,21 @@ AE2会在接下来几刻里规划任务， 规划好后像对待其他自动化�
 
 | 函数 | 结果 |
 | --- | --- |
-| `mc.recipes_for(item)` | 能做出该物品的合成、 切石和锻造配方， 以`Recipe`列出 |
+| `mc.recipes_for(item)` | 能做出该物品的配方， 以`Recipe`列出： 合成、 切石、 锻造和处理配方 |
 | `ae2.providers(network)` | 样板供应器， 以`Provider`列出 |
 | `ae2.provider_at(block)` | 选中方块处的样板供应器； 不是本联邦域的样板供应器时为`None` |
 | `ae2.provider_patterns(provider)` | 样板供应器里的样板， 每个都以它的`Recipe`列出 |
 | `ae2.write_pattern(provider, recipe, items={}, substitutes=False)` | **操作**： 用存储中的一张空白样板写下配方， 放进样板供应器的空槽位 |
 
-合成、 切石和锻造样板都在样板供应器旁边的分子装配室里完成， 分子装配室需要你自己在那里搭好。 样板供应器的`targets`列出它面对的机器， 所以`"ae2:molecular_assembler" in provider.targets`能找出可以用这些样板的样板供应器。
+合成、 切石和锻造样板都在样板供应器旁边的分子装配室里完成， 分子装配室需要你自己在那里搭好。 处理样板把输入推进样板供应器面对的机器， 机器的产物怎样回到网络由你自己搭建， 和你亲手编码的样板一样。 样板供应器的`targets`列出它面对的机器， 配方的`machines`列出能做这个配方的机器， 两边都有的机器就能找出可以用这个配方的样板供应器。
 
-`Recipe`给出`id`、 种类`kind`（`"crafting"`、`"stonecutting"`、`"smithing"`或`"processing"`）、 产物`outputs`， 以及按槽位排列的`inputs`， 每个槽位列出它接受的物品堆： 合成网格的九个槽位按行排列， 切石机一个槽位， 锻造台依次是模板、 基础物品和附加物品。 有序配方放在网格左上角， `width`和`height`给出它的大小； 其他配方这两项为0。 AE2写不成样板的配方不会列出， 例如地图复制和盔甲纹饰； 产物带额外数据的配方也不列出， 因为程序无法只用ID指明它。
+`Recipe`给出`id`、 种类`kind`（`"crafting"`、`"stonecutting"`、`"smithing"`或`"processing"`）、 配方类型`type`、 产物`outputs`， 以及按槽位排列的`inputs`， 每个槽位列出它接受的物品堆： 合成网格的九个槽位按行排列， 切石机一个槽位， 锻造台依次是模板、 基础物品和附加物品， 处理配方则是它的各项输入。 有序配方放在网格左上角， `width`和`height`给出它的大小； 其他配方这两项为0。 `machines`列出能做这个配方的机器， 合成类配方是`ae2:molecular_assembler`。 `byproducts`列出不一定每次都产出的产物， 样板从不把它们算作产物。 AE2写不成样板的配方不会列出， 例如地图复制和盔甲纹饰； 产物带额外数据的配方也不列出， 因为程序无法只用ID指明它。
 
-`ae2.write_pattern`从联邦域的存储里取一张空白样板， 写成配方对应种类的样板。 `items`按槽位编号为接受多种物品的槽位选定物品， 例如`{0: "minecraft:birch_planks"}`； 其余槽位用存储里存得最多的那种， 都没有时用它接受的第一种。 `substitutes=True`就是AE2的“允许替代”。 存储里没有空白样板、 样板供应器没有空槽位， 或者现在够不到样板供应器时， 调用给出`False`， 也不会用掉空白样板。 槽位不接受的物品会让运行以`ValueError`停下。 处理样板暂时还不能写： 处理配方会让运行以`NotImplementedError`停下。
+处理配方包括熔炉（`minecraft:smelting`）、 高炉（`minecraft:blasting`）和烟熏炉（`minecraft:smoking`）的配方。 它们的样板只放要烧的物品， 熔炉的燃料需要你自己供应。 营火配方不列出， 因为样板供应器没法把物品放到营火上。
 
-`ae2.provider_patterns`把由配方写成的样板读作那个配方， 与`mc.recipes_for`给出的相等； 处理样板读出来没有`id`， 只有输入和输出。 `Provider`有`id`（之后的调用用它指明这个样板供应器）、 铁砧改的名字`name`（没有时为`None`）、 `targets`、 在样板管理终端里的分组`group`、 自身的物品`block`、 `network`、 `x`、`y`、`z`和`dimension`、 样板槽位数`slots`和其中空着的`free`、 它的样板能做出的`makes`， 以及是否显示在终端里的`in_terminal`。
+`ae2.write_pattern`从联邦域的存储里取一张空白样板， 写成配方对应种类的样板。 `items`按槽位编号为接受多种物品的槽位选定物品， 例如`{0: "minecraft:birch_planks"}`； 其余槽位用存储里存得最多的那种， 都没有时用它接受的第一种。 `substitutes=True`就是AE2的“允许替代”。 存储里没有空白样板、 样板供应器没有空槽位， 或者现在够不到样板供应器时， 调用给出`False`， 也不会用掉空白样板。 槽位不接受的物品会让运行以`ValueError`停下。 从样板读出的处理配方没有`id`， 照它读出来的样子写： `inputs`和`outputs`原样不变， 每个槽位按上面的规则选定放入的物品堆。 处理样板有1到81项输入、 1到27项产物， 超出这个范围会让运行以`ValueError`停下。
+
+`ae2.provider_patterns`把由配方写成的样板读作那个配方， 与`mc.recipes_for`给出的相等； 处理样板读出来没有`id`和`type`， 输入按样板供应器推出的顺序逐项列出， 所以照样再写一次会得到同一个样板。 含有带额外数据的物品（例如水瓶）的处理样板不会列出， 因为它的记录会指向另一种物品。 `Provider`有`id`（之后的调用用它指明这个样板供应器）、 铁砧改的名字`name`（没有时为`None`）、 `targets`、 在样板管理终端里的分组`group`、 自身的物品`block`、 `network`、 `x`、`y`、`z`和`dimension`、 样板槽位数`slots`和其中空着的`free`、 它的样板能做出的`makes`， 以及是否显示在终端里的`in_terminal`。
 
 ## ae2： P2P通道
 

@@ -10,6 +10,8 @@ import appeng.api.networking.IGridNode;
 import appeng.api.networking.crafting.ICraftingProvider;
 import appeng.api.parts.IPartHost;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
+import appeng.crafting.pattern.AEProcessingPattern;
 import appeng.helpers.InterfaceLogicHost;
 import appeng.helpers.patternprovider.PatternContainer;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
@@ -63,7 +65,8 @@ import space.controlnet.ae2federation.script.RunError;
  * no longer there gives an empty list or False. Writing takes one blank pattern from the domain's storage, network by
  * network as other calls take items, paying AE power, only once the encoded pattern decodes and the provider has an
  * empty slot that takes it. A slot whose item is not picked takes the accepted item the domain stores most of, else the
- * first. Fluid substitutes stay off.
+ * first. Fluid substitutes stay off. A processing recipe the index does not hold is written as its record gives it, as
+ * AE2's terminal encodes any processing pattern a player sets up.
  */
 final class PatternCalls {
     private final MinecraftServer server;
@@ -282,7 +285,10 @@ final class PatternCalls {
 
     // ---- reading and writing patterns ----
 
-    /** The provider's patterns slot by slot, each read as its recipe; what AE2 cannot decode is left out. */
+    /**
+     * The provider's patterns slot by slot, each read as its recipe; what AE2 cannot decode is left out, and so is a
+     * processing pattern whose resources a program cannot name by ID.
+     */
     private ListValue patterns(RecordValue provider) {
         var out = new ArrayList<Object>();
         resolve(provider).ifPresent(found -> {
@@ -291,32 +297,39 @@ final class PatternCalls {
             for (int slot = 0; slot < inventory.size(); slot++) {
                 var stack = inventory.getStackInSlot(slot);
                 var details = stack.isEmpty() ? null : PatternDetailsHelper.decodePattern(stack, found.level());
-                if (details != null) {
-                    out.add(index.read(stack, details));
+                var recipe = details == null ? null : index.read(stack, details, domain::named);
+                if (recipe != null) {
+                    out.add(recipe);
                 }
             }
         });
         return new ListValue(out);
     }
 
+    /**
+     * Writes a recipe the index holds as the server has it; any other processing recipe as its record gives its
+     * inputs and outputs.
+     */
     private boolean write(RecordValue provider, RecordValue recipe, DictValue items, boolean substitutes) {
-        if ("processing".equals(recipe.field("kind"))) {
-            throw new RunError("NotImplementedError", "processing patterns are not supported yet");
-        }
         var id = (String) recipe.field("id");
         var entry = id == null ? null : RecipeIndex.of(server).byId(id);
-        if (entry == null) {
+        if (entry == null && !"processing".equals(recipe.field("kind"))) {
             throw new RunError("ValueError", "AE2 cannot write recipe " + Ops.repr(id) + " on a pattern");
         }
-        var chosen = choose(entry, items);
+        var label = id == null ? "the recipe" : id;
+        var chosen = choose(label, entry != null ? slots(entry) : slots(recipe), items);
+        var outputs = entry != null ? List.of(new GenericStack(AEItemKey.of(entry.output()), entry.output().getCount()))
+                : stacks(recipe.field("outputs"));
         var found = resolve(provider);
         if (found.isEmpty()) {
             return false;
         }
         var level = found.get().level();
-        var encoded = encode(entry, chosen, substitutes, level);
+        var encoded = entry != null && !entry.kind().equals("processing") ? encode(entry, chosen, substitutes, level)
+                : processing(label, chosen, outputs);
         if (encoded.isEmpty() || PatternDetailsHelper.decodePattern(encoded, level) == null) {
-            throw new RunError("ValueError", "AE2 cannot use recipe " + Ops.repr(id) + " with these items");
+            throw new RunError("ValueError", "AE2 cannot use " + (id == null ? "the recipe" : "recipe " + Ops.repr(id))
+                    + " with these items");
         }
         var inventory = found.get().container().getTerminalPatternInventory();
         int slot = freeSlot(inventory, encoded);
@@ -349,12 +362,50 @@ final class PatternCalls {
         return -1;
     }
 
+    /** A recipe's slots as the index reads them, each item one of a slot's. */
+    private static List<List<GenericStack>> slots(RecipeIndex.Entry entry) {
+        var out = new ArrayList<List<GenericStack>>();
+        for (var slot : entry.slots()) {
+            out.add(slot.stream().map(stack -> new GenericStack(AEItemKey.of(stack), stack.getCount())).toList());
+        }
+        return out;
+    }
+
+    /** A processing recipe's slots as its record gives them; an empty slot holds nothing to put in. */
+    private List<List<GenericStack>> slots(RecordValue recipe) {
+        var out = new ArrayList<List<GenericStack>>();
+        if (recipe.field("inputs") instanceof ListValue inputs) {
+            for (var slot : inputs.items()) {
+                var accepted = stacks(slot);
+                if (!accepted.isEmpty()) {
+                    out.add(accepted);
+                }
+            }
+        }
+        return out;
+    }
+
+    private List<GenericStack> stacks(Object list) {
+        var out = new ArrayList<GenericStack>();
+        for (var value : list instanceof ListValue stacks ? stacks.items() : List.of()) {
+            if (!(value instanceof RecordValue stack) || !stack.type().equals("Stack")) {
+                throw new RunError("TypeError", "a recipe's inputs and outputs hold Stacks, not " + Ops.repr(value));
+            }
+            long amount = ((Number) stack.field("amount")).longValue();
+            if (amount <= 0) {
+                throw new RunError("ValueError", "a recipe cannot take or make " + amount + " of "
+                        + stack.field("resource"));
+            }
+            out.add(new GenericStack(domain.key(stack.field("resource")), amount));
+        }
+        return out;
+    }
+
     /**
-     * The item for each slot: the one picked in {@code items}, else the one accepted that the domain stores most of,
-     * else the first accepted; empty for an empty slot. A pick the slot does not take stops the run.
+     * The stack for each slot: the resource picked in {@code items}, else the one accepted that the domain stores most
+     * of, else the first accepted; null for an empty slot. A pick the slot does not take stops the run.
      */
-    private ItemStack[] choose(RecipeIndex.Entry entry, DictValue items) {
-        var slots = entry.slots();
+    private GenericStack[] choose(String label, List<List<GenericStack>> slots, DictValue items) {
         var picked = new String[slots.size()];
         var keys = items.keys();
         var values = items.values();
@@ -367,24 +418,23 @@ final class PatternCalls {
                         filled.add(String.valueOf(each));
                     }
                 }
-                throw new RunError("ValueError", entry.id() + " has nothing to put in slot " + slot + "; its slots are "
+                throw new RunError("ValueError", label + " has nothing to put in slot " + slot + "; its slots are "
                         + String.join(", ", filled));
             }
             picked[(int) slot] = (String) values.get(i);
         }
-        var chosen = new ItemStack[slots.size()];
+        var chosen = new GenericStack[slots.size()];
         appeng.api.stacks.KeyCounter stock = null;
         for (int slot = 0; slot < slots.size(); slot++) {
             var accepted = slots.get(slot);
             if (accepted.isEmpty()) {
-                chosen[slot] = ItemStack.EMPTY;
                 continue;
             }
             if (picked[slot] != null) {
                 var pick = picked[slot];
                 final int at = slot;
-                chosen[slot] = accepted.stream().filter(stack -> RecipeIndex.id(stack).equals(pick)).findFirst()
-                        .orElseThrow(() -> new RunError("ValueError", "slot " + at + " of " + entry.id()
+                chosen[slot] = accepted.stream().filter(stack -> stack.what().getId().toString().equals(pick))
+                        .findFirst().orElseThrow(() -> new RunError("ValueError", "slot " + at + " of " + label
                                 + " does not take " + Ops.repr(pick)));
             } else if (accepted.size() == 1) {
                 chosen[slot] = accepted.get(0);
@@ -393,20 +443,34 @@ final class PatternCalls {
                     stock = domain.stock(null);
                 }
                 var held = stock;
-                chosen[slot] = accepted.stream().filter(stack -> held.get(AEItemKey.of(stack)) > 0)
-                        .max(Comparator.comparingLong(stack -> held.get(AEItemKey.of(stack))))
+                chosen[slot] = accepted.stream().filter(stack -> held.get(stack.what()) > 0)
+                        .max(Comparator.comparingLong(stack -> held.get(stack.what())))
                         .orElse(accepted.get(0));
             }
-            chosen[slot] = chosen[slot].copyWithCount(1);
         }
         return chosen;
     }
 
+    /** A processing pattern putting in the chosen stacks in order and taking out the outputs. */
+    private static ItemStack processing(String label, GenericStack[] chosen, List<GenericStack> outputs) {
+        var inputs = java.util.Arrays.stream(chosen).filter(java.util.Objects::nonNull).toList();
+        if (inputs.isEmpty() || outputs.isEmpty() || inputs.size() > AEProcessingPattern.MAX_INPUT_SLOTS
+                || outputs.size() > AEProcessingPattern.MAX_OUTPUT_SLOTS) {
+            throw new RunError("ValueError", label + " needs 1 to " + AEProcessingPattern.MAX_INPUT_SLOTS
+                    + " inputs and 1 to " + AEProcessingPattern.MAX_OUTPUT_SLOTS + " outputs on a pattern");
+        }
+        return PatternDetailsHelper.encodeProcessingPattern(inputs, outputs);
+    }
+
     /** The encoded pattern of the recipe with the chosen items; empty if the recipe does not match them. */
     @SuppressWarnings("unchecked")
-    private static ItemStack encode(RecipeIndex.Entry entry, ItemStack[] chosen, boolean substitutes,
+    private static ItemStack encode(RecipeIndex.Entry entry, GenericStack[] stacks, boolean substitutes,
             ServerLevel level) {
         var registries = level.registryAccess();
+        var chosen = new ItemStack[stacks.length];
+        for (int slot = 0; slot < stacks.length; slot++) {
+            chosen[slot] = stacks[slot] == null ? ItemStack.EMPTY : ((AEItemKey) stacks[slot].what()).toStack();
+        }
         switch (entry.kind()) {
             case "crafting" -> {
                 var holder = (RecipeHolder<CraftingRecipe>) entry.holder();

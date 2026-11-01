@@ -38,7 +38,7 @@ navigation:
 | `Response` | `net.http`给出的HTTP回答： `status`、`text`和`headers` |
 | `Cpu` | `ae2.cpus`给出的合成CPU： `name`、`network`、`busy`、`mode`、`storage`、`co_processors`， 以及它的任务`job`和进度`progress`/`total` |
 | `Setting` | `ae2.settings`给出的设备设置： `name`、 当前值`value`和可选值`values` |
-| `Recipe` | `mc.recipes_for`或`ae2.provider_patterns`给出的配方或样板： `id`、`kind`、 按槽位排列的`inputs`、`outputs`、`width`和`height` |
+| `Recipe` | `mc.recipes_for`或`ae2.provider_patterns`给出的配方或样板： `id`、`kind`、`type`、 按槽位排列的`inputs`、`outputs`、`byproducts`、`machines`、`width`和`height` |
 | `Provider` | `ae2.providers`给出的样板供应器： `id`、`name`、`targets`、`group`、`block`、`network`、`x`、`y`、`z`、`dimension`、`slots`、`free`、`makes`和`in_terminal` |
 | `SettingName`、`SettingValue` | 设备设置的名字， 例如`"fuzzy_mode"`， 以及它的一个值， 例如`"ignore_all"` |
 | `Side`、`Capability`、`RuleMode`、`FilterMode`、`HttpMethod`、`CpuMode`、`RecipeKind` | 固定的词， 例如`"down"`、`"storage"`、`"on"`、`"allow"`、`"GET"`、`"machine_only"`、`"crafting"` |

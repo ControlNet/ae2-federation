@@ -13,7 +13,7 @@ navigation:
   <ItemImage id="ae2federation:creative_computing_device" scale="3" />
 </Row>
 
-联邦自动化为联邦域运行Python程序。 程序读取联邦域的存储、合成、规则和周围的世界， 并据此操作： 发起合成任务、在网络和方块之间搬运资源、修改规则、发出红石信号。 它也能操作AE2自己的设备： 查看合成CPU和频道、修改设备设置、往样板供应器里写合成样板、连接P2P通道。
+联邦自动化为联邦域运行Python程序。 程序读取联邦域的存储、合成、规则和周围的世界， 并据此操作： 发起合成任务、在网络和方块之间搬运资源、修改规则、发出红石信号。 它也能操作AE2自己的设备： 查看合成CPU和频道、修改设备设置、往样板供应器里写合成样板和处理样板、连接P2P通道。
 
 <FederationProgram src="../assets/programs/low_iron_alarm.ae2f" />
 

@@ -945,10 +945,14 @@ public final class ProgramHostGameTests {
                 });
     }
 
-    /** A processing pattern reads back without an ID, with its inputs and outputs, and cannot be written yet. */
+    /**
+     * A processing pattern reads back without an ID or type, input by input with fluids among them, and is written
+     * again as it reads into the next free slot. The pattern taking a water bottle, an item with components, is not
+     * listed: a program names items by ID only, so its record would write another pattern.
+     */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 600, required = true, manualOnly = true)
-    public static void aProcessingPatternReadsBackButIsNotWritten(GameTestHelper helper) {
+    public static void aProcessingPatternIsWrittenAgainAsItReads(GameTestHelper helper) {
         var crafting = new NativeCraftingFixtures(helper, true, false);
         var stocked = new boolean[] { false };
         run(helper, patternScene(helper), 1, () -> {
@@ -960,18 +964,102 @@ public final class ProgramHostGameTests {
                 helper.fail("Waiting for the storage cache to see the blank pattern");
             }
         }, "host_processing_pattern", """
+                def run() -> str:
+                    provider = ae2.providers()[0]
+                    patterns = ae2.provider_patterns(provider)
+                    pattern = patterns[0]
+                    shown: list[str] = []
+                    for slot in pattern.inputs:
+                        shown.append(slot[0].resource + "x" + str(slot[0].amount))
+                    for out in pattern.outputs:
+                        shown.append(">" + out.resource + "x" + str(out.amount))
+                    written = ae2.write_pattern(provider, pattern)
+                    back = ae2.provider_patterns(provider)
+                    return " ".join([str(len(patterns)), pattern.kind, str(pattern.id), str(pattern.type),
+                                     ",".join(shown), str(written), str(len(back)), str(back[1] == pattern)])
+                """, "1 processing None None minecraft:cobblestonex2,minecraft:waterx250,>minecraft:stonex2,"
+                        + ">minecraft:gravelx1 True 2 True",
+                "The processing pattern was written again as it reads",
+                () -> {
+                    var patterns = crafting.providerPatterns();
+                    helper.assertValueEqual(patterns.size(), 3, "The provider holds three patterns");
+                    helper.assertValueEqual(patterns.get(2), patterns.get(0), "The new pattern is the first one");
+                    helper.assertValueEqual(crafting.blankPatternAmount(), 0L, "The blank pattern was used");
+                    crafting.close();
+                });
+    }
+
+    /**
+     * {@code mc.recipes_for} lists the furnace's and blast furnace's recipes as processing recipes with their type and
+     * machine, and a program writes charcoal from the birch log it picks among the logs the recipe takes.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void programWritesAFurnaceRecipe(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        var stocked = new boolean[] { false };
+        run(helper, patternScene(helper), 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the network");
+            if (!stocked[0]) {
+                crafting.insertBlankPatterns(1);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the blank pattern");
+            }
+        }, "host_furnace_pattern", """
+                def run() -> str:
+                    provider = ae2.providers()[0]
+                    kinds: list[str] = []
+                    for recipe in mc.recipes_for("minecraft:iron_ingot"):
+                        if recipe.kind == "processing":
+                            kinds.append(str(recipe.type) + "@" + ",".join(recipe.machines))
+                    kinds.sort()
+                    charcoal = mc.recipes_for("minecraft:charcoal")[0]
+                    written = ae2.write_pattern(provider, charcoal, items={0: "minecraft:birch_log"})
+                    back = ae2.provider_patterns(provider)[0]
+                    return " ".join([" ".join(kinds), charcoal.kind, str(charcoal.id), str(len(charcoal.inputs[0]) > 10),
+                                     str(written), back.inputs[0][0].resource, back.outputs[0].resource, str(back.id)])
+                """, "minecraft:blasting@minecraft:blast_furnace minecraft:blasting@minecraft:blast_furnace "
+                        + "minecraft:blasting@minecraft:blast_furnace minecraft:smelting@minecraft:furnace "
+                        + "minecraft:smelting@minecraft:furnace minecraft:smelting@minecraft:furnace "
+                        + "processing minecraft:charcoal True True minecraft:birch_log minecraft:charcoal None",
+                "Iron's furnace recipes are listed and the charcoal recipe was written with a birch log",
+                () -> {
+                    var patterns = crafting.providerPatterns();
+                    helper.assertValueEqual(patterns.size(), 1, "The provider holds one pattern");
+                    var charcoal = (appeng.crafting.pattern.AEProcessingPattern) patterns.get(0);
+                    helper.assertValueEqual(charcoal.getSparseInputs().get(0),
+                            new GenericStack(AEItemKey.of(Items.BIRCH_LOG), 1), "It takes one birch log");
+                    helper.assertValueEqual(charcoal.getOutputs(),
+                            java.util.List.of(new GenericStack(AEItemKey.of(Items.CHARCOAL), 1)), "It makes charcoal");
+                    crafting.close();
+                });
+    }
+
+    /** A processing recipe whose outputs a program emptied stops the run, and nothing is written. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void aProcessingRecipeWithoutOutputsStopsTheWrite(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true, false);
+        var stocked = new boolean[] { false };
+        run(helper, patternScene(helper), 1, () -> {
+            helper.assertTrue(crafting.ready(), "Waiting for the network");
+            if (!stocked[0]) {
+                crafting.putProcessingPattern();
+                crafting.insertBlankPatterns(1);
+                stocked[0] = true;
+                helper.fail("Waiting for the storage cache to see the blank pattern");
+            }
+        }, "host_processing_no_outputs", """
                 def run() -> bool:
                     provider = ae2.providers()[0]
                     pattern = ae2.provider_patterns(provider)[0]
-                    if pattern.kind != "processing" or pattern.id is not None or len(pattern.inputs) != 1:
-                        return False
-                    if pattern.inputs[0][0].resource != "minecraft:cobblestone" or pattern.outputs[0].resource != "minecraft:stone":
-                        return False
+                    pattern.outputs.clear()
                     return ae2.write_pattern(provider, pattern)
-                """, new Stops("NotImplementedError: processing patterns are not supported yet"),
-                "A processing pattern read from the provider stops the run when written",
+                """, new Stops("ValueError: the recipe needs 1 to 81 inputs and 1 to 27 outputs on a pattern"),
+                "A processing recipe without outputs stops the run",
                 () -> {
                     helper.assertValueEqual(crafting.blankPatternAmount(), 1L, "The blank pattern is still stored");
+                    helper.assertValueEqual(crafting.providerPatterns().size(), 2, "No pattern was added");
                     crafting.close();
                 });
     }

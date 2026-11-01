@@ -48,10 +48,13 @@ public final class StandardLibrary {
             "Setting", List.of(arg("name", "SettingName"), arg("value", "SettingValue"),
                     arg("values", "list[SettingValue]")),
             // One type for a recipe and a pattern: the slots of the crafting grid (9, row by row), the stonecutter (1),
-            // the smithing table (template, base, addition) or a processing pattern's inputs, each with the stacks it
-            // accepts. A processing pattern has no id; width and height are 0 but for a shaped crafting recipe.
-            "Recipe", List.of(arg("id", "Optional[str]"), arg("kind", "RecipeKind"),
-                    arg("inputs", "list[list[Stack]]"), arg("outputs", "list[Stack]"), arg("width", "int"),
+            // the smithing table (template, base, addition) or a processing recipe's inputs, each with the stacks it
+            // accepts. A processing pattern has no id or type; width and height are 0 but for a shaped crafting
+            // recipe. byproducts are outputs that may not come every time, never written on a pattern; machines are
+            // the items of the machines that run the recipe.
+            "Recipe", List.of(arg("id", "Optional[str]"), arg("kind", "RecipeKind"), arg("type", "Optional[str]"),
+                    arg("inputs", "list[list[Stack]]"), arg("outputs", "list[Stack]"),
+                    arg("byproducts", "list[Stack]"), arg("machines", "list[Item]"), arg("width", "int"),
                     arg("height", "int")),
             "Provider", List.of(arg("id", "str"), arg("name", "Optional[str]"), arg("targets", "list[Item]"),
                     arg("group", "str"), arg("block", "Item"), arg("network", "Network"), arg("x", "int"),
@@ -250,7 +253,7 @@ public final class StandardLibrary {
                                         return ae2.write_pattern(provider, recipe)
                                 return False
                             """, arg("provider", "Provider"), arg("recipe", "Recipe"),
-                            new Signature.Arg("items", type("dict[int, Item]"), "{}"),
+                            new Signature.Arg("items", type("dict[int, Resource]"), "{}"),
                             new Signature.Arg("substitutes", type("bool"), "False")),
                     fn("tunnels", "list[Tunnel]", "The P2P tunnels.", """
                             def unlinked() -> list[Tunnel]:
@@ -403,8 +406,8 @@ public final class StandardLibrary {
                                 mc.move_fe(ae2f.select(port_from), ae2f.select(port_to), 10000)
                             """, arg("source", "Block"), arg("target", "Block"), amount()),
                     fn("recipes_for", "list[Recipe]",
-                            "The crafting, stonecutting and smithing recipes that make the item, as AE2 can write them "
-                                    + "on patterns.", """
+                            "The recipes that make the item, as AE2 can write them on patterns: crafting, "
+                                    + "stonecutting, smithing and processing.", """
                             def crafting_recipes(item: Item) -> int:
                                 count = 0
                                 for recipe in mc.recipes_for(item):

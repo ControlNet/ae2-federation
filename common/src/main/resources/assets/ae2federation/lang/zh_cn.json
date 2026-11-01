@@ -454,7 +454,7 @@
   "ae2federation.function.mc.wait": "暂停本次运行。",
   "ae2federation.function.mc.fe": "方块中存储的 FE。",
   "ae2federation.function.mc.move_fe": "把 FE 从一个方块移到另一个方块。",
-  "ae2federation.function.mc.recipes_for": "能做出该物品、且 AE2 能写成样板的合成、切石和锻造配方。",
+  "ae2federation.function.mc.recipes_for": "能做出该物品、且 AE2 能写成样板的配方：合成、切石、锻造和处理配方。",
   "ae2federation.function.fs.read": "世界工作区文件夹里一个文件的文本；没有这个文件时为 None。",
   "ae2federation.function.fs.exists": "工作区里是否有这个文件或文件夹。",
   "ae2federation.function.fs.list": "工作区一个文件夹里的名字，按顺序排列；文件夹以“/”结尾。",

@@ -145,6 +145,11 @@ final class DomainCalls {
         return resources.key(id).orElseThrow(() -> new RunError("ValueError", "unknown resource '" + id + "'"));
     }
 
+    /** The AE2 key a resource ID names, if any. */
+    java.util.Optional<AEKey> named(String id) {
+        return resources.key(id);
+    }
+
     private static String id(AEKey key) {
         return key.getId().toString();
     }

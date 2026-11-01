@@ -342,7 +342,8 @@ final class CompletionTest {
 
     @Test
     void theFieldsOfRecipesAndProviders() {
-        assertEquals(List.of("height", "id", "inputs", "kind", "outputs", "width"), labels(at("""
+        assertEquals(List.of("byproducts", "height", "id", "inputs", "kind", "machines", "outputs", "type",
+                "width"), labels(at("""
                 def f() -> None:
                     for recipe in mc.recipes_for("minecraft:iron_block"):
                         recipe.|

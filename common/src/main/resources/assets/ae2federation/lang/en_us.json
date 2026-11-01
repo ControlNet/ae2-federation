@@ -454,7 +454,7 @@
   "ae2federation.function.mc.wait": "Pauses the run.",
   "ae2federation.function.mc.fe": "FE stored in the block.",
   "ae2federation.function.mc.move_fe": "Moves FE from one block to another.",
-  "ae2federation.function.mc.recipes_for": "The crafting, stonecutting and smithing recipes that make the item, as AE2 can write them on patterns.",
+  "ae2federation.function.mc.recipes_for": "The recipes that make the item, as AE2 can write them on patterns: crafting, stonecutting, smithing and processing.",
   "ae2federation.function.fs.read": "The text of a file in the world's workspace folder; None if there is none.",
   "ae2federation.function.fs.exists": "Whether a file or folder is in the workspace.",
   "ae2federation.function.fs.list": "The names in a workspace folder, in order; folders end with \"/\".",

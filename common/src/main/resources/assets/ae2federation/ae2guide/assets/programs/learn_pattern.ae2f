@@ -1,11 +1,11 @@
 def learn_pattern(item: Item) -> bool:
-    # Write a crafting pattern for the item into a provider beside a Molecular Assembler,
-    # unless a pattern makes it already.
+    # Write a pattern for the item into a provider that faces a machine running one of its
+    # recipes, such as a Molecular Assembler or a furnace, unless a pattern makes it already.
     if ae2.craftable(item):
         return False
     for recipe in mc.recipes_for(item):
-        if recipe.kind == "crafting":
-            for provider in ae2.providers():
-                if "ae2:molecular_assembler" in provider.targets and provider.free > 0:
+        for provider in ae2.providers():
+            for machine in recipe.machines:
+                if machine in provider.targets and provider.free > 0:
                     return ae2.write_pattern(provider, recipe)
     return False

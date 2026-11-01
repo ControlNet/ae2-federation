@@ -39,11 +39,11 @@ otherwise.
 
 <FederationProgram src="../assets/programs/share_power.ae2f" />
 
-## Write a missing crafting pattern
+## Write a missing pattern
 
-Writes a crafting pattern for the item on a blank pattern from storage and puts it in a pattern provider beside a
-Molecular Assembler. An item a pattern already makes is left alone, so the program writes each pattern once. Storage
-needs blank patterns. Install it with the item and the trigger **Every** 200 ticks.
+Writes a pattern for the item on a blank pattern from storage and puts it in a pattern provider that faces a machine
+running one of the item's recipes: a Molecular Assembler for a crafting recipe, a furnace for a smelting one. An item a
+pattern already makes is left alone, so the program writes each pattern once. Storage needs blank patterns. Install it with the item and the trigger **Every** 200 ticks.
 
 <FederationProgram src="../assets/programs/learn_pattern.ae2f" />
 
