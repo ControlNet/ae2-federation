@@ -24,6 +24,7 @@ navigation:
 | `ae2.cpus(network)` | 合成CPU列表， 以`Cpu`列出， 带上各自正在运行的任务 |
 | `ae2.free_cpus(network)` | 空闲且接受自动化请求的合成CPU数 |
 | `ae2.energy(network)` | 储存的AE |
+| `ae2.channels(network)` | 每个网络的频道情况， 以`Channels`列出 |
 | `ae2.craft(resource, amount, network, cpu=None)` | **操作**： 请求合成任务， 给了`cpu`就用这个名字的CPU； 没有样板能合成或没有可用的空闲CPU时为`False` |
 | `ae2.cancel(resource, network)` | **操作**： 取消这个安装在该网络上发起的任务 |
 | `ae2.import_from(block, resource, amount, network)` | **操作**： 从方块搬进存储 |
@@ -33,6 +34,8 @@ navigation:
 AE2会在接下来几刻里规划任务， 规划好后像对待其他自动化请求一样挑选空闲的CPU： 只接受玩家请求的CPU和容量不够的CPU都不会用。 规划时缺材料， 或者到那时没有这样的CPU， 任务就不会开始， `ae2.crafting`也随之回落。 任务的最终产物从请求起计入`ae2.crafting`， 直到送进存储。
 
 给了`cpu`时， 任务在这个名字的空闲CPU上运行， 选放得下任务的最小那个， 只接受玩家请求的CPU不会用。 在铁砧里改过名的合成单元， 名字就是它所在CPU的名字。 没有CPU叫这个名字时， 运行以`ValueError`停下。
+
+`Channels`给出网络`network`、 频道模式`mode`（`"default"`、`"x2"`、`"x3"`、`"x4"`或`"infinite"`）、 控制器状态`controller`（`"none"`、`"online"`或`"conflict"`）、 已用频道数`used`、 需要频道却没有分到的设备数`missing`， 以及是否正在启动`booting`。 没有ME控制器的网络最多只给出八个频道， 需要频道的设备一旦更多就一个也不给， 这时`missing`会算上所有这样的设备。
 
 ## ae2： 设备设置
 

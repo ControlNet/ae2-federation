@@ -28,6 +28,7 @@ storage, whatever the rules share.
 | `ae2.cpus(network)` | the crafting CPUs, as `Cpu`s, with the jobs they run |
 | `ae2.free_cpus(network)` | free crafting CPUs that take automation requests |
 | `ae2.energy(network)` | AE stored |
+| `ae2.channels(network)` | each network's channels, as `Channels` |
 | `ae2.craft(resource, amount, network, cpu=None)` | **action:** asks for a job, on a CPU of that name if `cpu` is given; `False` if no pattern makes it or no CPU is free for it |
 | `ae2.cancel(resource, network)` | **action:** cancels the jobs this installation started on the network |
 | `ae2.import_from(block, resource, amount, network)` | **action:** moves from the block into storage |
@@ -41,6 +42,11 @@ request until it reaches storage.
 
 With `cpu`, the job runs on a free CPU of that name, the smallest one it fits, never on one set to player requests
 only. A crafting unit renamed in an anvil names its CPU. A name no CPU has stops the run with a `ValueError`.
+
+A `Channels` gives the `network`, its channel `mode` (`"default"`, `"x2"`, `"x3"`, `"x4"` or `"infinite"`), its
+`controller` (`"none"`, `"online"` or `"conflict"`), the channels `used`, how many devices that need a channel have
+none (`missing`), and whether it is `booting`. Without an ME Controller a network gives out at most eight channels,
+and none once more devices need one, so `missing` then counts every such device.
 
 ## ae2: device settings
 

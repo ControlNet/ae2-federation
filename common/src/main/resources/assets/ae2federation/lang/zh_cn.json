@@ -415,6 +415,7 @@
   "ae2federation.function.ae2.export_to": "把该资源从网络移入方块。",
   "ae2federation.function.ae2.move": "把该资源从联邦域的一个网络移到另一个网络。",
   "ae2federation.function.ae2.cpus": "合成 CPU 列表，以及各自正在运行的任务。",
+  "ae2federation.function.ae2.channels": "每个网络的频道：用了多少，以及有多少设备在等频道。",
   "ae2federation.function.ae2.free_cpus": "空闲且接受自动化请求的合成 CPU 数量。",
   "ae2federation.function.ae2.energy": "存储的 AE 能量。",
   "ae2federation.function.ae2.settings": "设备的各项设置，以及各自的当前值和可选值。",

@@ -227,6 +227,7 @@
     {"id":"programs.host-pattern-wrong-item","backend":"gametest","testId":"anitemaslotdoesnottakestopsthewrite","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-dry-pattern","backend":"gametest","testId":"dryrunwritesnopattern","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-tunnels","backend":"gametest","testId":"programlinksthep2ptunnelsofitsdomain","structure":"ae2federation_test:harness_native_smoke","assertions":1},
+    {"id":"programs.host-channels","backend":"gametest","testId":"programreadsthechannelsofitsnetworks","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.host-federation-tunnels-capacity","backend":"gametest","testId":"programlinkingfederationtunnelscanoverloadadomain","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.installed-run","backend":"gametest","testId":"installedfunctionlightsalampwhenrun","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.rate-limit","backend":"gametest","testId":"aschedulekeepstotheratelimit","structure":"ae2federation_test:harness_native_smoke","assertions":1},

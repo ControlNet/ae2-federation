@@ -1101,11 +1101,23 @@ public final class ProgramHostGameTests {
     }
 
     /**
-     * A Switch with a cable bus under it, powered by a Creative Energy Cell, a Federation Cable beside the Switch and an
-     * interface on the bus's far end looking down at it. The bus has an item tunnel on top, facing the interface, an
+     * {@link #networkScene} with three tunnels on the last cable: an item tunnel on top, facing the interface, an
      * energy tunnel to the north and another item tunnel to the south.
      */
     private static RouterFixtures tunnelScene(GameTestHelper helper) {
+        var fixtures = networkScene(helper);
+        var at = helper.absolutePos(TUNNEL_BUS);
+        PartHelper.setPart(helper.getLevel(), at, Direction.UP, null, AEParts.ITEM_P2P_TUNNEL.asItem());
+        PartHelper.setPart(helper.getLevel(), at, Direction.NORTH, null, AEParts.FE_P2P_TUNNEL.asItem());
+        PartHelper.setPart(helper.getLevel(), at, Direction.SOUTH, null, AEParts.ITEM_P2P_TUNNEL.asItem());
+        return fixtures;
+    }
+
+    /**
+     * One network in a domain: a Switch over the first of three cables in a row, powered by a Creative Energy Cell
+     * under that cable, a Federation Cable beside the Switch and an interface over the last cable looking down at it.
+     */
+    private static RouterFixtures networkScene(GameTestHelper helper) {
         BlockPos.betweenClosed(CENTER.offset(-3, -1, -2), CENTER.offset(3, 3, 2))
                 .forEach(position -> helper.setBlock(position, Blocks.AIR));
         var fixtures = new RouterFixtures(helper);
@@ -1119,16 +1131,41 @@ public final class ProgramHostGameTests {
             PartHelper.setPart(helper.getLevel(), helper.absolutePos(bus), null, null,
                     AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT));
         }
-        var at = helper.absolutePos(TUNNEL_BUS);
-        PartHelper.setPart(helper.getLevel(), at, Direction.UP, null, AEParts.ITEM_P2P_TUNNEL.asItem());
-        PartHelper.setPart(helper.getLevel(), at, Direction.NORTH, null, AEParts.FE_P2P_TUNNEL.asItem());
-        PartHelper.setPart(helper.getLevel(), at, Direction.SOUTH, null, AEParts.ITEM_P2P_TUNNEL.asItem());
         return fixtures;
     }
 
     private static @Nullable P2PTunnelPart<?> tunnel(GameTestHelper helper, BlockPos bus, Direction side) {
         return helper.getLevel().getBlockEntity(helper.absolutePos(bus)) instanceof IPartHost host
                 && host.getPart(side) instanceof P2PTunnelPart<?> tunnel ? tunnel : null;
+    }
+
+    /**
+     * A program reads its network's channels: with no ME Controller, AE2 gives an ad-hoc network at most eight
+     * channels, and none at all once more devices need one, so all ten Import Buses wait.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void programReadsTheChannelsOfItsNetworks(GameTestHelper helper) {
+        var fixtures = channelScene(helper);
+        run(helper, TUNNEL_INTERFACE, 1, () -> {
+                }, "host_channels", """
+                def run(port: Interface) -> str:
+                    network = ae2.channels()[0]
+                    return " ".join([network.mode, network.controller, str(network.used), str(network.missing),
+                                     str(network.booting)])
+                """, "default none 0 10 False", "No channel is used and all ten buses wait for one",
+                fixtures::close);
+    }
+
+    /** {@link #tunnelScene}'s Switch, cables and interface with ten Import Buses on the cables instead of tunnels. */
+    private static RouterFixtures channelScene(GameTestHelper helper) {
+        var fixtures = networkScene(helper);
+        var sides = Map.of(TUNNEL_BUS.west(2), List.of(Direction.NORTH, Direction.SOUTH),
+                TUNNEL_BUS.west(), List.of(Direction.NORTH, Direction.SOUTH, Direction.DOWN),
+                TUNNEL_BUS, List.of(Direction.NORTH, Direction.SOUTH, Direction.DOWN, Direction.UP, Direction.EAST));
+        sides.forEach((bus, faces) -> faces.forEach(face -> PartHelper.setPart(helper.getLevel(),
+                helper.absolutePos(bus), face, null, AEParts.IMPORT_BUS.asItem())));
+        return fixtures;
     }
 
     /** The editor's dry run of a pattern write says it would land and leaves the blank pattern and provider alone. */

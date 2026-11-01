@@ -45,8 +45,13 @@ Decisions by the owner on extending Federation Automation beyond storage, crafti
 
 - 328ef0f0 device settings, e5c24351 crafting-family pattern writing, 2e4e1193 completion trim.
 - d3e63574 recipe index built at server start and reload (cost table below).
-- P2P tunnels: `ae2.tunnels`, `ae2.tunnel_at`, `ae2.link_tunnel`, `ae2.unlink_tunnel`; see
+- e0338822 P2P tunnels: `ae2.tunnels`, `ae2.tunnel_at`, `ae2.link_tunnel`, `ae2.unlink_tunnel`; see
   `automation-p2p-tunnels-2026-11-01.md`.
+- Channels (read-only): `ae2.channels(network)` gives per network the channel mode, controller state
+  (none/online/conflict), used channels, `missing` (devices that need a channel and have none: nodes with
+  `GridFlags.REQUIRE_CHANNEL` failing `meetsChannelRequirements`) and `booting`. AE2 gives an ad-hoc network
+  (no controller) with more than 8 channel devices 0 channels in all, so 10 Import Buses read
+  `used 0 missing 10`, not 8/2. Writing channel settings is not offered (channel mode is a server config).
 
 ## Recipe coverage measurement (2026-10-31)
 

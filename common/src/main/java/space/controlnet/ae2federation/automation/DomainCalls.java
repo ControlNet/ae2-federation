@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.automation;
 
 import appeng.api.behaviors.ExternalStorageStrategy;
 import appeng.api.config.Actionable;
+import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
@@ -109,6 +110,7 @@ final class DomainCalls {
                     host.movable(key(args.get(1)), (Long) args.get(2)), args.get(3));
             case "ae2.move" -> moveWithin(host, args.get(0), args.get(1), key(args.get(2)), (Long) args.get(3));
             case "ae2.cpus" -> cpus(args.get(0));
+            case "ae2.channels" -> channels(args.get(0));
             case "ae2.free_cpus" -> grids(args.get(0)).stream().mapToLong(ProgramCrafting::freeCpus).sum();
             case "ae2.energy" -> grids(args.get(0)).stream()
                     .mapToDouble(grid -> grid.getEnergyService().getStoredPower()).sum();
@@ -249,6 +251,37 @@ final class DomainCalls {
                 fields.put("total", status == null ? 0L : status.totalItems());
                 items.add(new RecordValue("Cpu", fields, true));
             }
+        }
+        return new ListValue(items);
+    }
+
+    /**
+     * Each network's channels, as AE2's Network Status shows them, and how many devices that need a channel have none:
+     * while a network boots, every such device waits.
+     */
+    private ListValue channels(@Nullable Object network) {
+        var items = new ArrayList<Object>();
+        for (var entry : networks(network)) {
+            var grid = entry.getValue();
+            var pathing = grid.getPathingService();
+            long missing = 0;
+            for (var node : grid.getNodes()) {
+                if (node.hasFlag(GridFlags.REQUIRE_CHANNEL) && !node.meetsChannelRequirements()) {
+                    missing++;
+                }
+            }
+            var fields = new LinkedHashMap<String, Object>();
+            fields.put("network", shortId(entry.getKey()));
+            fields.put("mode", pathing.getChannelMode().name().toLowerCase(java.util.Locale.ROOT));
+            fields.put("controller", switch (pathing.getControllerState()) {
+                case NO_CONTROLLER -> "none";
+                case CONTROLLER_ONLINE -> "online";
+                case CONTROLLER_CONFLICT -> "conflict";
+            });
+            fields.put("used", (long) pathing.getUsedChannels());
+            fields.put("missing", missing);
+            fields.put("booting", pathing.isNetworkBooting());
+            items.add(new RecordValue("Channels", fields, true));
         }
         return new ListValue(items);
     }

@@ -415,6 +415,7 @@
   "ae2federation.function.ae2.export_to": "Moves the resource from the network into the block.",
   "ae2federation.function.ae2.move": "Moves the resource from one network of the domain to another.",
   "ae2federation.function.ae2.cpus": "The crafting CPUs and the jobs they run.",
+  "ae2federation.function.ae2.channels": "Each network's channels: how many are used and how many devices wait for one.",
   "ae2federation.function.ae2.free_cpus": "Free crafting CPUs that take automation requests.",
   "ae2federation.function.ae2.energy": "AE stored.",
   "ae2federation.function.ae2.settings": "The device's settings, each with its value and the values it takes.",

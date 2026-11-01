@@ -13,7 +13,8 @@ import java.util.Map;
 public final class StandardLibrary {
     /** Strings whose static type says what they name; completion and the checker know their values. */
     public static final List<String> TYPED_STRINGS = List.of("Item", "Fluid", "Resource", "Interface", "Network",
-            "Side", "Capability", "RuleMode", "FilterMode", "HttpMethod", "CpuMode", "SettingName", "SettingValue", "RecipeKind");
+            "Side", "Capability", "RuleMode", "FilterMode", "HttpMethod", "CpuMode", "SettingName", "SettingValue", "RecipeKind",
+            "ChannelMode", "ControllerState");
 
     /** Typed strings with a fixed set of values, known without the game. */
     public static final Map<String, List<String>> ENUMERATIONS = Map.of(
@@ -23,7 +24,9 @@ public final class StandardLibrary {
             "FilterMode", List.of("all", "allow", "deny"),
             "HttpMethod", List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"),
             "CpuMode", List.of("any", "player_only", "machine_only"),
-            "RecipeKind", List.of("crafting", "stonecutting", "smithing", "processing"));
+            "RecipeKind", List.of("crafting", "stonecutting", "smithing", "processing"),
+            "ChannelMode", List.of("default", "x2", "x3", "x4", "infinite"),
+            "ControllerState", List.of("none", "online", "conflict"));
 
     /**
      * Typed strings whose values depend on another argument of the same call: a {@code SettingValue} is one of the
@@ -54,6 +57,10 @@ public final class StandardLibrary {
                     arg("group", "str"), arg("block", "Item"), arg("network", "Network"), arg("x", "int"),
                     arg("y", "int"), arg("z", "int"), arg("dimension", "str"), arg("slots", "int"), arg("free", "int"),
                     arg("makes", "list[Resource]"), arg("in_terminal", "bool")),
+            // A network's channels as AE2's Network Status shows them; missing counts devices waiting for a channel.
+            "Channels", List.of(arg("network", "Network"), arg("mode", "ChannelMode"),
+                    arg("controller", "ControllerState"), arg("used", "int"), arg("missing", "int"),
+                    arg("booting", "bool")),
             // A frequency of 0 is a tunnel not linked yet; linked lists the IDs at the other end.
             "Tunnel", List.of(arg("id", "str"), arg("type", "Item"), arg("name", "Optional[str]"),
                     arg("frequency", "int"), arg("output", "bool"), arg("linked", "list[str]"), arg("active", "bool"),
@@ -133,6 +140,15 @@ public final class StandardLibrary {
                                     if cpu.busy:
                                         count += 1
                                 return count
+                            """, network()),
+                    fn("channels", "list[Channels]", "Each network's channels: how many are used and how many "
+                            + "devices wait for one.", """
+                            def short_of_channels() -> list[Network]:
+                                short: list[Network] = []
+                                for network in ae2.channels():
+                                    if network.missing > 0:
+                                        short.append(network.network)
+                                return short
                             """, network()),
                     fn("free_cpus", "int", "Free crafting CPUs that take automation requests.", """
                             def craft_when_idle(item: Item, amount: int) -> None:
