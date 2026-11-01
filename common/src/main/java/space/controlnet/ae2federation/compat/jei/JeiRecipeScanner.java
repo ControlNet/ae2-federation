@@ -4,6 +4,7 @@ import appeng.api.stacks.GenericStack;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -29,8 +30,8 @@ import mezz.jei.api.runtime.IIngredientManager;
 import mezz.jei.api.runtime.IJeiKeyMapping;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
@@ -56,7 +57,10 @@ import space.controlnet.ae2federation.compat.ae2jeiintegration.Ae2JeiStacks;
  * reads as a chance ("chance", "probab", "%", "概率", "几率" ...): JEI has no field for chance outputs, so this reads
  * the text mods show, and may miss. Items and fluids convert themselves; other kinds (Mekanism chemicals) go through
  * AE2 JEI Integration's converters when that mod is installed. A recipe is told apart from another of its category
- * by its ID, else by what it takes and makes.
+ * by its ID, else by what it takes and makes. A slot's item tag is a tag whose items are the slot's, in order, as JEI
+ * finds one, looked up in a table built once a scan: JEI's own lookup walks every item tag for each slot, which in a
+ * pack of hundreds of mods made the scan a few dozen recipes a second. Of several such tags the smallest ID is taken,
+ * so a scan of the same pack saves the same tags (JEI takes the first in a hash order that changes from run to run).
  */
 final class JeiRecipeScanner implements ViewerScanner {
     /** JEI's categories of the recipe types the server reads itself, by the server's recipe type. */
@@ -84,6 +88,7 @@ final class JeiRecipeScanner implements ViewerScanner {
         private final IRecipeManager manager;
         private final IIngredientManager ingredients;
         private final IFocusGroup noFocus;
+        private final Map<List<Item>, ResourceLocation> tags = itemTags();
         private final Iterator<IRecipeCategory<?>> categories;
         private final List<ViewerRecipes.Category> found = new ArrayList<>();
         private final Set<String> seen = new HashSet<>();
@@ -133,6 +138,18 @@ final class JeiRecipeScanner implements ViewerScanner {
             return found;
         }
 
+        /** The item tag whose items are the slot's, in order; none when the slot holds anything but items. */
+        private Optional<ResourceLocation> tag(IRecipeSlotView slot) {
+            var items = new ArrayList<Item>();
+            for (var typed : slot.getAllIngredients().toList()) {
+                if (!(typed.getIngredient() instanceof ItemStack stack)) {
+                    return Optional.empty();
+                }
+                items.add(stack.getItem());
+            }
+            return Optional.ofNullable(tags.get(items));
+        }
+
         @SuppressWarnings("unchecked")
         private <T> ViewerRecipes.@Nullable Recipe read(IRecipeCategory<T> category, Object object) {
             var recipe = (T) object;
@@ -155,8 +172,7 @@ final class JeiRecipeScanner implements ViewerScanner {
                 if (stacks.isEmpty()) {
                     return null;
                 }
-                var tag = slot.getTagKey().filter(key -> key.registry().equals(Registries.ITEM))
-                        .map(key -> key.location());
+                var tag = tag(slot);
                 inputs.add(new ViewerRecipes.Slot(tag.isPresent() ? stacks.subList(0, 1)
                         : stacks.subList(0, Math.min(stacks.size(), ViewerRecipes.MAX_STACKS)), tag));
             }
@@ -178,6 +194,14 @@ final class JeiRecipeScanner implements ViewerScanner {
                     : Optional.of(id.toString());
             return new ViewerRecipes.Recipe(categoryId, named, inputs, outputs, byproducts);
         }
+    }
+
+    /** Each item tag by its items in order; of tags with the same items, the smallest ID. */
+    private static Map<List<Item>, ResourceLocation> itemTags() {
+        var out = new HashMap<List<Item>, ResourceLocation>();
+        BuiltInRegistries.ITEM.getTags().forEach(pair -> out.merge(pair.getSecond().stream().map(Holder::value)
+                .toList(), pair.getFirst().location(), (kept, other) -> kept.compareTo(other) <= 0 ? kept : other));
+        return out;
     }
 
     /** The slot's stacks AE2 can hold, each once, in the slot's order. */
@@ -215,6 +239,9 @@ final class JeiRecipeScanner implements ViewerScanner {
         try {
             var lines = new Lines();
             drawable.getTooltip(lines);
+            if (lines.text.stream().noneMatch(JeiRecipeScanner::chance)) {
+                return false;
+            }
             var own = new Lines();
             slot.getDisplayedIngredient().ifPresent(typed -> ownTooltip(own, typed, ingredients));
             var added = new ArrayList<>(lines.text);
