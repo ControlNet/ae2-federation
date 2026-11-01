@@ -100,6 +100,17 @@ JEI, scanned on the client and cached in the world save.
   evilcraftcompat:spirit_furnace (412), productivemetalworks:item_casting, xycraft extractor, tombstone:combine; JEI
   brewing (vanilla and Create) has stable contents but its generated IDs move between recipes. MineColonies, sawmill,
   anvil and arcane anvil are stable.
+- Why keys move (pre-hash text diffed across two more runs):
+  - Recipes rolled at random when the client loads: EvilCraft spirit furnace (mob drops and their counts, e.g. arrow x1
+    vs x2), FTB Quests (loot rewards, e.g. lava bucket vs quartz), Tombstone combine (which item of a group is shown).
+    The recipe really differs per run; no key can be stable.
+  - A subset picked from an unordered collection: Productive Metalworks casting (which fluids are listed),
+    XyCraft extractor (whether sugar water is listed).
+  - A mod's subtype ID prints a Java object: Supplementaries' tipped bamboo spikes put `Potion@4119b59c` in
+    `getUniqueId`, so every recipe holding them (Create shapeless and washing, Sushi Go rice cooker) moves. A key
+    built from the item ID plus its data components encoded by codec would not depend on mod subtype interpreters.
+  - JEI's brewing IDs: contents identical, but 24 of 788 IDs sit on different recipes each run (built while walking
+    hash sets); not traced further.
 - About 1,000 recipes in scope throw NullPointerException from the ingredient supplier (create:automatic_shaped 402,
   minecolonies:sawmill 389, mechanic 91, domum_ornamentum:architects_cutter 82); they need another key.
 - Same-key duplicates in no-ID categories: 2,511 of 104,399 (e.g. Industrial Foregoing mycelial generators list the
