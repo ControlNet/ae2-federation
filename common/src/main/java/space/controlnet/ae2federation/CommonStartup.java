@@ -16,6 +16,7 @@ public final class CommonStartup {
         GridServices.register(NetworkIdentityService.class, NetworkIdentityGridService.class);
         NativeGridStateEvents.register();
         space.controlnet.ae2federation.automation.ProgramEvents.register();
+        space.controlnet.ae2federation.automation.RecipeIndex.register();
         FederationStatistics.register();
         FederationDomainPolicyMenu.register();
         logger.info("AE2 Federation common startup complete");

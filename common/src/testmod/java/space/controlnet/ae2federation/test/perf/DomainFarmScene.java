@@ -4,6 +4,7 @@ import appeng.api.config.Actionable;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.pathing.ChannelMode;
 import appeng.api.networking.security.IActionSource;
+import appeng.api.parts.IPart;
 import appeng.api.parts.IPartHost;
 import appeng.api.parts.PartHelper;
 import appeng.api.stacks.AEKey;
@@ -25,6 +26,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import space.controlnet.ae2federation.bundle.BundleSegment;
 import space.controlnet.ae2federation.bundle.BundledCables;
+import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
@@ -90,6 +92,9 @@ public final class DomainFarmScene implements BusScene {
     /** Each subdomain's plain cable next to its Router, in subdomain order. */
     private final List<BlockPos> subdomainCables = new ArrayList<>();
     private final List<BlockPos> chests = new ArrayList<>();
+    /** Each subnet's lowest riser cable, and its side facing away from the subnet's block: free for a part. */
+    private final List<BlockPos> lowestCables = new ArrayList<>();
+    private final List<Direction> freeSides = new ArrayList<>();
     private final List<AEKey> pairKeys = new ArrayList<>();
     private final Set<ChunkPos> chunks = new HashSet<>();
     private final List<PolicyKey> rules = new ArrayList<>();
@@ -261,6 +266,42 @@ public final class DomainFarmScene implements BusScene {
         helper.setBlock(subdomainCables.getLast(), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
     }
 
+    /** The domain the main network is in, once it has one. */
+    public FederationDomainId mainDomain() {
+        var mainId = FederationDomainRegistryAccess.confirmedNetworkId(mainGrid()).orElseThrow();
+        return FederationDomainRegistryAccess.get(helper.getLevel()).federationdomainsFor(mainId).iterator().next();
+    }
+
+    /**
+     * Puts a Pattern Provider on each subnet's lowest riser cable, on its side facing away from the subnet's block, with
+     * a Furnace in front of it to push into; the gap between rows leaves both room. Returns how many.
+     */
+    public int addPatternProviders() {
+        for (var subnet = 0; subnet < lowestCables.size(); subnet++) {
+            var cable = lowestCables.get(subnet);
+            var side = freeSides.get(subnet);
+            var furnace = cable.relative(side);
+            placed.add(furnace);
+            helper.setBlock(furnace, Blocks.FURNACE.defaultBlockState());
+            PartHelper.setPart(helper.getLevel(), helper.absolutePos(cable), side, null,
+                    AEParts.PATTERN_PROVIDER.asItem());
+        }
+        return lowestCables.size();
+    }
+
+    /** How many of the Pattern Providers {@link #addPatternProviders} put are active on their subnet. */
+    public int activePatternProviders() {
+        var active = 0;
+        for (var subnet = 0; subnet < lowestCables.size(); subnet++) {
+            if (helper.getLevel().getBlockEntity(helper.absolutePos(lowestCables.get(subnet))) instanceof IPartHost host
+                    && host.getPart(freeSides.get(subnet)) instanceof IPart part && part.getGridNode() != null
+                    && part.getGridNode().isActive()) {
+                active++;
+            }
+        }
+        return active;
+    }
+
     @Override
     public long operations() {
         return bulk.operations();
@@ -362,6 +403,8 @@ public final class DomainFarmScene implements BusScene {
                 block(corner.offset(-1, LAYERS, 0), AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
             } else {
                 planSubnet(network - 1, corner, step, SUBNET_COLORS[(network - first) % 2], pairs, keys, totalPairs);
+                lowestCables.add(corner.above());
+                freeSides.add(south ? Direction.NORTH : Direction.SOUTH);
             }
             block(riser.above(), RouterRegistration.SWITCH.get().defaultBlockState());
         }

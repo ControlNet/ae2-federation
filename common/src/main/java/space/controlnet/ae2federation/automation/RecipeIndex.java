@@ -24,6 +24,9 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.SmithingTransformRecipe;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.mixin.SmithingTransformRecipeAccess;
 import space.controlnet.ae2federation.script.ListValue;
@@ -31,8 +34,9 @@ import space.controlnet.ae2federation.script.RecordValue;
 
 /**
  * The recipes AE2 can write on patterns, found by the item they make: crafting-table recipes, stonecutting, and
- * smithing upgrades. Built from the server's recipes at the first use, and again after a datapack reload, which
- * replaces the server's recipe manager.
+ * smithing upgrades. Built from the server's recipes when the server has started, and again after a datapack reload,
+ * which replaces the server's recipe manager: a large pack's take about a second (ATM10's 94,646 recipes, 1.1 s), which
+ * a program's first call would otherwise stop the running server for.
  *
  * <p>A recipe reads as its slots, each with the stacks it accepts: the crafting grid's nine row by row (a shaped recipe
  * in its top-left corner), the stonecutter's one, the smithing table's template, base and addition.
@@ -43,7 +47,7 @@ import space.controlnet.ae2federation.script.RecordValue;
  * recipes other than upgrades, as AE2 decodes no others. A crafting recipe other than {@link ShapedRecipe} fills the
  * grid in order, as a shapeless one; writing it checks that the recipe matches.
  */
-final class RecipeIndex {
+public final class RecipeIndex {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(RecipeIndex.class);
     /** Each recipe manager's index; a reload's new manager builds a new one, and the old one goes with its manager. */
     private static final Map<RecipeManager, RecipeIndex> BUILT = new WeakHashMap<>();
@@ -79,6 +83,17 @@ final class RecipeIndex {
         outputs.values().forEach(list -> list.sort(Comparator.comparing(Entry::id)));
         this.byOutput = outputs;
         this.byId = ids;
+    }
+
+    /** Once, at mod start. */
+    public static void register() {
+        NeoForge.EVENT_BUS.addListener((ServerStartedEvent event) -> of(event.getServer()));
+        // With no player, the event is a reload's, after the server took the new recipes.
+        NeoForge.EVENT_BUS.addListener((OnDatapackSyncEvent event) -> {
+            if (event.getPlayer() == null) {
+                of(event.getPlayerList().getServer());
+            }
+        });
     }
 
     static RecipeIndex of(MinecraftServer server) {

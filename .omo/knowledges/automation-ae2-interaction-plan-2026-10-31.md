@@ -89,3 +89,31 @@ mod, without our mod), checked by a structural recogniser of the common formats:
 - Naming (owner, 2026-10-31): reads stay nouns and actions verbs, no `get_` prefix (Python style). Rename
   `ae2.patterns` (list of craftable resources) to `ae2.craftables`, pairing with `ae2.craftable`, so that
   `ae2.provider_patterns` is the only "patterns" read and returns real patterns. Done with the pattern batch.
+
+## Cost at scale (2026-11-01)
+
+Measured with `perfprogramproviders` (manual-only benchmark: `DomainFarmScene` with 1000 subnets in one domain,
+each with a Pattern Provider part on its lowest riser cable facing a Furnace) and the compat test
+`patternrecipes` (core group) on ATM10 8.3. Run them with:
+
+    python3 tools/perf_benchmark.py --tests perfprogramproviders --repeat 1 --label providers
+    python3 tools/compat_run.py --accept-eula --tests patternrecipes atm10
+
+Each program ran three times; medians, wall time of one call in one tick:
+
+| call (1000 subnets, 1000 providers) | ms |
+| --- | --- |
+| `ae2.providers()` | 17-22 |
+| `ae2.provider_patterns(p)` (incl. one `providers()`) | 12 |
+| `ae2f.networks()` | 4.0 |
+| `ae2.storage()` | 3.4 |
+| `ae2.craftables()` | 1.3 |
+| `ae2.cpus()` | 1.1 |
+| `mc.recipes_for("minecraft:stick")` | 0.9 |
+
+- `providers()` is about 20 us per provider. JFR: a third is AE2's `PatternContainerGroup.fromMachine`, once for
+  `targets` and once inside AE2's own `getTerminalGroup()`; the rest is building the records. The Pattern Access
+  Terminal pays the same group lookup per provider each time it opens, so it was left as is.
+- The recipe index: 1797 recipes (dev) 82 ms; ATM10's 94,646 recipes 1.1 s, all in one server tick on the first
+  `mc.recipes_for`. Now built at `ServerStartedEvent` and after a reload (`OnDatapackSyncEvent` with no player): the
+  first call on ATM10 takes 74 ms (code warm-up), later calls 6-7 ms (the stick has many recipes there).

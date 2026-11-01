@@ -14,13 +14,16 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.automation.ProgramHost;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
+import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.material.MaterialRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.EndpointFederationFaceGameTests;
 import space.controlnet.ae2federation.test.PatternProjectionGameTests;
 import space.controlnet.ae2federation.test.ProductionProviderGameTests;
+import space.controlnet.ae2federation.test.automation.ProgramExpression;
 
 /**
  * What every profile checks: Federation can be crafted, and its features work with the profile's mods loaded. Most
@@ -29,6 +32,7 @@ import space.controlnet.ae2federation.test.ProductionProviderGameTests;
 @PrefixGameTestTemplate(false)
 public final class CoreCompatGameTests {
     private static final String TEMPLATES = "ae2federation_test";
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("ae2federation-perf");
 
     private CoreCompatGameTests() {
     }
@@ -47,6 +51,28 @@ public final class CoreCompatGameTests {
                         ProcessingRegistration.PROVIDER_ITEM.get(), ProcessingRegistration.ENDPOINT_ITEM.get())
                 .stream().filter(item -> !made.contains(item)).map(Item::toString).toList();
         helper.assertTrue(missing.isEmpty(), "No recipe makes " + missing);
+        helper.succeed();
+    }
+
+    /**
+     * A program reads the pack's recipes for patterns: {@code mc.recipes_for} indexes every recipe the pack loads, an
+     * addon's recipe it cannot read left out, and finds the stick's. The index is built when the server starts, so even
+     * the first call is quick; its time is logged for scale.
+     */
+    @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 100)
+    public static void patternRecipes(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        // Recipes need no network: an unknown domain is an empty one.
+        var host = new ProgramHost(server, new FederationDomainId("compat-pattern-recipes"), "compat:pattern_recipes");
+        var first = ProgramExpression.run(host, "len(mc.recipes_for(\"minecraft:stick\"))");
+        var again = ProgramExpression.run(host, "len(mc.recipes_for(\"minecraft:stick\"))");
+        LOGGER.info("AE2F_PERF test=patternrecipes metric=recipes value={} unit=count",
+                server.getRecipeManager().getRecipes().size());
+        LOGGER.info("AE2F_PERF test=patternrecipes metric=firstCall value={} unit=ms",
+                String.format(java.util.Locale.ROOT, "%.1f", first[0] / 1e6));
+        LOGGER.info("AE2F_PERF test=patternrecipes metric=laterCall value={} unit=ms",
+                String.format(java.util.Locale.ROOT, "%.1f", again[0] / 1e6));
+        helper.assertTrue(first[2] > 0, "No recipe makes sticks for a pattern");
         helper.succeed();
     }
 

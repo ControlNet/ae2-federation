@@ -17,6 +17,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.automation.ProgramHost;
 import space.controlnet.ae2federation.client.policy.FederationDomainPolicySession;
 import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
@@ -36,6 +37,7 @@ import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
+import space.controlnet.ae2federation.test.automation.ProgramExpression;
 import space.controlnet.ae2federation.test.perf.BulkItemStorage;
 import space.controlnet.ae2federation.test.perf.BusFarmScene;
 import space.controlnet.ae2federation.test.perf.BusScene;
@@ -328,6 +330,60 @@ public final class PerformanceBenchmarkGameTests {
     public static void perfBusesThousandSubnetsLargeDomain(GameTestHelper helper) {
         busFarm(helper, "perfbusesthousandsubnetslargedomain", new DomainFarmScene(helper, 1000, 10, BUS_TYPES, 52),
                 true, 1000, 10);
+    }
+
+    /**
+     * A thousand subnets in one domain, each with a Pattern Provider on its cable facing a Furnace: how long a program's
+     * pattern calls take there, beside other reads of the whole domain. Each program runs three times; the first
+     * {@code mc.recipes_for} builds the recipe index, so its first time is reported apart.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 12000, required = true, manualOnly = true)
+    public static void perfProgramProviders(GameTestHelper helper) {
+        var perf = new PerfMeasure("perfprogramproviders");
+        var server = helper.getLevel().getServer();
+        var scene = new DomainFarmScene(helper, 1000, 2, 100);
+        var stage = new int[] {0};
+        helper.succeedWhen(() -> {
+            if (stage[0] == 0) {
+                helper.assertTrue(scene.build(), "Building the scene");
+                stage[0] = 1;
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(scene.ready(), "Waiting for every subnet to reach the main network");
+                perf.count("providers", scene.addPatternProviders());
+                stage[0] = 2;
+            }
+            helper.assertValueEqual(scene.activePatternProviders(), 1000, "Waiting for every provider to be active");
+            var host = new ProgramHost(server, scene.mainDomain(), "gametest:perfprogramproviders");
+            var first = ProgramExpression.run(host, "len(mc.recipes_for(\"minecraft:stick\"))");
+            perf.record("recipesForFirst", first[0] / 1e6, "ms");
+            helper.assertTrue(first[2] > 0, "The stick has recipes");
+            var calls = new String[][] {
+                    {"recipesFor", "len(mc.recipes_for(\"minecraft:stick\"))"},
+                    {"providers", "len(ae2.providers())"},
+                    {"providersOneNetwork", "len(ae2.providers(ae2.providers()[999].network))"},
+                    {"providerPatterns", "len(ae2.provider_patterns(ae2.providers()[999]))"},
+                    // Other reads over the whole domain, for scale.
+                    {"networks", "len(ae2f.networks())"},
+                    {"storage", "len(ae2.storage())"},
+                    {"craftables", "len(ae2.craftables())"},
+                    {"cpus", "len(ae2.cpus())"}};
+            for (var call : calls) {
+                var times = new long[3];
+                long result = 0;
+                for (var round = 0; round < times.length; round++) {
+                    var run = ProgramExpression.run(host, call[1]);
+                    times[round] = run[0];
+                    perf.count(call[0] + "RunnerTicks", run[1]);
+                    result = run[2];
+                }
+                java.util.Arrays.sort(times);
+                perf.record(call[0], times[1] / 1e6, "ms");
+                perf.count(call[0] + "Result", result);
+            }
+            scene.close();
+        });
     }
 
     private static void busFarm(GameTestHelper helper, String testId, BusFarmScene.Layout layout, int subnets,
