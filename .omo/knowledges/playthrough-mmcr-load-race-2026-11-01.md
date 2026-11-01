@@ -17,3 +17,6 @@ with the same mods, loaded fine, and the commit only added a library read.
   `logs/latest.log` (search for `ModItems.<clinit>`).
 - Upstream fix to propose (owner submits): walk a copy of the map in `ModItems.<clinit>`, or register the
   KubeJS machines before the item class is first loaded.
+- Checked 2026-11-01: the newest release, 1.21.1-0.1.5 (2026-10-29), has the same code (`ModItems.<clinit>` still
+  walks the plain `LinkedHashMap` `ModBlocks.BLOCKS` with `forEach`, no lock or copy); neither the 0.1.4/0.1.5
+  release notes nor the upstream issues mention it.
