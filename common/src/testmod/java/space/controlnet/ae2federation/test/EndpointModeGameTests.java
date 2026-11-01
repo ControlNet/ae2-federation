@@ -42,18 +42,20 @@ public final class EndpointModeGameTests {
                 helper.assertTrue(fixture.binding().runtime().mode().orElseThrow()
                         instanceof EndpointModeGeneration.Local, "Local mode must have a typed generation");
                 helper.assertTrue(fixture.nativePush(), "Native Provider must target Endpoint subnet storage");
-                helper.assertValueEqual(fixture.subnetItemCount(), 1L, "Local input must reach the subnet Grid");
-                helper.assertTrue(fixture.providerNode().getGrid() != fixture.endpointNode().getGrid(),
-                        "Local source and subnet Grids must remain separate");
-                var context = fixture.binding().runtime().itemReturnContext().orElseThrow();
-                helper.assertTrue(context.owner().inventory() == fixture.provider().getLogic().getReturnInv(),
-                        "Local return context must retain the exact Provider return inventory");
-                var handler = fixture.itemCapability(Direction.NORTH);
-                helper.assertTrue(handler != null, "Local item return capability must resolve");
-                helper.assertTrue(handler.insertItem(0, new ItemStack(Items.IRON_INGOT), false).isEmpty(),
-                        "Local return must delegate to the native adapter");
-                helper.assertValueEqual(fixture.provider().getLogic().getReturnInv().getAmount(0), 1L,
-                        "Native Provider return inventory must own the accepted item");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertValueEqual(fixture.subnetItemCount(), 1L, "Local input must reach the subnet Grid");
+                    helper.assertTrue(fixture.providerNode().getGrid() != fixture.endpointNode().getGrid(),
+                            "Local source and subnet Grids must remain separate");
+                    var context = fixture.binding().runtime().itemReturnContext().orElseThrow();
+                    helper.assertTrue(context.owner().inventory() == fixture.provider().getLogic().getReturnInv(),
+                            "Local return context must retain the exact Provider return inventory");
+                    var handler = fixture.itemCapability(Direction.NORTH);
+                    helper.assertTrue(handler != null, "Local item return capability must resolve");
+                    helper.assertTrue(handler.insertItem(0, new ItemStack(Items.IRON_INGOT), false).isEmpty(),
+                            "Local return must delegate to the native adapter");
+                    helper.assertValueEqual(fixture.provider().getLogic().getReturnInv().getAmount(0), 1L,
+                            "Native Provider return inventory must own the accepted item");
+                });
                 saved[0] = fixture.reloadEndpoint();
                 helper.assertTrue(false, "Waiting for restored production Endpoint lifecycle");
             }
@@ -96,20 +98,22 @@ public final class EndpointModeGameTests {
                 var context = fixture.endpointBinding().runtime().itemReturnContext().orElseThrow();
                 helper.assertTrue(context.owner().inventory() == fixture.nativeRemainderDestination(),
                         "Federated return context must retain the exact native Lane return inventory");
-                var handler = fixture.endpointBinding().runtime().itemReturn(Direction.NORTH).orElseThrow();
-                helper.assertTrue(handler.insertItem(0, new ItemStack(Items.GOLD_INGOT), false).isEmpty(),
-                        "Federated return must delegate to the native Lane adapter");
-                helper.assertValueEqual(fixture.providerLogic().getReturnInv().getAmount(0), 1L,
-                        "The original native Lane must own the returned item");
-                helper.assertTrue(fixture.sourceGrid() != fixture.targetGrid(), "Federated Grids must remain distinct");
-                helper.assertValueEqual(fixture.nativeTargetLookupCount(), 2,
-                        "Authorized input must use both native target lookups");
-                helper.assertTrue(fixture.productionEndpointEntity().claimState() instanceof ClaimState.Owned owned
-                        && owned.ownerIdentity().provider().equals(owner) && owned.epoch().value() == 1,
-                        "Production Endpoint must own the exact non-default Provider");
+                GameTestChecks.once(helper, () -> {
+                    var handler = fixture.endpointBinding().runtime().itemReturn(Direction.NORTH).orElseThrow();
+                    helper.assertTrue(handler.insertItem(0, new ItemStack(Items.GOLD_INGOT), false).isEmpty(),
+                            "Federated return must delegate to the native Lane adapter");
+                    helper.assertValueEqual(fixture.providerLogic().getReturnInv().getAmount(0), 1L,
+                            "The original native Lane must own the returned item");
+                    helper.assertTrue(fixture.sourceGrid() != fixture.targetGrid(), "Federated Grids must remain distinct");
+                    helper.assertValueEqual(fixture.nativeTargetLookupCount(), 2,
+                            "Authorized input must use both native target lookups");
+                    helper.assertTrue(fixture.productionEndpointEntity().claimState() instanceof ClaimState.Owned owned
+                            && owned.ownerIdentity().provider().equals(owner) && owned.epoch().value() == 1,
+                            "Production Endpoint must own the exact non-default Provider");
+                });
                 saved[0] = fixture.reloadProductionEndpoint();
-                helper.assertTrue(!saved[0].runtimeReferencesSerialized(),
-                        "Endpoint persistence must not serialize runtime object references");
+                GameTestChecks.once(helper, () -> helper.assertTrue(!saved[0].runtimeReferencesSerialized(),
+                        "Endpoint persistence must not serialize runtime object references"));
                 helper.assertTrue(false, "Waiting for restored production Endpoint lifecycle");
             }
             var restored = fixture.productionEndpointEntity();
@@ -131,10 +135,12 @@ public final class EndpointModeGameTests {
             helper.assertTrue(fixture.endpointBinding().runtime().inputStorage(Direction.NORTH).isPresent(),
                     "Reloaded Federated mode must expose current input capability");
             helper.assertTrue(fixture.pushLane(0), "Restored owned Claim must authorize fresh native input");
-            helper.assertValueEqual(fixture.targetItemCount(), 2L,
-                    "Post-reload native input must reach the same target Grid");
-            helper.assertTrue(fixture.endpointBinding().runtime().itemReturn(Direction.NORTH).isPresent(),
-                    "Post-reload authorization must install current native return capability");
+            GameTestChecks.once(helper, () -> {
+                helper.assertValueEqual(fixture.targetItemCount(), 2L,
+                        "Post-reload native input must reach the same target Grid");
+                helper.assertTrue(fixture.endpointBinding().runtime().itemReturn(Direction.NORTH).isPresent(),
+                        "Post-reload authorization must install current native return capability");
+            });
             var facts = new LinkedHashMap<>(observation.evidenceFacts());
             facts.put("mode", "FEDERATED");
             facts.put("claimAuthorized", "true");

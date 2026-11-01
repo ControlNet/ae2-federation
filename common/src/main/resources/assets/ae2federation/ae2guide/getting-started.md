@@ -87,7 +87,7 @@ another mod's generator; AE2 itself makes no FE. Until the converter has FE, the
     Federation Cable between the two Switches
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="4 1 0" max="5 3 1">
-    Beam Converter, two blocks: its lower end on the cable, FE in through any other face
+    Beam Converter, two blocks: its lower end on the cable, FE in through its rear (upper) face
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
     Switch: one face on network B's cable, another on the Federation Cable

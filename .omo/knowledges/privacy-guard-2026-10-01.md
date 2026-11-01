@@ -39,3 +39,23 @@ institutions, no host names, no SSH identity files, no home directory paths. Wri
   platform uploads skip versions they have). Push tags before master.
 - GitHub can still serve the old commits by hash until GitHub Support purges them; local backups were kept under
   `refs/heads/backup/*-before-rewrite` and `refs/backup-tags/*`.
+
+## Secret Guard interoperability
+
+- The external `secret-guard` scanner flags `tests/test_privacy_guard.py:25`, an intentional positive fixture in
+  `PrivacyGuardTest.test_built_in_patterns_find_home_paths_and_private_keys`. Its string is only the 35-character
+  OpenSSH private-key opening marker, not key material. Keep the fixture; do not delete it to silence the scan.
+- The fixture's `privacy-guard: allow` comment is understood by this repository's guard, not by the external
+  scanner. Classify this match manually rather than exempting the entire test file.
+- An empty `staged` scan has examined no files. The external scanner's `tracked` mode examines current worktree
+  contents of tracked paths, not repository history or untracked files.
+- Credential scanning does not establish absence of personal identifiers. Audit current tracked files and
+  non-ignored untracked files with the repository's private patterns and personal-path rules before staging.
+- A worktree privacy audit found 13 username-bearing home paths in
+  `tests/compat/version-boundaries-evidence.json`, under `serverExperiments[*].result.detail`. The evidence file
+  was untracked and not ignored, so the preceding external `tracked` and empty `staged` scans missed it.
+  Preserve diagnostic meaning when sanitizing machine-local paths; do not hide evidence by ignoring the file.
+- Remediated all 13 paths to repository-relative paths. JSON parsing and a recursive before/after comparison
+  confirmed only those diagnostic strings changed; all other evidence remained intact. A subsequent scan of
+  tracked and non-ignored untracked text found no personal-pattern or username matches. Ignored files and Git
+  history were outside that verification scope.

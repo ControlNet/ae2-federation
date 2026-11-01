@@ -13,7 +13,7 @@
     "sha512": "155212c16f05d9fc98e43d59662c9118a96d990f9832cf3abb0af35412e075e7082fb5e1b487cdbd8b6a76d480ba429e3be619daf30dc61a58be44e8366fea2f"
   },
   "mods": [
-    "ldlib2@2.2.41"
+    "ldlib2@2.2.44"
   ],
   "memory": "6G",
   "timeout": 1800,

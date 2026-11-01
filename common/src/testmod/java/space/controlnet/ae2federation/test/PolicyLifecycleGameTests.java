@@ -54,8 +54,10 @@ public final class PolicyLifecycleGameTests {
                         new PolicyEdit(key, PolicyRevision.NONE, PolicyRule.storageDefaults())));
                 firstIdentity[0] = fixtures.firstBridgeIdentity();
                 fixtures.removeFirstBridge();
-                helper.assertValueEqual(activation(helper, fixtures, key), PolicyActivationState.DISCONNECTED,
-                        "Removing the old Bridge must disconnect without deleting Policy");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertValueEqual(activation(helper, fixtures, key), PolicyActivationState.DISCONNECTED,
+                            "Removing the old Bridge must disconnect without deleting Policy");
+                });
                 fixtures.placeSecondBridge();
                 phase[0] = 2;
                 helper.assertTrue(false, "Waiting for replacement Bridge Federation Domain");
@@ -117,29 +119,31 @@ public final class PolicyLifecycleGameTests {
             var key = storageKey(fixtures);
             helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.READY)),
                     PolicyActivationState.UNCONFIGURED, "Absent rule must remain unconfigured");
-            var offRevision = accepted(service.edit(new PolicyEdit(key, PolicyRevision.NONE,
-                    PolicyRule.storageDefaults().withEnabled(false))));
-            helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.READY)),
-                    PolicyActivationState.OFF, "Disabled rule must remain off");
-            var enabledRevision = accepted(service.edit(new PolicyEdit(key, offRevision, PolicyRule.storageDefaults())));
-            helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.UNREADY)),
-                    PolicyActivationState.BACKEND_UNREADY, "Confirmed topology cannot hide backend unavailability");
-            helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.READY)),
-                    PolicyActivationState.ACTIVE, "Settled identities and confirmed common Federation Domain must activate");
-            fixtures.removeFirstBridge();
-            helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.READY)),
-                    PolicyActivationState.DISCONNECTED, "Federation Domain removal must disconnect immediately");
-            var verifyProcessId = ProcessHandle.current().pid();
-            helper.assertTrue(verifyProcessId != restart.prepareProcessId(), "Restart phases must use distinct JVM processes");
-            helper.assertValueEqual(restored.revision(), restart.revision(), "Policy revision must survive restart");
-            PolicyEvidence.write("policylifecyclematrix", 12, Map.ofEntries(
-                    Map.entry("unconfiguredState", "UNCONFIGURED"), Map.entry("offState", "OFF"),
-                    Map.entry("disconnectedState", "DISCONNECTED"), Map.entry("backendUnreadyState", "BACKEND_UNREADY"),
-                    Map.entry("activeState", "ACTIVE"), Map.entry("restartRestored", "true"),
-                    Map.entry("prepareProcessId", Long.toString(restart.prepareProcessId())),
-                    Map.entry("verifyProcessId", Long.toString(verifyProcessId)),
-                    Map.entry("processesDistinct", "true"), Map.entry("persistedRevision", Long.toString(restored.revision().value())),
-                    Map.entry("runtimeStatePersisted", "false"), Map.entry("finalRevision", Long.toString(enabledRevision.value()))));
+            GameTestChecks.once(helper, () -> {
+                var offRevision = accepted(service.edit(new PolicyEdit(key, PolicyRevision.NONE,
+                        PolicyRule.storageDefaults().withEnabled(false))));
+                helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.READY)),
+                        PolicyActivationState.OFF, "Disabled rule must remain off");
+                var enabledRevision = accepted(service.edit(new PolicyEdit(key, offRevision, PolicyRule.storageDefaults())));
+                helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.UNREADY)),
+                        PolicyActivationState.BACKEND_UNREADY, "Confirmed topology cannot hide backend unavailability");
+                helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.READY)),
+                        PolicyActivationState.ACTIVE, "Settled identities and confirmed common Federation Domain must activate");
+                fixtures.removeFirstBridge();
+                helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.READY)),
+                        PolicyActivationState.DISCONNECTED, "Federation Domain removal must disconnect immediately");
+                var verifyProcessId = ProcessHandle.current().pid();
+                helper.assertTrue(verifyProcessId != restart.prepareProcessId(), "Restart phases must use distinct JVM processes");
+                helper.assertValueEqual(restored.revision(), restart.revision(), "Policy revision must survive restart");
+                PolicyEvidence.write("policylifecyclematrix", 12, Map.ofEntries(
+                        Map.entry("unconfiguredState", "UNCONFIGURED"), Map.entry("offState", "OFF"),
+                        Map.entry("disconnectedState", "DISCONNECTED"), Map.entry("backendUnreadyState", "BACKEND_UNREADY"),
+                        Map.entry("activeState", "ACTIVE"), Map.entry("restartRestored", "true"),
+                        Map.entry("prepareProcessId", Long.toString(restart.prepareProcessId())),
+                        Map.entry("verifyProcessId", Long.toString(verifyProcessId)),
+                        Map.entry("processesDistinct", "true"), Map.entry("persistedRevision", Long.toString(restored.revision().value())),
+                        Map.entry("runtimeStatePersisted", "false"), Map.entry("finalRevision", Long.toString(enabledRevision.value()))));
+            });
             fixtures.close();
         });
     }
@@ -163,8 +167,10 @@ public final class PolicyLifecycleGameTests {
             if (phase[0] == 1) {
                 key[0] = storageKey(fixtures);
                 revision[0] = accepted(service.edit(new PolicyEdit(key[0], PolicyRevision.NONE, PolicyRule.storageDefaults())));
-                helper.assertValueEqual(activation(helper, fixtures, key[0]), PolicyActivationState.ACTIVE,
-                        "Policy is effective before adding the part");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertValueEqual(activation(helper, fixtures, key[0]), PolicyActivationState.ACTIVE,
+                            "Policy is effective before adding the part");
+                });
                 appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(position.east()),
                         net.minecraft.core.Direction.DOWN, null, appeng.core.definitions.AEParts.EXPORT_BUS.asItem());
                 phase[0] = 2;

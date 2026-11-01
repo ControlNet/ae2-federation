@@ -26,6 +26,7 @@ download page.
 | Applied Energistics 2 | `ae2` | required | `[19.2.9,)` (`19.2.17`) | API: MIT. Mod: LGPL-3.0. **Textures and models: CC BY-NC-SA 3.0.** Text and translations: CC0 |
 | LDLib2 | `ldlib2` | required | `[2.2.34,)` (`2.2.34`) | LGPL-3.0 |
 | GuideME | `guideme` | compile-time only; at run time we use the GuideME that AE2 requires | `21.1.1` | LGPL-3.0; some embedded libraries MIT and Apache-2.0 |
+| Data Energistics | `data_energistics` | optional; only our Data Energistics plugin classes refer to it | `3.3.5` | AGPL-3.0-or-later (code); All Rights Reserved (resources), per its mod metadata |
 | Jade | `jade` | optional; only our Jade plugin class refers to it | `15.10.6` | CC BY-NC-SA 4.0, per its mod metadata |
 | Just Enough Characters | `jecharacters` | optional; looked up at run time for pinyin search, nothing compiled against it | — | MIT |
 
@@ -56,7 +57,8 @@ Mods used only to test compatibility are listed under *Compatibility testing*.
 
 Upstream projects: <https://github.com/neoforged/NeoForge> ·
 <https://github.com/AppliedEnergistics/Applied-Energistics-2> · <https://github.com/Low-Drag-MC/LDLib2> ·
-<https://github.com/AppliedEnergistics/GuideME> · <https://github.com/Snownee/Jade> ·
+<https://github.com/AppliedEnergistics/GuideME> · <https://github.com/ModularMCLib/DataEnergistics> ·
+<https://github.com/Snownee/Jade> ·
 <https://github.com/Towdium/JustEnoughCharacters>
 
 ## Compatibility testing

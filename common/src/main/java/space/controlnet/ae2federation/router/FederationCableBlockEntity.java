@@ -17,7 +17,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.bundle.BundleBeam;
 import space.controlnet.ae2federation.bundle.BundleContacts;
-import space.controlnet.ae2federation.bundle.BundleLook;
+import space.controlnet.ae2federation.bundle.BundleLookFrame;
 import space.controlnet.ae2federation.bundle.BundleSegment;
 import space.controlnet.ae2federation.bundle.BundleSet;
 import space.controlnet.ae2federation.bundle.BundledCables;
@@ -364,11 +364,13 @@ public final class FederationCableBlockEntity extends BlockEntity {
             bundleBeam = own;
             return;
         }
-        var look = BundleLook.of(level, worldPosition);
+        // The tick's looks are shared: a layer's beam reads the other layers of a long device contact.
+        var frame = BundleLookFrame.of(level);
+        var look = frame.look(worldPosition);
         flowMask = look.isPresent() ? look.get().flowMask()
                 : CableVisualConnections.maskOf(CableVisualConnections.connections(level, worldPosition));
         var segment = bundleSegment;
         bundleBeam = look.isEmpty() || segment == null ? null : BundleBeam.of(worldPosition, segment, look.get(),
-                layers -> BundleLook.of(level, worldPosition.relative(segment.axis(), layers))).orElse(null);
+                layers -> frame.look(worldPosition.relative(segment.axis(), layers))).orElse(null);
     }
 }

@@ -54,7 +54,7 @@ CODE_DRAWN = {NS + 'part/cable/dense/' + name for name in ('core', 'core_connect
                                                            'core_connected_3', 'core_connected_4',
                                                            'core_connected_2_straight', 'line', 'collar')} \
     | {NS + 'block/large_cable/large_cable'} \
-    | {NS + f'block/{device}/{device}_{tile}' for device in ('router', 'switch', 'quantum_cube')
+    | {NS + f'block/{device}/{device}_{tile}' for device in ('router', 'switch')
        for tile in ('base', 'corner', 'side_hor', 'side_ver')}  # DeviceStructureGeometry's connected-face tiles
 # Textures the client code binds by path, such as the bundle selection's hatch, are drawn too.
 JAVA = '\n'.join(path.read_text() for path in (REPO / 'common/src/main/java').rglob('*.java'))
@@ -75,7 +75,8 @@ for path in (BASE / 'textures').rglob('*.png'):
     meta = path.with_suffix('.png.mcmeta')
     # The artist's 2x2 and 3x3 Beam Formers are modelled over two and three blocks, on 64- and 128-pixel sheets.
     size = {NS + 'block/beam_emitter/large_light_emitter': 64, NS + 'block/beam_emitter/huge_light_emitter': 128,
-            NS + 'block/large_cable/large_cable': 32}.get(ref, 16)
+            NS + 'block/large_cable/large_cable': 32,
+            NS + 'block/refined_devices/surface': 512, NS + 'block/refined_devices/emission': 512}.get(ref, 16)
     assert im.width == size, ref
     if meta.exists() and ref.startswith(NS + 'item/'):
         # The artist's animated item icons: every listed frame must exist in the strip.
@@ -100,6 +101,8 @@ assert not (BASE / 'models/block/cable').exists(), 'per-mask cable models are no
 with tempfile.TemporaryDirectory() as temp:
     subprocess.run([sys.executable, str(Path(__file__).with_name('build_assets.py')), '--output', temp], check=True)
     subprocess.run([sys.executable, str(REPO / 'tools/blockbench/export_beam_former_models.py'),
+                    '--output', temp], check=True)
+    subprocess.run([sys.executable, str(REPO / 'tools/blockbench/export_beam_converter_models.py'),
                     '--output', temp], check=True)
     for path in (Path(temp)/'assets/ae2federation').rglob('*'):
         if path.is_file():

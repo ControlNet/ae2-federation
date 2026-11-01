@@ -125,7 +125,16 @@ public final class TopKeys<K> {
 
     /** Whether the longest range holds nothing at {@code nowSecond}. */
     public boolean idle(long nowSecond) {
-        return read(StatisticsRange.LONGEST, nowSecond, 1).isEmpty();
+        // Off the slots' bucket numbers, as Timeline#idle: reading the range would sum and sort every key it holds.
+        var range = StatisticsRange.LONGEST;
+        int tier = range.ordinal();
+        long last = Math.floorDiv(nowSecond, range.seconds());
+        for (int slot = 0; slot < range.buckets(); slot++) {
+            var point = points.get(tier).get(slot);
+            long bucket = buckets[tier][slot];
+            if (point != null && !point.isEmpty() && bucket <= last && bucket > last - range.buckets()) return false;
+        }
+        return true;
     }
 
     /** One saved point: its range, bucket number and the amounts of the keys it kept. */

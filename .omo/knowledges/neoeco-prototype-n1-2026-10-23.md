@@ -51,7 +51,7 @@ requires Neo ECO AE Extension 21.2.10 (`udZtKfzP` `kzNgvnUI`). Compat profiles m
 the feature branch); the feature build's `neoEcoApi` configuration compiles against both (verification-metadata has
 their sha256s). N4/N6/N9 compiled and passed unchanged on 21.2.10.
 
-Code (`automation.neoeco`):
+Code (`automation.neoeco`, moved to `compat.neoecoae.computation` on 2026-11-01 by dev's rule that optional-mod code lives in `compat/<mod id>`):
 - `NeoEcoSupport.prototypeAvailable()`: Neo ECO >= 21.2.1 and `neoecoprototype` >= 1.4.0; only then
   `PrototypeComputing.register` runs (it refers to Prototype classes).
 - `PrototypeComputing`: block/item `eco_computation_system_l1` (N4's `EcoComputationSystemBlock`), block entity

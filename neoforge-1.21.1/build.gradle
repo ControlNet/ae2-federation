@@ -106,6 +106,14 @@ repositories {
             includeGroup('com.gregtechceu.gtceu')
         }
     }
+    maven {
+        // CurseForge-only mods, by project and file id.
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+        content {
+            includeGroup('curse.maven')
+        }
+    }
 }
 
 def prepareLoopbackServerProperties = tasks.register('prepareLoopbackServerProperties') {
@@ -169,6 +177,19 @@ def prepareLogoClientOptions = tasks.register('prepareLogoClientOptions') {
 // lighting and mipmaps the screenshots are judged with.
 def prepareStructureSceneClientOptions = tasks.register('prepareStructureSceneClientOptions') {
     def optionsFile = layout.projectDirectory.file('run-structure-scene/options.txt')
+    outputs.file(optionsFile)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def file = optionsFile.asFile
+        file.parentFile.mkdirs()
+        file.setText('onboardAccessibility:false\npauseOnLostFocus:false\nrenderDistance:8\nfov:0.0\n',
+                StandardCharsets.UTF_8.name())
+    }
+}
+
+def prepareRefinedDeviceClientOptions = tasks.register('prepareRefinedDeviceClientOptions') {
+    def optionsFile = layout.projectDirectory.file('run-refined-devices/options.txt')
     outputs.file(optionsFile)
     outputs.upToDateWhen { false }
 
@@ -343,6 +364,16 @@ neoForge {
             systemProperty('ae2federation.teaser.full', providers.gradleProperty('teaserFull').getOrElse('false'))
             logLevel = org.slf4j.event.Level.INFO
             taskBefore(prepareStructureSceneClientOptions)
+        }
+        refinedDeviceClient {
+            client()
+            gameDirectory = project.file('run-refined-devices')
+            sourceSet = testmod
+            programArguments.addAll('--width', '1600', '--height', '960')
+            systemProperty('ae2federation.refinedDevice.out', rootProject.file(providers.gradleProperty('refinedDeviceOut')
+                    .getOrElse('build/refined-devices-ingame')).absolutePath)
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareRefinedDeviceClientOptions)
         }
         beamPreviewClient {
             client()
@@ -525,7 +556,12 @@ configurations {
         canBeConsumed = false
         canBeResolved = true
         transitive = false
-        description = 'Neo ECO AE Extension and Neo ECO Prototype, compiled against by the optional automation.neoeco package only; on no run or test classpath.'
+        description = 'Neo ECO AE Extension and Neo ECO Prototype, compiled against by the optional compat.neoecoae.computation package only; on no run or test classpath.'
+    }
+    dataEnergisticsApi {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Data Energistics, compiled against by its optional plugin only; on no run or test classpath.'
     }
     appliedFluxCompatibility {
         canBeConsumed = false
@@ -553,7 +589,7 @@ configurations {
     gtceuTestImplementation.extendsFrom(gtceuCompatibility)
 }
 
-sourceSets.main.compileClasspath += configurations.jadeApi
+sourceSets.main.compileClasspath += configurations.jadeApi + configurations.dataEnergisticsApi
 sourceSets.main.compileClasspath += configurations.neoEcoApi
 
 dependencies {
@@ -564,11 +600,14 @@ dependencies {
     // Jade 15.10.6 for 1.21.1 NeoForge (Modrinth version eYz2YBGT); optional, only its plugin class refers to it.
     // Not compileOnly: test source sets run with the main compile classpath, and a loaded Jade breaks fake players.
     jadeApi('maven.modrinth:jade:eYz2YBGT')
-    // Neo ECO AE Extension 21.2.10 (Modrinth project udZtKfzP, version kzNgvnUI) and Neo ECO Prototype 1.4.0 (project
-    // 3HO3APHb, version YY1JqK65), the versions the compat profiles run. Optional: only automation.neoeco refers to
+    // Neo ECO AE Extension 21.2.11 (Modrinth project udZtKfzP, version dpuG3DRu) and Neo ECO Prototype 1.4.2 (project
+    // 3HO3APHb, version CphfMpaT), the versions the compat profiles run. Optional: only compat.neoecoae.computation refers to
     // them, and each of its parts is reached only when its mod is loaded.
-    neoEcoApi('maven.modrinth:udZtKfzP:kzNgvnUI')
-    neoEcoApi('maven.modrinth:3HO3APHb:YY1JqK65')
+    neoEcoApi('maven.modrinth:udZtKfzP:dpuG3DRu')
+    neoEcoApi('maven.modrinth:3HO3APHb:CphfMpaT')
+    // Data Energistics 3.3.5 (CurseForge project 1565514, file 9095664), the compat runs' pin; only its plugin class
+    // refers to it.
+    dataEnergisticsApi('curse.maven:data-energistics-1565514:9095664')
     testImplementation(platform('org.junit:junit-bom:5.10.1'))
     testImplementation('org.junit.jupiter:junit-jupiter')
     testRuntimeOnly('org.junit.platform:junit-platform-launcher')

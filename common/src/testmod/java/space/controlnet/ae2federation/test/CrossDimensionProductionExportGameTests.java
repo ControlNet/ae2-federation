@@ -173,10 +173,12 @@ public final class CrossDimensionProductionExportGameTests {
                 site.setBlock(FURNACE, Blocks.FURNACE.defaultBlockState());
                 site.<FurnaceBlockEntity>getBlockEntity(FURNACE).setItem(1, new ItemStack(Items.COAL, 64));
                 site.setBlock(HOPPER, Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.DOWN));
-                helper.assertTrue(PartHelper.setPart(site.level(), site.absolute(FURNACE.above()), Direction.DOWN, null,
-                        AEParts.EXPORT_BUS.asItem()) != null, "The Export Bus must be placed over the furnace");
-                helper.assertTrue(PartHelper.setPart(helper.getLevel(), helper.absolutePos(TERMINAL_CABLE),
-                        Direction.WEST, null, AEParts.TERMINAL.asItem()) != null, "The ME Terminal must be placed");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(PartHelper.setPart(site.level(), site.absolute(FURNACE.above()), Direction.DOWN, null,
+                            AEParts.EXPORT_BUS.asItem()) != null, "The Export Bus must be placed over the furnace");
+                    helper.assertTrue(PartHelper.setPart(helper.getLevel(), helper.absolutePos(TERMINAL_CABLE),
+                            Direction.WEST, null, AEParts.TERMINAL.asItem()) != null, "The ME Terminal must be placed");
+                });
                 stage[0] = 3;
             }
             if (stage[0] == 3) {
@@ -184,13 +186,15 @@ public final class CrossDimensionProductionExportGameTests {
                 helper.assertTrue(bus.getMainNode().isActive(), "Waiting for the Export Bus to be powered");
                 bus.getConfig().setStack(0, new GenericStack(COBBLESTONE, 1));
                 var source = grid(helper.getBlockEntity(SOURCE_CHEST));
-                helper.assertValueEqual(source.getStorageService().getInventory().insert(COBBLESTONE, 16,
-                        Actionable.MODULATE, IActionSource.empty()), 16L, "The source chest takes the cobblestone");
-                FederationPatternProviderBlockEntity provider = helper.getBlockEntity(PROVIDER);
-                var pattern = PatternDetailsHelper.encodeProcessingPattern(List.of(new GenericStack(COBBLESTONE, 1)),
-                        List.of(new GenericStack(STONE, 1)));
-                helper.assertTrue(provider.getTerminalPatternInventory().insertItem(0, pattern, false).isEmpty(),
-                        "The Provider takes the pattern");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertValueEqual(source.getStorageService().getInventory().insert(COBBLESTONE, 16,
+                            Actionable.MODULATE, IActionSource.empty()), 16L, "The source chest takes the cobblestone");
+                    FederationPatternProviderBlockEntity provider = helper.getBlockEntity(PROVIDER);
+                    var pattern = PatternDetailsHelper.encodeProcessingPattern(List.of(new GenericStack(COBBLESTONE, 1)),
+                            List.of(new GenericStack(STONE, 1)));
+                    helper.assertTrue(provider.getTerminalPatternInventory().insertItem(0, pattern, false).isEmpty(),
+                            "The Provider takes the pattern");
+                });
                 stage[0] = 4;
             }
             var source = grid(helper.getBlockEntity(SOURCE_CHEST));

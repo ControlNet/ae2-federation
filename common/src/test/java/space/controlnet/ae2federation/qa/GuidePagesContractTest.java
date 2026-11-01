@@ -36,7 +36,7 @@ final class GuidePagesContractTest {
     private static final Set<String> FEDERATION_ITEMS = Set.of("nexus_processor_press", "printed_nexus_circuit", "nexus_processor", "nexus_core",
             "bridge", "router", "switch", "cable", "pattern_provider", "processing_endpoint", "automation_interface",
             "federation_p2p_tunnel",
-            "beam_converter", "creative_beam_converter", "beam_former", "quantum_cube", "creative_computing_device");
+            "beam_converter", "beam_former", "quantum_cube", "creative_computing_device");
     /** Our items that exist only beside another mod, by that mod; only a pack that requires the mod may name them. */
     private static final Map<String, Set<String>> FEDERATION_MOD_ITEMS = Map.of("neoecoae",
             Set.of("eco_computation_system_l4", "eco_computation_system_l6", "eco_computation_system_l9",

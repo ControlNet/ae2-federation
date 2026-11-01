@@ -20,7 +20,7 @@ import space.controlnet.ae2federation.storage.mount.StorageMountService;
  * generation. {@code IStorageService} has no public query or listener for which inventories are mounted, so
  * Federation would otherwise have to replay every provider's {@code mountInventories} on every storage operation.
  * The generation is bumped only by {@link StorageServiceProviderStateMixin} when AE2 really mounts or unmounts.
- * Nothing here changes AE2 behaviour; {@code StorageServiceNotificationMixin} stays responsible for notifications.
+ * Nothing here changes AE2 behaviour.
  */
 @Mixin(StorageService.class)
 public abstract class StorageServiceMountLedgerMixin implements NativeMountLedger.ServiceMountLedger {

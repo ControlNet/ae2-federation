@@ -16,8 +16,8 @@ item_ids:
 
 The Router ends cable segments, so that a [Federation domain](../mechanics/index.md) can grow without filling its cables
 (see [Network Capacity](../mechanics/capacity.md)). Each of its faces links onwards to
-<ItemLink id="ae2federation:cable" />, a <ItemLink id="ae2federation:switch" />, a Pattern Provider front or an
-Endpoint front. Federation Cable connects and branches by itself, so a domain needs Routers only for capacity.
+<ItemLink id="ae2federation:cable" /> and to every device face the cable joins (listed on its page), such as a
+<ItemLink id="ae2federation:switch" />, a Pattern Provider front or an Endpoint front. Federation Cable connects and branches by itself, so a domain needs Routers only for capacity.
 
 A Router's faces take Federation blocks only; ME networks join the domain through a Switch. Each Router block uses
 2 FE per tick ([Power](../mechanics/power.md)). Right-click a Router to open the Federation screen for its domain.
@@ -83,7 +83,7 @@ two of its blocks still touches only one Router. Every outer face links like a s
   build on it as usual. With Jade installed, looking at a Router shows "Structure: 3×2×1" or the reason it is not
   formed.
 
-A formed Router is how a [bundled cable](../mechanics/bundled-cables.md) meets ordinary cables: a bundle connects only to a
-Router or Switch face that covers its whole end or side, and the Router's other faces take ordinary Federation Cables.
+A formed Router is the usual way for a [bundled cable](../mechanics/bundled-cables.md) to meet ordinary cables: a bundle
+connects to a Router face that covers its whole end or side, and the Router's other faces take ordinary Federation Cables.
 
 <RecipeFor id="ae2federation:router" />

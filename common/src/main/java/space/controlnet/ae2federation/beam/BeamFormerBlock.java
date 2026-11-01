@@ -96,6 +96,11 @@ public final class BeamFormerBlock extends BaseEntityBlock implements FormableDe
         return defaultBlockState().setValue(FACING, facing);
     }
 
+    @Override
+    public String sizeRule() {
+        return "beam_former";
+    }
+
     /** The cuboid must be a former's square; its blocks may face any way. */
     @Override
     public DeviceStructure.Result judge(BlockGetter level, DeviceStructure.Valid body) {

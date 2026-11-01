@@ -2,8 +2,8 @@
 
 Status: implemented on `dev` (2026-10-17). Design discussion:
 [remote Federation connections](../ideas/remote-federation-connections.md), follow-up 2026-10-17; plan and decisions
-D1-D10: `.omo/plans/quantum-cube.md`. The textures are temporary (the Router's tiles, recoloured violet) until the
-artist delivers.
+D1-D10: `.omo/plans/quantum-cube.md`. The Blender artwork is integrated as an open textured frame with a
+layered teal fragment core (2026-10-26); see [runtime art notes](../art/refined-device-runtime.md).
 
 ## Behavior
 
@@ -33,14 +33,16 @@ artist delivers.
   unformed block costs 0. A cube costs 1188, 2816 or 5500 FE/t by edge. A linked pair's section counts with the
   cables' when the domain's converters are matched; the statistics page groups the cost as "Quantum Cubes"
   ([operating power](operating-power.md)).
-- **Display.** No renderer. Jade shows one status line (linked to a position and dimension, not bound, partner not
+- **Display.** Static frame meshes are clipped into their owning chunk members, while the lowest member renders
+  the counter-rotating 22/12-fragment core and incoming cable carriers. All three sizes use the source Federation
+  teal palette. Jade shows one status line (linked to a position and dimension, not bound, partner not
   loaded at a position, another size, more than two cubes) and the capacity count. Cables draw a joint only toward
   face centres (`CableVisualConnections`).
 
 ## Evidence
 
 - Unit tests: `QuantumCubeShapeTest`, `QuantumPairIndexTest`, `CableCapacityCounterTest.aQuantumCubePairCountsAsCable`,
-  `OperatingPowerCostsTest.aFormedQuantumCubePaysPerBlockLinkedOrNot`, `DeviceStructureGeometryTest`,
+  `OperatingPowerCostsTest.aFormedQuantumCubePaysPerBlockLinkedOrNot`, `RefinedDeviceResourcesTest`,
   `SurvivalRecipeContractTest`, `GuidePagesContractTest`.
 - GameTests (manifest `quantum.*`): `cube-shapes`, `links-inside-face-centres`, `pair-binds-with-a-memory-card`
   (bind, another size, break and mend, rebind drops the old partner), `pair-needs-its-size-of-converter`,

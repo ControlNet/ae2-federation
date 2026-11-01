@@ -44,7 +44,8 @@ public final class FederationDomainGameTests {
                 var merged = registry.federationDomain(leftFederationDomains.iterator().next()).orElseThrow();
                 mergedGeneration[0] = merged.generation();
                 helper.setBlock(new BlockPos(6, 4, 6), Blocks.AIR);
-                helper.assertTrue(!registry.isCurrent(merged.reference()), "Split must invalidate merged reference immediately");
+                GameTestChecks.once(helper, () -> helper.assertTrue(!registry.isCurrent(merged.reference()),
+                        "Split must invalidate merged reference immediately"));
                 phase[0] = 2;
                 helper.assertTrue(false, "Waiting for loaded split topology");
             }
@@ -168,9 +169,11 @@ public final class FederationDomainGameTests {
             var federationDomainId = registry.federationdomainsFor(leftNetwork).iterator().next();
             var reference = registry.federationDomain(federationDomainId).orElseThrow().reference();
             helper.setBlock(new BlockPos(6, 4, 6), Blocks.AIR);
-            helper.assertTrue(!registry.isCurrent(reference), "Topology invalidation must reject stale Federation Domain references");
-            helper.assertTrue(shared(registry, leftNetwork, rightNetwork).isEmpty(),
-                    "Invalidation must remove the shared network index entry immediately");
+            GameTestChecks.once(helper, () -> {
+                helper.assertTrue(!registry.isCurrent(reference), "Topology invalidation must reject stale Federation Domain references");
+                helper.assertTrue(shared(registry, leftNetwork, rightNetwork).isEmpty(),
+                        "Invalidation must remove the shared network index entry immediately");
+            });
             FederationDomainEvidence.write("federationdomainrejectstaleroute", 8, Map.of(
                     "referenceInitiallyCurrent", "true", "referenceCurrentAfterChange", "false",
                     "staleRouteAccepted", "false", "indexInvalidatedImmediately", "true",

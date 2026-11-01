@@ -87,6 +87,11 @@ public final class BeamFormerGameTests {
             for (var cell : thick) {
                 helper.assertTrue(!RouterBlock.formed(helper.getBlockState(cell)), "a 2x2x2 is no former: " + cell);
             }
+            var status = space.controlnet.ae2federation.router.DeviceStructureUpdater.status(helper.getLevel(),
+                    helper.absolutePos(oneByTwo.getFirst()));
+            helper.assertTrue(status.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents
+                    contents && contents.getKey().equals("ae2federation.structure.invalid.wrong_shape.beam_former"),
+                    "a 1x2 must name the former's sizes: " + status.getString());
             assertFacing(helper, majority, Direction.WEST, "three of four blocks face west");
             assertFacing(helper, cabled, Direction.WEST, "no vote on its axis: away from the cable at its east");
             assertFacing(helper, noVote, Direction.EAST, "no vote, no cable: the positive end");

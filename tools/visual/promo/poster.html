@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1200">
+<title>{{title}}</title>
+<style>
+@font-face{font-family:Poster;src:url('fonts/NotoSansSC.ttf');font-weight:100 900}
+:root{--bg:#0a0f16;--text:#eef3f7;--muted:#a3b4c3;--accent:#7fe6f2;
+  --purple:#b896f2;--blue:#7cc4e8;--green:#74dd8f;--yellow:#e3d36a;--white:#e8eef3}
+*{box-sizing:border-box}
+html,body{margin:0;width:1200px;background:var(--bg);color:var(--text)}
+body{font-family:Poster,sans-serif;-webkit-font-smoothing:antialiased}
+main{width:1200px;overflow:hidden}
+h1,h2,h3,p,figure{margin:0}
+p{color:var(--muted);text-wrap:pretty}
+h1,h2,h3,figcaption{text-wrap:balance}
+section{padding:64px 80px 48px}
+.accent{color:var(--accent)}
+.label{font-size:18px;font-weight:700;letter-spacing:3px;color:var(--accent)}
+h2{margin-top:12px;font-size:48px;line-height:1.25;font-weight:900}
+.lead{margin-top:16px;font-size:20px;line-height:1.65}
+.scene{position:relative;flex:none}
+.scene img{display:block;width:100%;height:auto}
+.chip{position:absolute;padding:4px 11px;border-radius:999px;color:var(--bg);font-size:16px;font-weight:700;
+  white-space:nowrap;box-shadow:0 6px 16px rgba(0,0,0,.5)}
+.chip.big{padding:6px 14px;font-size:19px}.chip.mid{padding:5px 12px;font-size:17px}
+.purple{background:var(--purple)}.blue{background:var(--blue)}.green{background:var(--green)}
+.yellow{background:var(--yellow)}.white{background:var(--white)}
+.ui{display:flex;flex-direction:column;gap:10px}
+.ui img{display:block;width:100%;border-radius:6px;box-shadow:0 24px 48px rgba(0,0,0,.45)}
+figcaption{font-size:16px;line-height:1.5;color:var(--muted)}
+.ui.center figcaption{text-align:center}
+.hero{padding:48px 80px 64px}
+.masthead{display:flex;justify-content:space-between;font-size:17px;font-weight:500;letter-spacing:2px;color:var(--muted)}
+h1{margin-top:30px;font-size:112px;line-height:1.05;font-weight:900;letter-spacing:-2px;white-space:nowrap}
+.tagline{margin-top:18px;font-size:36px;line-height:1.3;font-weight:700;color:var(--text)}
+.hero .lead{margin-top:14px;max-width:980px}
+.hero .scene{width:920px;margin:34px auto 0}
+.hero-caption{margin-top:14px;text-align:center;font-size:16px}
+.storage{display:flex;flex-direction:column;align-items:center}
+.storage .row{width:1040px;display:flex;gap:64px;align-items:center}
+.storage .text{flex:1}
+.storage .lead{margin-top:18px}
+.legend{margin-top:26px;display:flex;flex-direction:column;gap:12px;font-size:18px;line-height:1.5}
+.legend div{display:flex;gap:14px;align-items:baseline}
+.legend i{width:12px;height:12px;border-radius:3px;flex:none}
+.legend b{color:var(--text)}.legend span{color:var(--muted)}
+.wide{width:800px;margin-top:36px}
+.orders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto auto auto;column-gap:40px;margin-top:32px}
+.orders>div{display:grid;grid-row:span 3;grid-template-rows:subgrid}
+h3{font-size:28px;line-height:1.3;font-weight:700}
+.orders p{margin-top:10px;font-size:19px;line-height:1.65}
+.orders .scene{margin-top:18px}
+.mapping{margin-top:40px;display:flex;gap:48px;align-items:center}
+.mapping .ui{width:600px;flex:none}
+.mapping .text{display:flex;flex-direction:column;gap:16px}
+.mapping h3{font-size:30px;line-height:1.35}
+.mapping p{font-size:19px;line-height:1.65}
+.mapping .point{font-size:21px;line-height:1.55;font-weight:700;color:var(--accent)}
+.dimensions{margin-top:30px;display:flex;gap:40px;align-items:flex-end}
+.dimensions>div{display:flex;flex-direction:column;gap:12px}
+.dimensions h3{font-size:18px;line-height:1.5}
+.overview{display:flex;flex-direction:column;align-items:center}
+.overview .intro{width:1040px}
+.overview .wide{margin-top:28px}.overview .wide+.wide{margin-top:32px}
+footer{padding:40px 80px 48px;border-top:2px solid var(--accent);display:flex;justify-content:space-between;align-items:center;gap:32px}
+footer .call{font-size:34px;line-height:1.3;font-weight:900;white-space:nowrap}
+footer .hint{margin-top:8px;font-size:20px;color:var(--muted)}
+footer .right{text-align:right}
+footer .url{font-size:22px;font-weight:700;color:var(--accent);white-space:nowrap}
+footer .requires{margin-top:8px;font-size:16px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+
+<section class="hero">
+  <div class="masthead"><span data-check>{{kicker}}</span><span data-check>{{platform}}</span></div>
+  <h1 data-check><span class="accent">AE2</span> {{name}}</h1>
+  <p class="tagline">{{tagline}}</p>
+  <p class="lead">{{hero_body}}</p>
+  <div class="scene" data-bounds>
+    <img src="assets/market_hub.png" alt="{{hero_alt}}">
+    <span class="chip big purple" data-check style="left:2%;top:26%">{{district}}</span>
+    <span class="chip big blue" data-check style="left:45%;top:0%">{{market}}</span>
+    <span class="chip big green" data-check style="left:78%;top:3%">{{sawmill}}</span>
+    <span class="chip mid white" data-check style="left:59%;top:87%">{{hero_switch}}</span>
+  </div>
+  <p class="hero-caption">{{hero_caption}}</p>
+</section>
+
+<section class="storage">
+  <div class="row">
+    <div class="scene" data-bounds style="width:380px">
+      <img src="assets/shared_warehouse.png" alt="{{storage_alt}}">
+      <span class="chip mid blue" data-check style="left:1%;top:2%">{{warehouse}}</span>
+      <span class="chip mid purple" data-check style="left:2%;top:67%">{{workshop_1}}</span>
+      <span class="chip mid green" data-check style="right:1%;top:60%">{{workshop_2}}</span>
+    </div>
+    <div class="text">
+      <div class="label">{{storage_label}}</div>
+      <h2>{{storage_title}}</h2>
+      <p class="lead">{{storage_body}}</p>
+      <div class="legend">
+        <div><i class="blue"></i><span><b>{{warehouse}}</b>{{legend_warehouse}}</span></div>
+        <div><i class="purple"></i><span><b>{{legend_workshops}}</b>{{legend_workshop}}</span></div>
+        <div><i class="white"></i><span><b>{{switch}}</b>{{legend_switch}}</span></div>
+      </div>
+    </div>
+  </div>
+  <figure class="ui center wide">
+    <img src="assets/sharing_rules.png" alt="{{rules_alt}}">
+    <figcaption>{{rules_caption}}</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="label">{{orders_label}}</div>
+  <h2>{{orders_title}}</h2>
+  <div class="orders">
+    <div>
+      <h3>{{order_title}}</h3>
+      <p>{{order_body}}</p>
+      <div class="scene" data-bounds style="width:500px">
+        <img src="assets/order_desk.png" alt="{{order_alt}}">
+        <span class="chip purple" data-check style="left:1%;top:34%">{{customer}}</span>
+        <span class="chip green" data-check style="left:84%;top:10%">{{factory}}</span>
+        <span class="chip white" data-check style="left:38%;top:84%">{{bridge}}</span>
+      </div>
+    </div>
+    <div>
+      <h3>{{furnace_title}}</h3>
+      <p>{{furnace_body}}</p>
+      <div class="scene" data-bounds style="width:500px">
+        <img src="assets/endpoint_furnaces.png" alt="{{furnace_alt}}">
+        <span class="chip purple" data-check style="left:1%;top:38%">{{main_network}}</span>
+        <span class="chip yellow" data-check style="left:34%;top:10%">{{furnace_subnet}}</span>
+        <span class="chip blue" data-check style="left:66%;top:2%">{{furnace_subnet}}</span>
+      </div>
+    </div>
+  </div>
+  <div class="mapping">
+    <figure class="ui">
+      <img src="assets/mapping.png" alt="{{mapping_alt}}">
+      <figcaption>{{mapping_caption}}</figcaption>
+    </figure>
+    <div class="text">
+      <h3>{{mapping_title}}</h3>
+      <p>{{mapping_body}}</p>
+      <p class="point">{{mapping_point}}</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="label">{{outpost_label}}</div>
+  <h2>{{outpost_title}}</h2>
+  <p class="lead">{{outpost_body}}</p>
+  <div class="dimensions">
+    <div>
+      <h3>{{overworld}}</h3>
+      <div class="scene" data-bounds style="width:500px">
+        <img src="assets/nether_outpost_overworld.png" alt="{{overworld_alt}}">
+        <span class="chip yellow" data-check style="left:0%;top:16%">{{factory}}</span>
+        <span class="chip purple" data-check style="left:15%;top:24%">{{base}}</span>
+        <span class="chip green" data-check style="left:49%;top:0%">{{quantum_bridge}}</span>
+      </div>
+    </div>
+    <div>
+      <h3>{{nether}}</h3>
+      <div class="scene" data-bounds style="width:500px">
+        <img src="assets/nether_outpost_nether.png" alt="{{nether_alt}}">
+        <span class="chip green" data-check style="left:51%;top:2%">{{quantum_bridge}}</span>
+        <span class="chip blue" data-check style="left:67%;top:86%">{{outpost}}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="overview">
+  <div class="intro">
+    <div class="label">{{overview_label}}</div>
+    <h2>{{overview_title}}</h2>
+    <p class="lead">{{overview_body}}</p>
+  </div>
+  <figure class="ui center wide">
+    <img src="assets/topology.png" alt="{{topology_alt}}">
+    <figcaption>{{topology_caption}}</figcaption>
+  </figure>
+  <figure class="ui center wide">
+    <img src="assets/statistics.png" alt="{{statistics_alt}}">
+    <figcaption>{{statistics_caption}}</figcaption>
+  </figure>
+</section>
+
+<footer>
+  <div>
+    <div class="call" data-check>{{download}}</div>
+    <div class="hint">{{download_hint}}</div>
+  </div>
+  <div class="right">
+    <div class="url" data-check>curseforge.com/minecraft/mc-mods/ae2-federation</div>
+    <div class="requires">{{requires}}</div>
+  </div>
+</footer>
+
+</main>
+</body>
+</html>

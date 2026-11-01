@@ -97,4 +97,16 @@ class TimelineTest {
         var restored = Timeline.restore(tiers);
         assertTrue(restored.idle(3000));
     }
+
+    @Test
+    void idleSaysWhatReadingTheLongestRangeSays() {
+        var timeline = new Timeline();
+        for (long second : new long[] {599, 600, 1199, 5000, 90_000}) timeline.add(second, 1);
+        // Around each point's ten-minute bucket, the day's first and last bucket and past the day.
+        for (long now = 0; now < 90_000 + 87_000; now += 300) {
+            boolean empty = java.util.Arrays.stream(timeline.read(StatisticsRange.LONGEST, now)).allMatch(Double::isNaN);
+            assertEquals(empty, timeline.idle(now), "at second " + now);
+        }
+    }
 }
+

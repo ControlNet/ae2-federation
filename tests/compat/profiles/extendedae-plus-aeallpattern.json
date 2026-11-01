@@ -5,10 +5,10 @@
   "neoforge": "21.1.250",
   "mods": [
     "ae2@19.2.18",
-    "guideme@21.1.19",
-    "ldlib2@2.2.41",
+    "guideme@21.1.20",
+    "ldlib2@2.2.44",
     "glodium@1.21-2.2",
-    "extendedae@2.2.39",
+    "extendedae@2.2.42",
     "extendedae-plus@1.6.3",
     "aeallpattern@0.2.6"
   ],

@@ -36,7 +36,7 @@ public final class CableLinkParityGameTests {
 
     /**
      * A Router and a Switch link on all six faces; a Provider and an Endpoint on their front; a 1x1 Beam Former on its
-     * back; a formed Beam Converter, creative too, on its front; a 3x3x3 Quantum Cube inside each face's centre and
+     * back; a formed Beam Converter on its front; a 3x3x3 Quantum Cube inside each face's centre and
      * not on its border; a Computing Device on all six faces and an Automation Interface on all but its front. A cable
      * on each probed face reaches the device with an arm exactly when it joins its domain.
      */
@@ -63,13 +63,12 @@ public final class CableLinkParityGameTests {
 
         // A 1x1x2 converter facing west: its west block's front links; its east face is the rest of the body.
         var converterFaces = List.of(Direction.WEST, Direction.NORTH, Direction.SOUTH, Direction.UP, Direction.DOWN);
-        for (var converter : List.of(PowerRegistration.BEAM_CONVERTER.get(), PowerRegistration.CREATIVE_BEAM_CONVERTER.get())) {
-            var front = new BlockPos(converter == PowerRegistration.BEAM_CONVERTER.get() ? 4 : 10, 4, 12);
-            for (var cell : List.of(front, front.east())) {
-                helper.setBlock(cell, facing(converter.defaultBlockState(), Direction.WEST));
-            }
-            probes.add(new Probe(converter.getDescriptionId(), front, converterFaces, 1));
+        var converter = PowerRegistration.BEAM_CONVERTER.get();
+        var front = new BlockPos(4, 4, 12);
+        for (var cell : List.of(front, front.east())) {
+            helper.setBlock(cell, facing(converter.defaultBlockState(), Direction.WEST));
         }
+        probes.add(new Probe(converter.getDescriptionId(), front, converterFaces, 1));
 
         helper.setBlock(new BlockPos(22, 4, 12), AutomationRegistration.DEVICE.get());
         probes.add(new Probe("computing device", new BlockPos(22, 4, 12), all, 6));

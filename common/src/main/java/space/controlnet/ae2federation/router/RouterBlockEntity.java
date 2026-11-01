@@ -203,14 +203,11 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
     }
 
     /**
-     * This Router's turn: every face resolves again, and a Switch face without a node looks at its AE2 neighbour
-     * without its caches.
+     * This Router's turn: every face resolves again and reads its neighbour's Federation port without its cache, and a
+     * Switch face without a node looks at its AE2 neighbour without its caches.
      */
     void sweep() {
-        facePorts.values().forEach(port -> {
-            port.verifyIfNodeless();
-            port.markDirty();
-        });
+        facePorts.values().forEach(RouterFacePort::sweep);
         compareEvidence();
     }
 

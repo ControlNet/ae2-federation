@@ -63,22 +63,24 @@ public final class ResourceQualificationGameTests {
                     "Native item simulation must report capacity");
             helper.assertValueEqual(items.getAvailableStacks().get(first), 0L,
                     "Native item simulation must not mutate");
-            helper.assertValueEqual(items.insert(first, 7, Actionable.MODULATE, SOURCE), 7L,
-                    "Native first component insert must succeed");
-            helper.assertValueEqual(items.insert(second, 11, Actionable.MODULATE, SOURCE), 11L,
-                    "Native second component insert must succeed independently");
-            helper.assertValueEqual(items.getAvailableStacks().get(first), 7L,
-                    "First component quantity must remain independent");
-            helper.assertValueEqual(items.getAvailableStacks().get(second), 11L,
-                    "Second component quantity must remain independent");
-            helper.assertValueEqual(fluids.insert(water, 5_000L, Actionable.MODULATE, SOURCE), 5_000L,
-                    "Native fluid insert must preserve native long units");
-            helper.assertValueEqual(fluids.extract(water, 1_250L, Actionable.SIMULATE, SOURCE), 1_250L,
-                    "Native fluid extraction simulation must report native units");
-            helper.assertValueEqual(fluids.getAvailableStacks().get(water), 5_000L,
-                    "Native fluid simulation must not mutate");
-            helper.assertValueEqual(fluids.extract(water, 1_250L, Actionable.MODULATE, SOURCE), 1_250L,
-                    "Native fluid extraction must preserve native units");
+            GameTestChecks.once(helper, () -> {
+                helper.assertValueEqual(items.insert(first, 7, Actionable.MODULATE, SOURCE), 7L,
+                        "Native first component insert must succeed");
+                helper.assertValueEqual(items.insert(second, 11, Actionable.MODULATE, SOURCE), 11L,
+                        "Native second component insert must succeed independently");
+                helper.assertValueEqual(items.getAvailableStacks().get(first), 7L,
+                        "First component quantity must remain independent");
+                helper.assertValueEqual(items.getAvailableStacks().get(second), 11L,
+                        "Second component quantity must remain independent");
+                helper.assertValueEqual(fluids.insert(water, 5_000L, Actionable.MODULATE, SOURCE), 5_000L,
+                        "Native fluid insert must preserve native long units");
+                helper.assertValueEqual(fluids.extract(water, 1_250L, Actionable.SIMULATE, SOURCE), 1_250L,
+                        "Native fluid extraction simulation must report native units");
+                helper.assertValueEqual(fluids.getAvailableStacks().get(water), 5_000L,
+                        "Native fluid simulation must not mutate");
+                helper.assertValueEqual(fluids.extract(water, 1_250L, Actionable.MODULATE, SOURCE), 1_250L,
+                        "Native fluid extraction must preserve native units");
+            });
             ResourceEvidence.write("resourcesitemfluidcomponents", 20, Map.ofEntries(
                     Map.entry("componentKeysDistinct", "true"), Map.entry("componentRoundTrip", "true"),
                     Map.entry("fluidRoundTrip", "true"), Map.entry("exactFilterDistinct", "true"),

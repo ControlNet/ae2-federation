@@ -1,0 +1,396 @@
+{
+  "assets": [
+    {
+      "asset": "assets/market_hub.png",
+      "source": "build/promo/scenes/market_hub.png",
+      "source_sha256": "0b082750c401d2751a952fa76028c5f8d050837a2a92deb97c367e2fda03e5a3",
+      "crop": null,
+      "size": [
+        1986,
+        1064
+      ],
+      "sha256": "0b082750c401d2751a952fa76028c5f8d050837a2a92deb97c367e2fda03e5a3"
+    },
+    {
+      "asset": "assets/shared_warehouse.png",
+      "source": "build/promo/scenes/shared_warehouse.png",
+      "source_sha256": "41fd9a1bac96fff7fb370e67b9ec3cf6e3d0b3be3c7b7c15f7661284c33b7627",
+      "crop": null,
+      "size": [
+        1032,
+        1340
+      ],
+      "sha256": "41fd9a1bac96fff7fb370e67b9ec3cf6e3d0b3be3c7b7c15f7661284c33b7627"
+    },
+    {
+      "asset": "assets/order_desk.png",
+      "source": "build/promo/scenes/order_desk.png",
+      "source_sha256": "c483881e8acdeac6385d8c214b5d33b77e9f0c716405be505401eff9e0efa5fe",
+      "crop": null,
+      "size": [
+        1958,
+        936
+      ],
+      "sha256": "c483881e8acdeac6385d8c214b5d33b77e9f0c716405be505401eff9e0efa5fe"
+    },
+    {
+      "asset": "assets/endpoint_furnaces.png",
+      "source": "build/promo/scenes/endpoint_furnaces.png",
+      "source_sha256": "39e68cd81b0daa8b291cb20c2633e11f03d4ab068d1004baba046151233504d0",
+      "crop": null,
+      "size": [
+        2390,
+        1042
+      ],
+      "sha256": "39e68cd81b0daa8b291cb20c2633e11f03d4ab068d1004baba046151233504d0"
+    },
+    {
+      "asset": "assets/nether_outpost_overworld.png",
+      "source": "build/promo/scenes/nether_outpost_overworld.png",
+      "source_sha256": "7b8708528d3a7dcdfc742e31744da05db80b02cb5401d15a99bf3a2427503a77",
+      "crop": null,
+      "size": [
+        2202,
+        790
+      ],
+      "sha256": "7b8708528d3a7dcdfc742e31744da05db80b02cb5401d15a99bf3a2427503a77"
+    },
+    {
+      "asset": "assets/nether_outpost_nether.png",
+      "source": "build/promo/scenes/nether_outpost_nether.png",
+      "source_sha256": "1454f3d4d69778475ce02ca465b9a94a6eb7c19d9a864099102bab5019277378",
+      "crop": null,
+      "size": [
+        1958,
+        1109
+      ],
+      "sha256": "1454f3d4d69778475ce02ca465b9a94a6eb7c19d9a864099102bab5019277378"
+    },
+    {
+      "asset": "assets/sharing_rules.png",
+      "source": "docs/gallery/sharing-rules.webp",
+      "source_sha256": "32011e20a9b99c2918c9294f0cc12ca85fb7ee912c912800d3901db66f5e3289",
+      "crop": [
+        60,
+        16,
+        1586,
+        946
+      ],
+      "size": [
+        1526,
+        930
+      ],
+      "sha256": "da0c00fce04c5a20c7d380f73db0e11ad6c6349c671485741d85aa7f373b03ef"
+    },
+    {
+      "asset": "assets/mapping.png",
+      "source": "docs/gallery/processing-mappings.webp",
+      "source_sha256": "b7f53de3e5bffd5be8f082aacdccc4f7b33738fedeeef2428eee8fb94d82c7c1",
+      "crop": [
+        78,
+        96,
+        1045,
+        729
+      ],
+      "size": [
+        967,
+        633
+      ],
+      "sha256": "1d2b10a7fcab96f2b00415ed238c0c5611bc3b728559e295f870223af8499dc6"
+    },
+    {
+      "asset": "assets/topology.png",
+      "source": "docs/gallery/topology.webp",
+      "source_sha256": "65f2d0d538346bd22a1255865e68182d5a4b7242dc288ee9ae7c5131d86bd503",
+      "crop": [
+        60,
+        16,
+        1906,
+        1064
+      ],
+      "size": [
+        1846,
+        1048
+      ],
+      "sha256": "967f84b31c911da22d4ab80e79180199aca6880d91768b425f026b8ef534eee9"
+    },
+    {
+      "asset": "assets/statistics.png",
+      "source": "docs/gallery/statistics-flow.webp",
+      "source_sha256": "be6fa358bea008e29a431eeddf8de0daf5deb9fb7dfb12aa76e5427b108ebb41",
+      "crop": [
+        60,
+        16,
+        1586,
+        946
+      ],
+      "size": [
+        1526,
+        930
+      ],
+      "sha256": "3e34faefae3664a5dfd6078c0463b2148da8d35dd60d731d3b670f94a7e63f47"
+    }
+  ],
+  "fonts": {
+    "NotoSansSC.ttf": {
+      "source": "NotoSansSC[wght].ttf",
+      "sha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da",
+      "licence": "SIL OFL 1.1"
+    }
+  },
+  "tools": {
+    "tools/visual/promo/prepare.py": "d4eb9330e943858b996fee4c2bda5b062f7e2eb895ae089b2802eb3a4ecca141",
+    "tools/visual/promo/copy.json": "90d7c9a4a366bea1528f37f379f1de3c0b7d2a61e0c72ae82e780ca763407dc2",
+    "tools/visual/promo/poster.html": "743865995cbe13fc18868377d05ef7bb126b066b593a566a15ec26cbbc34e26d",
+    "tools/visual/promo/export.py": "5b8278b1d0d84a56640b9a4a27d7281d39665082be9a25c9e44575369451bd14",
+    "tools/visual/promo/render.mjs": "4efb966a4568e291831fbc99df85379ddd76541999fc9f0b373a4cf2a0451985"
+  },
+  "scene_manifest": {
+    "scenes": [
+      {
+        "scene": "market_hub",
+        "zoom": 14,
+        "removed_placeholder_blocks": 2,
+        "panel": [
+          1986,
+          1064
+        ],
+        "size": [
+          1986,
+          1064
+        ],
+        "file": "market_hub.png",
+        "sha256": "0b082750c401d2751a952fa76028c5f8d050837a2a92deb97c367e2fda03e5a3"
+      },
+      {
+        "scene": "shared_warehouse",
+        "zoom": 16,
+        "removed_placeholder_blocks": 2,
+        "panel": [
+          1032,
+          1366
+        ],
+        "size": [
+          1032,
+          1340
+        ],
+        "file": "shared_warehouse.png",
+        "sha256": "41fd9a1bac96fff7fb370e67b9ec3cf6e3d0b3be3c7b7c15f7661284c33b7627"
+      },
+      {
+        "scene": "order_desk",
+        "zoom": 16,
+        "removed_placeholder_blocks": 0,
+        "panel": [
+          1958,
+          936
+        ],
+        "size": [
+          1958,
+          936
+        ],
+        "file": "order_desk.png",
+        "sha256": "c483881e8acdeac6385d8c214b5d33b77e9f0c716405be505401eff9e0efa5fe"
+      },
+      {
+        "scene": "endpoint_furnaces",
+        "zoom": 10,
+        "removed_placeholder_blocks": 2,
+        "panel": [
+          2390,
+          1120
+        ],
+        "size": [
+          2390,
+          1042
+        ],
+        "file": "endpoint_furnaces.png",
+        "sha256": "39e68cd81b0daa8b291cb20c2633e11f03d4ab068d1004baba046151233504d0"
+      },
+      {
+        "scene": "nether_outpost_overworld",
+        "zoom": 11,
+        "removed_placeholder_blocks": 2,
+        "panel": [
+          2202,
+          794
+        ],
+        "size": [
+          2202,
+          790
+        ],
+        "file": "nether_outpost_overworld.png",
+        "sha256": "7b8708528d3a7dcdfc742e31744da05db80b02cb5401d15a99bf3a2427503a77"
+      },
+      {
+        "scene": "nether_outpost_nether",
+        "zoom": 16,
+        "removed_placeholder_blocks": 0,
+        "panel": [
+          1958,
+          1132
+        ],
+        "size": [
+          1958,
+          1109
+        ],
+        "file": "nether_outpost_nether.png",
+        "sha256": "1454f3d4d69778475ce02ca465b9a94a6eb7c19d9a864099102bab5019277378"
+      }
+    ],
+    "camera": {
+      "yaw": 195,
+      "pitch": 30
+    },
+    "window": [
+      3200,
+      2000
+    ],
+    "gui_scale": 2,
+    "background": "#0a0f16",
+    "removed_blocks": [
+      "ae2federation:beam_converter"
+    ],
+    "tool_sha256": "896cb90f3c06a86f4565dbfd34396cf4a40f82462a24774acbe8702800b1e9a0"
+  },
+  "outputs": [
+    {
+      "file": "overview-zh.webp",
+      "language": "zh",
+      "kind": "promotional overview / GuideME scene renders and actual UI crops",
+      "source": "build/promo/compose/zh.png",
+      "source_sha256": "d9f010f5674a824017334340bdb28dfddd4975f1f3e15995400e5ee5eb68e6b7",
+      "size": [
+        2400,
+        10752
+      ],
+      "bytes": 1543572,
+      "sha256": "f705a85aa85945e6c67b62470af74cd30d0f361768ce24f2db8644dca54608b1",
+      "encoding": {
+        "format": "WebP",
+        "quality": 94,
+        "method": 6,
+        "lossless": false
+      }
+    },
+    {
+      "file": "overview-en.webp",
+      "language": "en",
+      "kind": "promotional overview / GuideME scene renders and actual UI crops",
+      "source": "build/promo/compose/en.png",
+      "source_sha256": "b36a71494873198c4140c8f3b1f8043fb88e0734efc9fe541e61d3718e412195",
+      "size": [
+        2400,
+        11166
+      ],
+      "bytes": 1666124,
+      "sha256": "0832448a82e987285cdceb9206beee847957b9da80400ff56f86dc1a0ce9eb30",
+      "encoding": {
+        "format": "WebP",
+        "quality": 94,
+        "method": 6,
+        "lossless": false
+      }
+    }
+  ],
+  "layout_check": [
+    {
+      "language": "zh",
+      "scale": 2,
+      "width": 1200,
+      "height": 5376,
+      "images": [
+        {
+          "source": "assets/market_hub.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/shared_warehouse.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/sharing_rules.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/order_desk.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/endpoint_furnaces.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/mapping.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/nether_outpost_overworld.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/nether_outpost_nether.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/topology.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/statistics.png",
+          "loaded": true
+        }
+      ],
+      "problems": []
+    },
+    {
+      "language": "en",
+      "scale": 2,
+      "width": 1200,
+      "height": 5583,
+      "images": [
+        {
+          "source": "assets/market_hub.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/shared_warehouse.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/sharing_rules.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/order_desk.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/endpoint_furnaces.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/mapping.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/nether_outpost_overworld.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/nether_outpost_nether.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/topology.png",
+          "loaded": true
+        },
+        {
+          "source": "assets/statistics.png",
+          "loaded": true
+        }
+      ],
+      "problems": []
+    }
+  ]
+}

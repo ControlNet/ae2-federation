@@ -17,8 +17,9 @@ item_ids:
 The Switch brings ME networks into a [Federation domain](../mechanics/index.md). Each of its six faces works on its own:
 
 * touched by an ME cable or device, the face joins that network, without using a channel or idle power;
-* touched by <ItemLink id="ae2federation:cable" />, a <ItemLink id="ae2federation:router" />, another Switch, a
-  Pattern Provider front or an Endpoint front, the face links the domain onwards.
+* touched by <ItemLink id="ae2federation:cable" />, or by any device face the cable joins (listed on its page), such as
+  a <ItemLink id="ae2federation:router" />, another Switch, a Pattern Provider front or an Endpoint front, the face
+  links the domain onwards.
 
 Up to six different networks can meet at one Switch block, and they stay separate networks. Two faces on the same
 network are fine and count once. Each Switch block uses 2 FE per tick ([Power](../mechanics/power.md)).

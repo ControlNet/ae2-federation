@@ -55,30 +55,32 @@ public final class StorageProvenanceGameTests {
             var export = domain.sources().getFirst();
             helper.assertValueEqual(export.priority(), 40, "Highest alias priority must win");
             helper.assertValueEqual(export.aliases().size(), 3, "Three callback entries must identify one source");
-            helper.assertValueEqual(export.storage().insert(IRON, 11, Actionable.MODULATE, SOURCE), 11L,
-                    "Native source remains operation authority");
-            var aggregate = new NetworkStorage();
-            aggregate.mount(export.priority(), export.storage());
-            helper.assertValueEqual(aggregate.getAvailableStacks().get(IRON), 11L,
-                    "Alias aggregation must not double quantity");
-            var sourceCapacity = export.storage().insert(IRON, Long.MAX_VALUE, Actionable.SIMULATE, SOURCE);
-            var aggregateCapacity = aggregate.insert(IRON, Long.MAX_VALUE, Actionable.SIMULATE, SOURCE);
-            helper.assertValueEqual(aggregateCapacity, sourceCapacity, "Alias aggregation must not double capacity");
-            ProvenanceEvidence.domain("provenancemultientry", "current", domain);
-            PolicyEvidence.write("provenancemultientry", 10, Map.ofEntries(
-                    Map.entry("originNetworkId", domain.origin().value().toString()),
-                    Map.entry("exportSourceId", export.id().toString()),
-                    Map.entry("generation", Long.toString(domain.generation().value())),
-                    Map.entry("aliasIds", export.aliases().stream().map(alias -> alias.id().toString())
-                            .collect(java.util.stream.Collectors.joining(","))),
-                    Map.entry("nativeStorageIdentity", Integer.toUnsignedString(System.identityHashCode(export.storage()))),
-                    Map.entry("aliasCount", Integer.toString(export.aliases().size())),
-                    Map.entry("exportSourceCount", Integer.toString(domain.sources().size())),
-                    Map.entry("selectedPriority", Integer.toString(export.priority())),
-                    Map.entry("providerQuantity", "11"), Map.entry("visibleQuantity", "11"),
-                    Map.entry("providerCapacity", Long.toString(sourceCapacity)),
-                    Map.entry("visibleCapacity", Long.toString(aggregateCapacity)),
-                    Map.entry("nativeAuthority", "true")));
+            GameTestChecks.once(helper, () -> {
+                helper.assertValueEqual(export.storage().insert(IRON, 11, Actionable.MODULATE, SOURCE), 11L,
+                        "Native source remains operation authority");
+                var aggregate = new NetworkStorage();
+                aggregate.mount(export.priority(), export.storage());
+                helper.assertValueEqual(aggregate.getAvailableStacks().get(IRON), 11L,
+                        "Alias aggregation must not double quantity");
+                var sourceCapacity = export.storage().insert(IRON, Long.MAX_VALUE, Actionable.SIMULATE, SOURCE);
+                var aggregateCapacity = aggregate.insert(IRON, Long.MAX_VALUE, Actionable.SIMULATE, SOURCE);
+                helper.assertValueEqual(aggregateCapacity, sourceCapacity, "Alias aggregation must not double capacity");
+                ProvenanceEvidence.domain("provenancemultientry", "current", domain);
+                PolicyEvidence.write("provenancemultientry", 10, Map.ofEntries(
+                        Map.entry("originNetworkId", domain.origin().value().toString()),
+                        Map.entry("exportSourceId", export.id().toString()),
+                        Map.entry("generation", Long.toString(domain.generation().value())),
+                        Map.entry("aliasIds", export.aliases().stream().map(alias -> alias.id().toString())
+                                .collect(java.util.stream.Collectors.joining(","))),
+                        Map.entry("nativeStorageIdentity", Integer.toUnsignedString(System.identityHashCode(export.storage()))),
+                        Map.entry("aliasCount", Integer.toString(export.aliases().size())),
+                        Map.entry("exportSourceCount", Integer.toString(domain.sources().size())),
+                        Map.entry("selectedPriority", Integer.toString(export.priority())),
+                        Map.entry("providerQuantity", "11"), Map.entry("visibleQuantity", "11"),
+                        Map.entry("providerCapacity", Long.toString(sourceCapacity)),
+                        Map.entry("visibleCapacity", Long.toString(aggregateCapacity)),
+                        Map.entry("nativeAuthority", "true")));
+            });
             fixture.close();
         });
     }

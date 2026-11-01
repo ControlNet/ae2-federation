@@ -89,7 +89,7 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
             var atlas = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS);
             var builder = new BundleCableBuilder(builder(),
                     atlas.apply(texture("dense/" + CableCoreFaces.Variant.CLOSED.texture())),
-                    new LargeCableRings(atlas.apply(LARGE_RING)));
+                    atlas.apply(texture("dense/line")), new LargeCableRings(atlas.apply(LARGE_RING)));
             return new Bundle(builder.build(key), builder.solid(key));
         });
     }

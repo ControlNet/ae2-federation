@@ -49,7 +49,8 @@ public final class MultipartBridgeGameTests {
                     "Missing native side must disable Bridge");
             helper.assertTrue(bridge.membershipCandidate().isEmpty(), "Invalid Bridge cannot publish membership");
             bridge.removeFromWorld();
-            helper.assertTrue(bridge.getExternalFacingNode() == null, "Bridge removal must destroy its owned outer node");
+            GameTestChecks.once(helper, () -> helper.assertTrue(bridge.getExternalFacingNode() == null,
+                    "Bridge removal must destroy its owned outer node"));
             BridgeEvidence.write("bridgeinvalid", 3, Map.of("reason", "MISSING_OUTER_ATTACHMENT",
                     "membershipCandidate", "false", "nativeNodeDestroyedOnRemoval", "true"));
             fixtures.close();
@@ -105,12 +106,14 @@ public final class MultipartBridgeGameTests {
         helper.succeedWhen(() -> {
             helper.assertTrue(bridge.getExternalFacingNode() != null, "Bridge outer node must be created");
             helper.setBlock(position.north(), Blocks.AIR);
-            helper.assertTrue(bridge.operationalReason() != BridgeOperationalReason.VALID,
-                    "Replaced native host must invalidate Bridge");
-            bridge.removeFromWorld();
-            bridge.removeFromWorld();
-            helper.assertValueEqual(bridge.operationalReason(), BridgeOperationalReason.REMOVED,
-                    "Repeated close must retain removed state");
+            GameTestChecks.once(helper, () -> {
+                helper.assertTrue(bridge.operationalReason() != BridgeOperationalReason.VALID,
+                        "Replaced native host must invalidate Bridge");
+                bridge.removeFromWorld();
+                bridge.removeFromWorld();
+                helper.assertValueEqual(bridge.operationalReason(), BridgeOperationalReason.REMOVED,
+                        "Repeated close must retain removed state");
+            });
             BridgeEvidence.write("bridgereloadreplace", 4, Map.of("replacementAccepted", "false",
                     "removed", "true", "repeatedClose", "true", "outerNodeDestroyed", "true"));
             fixtures.close();

@@ -8,7 +8,9 @@ import java.util.List;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.phys.AABB;
 import org.junit.jupiter.api.Test;
+import space.controlnet.ae2federation.router.CableShapes;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
 /** What one bundled cell shows: its outer sides, its links, its device arms and the runs of a branch's opening. */
@@ -55,6 +57,49 @@ final class BundleLookTest {
     }
 
     @Test
+    void aThickBundleSendsOneArmAcrossEachContact() {
+        var set = new BundleSet();
+        set.form(RUN);
+        BundleLook.Contacts east = (segment, pos, face) -> face == Direction.EAST;
+        // The end's four cells share one arm, 1 voxel inside the shell's outer edges at 2 and 14.
+        assertEquals(new AABB(14, 0, 0, 16, 13, 13), CableShapes.denseArm(look(set, new BlockPos(5, 1, 1), east),
+                Direction.EAST));
+        assertEquals(new AABB(14, 3, 3, 16, 16, 16), CableShapes.denseArm(look(set, new BlockPos(5, 0, 0), east),
+                Direction.EAST));
+        // A side contact is one layer: the arm spans the side's width but keeps to its layer.
+        BundleLook.Contacts up = (segment, pos, face) -> face == Direction.UP;
+        assertEquals(new AABB(3, 14, 0, 13, 16, 13), CableShapes.denseArm(look(set, new BlockPos(3, 1, 1), up),
+                Direction.UP));
+        // One device body over two layers' top rows: one arm runs on across the layer boundary.
+        BundleLook.Contacts body = new BundleLook.Contacts() {
+            @Override
+            public boolean whole(BundleSegment segment, BlockPos pos, Direction face) {
+                return face == Direction.UP && (pos.getX() == 2 || pos.getX() == 3);
+            }
+
+            @Override
+            public boolean oneBody(BlockPos pos, Direction face, Direction toward) {
+                // As a real body's connection bits: only toward a device of the same body.
+                int next = pos.relative(toward).getX();
+                return next == 2 || next == 3;
+            }
+        };
+        assertEquals(new AABB(3, 14, 0, 16, 16, 13), CableShapes.denseArm(look(set, new BlockPos(2, 1, 1), body),
+                Direction.UP));
+        assertEquals(new AABB(0, 14, 0, 13, 16, 13), CableShapes.denseArm(look(set, new BlockPos(3, 1, 1), body),
+                Direction.UP));
+        // Two devices, one per layer: an arm each.
+        BundleLook.Contacts two = (segment, pos, face) -> face == Direction.UP && (pos.getX() == 2 || pos.getX() == 3);
+        assertEquals(new AABB(3, 14, 0, 13, 16, 13), CableShapes.denseArm(look(set, new BlockPos(2, 1, 1), two),
+                Direction.UP));
+        // An ordinary bundle's cell has its own arm, as each of its beams has.
+        var flat = new BundleSet();
+        flat.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 1, 2), Direction.Axis.X));
+        assertEquals(new AABB(14, 3, 3, 16, 13, 13), CableShapes.denseArm(look(flat, new BlockPos(5, 0, 1), east),
+                Direction.EAST));
+    }
+
+    @Test
     void aBranchJoinsItsRunWhereItsWholeEndFaceLies() {
         var set = new BundleSet();
         set.form(RUN);
@@ -87,7 +132,9 @@ final class BundleLookTest {
         assertFalse(look.join(Direction.SOUTH));
         assertFalse(look.dense(Direction.SOUTH), "another bundle is no device");
         assertFalse(asked.contains(Direction.SOUTH));
-        assertEquals(Set.of(Direction.DOWN), asked, "only outer sides facing no bundle ask about devices");
+        // The cell's own outer side, and its layer's other outer sides for the beam; never one facing a bundle.
+        assertEquals(Set.of(Direction.DOWN, Direction.UP, Direction.NORTH), asked,
+                "only outer sides facing no bundle ask about devices");
     }
 
     @Test

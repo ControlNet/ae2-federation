@@ -1042,7 +1042,7 @@ kept in a server-wide index, and a copied interface (same ID at another position
   like an ID, unique among the interfaces of its domain. Refused text turns red in the field; nothing else is shown.
 - The screen is a plain screen drawn with the Federation theme's AE2 sprites: title, the ID in a dark well with Copy,
   the alias field. The alias is sent on Enter or when the screen closes.
-- Textures are temporary: the Processing Endpoint's, recoloured green by `tools/visual/build_converter_placeholder.py`.
+- Textures are temporary: the Processing Endpoint's, recoloured green by `tools/visual/build_automation_placeholder.py`.
 
 ### Programs on the server (H2, 2026-10-18)
 

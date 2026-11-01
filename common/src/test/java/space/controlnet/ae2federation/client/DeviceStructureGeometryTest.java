@@ -101,18 +101,6 @@ final class DeviceStructureGeometryTest {
         }
     }
 
-    /** Until the artist draws the Quantum Cube, its tiles are the Router's recoloured, so its geometry is the Router's. */
-    @Test
-    void theTemporaryQuantumCubeShapesLikeTheRouter() throws Exception {
-        var cube = geometry(Device.QUANTUM_CUBE);
-        var router = geometry(Device.ROUTER);
-        for (int mask = 0; mask < 64; mask++) {
-            var renamed = canonical(cube.build(sides(mask))).stream()
-                    .map(line -> line.replace("quantum_cube/quantum_cube_", "router/router_")).sorted().toList();
-            assertEquals(canonical(router.build(sides(mask))), renamed, "mask " + mask);
-        }
-    }
-
     /** Minecraft draws only a quad's front, so every quad must be a flat, non-degenerate rectangle. */
     @Test
     void everyQuadIsAnAxisAlignedRectangleWithAnArea() throws Exception {

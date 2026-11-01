@@ -45,6 +45,10 @@ public final class FederationTestMod {
                 && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
             space.controlnet.ae2federation.test.client.TeaserScene.register();
         }
+        if (System.getProperty(space.controlnet.ae2federation.test.client.RefinedDeviceScene.OUTPUT) != null
+                && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
+            space.controlnet.ae2federation.test.client.RefinedDeviceScene.register();
+        }
         if (System.getProperty("ae2federation.beamPreview.out") != null
                 && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
             space.controlnet.ae2federation.test.client.CableBeamNativePreview.register();
@@ -59,6 +63,10 @@ public final class FederationTestMod {
             // The GameTests and UI scenarios build domains without Beam Converters; the power tests and the topology
             // showcase turn the requirement on themselves.
             // Set once the server configuration has loaded, which would set it back.
+            // FML's config watcher can reload the freshly written server configuration after the server has started,
+            // which would turn the requirement back on and stop every domain; these runs never edit it by hand.
+            net.neoforged.fml.loading.FMLConfig.updateConfig(
+                    net.neoforged.fml.loading.FMLConfig.ConfigValue.DISABLE_CONFIG_WATCHER, true);
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
                     (net.neoforged.neoforge.event.server.ServerStartedEvent event) -> space.controlnet.ae2federation.power
                             .OperatingPowerRule.set(false, space.controlnet.ae2federation.power.OperatingPowerRule.DEFAULT_MULTIPLIER));
@@ -74,8 +82,6 @@ public final class FederationTestMod {
 					 EndpointReturnGameTests.class, EndpointAuthorizationGameTests.class,
 					 StorageProofGameTests.class, StorageNativeCharacterizationGameTests.class, StorageMountGameTests.class,
 					 StorageProvenanceGameTests.class, StorageChainGameTests.class, AcrossDomainsGameTests.class,
-					 StorageSubscriptionGameTests.class, StorageSubscriptionDiamondGameTest.class,
-					 StorageSubscriptionBoundaryGameTest.class, StorageSubscriptionMaskingGameTest.class,
 					 StorageSourceIndexGameTests.class,
 					 StorageNativeStateGameTests.class,
 						 ResourceQualificationGameTests.class,
@@ -83,7 +89,7 @@ public final class FederationTestMod {
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
 					 SharedEnergyGameTests.class,
 					 ObservabilityGameTests.class,
-					   MultipartBridgeGameTests.class, RouterGameTests.class, CableCapacityGameTests.class, BeamConverterGameTests.class, BeamFormerGameTests.class, CableLinkParityGameTests.class, QuantumCubeGameTests.class, AutomationInterfaceGameTests.class, ProgramStoreGameTests.class, ProgramHostGameTests.class, ProgramSchedulerGameTests.class, OperatingPowerGameTests.class, BundledCableGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
+					   MultipartBridgeGameTests.class, RouterGameTests.class, CableCapacityGameTests.class, BeamConverterGameTests.class, BeamFormerGameTests.class, CableLinkParityGameTests.class, QuantumCubeGameTests.class, AutomationInterfaceGameTests.class, ProgramStoreGameTests.class, ProgramHostGameTests.class, ProgramSchedulerGameTests.class, OperatingPowerGameTests.class, BundledCableGameTests.class, WrenchDismantleGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
 					   FederationDomainBridgeGameTests.class, DomainIdRestartGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class, RuleLinkGameTests.class, PatternProjectionGameTests.class, StatisticsGameTests.class, SurvivalRecipeGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
 						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,

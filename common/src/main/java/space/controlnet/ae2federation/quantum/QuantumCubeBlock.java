@@ -51,6 +51,29 @@ public final class QuantumCubeBlock extends BaseEntityBlock implements FormableD
         registerDefaultState(state);
     }
 
+    /** The open device mesh must not hide neighbours or cast a solid cuboid shadow. */
+    @Override
+    protected net.minecraft.world.phys.shapes.VoxelShape getOcclusionShape(BlockState state,
+            net.minecraft.world.level.BlockGetter level, BlockPos position) {
+        return RouterBlock.formed(state) ? net.minecraft.world.phys.shapes.Shapes.empty()
+                : super.getOcclusionShape(state, level, position);
+    }
+
+    @Override
+    protected boolean propagatesSkylightDown(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos position) {
+        return RouterBlock.formed(state);
+    }
+
+    @Override
+    protected int getLightBlock(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos position) {
+        return RouterBlock.formed(state) ? 0 : super.getLightBlock(state, level, position);
+    }
+
+    @Override
+    protected float getShadeBrightness(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos position) {
+        return RouterBlock.formed(state) ? 1.0F : super.getShadeBrightness(state, level, position);
+    }
+
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(RouterBlock.CONNECTED).add(RouterBlock.FORMED);
@@ -79,6 +102,11 @@ public final class QuantumCubeBlock extends BaseEntityBlock implements FormableD
     @Override
     public boolean linksCable(BlockState state, Direction face) {
         return links(state, face);
+    }
+
+    @Override
+    public String sizeRule() {
+        return "quantum_cube";
     }
 
     /** The cuboid must be a cube of edge 3, 4 or 5. */

@@ -7,10 +7,16 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.level.ChunkPos;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.bundle.BundledCables;
+import space.controlnet.ae2federation.domain.port.FederationPortCapability;
 import space.controlnet.ae2federation.domain.port.RouterPortBinding;
 import space.controlnet.ae2federation.domain.port.RouterPortKind;
+import space.controlnet.ae2federation.router.CableLinkedBlock;
+import space.controlnet.ae2federation.router.RouterBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.router.RouterTicks;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
 
@@ -125,6 +131,9 @@ public final class RouterGameTests {
         }
         var phase = new int[1];
         var unaffected = new RouterPortBinding[1];
+        var works = new long[1];
+        var stoneSeen = new RouterPortBinding[1];
+        var westAfterStone = new RouterPortBinding[1];
         helper.succeedWhen(() -> {
             if (phase[0] == 0) {
                 helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.NATIVE_ME,
@@ -132,24 +141,31 @@ public final class RouterGameTests {
                 unaffected[0] = router.binding(Direction.WEST);
                 fixtures.placeFederationCable(CENTER, Direction.EAST);
                 // The face resolves again in the block update, so it may already see the cable, never the old chest.
-                helper.assertTrue(router.binding(Direction.EAST).kind() != RouterPortKind.NATIVE_ME,
-                        "Replaced native binding must invalidate immediately");
-                helper.assertTrue(router.binding(Direction.WEST) == unaffected[0],
-                        "Unchanged face binding must retain ownership");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(router.binding(Direction.EAST).kind() != RouterPortKind.NATIVE_ME,
+                            "Replaced native binding must invalidate immediately");
+                    helper.assertTrue(router.binding(Direction.WEST) == unaffected[0],
+                            "Unchanged face binding must retain ownership");
+                });
+                works[0] = router.works();
                 phase[0] = 1;
                 helper.assertTrue(false, "Waiting for Federation replacement binding");
             }
             if (phase[0] == 1) {
+                // Says which of the face's inputs keep it disconnected, should it stay so.
                 helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
-                        "Affected face must recreate as a Federation binding");
+                        "Affected face must recreate as a Federation binding (" + eastInputs(helper, router, works[0]) + ")");
                 fixtures.placeUnsupported(CENTER, Direction.EAST);
-                helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.DISCONNECTED,
-                        "Unsupported replacement must invalidate immediately");
-                helper.assertTrue(router.binding(Direction.WEST) == unaffected[0],
-                        "Unsupported replacement must not recreate another face");
+                // Checked from the next tick on: a failure here must report itself, not leave the stone to fail the
+                // check above on every later tick.
+                stoneSeen[0] = router.binding(Direction.EAST);
+                westAfterStone[0] = router.binding(Direction.WEST);
                 phase[0] = 2;
                 helper.assertTrue(false, "Waiting for unsupported replacement settlement");
             }
+            helper.assertValueEqual(stoneSeen[0].kind(), RouterPortKind.DISCONNECTED,
+                    "Unsupported replacement must invalidate immediately");
+            helper.assertTrue(westAfterStone[0] == unaffected[0], "Unsupported replacement must not recreate another face");
             helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.DISCONNECTED,
                     "Unsupported replacement must remain disconnected");
             RouterEvidence.write("routerportreplacement", 8, Map.of(
@@ -159,6 +175,26 @@ public final class RouterGameTests {
                     "affectedFace", "east", "nativeJoin", "false"));
             fixtures.close();
         });
+    }
+
+    /**
+     * What the Switch's east face resolves from: whether the block links there, the cable's port and bundle records,
+     * and whether the Switch's scheduled work ran since the replacement, with its chunk's state, which gates that work.
+     */
+    private static String eastInputs(GameTestHelper helper, RouterBlockEntity router, long worksBefore) {
+        var level = helper.getLevel();
+        var center = helper.absolutePos(CENTER);
+        var east = center.east();
+        var state = level.getBlockState(center);
+        var links = state.getBlock() instanceof CableLinkedBlock linked && linked.linksCable(state, Direction.EAST);
+        var bundles = BundledCables.get(level);
+        var chunk = level.getChunkSource().getChunkNow(center.getX() >> 4, center.getZ() >> 4);
+        return "links=" + links + " neighbour=" + level.getBlockState(east)
+                + " port=" + level.getCapability(FederationPortCapability.BLOCK, east, Direction.WEST)
+                + " bundleHere=" + bundles.at(center).isPresent() + " bundleEast=" + bundles.at(east).isPresent()
+                + " works=" + (router.works() - worksBefore) + " awake=" + RouterTicks.awake(router)
+                + " chunk=" + (chunk == null ? "none" : chunk.getFullStatus())
+                + " entities=" + level.areEntitiesLoaded(ChunkPos.asLong(center));
     }
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
@@ -731,6 +767,90 @@ public final class RouterGameTests {
                     "askedRecovers", "native", "sweepRecovers", "native", "sweepWithinTicks", "150"));
             fixtures.close();
         });
+    }
+
+    /**
+     * A Router face whose cached Federation port went stale, as when the invalidation that should have reached it was
+     * missed, links again in its sweep, and keeps the link when an ordinary event resolves it afterwards. TEST-ONLY: the
+     * stale cache is simulated by clearing the face's cached port and binding through reflection.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void routerFaceRecoversStaleFederationCache(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeRouter(CENTER);
+        fixtures.placeFederationCable(CENTER, Direction.EAST);
+        var phase = new int[1];
+        var staleAt = new long[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                        "Waiting for the cable to link");
+                staleFederationCache(router, Direction.EAST);
+                staleAt[0] = helper.getTick();
+                phase[0] = 1;
+                helper.fail("Waiting for the sweep");
+            }
+            helper.assertTrue(helper.getTick() <= staleAt[0] + 150, "The sweep must find the face within its period");
+            helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                    "Waiting for the sweep to link the face again");
+            // An ordinary event reads the face's cache: it must hold the port again, not the stale value.
+            router.neighborChanged(helper.absolutePos(CENTER.east()));
+            helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                    "An event after the sweep must keep the link");
+            RouterEvidence.write("routerfacerecoversstalefederationcache", 3, Map.of(
+                    "sweepRecovers", "federation", "sweepWithinTicks", "150", "eventAfterSweep", "federation"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A face that resolves to the same link again, as in every sweep or a neighbour update that changed nothing, keeps
+     * the binding it had, so whoever holds it still owns the face's link.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void routerFaceKeepsItsBindingWhenUnchanged(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeSwitch(CENTER);
+        fixtures.placeFederationCable(CENTER, Direction.WEST);
+        fixtures.placeNativeDevice(CENTER, Direction.NORTH);
+        helper.succeedWhen(() -> {
+            var federation = router.binding(Direction.WEST);
+            var nativeMe = router.binding(Direction.NORTH);
+            helper.assertValueEqual(federation.kind(), RouterPortKind.FEDERATION, "Waiting for the cable to link");
+            helper.assertValueEqual(nativeMe.kind(), RouterPortKind.NATIVE_ME, "Waiting for the chest to attach");
+            router.neighborChanged(helper.absolutePos(CENTER.west()));
+            router.neighborChanged(helper.absolutePos(CENTER.north()));
+            helper.assertTrue(router.binding(Direction.WEST) == federation,
+                    "A Federation face resolved alike must keep its binding");
+            helper.assertTrue(router.binding(Direction.NORTH) == nativeMe,
+                    "A native face resolved alike must keep its binding");
+            RouterEvidence.write("routerfacekeepsitsbindingwhenunchanged", 2, Map.of(
+                    "federationKept", "true", "nativeKept", "true"));
+            fixtures.close();
+        });
+    }
+
+    /** Leaves the face's Federation cache holding no port, with no invalidation to come, and the face disconnected. */
+    private static void staleFederationCache(space.controlnet.ae2federation.router.RouterBlockEntity router,
+            Direction face) {
+        try {
+            var portsField = space.controlnet.ae2federation.router.RouterBlockEntity.class.getDeclaredField("facePorts");
+            portsField.setAccessible(true);
+            var port = ((java.util.Map<?, ?>) portsField.get(router)).get(face);
+            var cacheField = port.getClass().getDeclaredField("federationCache");
+            cacheField.setAccessible(true);
+            var cache = cacheField.get(port);
+            var cachedField = cache.getClass().getDeclaredField("cachedCap");
+            cachedField.setAccessible(true);
+            cachedField.set(cache, null);
+            var bindingField = port.getClass().getDeclaredField("binding");
+            bindingField.setAccessible(true);
+            bindingField.set(port, RouterPortBinding.Disconnected.INSTANCE);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("The test must reach the Router face's cache", exception);
+        }
     }
 
     /**

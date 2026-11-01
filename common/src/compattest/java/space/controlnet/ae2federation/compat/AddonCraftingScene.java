@@ -7,6 +7,7 @@ import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.crafting.CalculationStrategy;
 import appeng.api.networking.crafting.ICraftingPlan;
+import appeng.api.networking.crafting.ICraftingSubmitResult;
 import appeng.api.networking.crafting.ICraftingSimulationRequester;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
@@ -19,6 +20,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.function.BiFunction;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
@@ -48,7 +50,7 @@ import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
  * through the cable beside them. The consumer's CPU crafts four sticks with the provider's pattern.
  */
 final class AddonCraftingScene {
-    private static final BlockPos BASE = new BlockPos(5, 3, 5);
+    static final BlockPos BASE = new BlockPos(5, 3, 5);
     /** Where the provider stands: east of the provider network's last cable, which is west of it. */
     static final BlockPos PROVIDER = BASE.east(2).north();
     /** The consumer's first CPU block, west of its cable; the others run on west from it. */
@@ -87,6 +89,13 @@ final class AddonCraftingScene {
     private boolean disconnectAfterPush;
     private boolean relinkAfterDisconnect;
     private boolean mergeAfterPush;
+    // A whole run can order joined, as a native control of every scene (NativeParity).
+    private boolean joinBeforeOrder = NativeParity.joinedRun();
+    private java.util.function.Consumer<GameTestHelper> joiner;
+    private BiFunction<IGrid, ICraftingPlan, ICraftingSubmitResult> submit = (grid, plan) ->
+            grid.getCraftingService().submitJob(plan, null, null, true, IActionSource.empty());
+    private long submittedTick;
+    private long jobTicks = -1;
     private long jobs = 2;
     private java.util.function.Consumer<GameTestHelper> placeStructure;
     private java.util.function.Consumer<GameTestHelper> placeConsumerCpu;
@@ -250,6 +259,19 @@ final class AddonCraftingScene {
         /** What one craft takes: by default one {@link #input()}. */
         default java.util.Map<AEItemKey, Long> inputs() {
             return java.util.Map.of(input(), 1L);
+        }
+
+        /**
+         * What one craft takes that an item cell cannot hold, such as water: the consumer keeps it in an ME Chest of its
+         * own with {@link #inputCell()}.
+         */
+        default java.util.Map<AEKey, Long> otherInputs() {
+            return java.util.Map.of();
+        }
+
+        /** The cell for {@link #otherInputs()}; null when there are none. */
+        default String inputCell() {
+            return null;
         }
 
         AEKey output();
@@ -460,7 +482,36 @@ final class AddonCraftingScene {
         return this;
     }
 
+    /**
+     * Orders with both networks joined into one AE2 Grid instead of through Federation: the consumer's cable under the
+     * Bridge is fluix and the Bridge part is removed before the order, so the consumer's CPU uses the provider
+     * natively.
+     */
+    AddonCraftingScene joinedBeforeOrder() {
+        joinBeforeOrder = true;
+        return this;
+    }
+
+    /** As {@link #joinedBeforeOrder()}, with {@code join} joining the networks instead of a fluix cable. */
+    AddonCraftingScene joinedBeforeOrder(java.util.function.Consumer<GameTestHelper> join) {
+        joinBeforeOrder = true;
+        joiner = join;
+        return this;
+    }
+
+    /** Submits the first order's plan to the consumer's grid as {@code submitter} does, such as an addon's menu. */
+    AddonCraftingScene submittingWith(BiFunction<IGrid, ICraftingPlan, ICraftingSubmitResult> submitter) {
+        submit = submitter;
+        return this;
+    }
+
     boolean submitted() { return stage >= 6; }
+
+    /** The game ticks from submitting the last order until its CPU was seen idle; -1 while it runs. */
+    long jobTicks() { return jobTicks; }
+
+    /** Whether the scene orders with both networks joined into one Grid instead of through Federation. */
+    boolean joined() { return joinBeforeOrder; }
 
     PolicyBridgeFixtures bridge() { return bridge; }
 
@@ -468,6 +519,12 @@ final class AddonCraftingScene {
     void tick() {
         switch (stage) {
             case 0 -> {
+                if (joinBeforeOrder && (cancelAfterPush || disconnectAfterPush || mergeAfterPush || lateByproduct)) {
+                    // These follow Federation's ledger after the push; one Grid has none to follow, so a joined run
+                    // skips them.
+                    throw new IllegalStateException("The scene checks the ledger after a cancelled job, a removed"
+                            + " Bridge, a merge or a late byproduct: mark the test @FederationOnly");
+                }
                 helper.assertTrue(bridge.networksSettled(), "Waiting for both networks");
                 if (placeStructure != null) {
                     placeStructure.accept(helper);
@@ -480,6 +537,12 @@ final class AddonCraftingScene {
                     helper.setBlock(outputChestPos, appeng.core.definitions.AEBlocks.ME_CHEST.block());
                     helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(outputChestPos)
                             .setCell(new ItemStack(item(machine.outputCell())));
+                }
+                if (machine != null && machine.inputCell() != null) {
+                    if (outputOnConsumer) throw new IllegalStateException("One consumer chest holds inputs or outputs");
+                    helper.setBlock(CONSUMER_OUTPUT_CHEST, appeng.core.definitions.AEBlocks.ME_CHEST.block());
+                    helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(CONSUMER_OUTPUT_CHEST)
+                            .setCell(new ItemStack(item(machine.inputCell())));
                 }
                 if (outputOnConsumer) {
                     helper.setBlock(CONSUMER_OUTPUT_CHEST, appeng.core.definitions.AEBlocks.ME_CHEST.block());
@@ -562,12 +625,20 @@ final class AddonCraftingScene {
                         "Waiting for both networks' identities");
                 consumerNetwork = bridge.mainNetwork();
                 providerNetwork = bridge.outerNetwork();
-                enableRules();
+                if (joinBeforeOrder) {
+                    if (joiner != null) joiner.accept(helper);
+                    else fluixCableUnderBridge();
+                    bridge.removeFirstBridge();
+                } else {
+                    enableRules();
+                }
                 if (mergeAfterPush) fluixCableUnderBridge();
                 stage = 4;
                 helper.fail("Enabled the rules");
             }
             case 4 -> {
+                helper.assertTrue(!joinBeforeOrder || consumerGrid() == bridge.outerGrid(),
+                        "Waiting for the networks to become one Grid");
                 helper.assertTrue(consumerGrid().getCraftingService().isCraftable(output()),
                         "Waiting for the provider's pattern on the consumer");
                 if (changeProviderAfterLink != null) {
@@ -592,10 +663,12 @@ final class AddonCraftingScene {
                 var plan = plan();
                 helper.assertFalse(plan.simulation(), "The consumer's planks must be enough: " + plan.missingItems());
                 checkPlan.accept(plan, get(localPlanFuture));
-                helper.assertTrue(consumerGrid().getCraftingService()
-                        .submitJob(plan, null, null, true, IActionSource.empty()).successful(),
-                        "The consumer's CPU must take the job");
+                var submitted = submit.apply(consumerGrid(), plan);
+                helper.assertTrue(submitted.successful(), "The consumer's CPU must take the job: "
+                        + submitted.errorCode() + " " + submitted.errorDetail());
                 tookOrders.add(busyCpu());
+                submittedTick = helper.getTick();
+                jobTicks = -1;
                 stage = 6;
                 helper.fail("Submitted the job");
             }
@@ -769,8 +842,17 @@ final class AddonCraftingScene {
                     stage = 17;
                     helper.fail("Waiting for the independent CPU's delayed byproduct return");
                 }
-                helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
-                        "Waiting for the consumer's job to finish");
+                if (consumerGrid().getCraftingService().getCpus().stream().anyMatch(cpu -> cpu.isBusy())) {
+                    helper.fail("Waiting for the consumer's job to finish: owed " + CraftingReturnLedger.get(
+                            helper.getLevel()).owed(providerNetwork, consumerNetwork, output()) + " " + output()
+                            + ", the provider network holds " + bridge.outerGrid().getStorageService().getInventory()
+                            .getAvailableStacks().get(output()) + ", the consumer network "
+                            + consumerGrid().getStorageService().getInventory().getAvailableStacks().get(output()));
+                }
+                if (jobTicks < 0) {
+                    jobTicks = helper.getTick() - submittedTick;
+                    NativeParity.recordJobTicks(helper.testInfo.getTestName(), jobTicks);
+                }
                 if (consumerStorage != null) {
                     helper.assertValueEqual(held(consumerChest(), output()), requested() * tookOrders.size(),
                             "The consumer's own storage must hold everything made");
@@ -951,6 +1033,11 @@ final class AddonCraftingScene {
      * empty, and none of the output anywhere on the provider network.
      */
     private void assertReturnsSettled() {
+        if (joinBeforeOrder) {
+            // One Grid has no ledger and no provider network apart from the consumer's: only its CPUs can be checked.
+            assertConsumerCpusIdle();
+            return;
+        }
         var ledger = CraftingReturnLedger.get(helper.getLevel());
         var factory = bridge.outerNetwork();
         var consumer = bridge.mainNetwork();
@@ -960,6 +1047,10 @@ final class AddonCraftingScene {
         helper.assertValueEqual(held(bridge.outerGrid().getStorageService().getInventory(), output()), 0L,
                 "The provider network keeps none of the output");
         helper.assertTrue(ledger.jobs(consumer).isEmpty(), "Waiting for the consumer's job to retire: " + ledger.jobs(consumer));
+        assertConsumerCpusIdle();
+    }
+
+    private void assertConsumerCpusIdle() {
         for (var cpu : consumerGrid().getCraftingService().getCpus()) {
             helper.assertTrue(!cpu.isBusy() && (!(cpu instanceof appeng.me.cluster.implementations.CraftingCPUCluster
                     cluster) || cluster.craftingLogic.getInventory().list.isEmpty()), "The consumer's CPU is idle and empty");
@@ -1047,6 +1138,13 @@ final class AddonCraftingScene {
             helper.assertValueEqual(consumerChest().insert(input.getKey(), amount, Actionable.MODULATE,
                     IActionSource.empty()), amount, message + ": " + input.getKey());
         }
+        if (!processing) return;
+        for (var input : machine.otherInputs().entrySet()) {
+            var amount = input.getValue() * jobs;
+            var chest = helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(CONSUMER_OUTPUT_CHEST);
+            helper.assertValueEqual(chest.getOriginalCellInventory(0).insert(input.getKey(), amount,
+                    Actionable.MODULATE, IActionSource.empty()), amount, message + ": " + input.getKey());
+        }
     }
 
     /** What one craft takes. */
@@ -1069,8 +1167,12 @@ final class AddonCraftingScene {
 
     private ItemStack processingPattern() {
         return PatternDetailsHelper.encodeProcessingPattern(
-                machine.inputs().entrySet().stream()
-                        .map(input -> new appeng.api.stacks.GenericStack(input.getKey(), input.getValue())).toList(),
+                java.util.stream.Stream.concat(
+                        machine.inputs().entrySet().stream()
+                                .map(input -> new appeng.api.stacks.GenericStack(input.getKey(), input.getValue())),
+                        machine.otherInputs().entrySet().stream()
+                                .map(input -> new appeng.api.stacks.GenericStack(input.getKey(), input.getValue())))
+                        .toList(),
                 lateByproduct ? List.of(new appeng.api.stacks.GenericStack(machine.output(), machine.outputPerInput()),
                         new appeng.api.stacks.GenericStack(AEItemKey.of(Items.GLASS_BOTTLE), 1))
                         : List.of(new appeng.api.stacks.GenericStack(machine.output(), machine.outputPerInput())));

@@ -233,6 +233,7 @@ public final class ExtendedAECompatGameTests {
 
     /** The Bridge is removed after ExtendedAE's Pattern Provider pushed its inputs. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    @FederationOnly("the ledger after the Bridge is removed")
     public static void exPatternProviderDisconnected(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "extendedae:ex_pattern_provider", "minecraft:chest",
                 List.of("ae2:1k_crafting_storage"), true).disconnectingAfterPush();

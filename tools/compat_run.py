@@ -15,6 +15,7 @@ with the test mod's runner, and reads its JSON report. Profiles run in parallel,
     python3 tools/compat_run.py --list
     python3 tools/compat_run.py --list --json --group addons        # profile names, for a CI matrix
     python3 tools/compat_run.py report build/compat-results           # Markdown table of summary JSON files
+    python3 tools/compat_run.py parity fed joined                     # runs *-fed against joined runs *-joined
     python3 tools/compat_run.py pin modrinth extended-ae 2.2.35      # print a pinned file entry
     python3 tools/compat_run.py pin url https://example.invalid/mod.jar
 
@@ -288,10 +289,13 @@ def run_profile(name: str, profile: dict, tests: str, timeout: int, parallel: in
         return {"profile": name, "status": status, "exit": exit_code, "seconds": seconds,
                 "detail": failure_hint(log)}
     data = json.loads(report.read_text())
-    failed = [test for test in data["tests"] if test["status"] != "pass"]
+    # A joined run skips the tests that check only Federation; they are neither run nor failed.
+    ran = [test for test in data["tests"] if test["status"] != "skipped"]
+    failed = [test for test in ran if test["status"] != "pass"]
     status = "setup-error" if data.get("setupError") else "fail" if failed else "pass"
     return {"profile": name, "status": status, "exit": exit_code, "seconds": seconds,
-            "passed": len(data["tests"]) - len(failed), "total": len(data["tests"]), "failed": failed,
+            "passed": len(ran) - len(failed), "total": len(ran), "skipped": len(data["tests"]) - len(ran),
+            "failed": failed,
             "detail": data.get("setupError"), "mods": len(data.get("mods", {}))}
 
 
@@ -478,7 +482,9 @@ def report(directory: Path) -> str:
         return failed
 
     def tests(row: dict) -> str:
-        return f"{row['passed']}/{row['total']}" if "total" in row else ""
+        if "total" not in row:
+            return ""
+        return f"{row['passed']}/{row['total']}" + (f" ({row['skipped']} skipped)" if row.get("skipped") else "")
 
     pinned = [row for row in rows if "latest" not in row]
     newest = [row for row in rows if "latest" in row]
@@ -503,6 +509,72 @@ def report(directory: Path) -> str:
             lines.append(f"| {row['profile']} | {latest.get('pinned', '')} | {tested} | {neoforge} | {row['status']} | "
                          f"{tests(row)} | {row['seconds']} s | {failures(row)} |")
     return "\n".join(lines) + "\n"
+
+
+def parity_class(federation: dict, joined: dict | None) -> str:
+    """How a test through Federation compares with the same test on one joined Grid.
+
+    A Federation job is "slower" when it takes more than half again the joined job's ticks, and at least 10 more."""
+    if joined is None:
+        return "no control"
+    if joined["status"] == "skipped":
+        return "Federation-only"
+    passed = federation["status"] == "pass", joined["status"] == "pass"
+    if passed == (False, True):
+        return "Federation fails"
+    if passed == (True, False):
+        return "joined fails"
+    if passed == (False, False):
+        return "both fail"
+    if "jobTicks" not in federation or "jobTicks" not in joined:
+        return "no control"
+    slack = max(10, joined["jobTicks"] // 2)
+    return "slower" if federation["jobTicks"] > joined["jobTicks"] + slack else "parity"
+
+
+def parity(federation: dict[str, dict], joined: dict[str, dict]) -> str:
+    """A Markdown table of the tests a Federation run and a joined run (-Dae2federation.compat.joinBeforeOrder=true)
+    both reported, by profile, from each run's compat-report.json; tests neither side compared are only counted."""
+    for name, data in federation.items():
+        if data.get("joinBeforeOrder"):
+            raise ValueError(f"{name}: the Federation run ordered joined")
+    for name, data in joined.items():
+        if not data.get("joinBeforeOrder"):
+            raise ValueError(f"{name}: the joined run ordered through Federation")
+
+    def shown(test: dict | None) -> str:
+        if test is None:
+            return "missing"
+        if test["status"] == "skipped":
+            return "skipped"
+        if test["status"] != "pass":
+            return (test.get("error") or test["status"]).splitlines()[0][:160].replace("|", "/")
+        return f"pass, {test['jobTicks']} ticks" if "jobTicks" in test else "pass"
+
+    rows, counts = [], {}
+    for profile in sorted(set(federation) & set(joined)):
+        native = {test["id"]: test for test in joined[profile]["tests"]}
+        for test in federation[profile]["tests"]:
+            other = native.get(test["id"])
+            kind = parity_class(test, other)
+            counts[kind] = counts.get(kind, 0) + 1
+            if kind == "no control":
+                continue
+            gap = ""
+            if kind in ("parity", "slower"):
+                difference = test["jobTicks"] - other["jobTicks"]
+                gap = f"{difference:+d} ({test['jobTicks'] / max(1, other['jobTicks']):.2f}x)"
+            name = test["id"].rsplit(".", 1)[-1]
+            rows.append(f"| {profile} | {name} | {shown(test)} | {shown(other)} | {gap} | {kind} |")
+    lines = [", ".join(f"{kind}: {count}" for kind, count in sorted(counts.items())), "",
+             "| Profile | Test | Federation | Joined | Ticks | Class |", "|---|---|---|---|---|---|", *rows]
+    return "\n".join(lines) + "\n"
+
+
+def parity_reports(suffix: str) -> dict[str, dict]:
+    """Each profile's compat-report.json from the runs named <profile>-<suffix>."""
+    return {path.parent.name.removesuffix(f"-{suffix}"): json.loads(path.read_text())
+            for path in sorted(RUNS.glob(f"*-{suffix}/compat-report.json"))}
 
 
 def playthrough_chunk_properties(properties: dict[str, str], tests: str, chunk: int, size: int) -> dict[str, str]:
@@ -534,6 +606,9 @@ def latest_status(names: list[str], profiles: dict[str, dict]) -> list[dict]:
 def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] == "report":
         print(report(Path(sys.argv[2])), end="")
+        return 0
+    if len(sys.argv) > 1 and sys.argv[1] == "parity":
+        print(parity(parity_reports(sys.argv[2]), parity_reports(sys.argv[3])), end="")
         return 0
     if len(sys.argv) > 1 and sys.argv[1] == "latest":
         parser = argparse.ArgumentParser(prog="compat_run.py latest",
@@ -673,6 +748,7 @@ def main() -> int:
                 result["latest"] = latest[futures[future]]
             results.append(result)
             counts = f" {result['passed']}/{result['total']}" if "total" in result else ""
+            counts += f" ({result['skipped']} skipped)" if result.get("skipped") else ""
             print(f"{result['status'].upper():12} {result['profile']}{counts} ({result['seconds']} s)", flush=True)
             for test in result.get("failed", []):
                 print(f"    {test['id']}: {test.get('error', test['status'])}")

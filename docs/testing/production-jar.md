@@ -279,3 +279,49 @@ Missteps, kept and not counted:
 
 Evidence (Git-ignored): `build/release-0.0.7/` holds both attempts' screenshots (`shots/`, `shots-2/`), server and
 client logs, the exported fixture and `card-before-after.png`.
+
+## Cross-dimension production run: 0.0.9 release JAR (2026-10-26)
+
+The release candidate at `e9311d2f4f2fb17f41f8f6f55b0a3ac6a6ec622f` passed the production run on 2026-10-26
+(UTC). The binary is `ae2federation-0.0.9.jar`, SHA-256
+`7afe5746f2b72279776f79b7cd4b9b1540eec0ccb934d69d7b55354f1870d4dc`.
+Server and client load this identical JAR plus AE2 19.2.17, GuideME 21.1.1 and LDLib2 2.2.34, with the dependency
+hashes in the 0.0.7 table above. Runtime: NeoForge 21.1.250, Java 21.0.12.1. Neither loads a testmod.
+
+The exported 0.0.7 fixture was placed once in a fresh world at the documented coordinates. An offline client on
+loopback, rendered under Xvfb and driven through XTEST, performed mapping and submitted both terminal orders.
+Console commands placed and inspected the fixture, positioned the player, controlled chunk tickets and saved/stopped
+the server. No console or internal API submitted a crafting request.
+
+1. The Provider lists both Endpoints at `203, 70, 205`, distinguishing the nether endpoint by its dimension.
+   Selecting pattern #0 and **Map #0 here** creates one mapping to the nether endpoint.
+2. A terminal order requests 8 stone. At 05:50:19 the furnace holds cobblestone and is cooking; the nether force-load
+   ticket is removed. At 05:50:33, vanilla `execute in minecraft:the_nether unless loaded 203 70 205` confirms that
+   the endpoint is actually unloaded. The Provider retains its mapping count and the `Nether` return-row label.
+3. The ticket is restored at 05:50:48. At 05:52:27, the furnace reports exactly 8 stone smelts, holds only coal,
+   the endpoint subnet's cell is empty, the requesting chest contains 8 stone and 8 cobblestone, and the CPU has no
+   job and an empty inventory. The terminal independently shows those counts.
+4. `save-all flush` and `stop` exit 0. Restarting the same world and JAR preserves the inventory and endpoint mapping.
+   A second terminal order requests 8 more stone without remapping.
+5. At 05:55:11 the furnace reports exactly 16 stone smelts. The requesting chest and terminal contain 16 stone and
+   no cobblestone; the subnet cell and CPU inventory are empty and the CPU has no job.
+6. The domain screen shows the two networks across dimensions and the nether endpoint. Its Statistics page renders
+   history and omits the Federation operating-power card, as required by this release's disabled operating-power rule.
+7. The final save/stop also exits 0. Both qualifying server logs have no ERROR or exception lines. The client closes
+   through its window-close event; the separate guide client also closes normally after compiling 32 Federation pages
+   without PageCompiler warnings.
+
+Setup failures are retained separately: the first server launch preceded copying the mod JAR and was stopped before
+fixture placement (`server-setup-no-mod.log`); the client's initial quick-play attempt reached the port before the
+qualifying server was ready and logged connection refused. Manual Direct Connect then succeeded. Neither setup
+attempt is counted as a passing run or a mod defect.
+
+Additional release checks passed: 791 JUnit tests, the complete 284-test manifest batch, archive tests and inspection,
+visual resource validation, and no `beam_converter` or `quantum_cube` resource entry in the JAR. Release-branch CI:
+[Quick correctness](https://github.com/ControlNet/ae2-federation/actions/runs/40276089846),
+[Compatibility (34 profiles)](https://github.com/ControlNet/ae2-federation/actions/runs/40276089725), and
+[Playthrough](https://github.com/ControlNet/ae2-federation/actions/runs/40276089793), all successful on `e9311d2f`.
+
+Evidence (Git-ignored): `build/release-0.0.9/` in the primary workspace contains `inputs.json`, the tested JAR,
+server/client logs, build and GameTest logs, guide log, copied fixture, input driver and screenshots. This run covers
+the described production flow; it is not a soak or a full modpack playthrough.

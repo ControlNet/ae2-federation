@@ -15,7 +15,6 @@ import java.lang.invoke.MethodType;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,6 +22,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import space.controlnet.ae2federation.client.guide.NestedGuideNavRow;
+import space.controlnet.ae2federation.compat.data_energistics.DataEnergisticsGuide;
 
 /**
  * Shows every level of the guide's navigation tree in GuideME's sidebar. GuideME builds rows for the roots and their
@@ -34,9 +34,6 @@ import space.controlnet.ae2federation.client.guide.NestedGuideNavRow;
 public abstract class GuideNavBarMixin {
     @Unique
     private static final String ae2federation$ROW_CLASS = "guideme.internal.screen.GuideNavBar$Row";
-
-    @Unique
-    private static final String ae2federation$DATA_ENERGISTICS = "data_energistics";
 
     @Unique
     @Nullable
@@ -64,8 +61,7 @@ public abstract class GuideNavBarMixin {
         original.call();
         // Data Energistics nests GuideME's sidebar the same way; leave the rows to it. Without our nesting, the other
         // hooks here and in the row mixin change nothing.
-        var mods = ModList.get();
-        if (mods != null && mods.isLoaded(ae2federation$DATA_ENERGISTICS)) {
+        if (DataEnergisticsGuide.nestsSidebar()) {
             return;
         }
         var built = new IdentityHashMap<NavigationNode, NestedGuideNavRow>();

@@ -72,7 +72,7 @@ navigation:
     两个交换机之间的联邦线缆
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="4 1 0" max="5 3 1">
-    光束转换器， 两个方块： 下端放在线缆上， FE从其他任意面输入
+    光束转换器， 两个方块： 下端放在线缆上， FE仅从背面（上端）输入
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
     交换机： 一面接网络B的线缆， 另一面接联邦线缆

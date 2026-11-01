@@ -8,22 +8,18 @@ categories:
 - network infrastructure
 item_ids:
 - ae2federation:beam_converter
-- ae2federation:creative_beam_converter
 ---
 
 # ME联邦光束转换器
 
-<Row>
-  <BlockImage id="ae2federation:beam_converter" scale="6" />
-  <BlockImage id="ae2federation:creative_beam_converter" scale="6" />
-</Row>
+<BlockImage id="ae2federation:beam_converter" scale="6" />
 
 [联邦域](../mechanics/index.md)靠FE运行。 它的交换机、路由器、线缆、样板供应器、处理端点和自动化接口每tick都消耗一点能量， 联邦域从它的光束转换器里取用。 转换器付不起时， 联邦域**停止**， 和超出[容量](../mechanics/capacity.md)时一样： 各个网络照常独立工作， 但在重新获得FE之前， 不共享存储、合成、处理和能量。
 
 <GameScene zoom="4.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/beam_converter.snbt" />
   <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
-    一台1×1×2的光束转换器： 正面朝下对着线缆。 FE从其他任意面输入
+    一台1×1×2的光束转换器： 正面朝下对着线缆。 FE仅从背面（上端）输入
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="5 0 0" max="8 2 1">
     网络A
@@ -54,12 +50,10 @@ item_ids:
 
 ## 能量
 
-一台转换器是一个整体缓存， 每个方块提供16,000 FE。 用任意模组的线缆或发电机从正面以外的面输入FE， 接一根线缆就能充满整台转换器。 联邦域把所有匹配转换器的缓存加在一起， 按各台转换器的存量比例从中取用。
+一台转换器是一个整体缓存， 每个方块提供16,000 FE。 用任意模组的线缆或发电机从背部外表面输入FE， 接一根线缆就能充满整台转换器。 联邦域把所有匹配转换器的缓存加在一起， 按各台转换器的存量比例从中取用。
 
 缓存耗尽时联邦域停止， 并继续取用输入的能量。 连续超过30 tick能量充足后， 它重新运行， 就像AE2网络断电后重新启动一样。 新的联邦域只要转换器付得起， 就立即运行。
 
 联邦域停止时， 它的线缆发出细细的红光， 拓扑界面变成暗红色。 拓扑界面的角落显示转换器的充满程度： 运行时为绿色， 消耗多于输入时为黄色， 停止后为红色。 用Jade查看转换器， 可以看到它的缓存和输入的FE； 与联邦域匹配时为绿色， 不匹配时为红色。
-
-**创造ME联邦光束转换器**遵循相同的尺寸规则， 而且永远不会耗尽。
 
 <RecipeFor id="ae2federation:beam_converter" />

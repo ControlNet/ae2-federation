@@ -55,11 +55,13 @@ public final class StorageStatusGameTests {
                 var key = key(fixtures);
                 edit(level, key, new PolicyRule(true, Set.of(), PolicyFilter.allowAll(), false));
                 StorageMountService.get(level).reconcileAll();
-                var unpaired = StorageMountService.status(level, key).orElseThrow();
-                helper.assertValueEqual(unpaired.reason(), Optional.of(Reason.IDENTITY_UNCONFIRMED),
-                        "Networks the storage service never paired are not loaded or not settled for it");
-                helper.assertTrue(!unpaired.inEffect(), "An unpaired rule is not in effect");
-                facts.put("unpairedReason", Reason.IDENTITY_UNCONFIRMED.name());
+                GameTestChecks.once(helper, () -> {
+                    var unpaired = StorageMountService.status(level, key).orElseThrow();
+                    helper.assertValueEqual(unpaired.reason(), Optional.of(Reason.IDENTITY_UNCONFIRMED),
+                            "Networks the storage service never paired are not loaded or not settled for it");
+                    helper.assertTrue(!unpaired.inEffect(), "An unpaired rule is not in effect");
+                    facts.put("unpairedReason", Reason.IDENTITY_UNCONFIRMED.name());
+                });
                 fixtures.placeFirstBridge();
                 phase[0] = 1;
                 helper.assertTrue(false, "Waiting for the Federation Domain");
@@ -69,17 +71,19 @@ public final class StorageStatusGameTests {
             if (phase[0] == 1) {
                 helper.assertTrue(fixtures.firstBridgeReady(), "Waiting for the Federation Domain");
                 mounts.reconcileAll();
-                var none = StorageMountService.status(level, key).orElseThrow();
-                helper.assertValueEqual(none.reason(), Optional.of(Reason.STORAGE_ACCESS_NONE),
-                        "A rule allowing no operation says so");
-                helper.assertTrue(mounts.projection(key) == null, "A rule allowing nothing mounts nothing");
-                facts.put("accessNoneReason", Reason.STORAGE_ACCESS_NONE.name());
-                edit(level, key, PolicyRule.storageDefaults());
-                var working = StorageMountService.status(level, key).orElseThrow();
-                helper.assertTrue(working.inEffect() && working.reason().isEmpty() && working.source().isEmpty(),
-                        "A working rule is in effect with no reason");
-                helper.assertTrue(mounts.projection(key) != null, "The working rule mounts the provider's storage");
-                facts.put("defaultsInEffect", "true");
+                GameTestChecks.once(helper, () -> {
+                    var none = StorageMountService.status(level, key).orElseThrow();
+                    helper.assertValueEqual(none.reason(), Optional.of(Reason.STORAGE_ACCESS_NONE),
+                            "A rule allowing no operation says so");
+                    helper.assertTrue(mounts.projection(key) == null, "A rule allowing nothing mounts nothing");
+                    facts.put("accessNoneReason", Reason.STORAGE_ACCESS_NONE.name());
+                    edit(level, key, PolicyRule.storageDefaults());
+                    var working = StorageMountService.status(level, key).orElseThrow();
+                    helper.assertTrue(working.inEffect() && working.reason().isEmpty() && working.source().isEmpty(),
+                            "A working rule is in effect with no reason");
+                    helper.assertTrue(mounts.projection(key) != null, "The working rule mounts the provider's storage");
+                    facts.put("defaultsInEffect", "true");
+                });
                 fixtures.providerChest().setCell(ItemStack.EMPTY);
                 phase[0] = 2;
                 helper.assertTrue(false, "Waiting for the provider's cell removal");
@@ -132,17 +136,19 @@ public final class StorageStatusGameTests {
             var mounts = StorageMountService.get(level);
             edit(level, fixture.aToB(), PolicyRule.storageDefaults().withMode(space.controlnet.ae2federation.policy.RuleMode.REEXPORT));
             edit(level, fixture.bToD(), PolicyRule.storageDefaults());
-            var through = StorageMountService.status(level, fixture.bToD()).orElseThrow();
-            helper.assertTrue(mounts.effectiveProjection(fixture.aToD()) != null, "D sees A's storage through B");
-            helper.assertTrue(mounts.effectiveProjection(fixture.bToD()) == null, "B has no storage of its own");
-            helper.assertTrue(through.inEffect() && through.reason().isEmpty(),
-                    "D's rule on B is in effect while it carries A's storage");
-            edit(level, fixture.aToB(), PolicyRule.storageDefaults());
-            var blocked = StorageMountService.status(level, fixture.bToD()).orElseThrow();
-            helper.assertTrue(mounts.effectiveProjection(fixture.aToD()) == null, "Without re-export D loses A");
-            helper.assertTrue(!blocked.inEffect(), "D's rule on B then shares nothing");
-            helper.assertValueEqual(blocked.reason(), Optional.of(Reason.STORAGE_SOURCE_EMPTY),
-                    "B has nothing of its own to share");
+            GameTestChecks.once(helper, () -> {
+                var through = StorageMountService.status(level, fixture.bToD()).orElseThrow();
+                helper.assertTrue(mounts.effectiveProjection(fixture.aToD()) != null, "D sees A's storage through B");
+                helper.assertTrue(mounts.effectiveProjection(fixture.bToD()) == null, "B has no storage of its own");
+                helper.assertTrue(through.inEffect() && through.reason().isEmpty(),
+                        "D's rule on B is in effect while it carries A's storage");
+                edit(level, fixture.aToB(), PolicyRule.storageDefaults());
+                var blocked = StorageMountService.status(level, fixture.bToD()).orElseThrow();
+                helper.assertTrue(mounts.effectiveProjection(fixture.aToD()) == null, "Without re-export D loses A");
+                helper.assertTrue(!blocked.inEffect(), "D's rule on B then shares nothing");
+                helper.assertValueEqual(blocked.reason(), Optional.of(Reason.STORAGE_SOURCE_EMPTY),
+                        "B has nothing of its own to share");
+            });
             PolicyEvidence.write("storagestatusreexport", 6, java.util.Map.of("throughInEffect", "true",
                     "ownMount", "false", "withoutReexportReason", Reason.STORAGE_SOURCE_EMPTY.name()));
             fixture.close();

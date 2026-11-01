@@ -9,7 +9,11 @@ D1-D10: `.omo/plans/beam-converter.md`.
   (`GameTestHooks.isGametestServer()`), the compat runner (`ProductionGameTestRunner.onServerStarted`) and the LDLib2
   UI test client (system property `ldlib2.uitest.run` non-empty) turn it off on `ServerStartedEvent`, after the server
   config has loaded; setting it earlier is overwritten by the config. The UI test client is not a GameTest server, so
-  it needs its own check, or every UI scenario's domain stops.
+  it needs its own check, or every UI scenario's domain stops. The same runtimes also turn off FML's config watcher
+  (`FMLConfig.updateConfig(DISABLE_CONFIG_WATCHER, true)` while the mod constructs): the watcher could reload the
+  freshly written `ae2federation-server.toml` up to about a second later, after `ServerStartedEvent`, and turn the
+  requirement back on. Every domain then stopped and the power-rule and Endpoint tests failed together (CI flakes on
+  2026-10-24 and 2026-10-26). Appending a line to the file after the tests start reproduces it every time.
 - **Restart timing.** AE2's `EnergyService` counts the change tick as 0 and restarts when `ticksSinceChange > 30`, so a
   stopped domain runs on its 32nd paid tick, not the 31st. A fresh ledger starts running (AE2 starts `hasPower = true`).
 - **Creative converter input.** It never drains, so its reported input is raised to the domain's use; otherwise the

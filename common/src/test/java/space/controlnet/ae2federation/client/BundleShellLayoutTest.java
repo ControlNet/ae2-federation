@@ -26,6 +26,61 @@ final class BundleShellLayoutTest {
     }
 
     @Test
+    void aThickArmShowsACableArmsRimOnlyWhereItEnds() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 1, 1), Direction.Axis.X));
+        var look = BundleLook.of(new BlockPos(5, 0, 0), cell -> set.at(cell).map(BundleSet.Membership::segment),
+                (s, p, f) -> f == Direction.EAST).orElseThrow();
+        var faces = BundleShellLayout.armFaces(look, Direction.EAST);
+        // Only the outer sides: not the device's, the shell's, or the ones toward the arm's other cells.
+        assertEquals(Set.of(Direction.DOWN, Direction.NORTH),
+                faces.stream().map(face -> face.panel().normal()).collect(Collectors.toSet()));
+        for (var face : faces) {
+            // The arm ends at 3 and runs on past 16; the line texture is see-through outside columns 2..13.
+            var columns = new java.util.TreeMap<Integer, Integer>();
+            for (var tile : face.tiles()) {
+                assertTrue(tile.texelV() == 14 || tile.texelV() == 15, tile.toString());
+                if (tile.v0() != 14) continue;
+                for (int at = tile.u0(); at < tile.u1(); at++) columns.put(at, tile.texelU());
+            }
+            var expected = new java.util.TreeMap<Integer, Integer>();
+            for (int at = 3; at < 16; at++) expected.put(at, at < 5 ? at : 5);
+            assertEquals(expected, columns, face.panel().normal().getName());
+        }
+    }
+
+    @Test
+    void aSideArmOverTwoLayersOfOneBodyHasNoRimBetweenThem() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 1, 1), Direction.Axis.X));
+        BundleLook.Contacts body = new BundleLook.Contacts() {
+            @Override
+            public boolean whole(BundleSegment segment, BlockPos pos, Direction face) {
+                return face == Direction.UP && (pos.getX() == 2 || pos.getX() == 3);
+            }
+
+            @Override
+            public boolean oneBody(BlockPos pos, Direction face, Direction toward) {
+                // As a real body's connection bits: only toward a device of the same body.
+                int next = pos.relative(toward).getX();
+                return next == 2 || next == 3;
+            }
+        };
+        var look = BundleLook.of(new BlockPos(2, 1, 1), cell -> set.at(cell).map(BundleSet.Membership::segment), body)
+                .orElseThrow();
+        var faces = BundleShellLayout.armFaces(look, Direction.UP);
+        // The outer side and the layer's far end; not the end toward the next layer, where the arm runs on.
+        assertEquals(Set.of(Direction.SOUTH, Direction.WEST),
+                faces.stream().map(face -> face.panel().normal()).collect(Collectors.toSet()));
+        var south = faces.stream().filter(face -> face.panel().normal() == Direction.SOUTH).findFirst().orElseThrow();
+        for (var tile : south.tiles()) {
+            for (int at = tile.u0(); at < tile.u1(); at++) {
+                assertEquals(at < 5 ? at : 5, tile.texelU(), "rim only at the arm's west end, at " + at);
+            }
+        }
+    }
+
+    @Test
     void theMiddleOfAThreeByThreeDrawsNothing() {
         var set = new BundleSet();
         set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(2, 2, 4), Direction.Axis.Z));

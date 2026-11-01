@@ -10,6 +10,10 @@
 
 Link separate Applied Energistics 2 networks so they can share items, crafting, machines and power.
 
+[Browse the gallery](docs/gallery/README.md) for in-game screenshots, interface views and device renders.
+
+Feature overview: [中文版](docs/gallery/overview-zh.webp) · [English](docs/gallery/overview-en.webp).
+
 ## Features
 
 - Use the items and fluids stored on another network.

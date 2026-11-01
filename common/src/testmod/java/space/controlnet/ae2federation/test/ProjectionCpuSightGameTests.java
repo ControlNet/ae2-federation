@@ -47,7 +47,9 @@ public final class ProjectionCpuSightGameTests {
                 helper.assertFalse(fixture.site().loaded(), "Waiting for the CPU's chunks to unload");
                 helper.assertValueEqual(fixture.visibleConsumerCpus(), 0, "The unloaded CPU leaves the consumer's Grid");
                 sweeps[0] = fixture.ledgerSweeps();
-                helper.assertValueEqual(fixture.runMachine(2), 2L, "The provider network takes the stone");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertValueEqual(fixture.runMachine(2), 2L, "The provider network takes the stone");
+                });
                 stage[0] = 5;
             }
             if (stage[0] == 5) {
@@ -126,7 +128,9 @@ public final class ProjectionCpuSightGameTests {
                 helper.assertValueEqual(fixture.visibleConsumerCpus(), 1, "Only the overworld CPU is in sight");
                 helper.assertFalse(fixture.overworldCpu().isBusy(), "The overworld job is cancelled");
                 sweeps[0] = fixture.ledgerSweeps();
-                helper.assertValueEqual(fixture.runMachine(4), 4L, "The provider network takes all four stone");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertValueEqual(fixture.runMachine(4), 4L, "The provider network takes all four stone");
+                });
                 stage[0] = 6;
             }
             if (stage[0] == 6) {
@@ -192,7 +196,9 @@ public final class ProjectionCpuSightGameTests {
                 helper.assertValueEqual(fixture.owed(stone()), 2L, "The saved debt is back");
                 helper.assertValueEqual(fixture.watchedJobs(), 1, "The saved job is watched again");
                 sweeps[0] = fixture.ledgerSweeps();
-                helper.assertValueEqual(fixture.runMachine(2), 2L, "The provider network takes the stone");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertValueEqual(fixture.runMachine(2), 2L, "The provider network takes the stone");
+                });
                 stage[0] = 6;
             }
             if (stage[0] == 6) {

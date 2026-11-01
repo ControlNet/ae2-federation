@@ -8,6 +8,9 @@ version="${mod_version}"
 displayName="AE2 Federation Compatibility Tests"
 description='''Test-only: runs AE2 Federation GameTests inside a production server beside other mods. Never shipped.'''
 
+[[mixins]]
+config="ae2federation_compat.mixins.json"
+
 [[dependencies.ae2federation_compat]]
 modId="ae2federation"
 type="required"

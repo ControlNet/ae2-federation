@@ -467,3 +467,41 @@ Expected: 5 tests pass, `FEDERATION_IMPORT_OK`,
 `CABLE_BEAMS_OK: 32 stills, 4 loops; assets unchanged`, `CABLE_BEAM_MEDIA_OK`. Output in the repo's ignored
 `build/cable-beam-concepts/`: `sheet-concepts-{medium,overload}-{level,close}.png`, `sheet-<concept>-loads.png` (0,
 60, 100, 125%), a GIF loop of each concept and `all-concepts-loop.gif` / `-x4.mp4` with all four at once.
+
+## Quantum Cube and Beam Converter design study
+
+`device_study.py` imports and renders current artist assets before building editable device proposals.
+The Quantum Cube follows the owner's open-frame direction: a suspended energy sphere and six converging optical
+axes. The Converter uses a directional terminal and repeated conversion cells. All three supported sizes are
+included, plus a six-axis cable connection scene and an energy animation.
+
+See [the design notes and reproduction commands](../../docs/art/device-study.md).
+The generated delivery is `build/device-study-v2/all.blend`; all production assets remain unchanged.
+Open it with `blender tools/blender/build/device-study-v2/all.blend` from the repository root.
+
+## Laser Converter and open/glass Quantum alternatives
+
+The second round replaces the first Converter's battery-like direction with four laser-emitter alternatives,
+and removes the Quantum face cages in three open/glass alternatives. Every option is shown with ordinary,
+2x2 and 3x3 cables, using their original materials and ring art. See
+[the proposal IDs, cable matching and exact verification commands](../../docs/art/device-alternatives.md).
+
+Latest editable delivery: `build/device-alternatives-final/alternatives.blend` (28 scenes).
+`device_alternatives.py` generates it; `verify_device_alternatives.py` checks the reopened meshes and materials.
+
+## Textured laser and fragmented Quantum refinement
+
+The latest refinement adds full pixel artwork and face UVs at 16 pixels per block, two laser variants,
+and a dark teal core of 22 outer and 12 inner curved fragments. The Quantum faces remain open.
+All three cable sizes have connected previews, and the existing artist Beam Former provides a same-scale comparison.
+
+Latest editable delivery: `build/refined-devices-final/refined.blend` (12 scenes, packed textures).
+See [the artwork notes, previews and reproduction commands](../../docs/art/refined-device-art.md).
+
+```sh
+blender --background tools/blender/build/refined-devices-final/refined.blend \
+  --python-exit-code 1 --python tools/blender/verify_refined_devices.py
+```
+
+Expected: `REFINED_VERIFY_OK 4164 UV faces; 34 fragments per core; 6 cable cases`.
+Add `-- --animate` to render the isolated core loop before composing its GIF.

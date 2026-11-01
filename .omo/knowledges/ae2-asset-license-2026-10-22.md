@@ -104,6 +104,10 @@ AE2 `pattern_provider_alternate` / `generics/top`, strips as in `spatial_pylon/b
 Provider faces; `block/quantum_cube/quantum_cube{,_corner,_side_hor,_side_ver}` from the Router's.
 Update 2026-10-24: the three `block/beam_former/*` placeholders were deleted with the artist's 3x3 model (PR #7,
 e908a082 + 86c0ae0e), so this group is now 10 files; the Beam Former uses only the artist's `block/beam_emitter/*`.
+Update 2026-11-01 (dev merged into feature/function-system): the converter and Quantum Cube placeholders are gone
+with the artist's art on dev, which deleted `build_converter_placeholder.py`; the automation blocks' recolours
+(`block/automation_interface/*`, `block/creative_computing_device/*`) are now made by
+`tools/visual/build_automation_placeholder.py`, which reproduces the committed files exactly.
 
 **D. Original, no AE2 pixel source found (23) -> All Rights Reserved**
 `block/armor`, `block/collar`, `block/glass`, `block/stream_u`, `block/stream_v`, `block/large_cable/large_cable`,

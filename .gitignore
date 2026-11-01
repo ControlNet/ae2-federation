@@ -8,6 +8,7 @@ build/
 **/run-guide/
 **/run-logo/
 **/run-structure-scene/
+**/run-refined-devices/
 # Unit tests load NeoForge's logging setup, which writes logs/ in the project directory.
 neoforge-1.21.1/logs/
 .omo/evidence/

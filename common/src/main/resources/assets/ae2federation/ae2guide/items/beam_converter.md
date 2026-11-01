@@ -8,15 +8,11 @@ categories:
 - network infrastructure
 item_ids:
 - ae2federation:beam_converter
-- ae2federation:creative_beam_converter
 ---
 
 # ME Federation Beam Converter
 
-<Row>
-  <BlockImage id="ae2federation:beam_converter" scale="6" />
-  <BlockImage id="ae2federation:creative_beam_converter" scale="6" />
-</Row>
+<BlockImage id="ae2federation:beam_converter" scale="6" />
 
 A [Federation domain](../mechanics/index.md) runs on FE. Its Switches, Routers, cables, Pattern Providers, Endpoints and
 Automation Interfaces use a little every tick, and the domain draws it from its Beam Converters. A domain whose
@@ -26,7 +22,7 @@ working on their own, but share no storage, crafting, processing or power until 
 <GameScene zoom="4.75" interactive={true} background="transparent">
   <ImportStructure src="../assets/beam_converter.snbt" />
   <BoxAnnotation color="#dddddd" min="3 1 0" max="4 3 1">
-    A 1×1×2 Beam Converter: its front faces down onto the cable. FE goes in through any other face
+    A 1×1×2 Beam Converter: its front faces down onto the cable. FE goes in through the rear (upper) face
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="5 0 0" max="8 2 1">
     Network A
@@ -66,7 +62,7 @@ a Federation cable. Right-click a formed converter with a wrench to turn it end 
 
 ## Power
 
-A converter is one buffer of 16,000 FE per block. Pipe FE into any face but the front, with any mod's cables or
+A converter is one buffer of 16,000 FE per block. Pipe FE into the rear exterior face, with any mod's cables or
 generators: one cable fills the whole converter. A domain adds up the buffers of all its matching converters and draws
 its use from them in proportion to what each holds.
 
@@ -78,7 +74,5 @@ While a domain is stopped, its cables glow red and thin, and its topology screen
 topology screen shows how full the converters are: green while the domain runs, yellow while it uses more than comes in,
 and red once it has stopped. Look at a converter with Jade to see its buffer and the FE it takes in, green when it
 matches its domain and red when it does not.
-
-The **Creative ME Federation Beam Converter** follows the same size rules and never runs out.
 
 <RecipeFor id="ae2federation:beam_converter" />

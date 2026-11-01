@@ -60,38 +60,40 @@ public final class ObservabilityGameTests {
             var projection = space.controlnet.ae2federation.storage.mount.StorageMountService.get(helper.getLevel())
                     .projection(key);
             helper.assertTrue(projection != null, "Waiting for the Storage projection");
-            var source = new appeng.me.helpers.PlayerSource(helper.makeMockPlayer(net.minecraft.world.level.GameType.CREATIVE));
-            // Stocked straight into the provider's own Grid, which no projection observes.
-            fixtures.outerGrid().getStorageService().getInventory().insert(iron, 16,
-                    appeng.api.config.Actionable.MODULATE, source);
-            var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel());
-            var shared = new java.util.HashSet<>(registry.federationdomainsFor(fixtures.mainNetwork()));
-            shared.retainAll(registry.federationdomainsFor(fixtures.outerNetwork()));
-            var scope = registry.federationDomain(shared.iterator().next()).orElseThrow().reference();
-            var meter = LevelObservabilityService.get(helper.getLevel()).transportMeter();
-            var topologyBefore = registry.snapshot().topologyRevision();
-            var before = meter.window(scope).dataRevision();
-            var beforeEvents = meter.window(scope).events().size();
-            helper.assertValueEqual(projection.extract(iron, 8, appeng.api.config.Actionable.SIMULATE, source), 8L,
-                    "Native simulation must report availability");
-            helper.assertValueEqual(meter.window(scope).dataRevision(), before,
-                    "Simulation must not create a physical flow");
-            helper.assertValueEqual(projection.extract(iron, 8, appeng.api.config.Actionable.MODULATE, source), 8L,
-                    "Native extraction must accept the items");
-            var first = meter.window(scope);
-            var repeatedObservation = meter.window(scope);
-            helper.assertValueEqual(first.events().size() - beforeEvents, 1,
-                    "One native acceptance must create one flow");
-            helper.assertValueEqual(first.events().getLast().amount(), 8L,
-                    "Flow amount must equal the exact accepted amount");
-            helper.assertValueEqual(repeatedObservation.events().size(), first.events().size(),
-                    "Repeated observation must not multiply physical flow");
-            helper.assertValueEqual(registry.snapshot().topologyRevision(), topologyBefore,
-                    "Data-only flow updates must not change topology revision");
-            write("observenativeflowonce", 7, Map.ofEntries(Map.entry("accepted", "8"),
-                    Map.entry("exactAmount", "8"), Map.entry("events", "1"),
-                    Map.entry("simulationEvents", "0"), Map.entry("observationReads", "2"),
-                    Map.entry("deduplicated", "true"), Map.entry("topologyStable", "true")));
+            GameTestChecks.once(helper, () -> {
+                var source = new appeng.me.helpers.PlayerSource(helper.makeMockPlayer(net.minecraft.world.level.GameType.CREATIVE));
+                // Stocked straight into the provider's own Grid, which no projection observes.
+                fixtures.outerGrid().getStorageService().getInventory().insert(iron, 16,
+                        appeng.api.config.Actionable.MODULATE, source);
+                var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel());
+                var shared = new java.util.HashSet<>(registry.federationdomainsFor(fixtures.mainNetwork()));
+                shared.retainAll(registry.federationdomainsFor(fixtures.outerNetwork()));
+                var scope = registry.federationDomain(shared.iterator().next()).orElseThrow().reference();
+                var meter = LevelObservabilityService.get(helper.getLevel()).transportMeter();
+                var topologyBefore = registry.snapshot().topologyRevision();
+                var before = meter.window(scope).dataRevision();
+                var beforeEvents = meter.window(scope).events().size();
+                helper.assertValueEqual(projection.extract(iron, 8, appeng.api.config.Actionable.SIMULATE, source), 8L,
+                        "Native simulation must report availability");
+                helper.assertValueEqual(meter.window(scope).dataRevision(), before,
+                        "Simulation must not create a physical flow");
+                helper.assertValueEqual(projection.extract(iron, 8, appeng.api.config.Actionable.MODULATE, source), 8L,
+                        "Native extraction must accept the items");
+                var first = meter.window(scope);
+                var repeatedObservation = meter.window(scope);
+                helper.assertValueEqual(first.events().size() - beforeEvents, 1,
+                        "One native acceptance must create one flow");
+                helper.assertValueEqual(first.events().getLast().amount(), 8L,
+                        "Flow amount must equal the exact accepted amount");
+                helper.assertValueEqual(repeatedObservation.events().size(), first.events().size(),
+                        "Repeated observation must not multiply physical flow");
+                helper.assertValueEqual(registry.snapshot().topologyRevision(), topologyBefore,
+                        "Data-only flow updates must not change topology revision");
+                write("observenativeflowonce", 7, Map.ofEntries(Map.entry("accepted", "8"),
+                        Map.entry("exactAmount", "8"), Map.entry("events", "1"),
+                        Map.entry("simulationEvents", "0"), Map.entry("observationReads", "2"),
+                        Map.entry("deduplicated", "true"), Map.entry("topologyStable", "true")));
+            });
             fixtures.close();
         });
     }
@@ -122,34 +124,36 @@ public final class ObservabilityGameTests {
                     .endpoints().size(), 1, "The Endpoint's own domain snapshot must include the real Endpoint");
             helper.assertTrue(!snapshot.locks().isEmpty() && !snapshot.tasks().isEmpty(),
                     "Snapshot must include native Lane lock and task state");
-            var topology = snapshot.topologyRevision();
-            scene.mutateObservedState();
-            LevelObservabilityService.get(helper.getLevel()).sweep();
-            var updated = LevelObservabilityService.get(helper.getLevel()).snapshot(scene.firstScope());
-            helper.assertValueEqual(updated.topologyRevision(), topology,
-                    "Data-only changes must not advance topology revision");
-            helper.assertValueEqual(updated.policies().size(), 1, "Policy addition must publish without reopening");
-            helper.assertTrue(updated.tasks().stream().anyMatch(task -> task.status().contains("return-buffered")),
-                    "Aggregate return state must publish without reopening");
-            helper.assertTrue(updated.flows().stream().anyMatch(flow -> flow.attribution()
-                    == FlowState.Attribution.EXACT_OPERATION), "Processing send must report exact accepted quantity");
-            helper.assertTrue(updated.flows().stream().anyMatch(flow -> flow.attribution()
-                    == FlowState.Attribution.AGGREGATE_LANE_RETURN && !flow.exactBatchCompletion()),
-                    "Aggregate return must never claim exact Batch completion");
-            helper.assertTrue(scene.removePolicy(), "Production policy removal must succeed");
-            LevelObservabilityService.get(helper.getLevel()).sweep();
-            var removed = LevelObservabilityService.get(helper.getLevel()).snapshot(scene.firstScope());
-            helper.assertTrue(removed.policies().isEmpty(), "Policy removal must publish without reopening");
-            helper.assertTrue(ObservationRuntimeEvidence.snapshot().stream()
-                    .filter(receipt -> receipt.type().equals("delta")).count() >= 2,
-                    "Independent packet receipts must observe non-flow additions and removals");
-            write("observescopedsnapshot", 16,
-                    Map.ofEntries(Map.entry("members", "2"), Map.entry("canonical", "true"),
-                            Map.entry("crossFederationDomain", "false"), Map.entry("domains", "2"),
-                            Map.entry("sessionBound", "true"), Map.entry("providers", "1"),
-                            Map.entry("endpoints", "1"), Map.entry("nonFlowDeltas", "2"),
-                            Map.entry("processingSend", "1"), Map.entry("aggregateReturn", "1"),
-                            Map.entry("topologyStable", "true")));
+            GameTestChecks.once(helper, () -> {
+                var topology = snapshot.topologyRevision();
+                scene.mutateObservedState();
+                LevelObservabilityService.get(helper.getLevel()).sweep();
+                var updated = LevelObservabilityService.get(helper.getLevel()).snapshot(scene.firstScope());
+                helper.assertValueEqual(updated.topologyRevision(), topology,
+                        "Data-only changes must not advance topology revision");
+                helper.assertValueEqual(updated.policies().size(), 1, "Policy addition must publish without reopening");
+                helper.assertTrue(updated.tasks().stream().anyMatch(task -> task.status().contains("return-buffered")),
+                        "Aggregate return state must publish without reopening");
+                helper.assertTrue(updated.flows().stream().anyMatch(flow -> flow.attribution()
+                        == FlowState.Attribution.EXACT_OPERATION), "Processing send must report exact accepted quantity");
+                helper.assertTrue(updated.flows().stream().anyMatch(flow -> flow.attribution()
+                        == FlowState.Attribution.AGGREGATE_LANE_RETURN && !flow.exactBatchCompletion()),
+                        "Aggregate return must never claim exact Batch completion");
+                helper.assertTrue(scene.removePolicy(), "Production policy removal must succeed");
+                LevelObservabilityService.get(helper.getLevel()).sweep();
+                var removed = LevelObservabilityService.get(helper.getLevel()).snapshot(scene.firstScope());
+                helper.assertTrue(removed.policies().isEmpty(), "Policy removal must publish without reopening");
+                helper.assertTrue(ObservationRuntimeEvidence.snapshot().stream()
+                        .filter(receipt -> receipt.type().equals("delta")).count() >= 2,
+                        "Independent packet receipts must observe non-flow additions and removals");
+                write("observescopedsnapshot", 16,
+                        Map.ofEntries(Map.entry("members", "2"), Map.entry("canonical", "true"),
+                                Map.entry("crossFederationDomain", "false"), Map.entry("domains", "2"),
+                                Map.entry("sessionBound", "true"), Map.entry("providers", "1"),
+                                Map.entry("endpoints", "1"), Map.entry("nonFlowDeltas", "2"),
+                                Map.entry("processingSend", "1"), Map.entry("aggregateReturn", "1"),
+                                Map.entry("topologyStable", "true")));
+            });
             scene.closeFirstMenu();
             scene.close();
         });

@@ -67,7 +67,8 @@ public final class PolicyRevisionGameTests {
                 fixtures.removeFirstBridge();
                 deletedRevision[0] = accepted(service.delete(new PolicyDelete(key, configured)));
                 var stale = service.edit(new PolicyEdit(key, configured, PolicyRule.storageDefaults()));
-                helper.assertTrue(stale instanceof PolicyMutationResult.Rejected, "Deleted rule must reject stale resurrection");
+                GameTestChecks.once(helper, () -> helper.assertTrue(stale instanceof PolicyMutationResult.Rejected,
+                        "Deleted rule must reject stale resurrection"));
                 fixtures.placeSecondBridge();
                 phase[0] = 2;
                 helper.assertTrue(false, "Waiting for reconnect after deletion");
@@ -127,7 +128,8 @@ public final class PolicyRevisionGameTests {
             if (!fixtures.firstBridgeReady()) {
                 helper.assertTrue(false, "Waiting for " + testId + " identities and Federation Domain");
             }
-            assertion.verify(fixtures, PolicyService.get(helper.getLevel()), PolicyLifecycleGameTests.storageKey(fixtures));
+            GameTestChecks.once(helper, () -> assertion.verify(fixtures, PolicyService.get(helper.getLevel()),
+                    PolicyLifecycleGameTests.storageKey(fixtures)));
             fixtures.close();
         });
     }

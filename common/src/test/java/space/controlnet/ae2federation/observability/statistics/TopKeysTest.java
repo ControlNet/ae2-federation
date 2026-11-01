@@ -84,4 +84,17 @@ class TopKeysTest {
         assertEquals(0, series.get("copper")[119]);
         assertEquals(8, top.series(StatisticsRange.MINUTES, 102, java.util.List.of("iron")).get("iron")[59]);
     }
+
+    @Test
+    void idleSaysWhatReadingTheLongestRangeSays() {
+        var top = new TopKeys<String>(2);
+        top.add(599, "iron", 1);
+        top.add(600, "gold", 2);
+        top.add(5000, "iron", 3);
+        top.add(90_000, "copper", 4);
+        for (long now = 0; now < 90_000 + 87_000; now += 300) {
+            assertEquals(top.read(StatisticsRange.LONGEST, now, 1).isEmpty(), top.idle(now), "at second " + now);
+        }
+    }
 }
+

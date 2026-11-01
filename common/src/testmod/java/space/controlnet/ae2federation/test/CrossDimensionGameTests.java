@@ -74,15 +74,17 @@ public final class CrossDimensionGameTests {
                 CraftingProjectionService.levelClosed(nether);
                 EnergySharingService.levelClosed(nether);
                 LevelObservabilityService.levelClosed(nether);
-                helper.assertTrue(receipt.dimensionNodesRemoved() > 0 && receipt.dimensionNodesLeft() == 0,
-                        "The unload must take every nether node out of the registry: " + receipt);
-                helper.assertTrue(receipt.servicePersists(), "The storage service serves the whole server");
-                helper.assertTrue(receipt.mountedProvidersRemoved() > 0, "The nether's mount must end with it");
-                helper.assertTrue(FederationDomainRegistryAccess.get(helper.getLevel())
-                        .federationDomainOf(scene.nether.routerNode()).isEmpty(), "No domain may hold a nether node");
-                helper.assertTrue(scene.overworld.connected(), "The overworld's domain must stay");
-                helper.assertValueEqual(available(scene.overworld.consumerGrid()), 9L,
-                        "The overworld's consumer must still see the provider's storage");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(receipt.dimensionNodesRemoved() > 0 && receipt.dimensionNodesLeft() == 0,
+                            "The unload must take every nether node out of the registry: " + receipt);
+                    helper.assertTrue(receipt.servicePersists(), "The storage service serves the whole server");
+                    helper.assertTrue(receipt.mountedProvidersRemoved() > 0, "The nether's mount must end with it");
+                    helper.assertTrue(FederationDomainRegistryAccess.get(helper.getLevel())
+                            .federationDomainOf(scene.nether.routerNode()).isEmpty(), "No domain may hold a nether node");
+                    helper.assertTrue(scene.overworld.connected(), "The overworld's domain must stay");
+                    helper.assertValueEqual(available(scene.overworld.consumerGrid()), 9L,
+                            "The overworld's consumer must still see the provider's storage");
+                });
                 scene.site.reloadBlockEntities();
                 unloaded[0] = true;
                 helper.fail("Reloaded the nether's block entities");

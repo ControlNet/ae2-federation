@@ -1,6 +1,5 @@
 package space.controlnet.ae2federation.compat.jade;
 
-import java.util.Locale;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -10,6 +9,7 @@ import snownee.jade.api.IServerDataProvider;
 import snownee.jade.api.ITooltip;
 import snownee.jade.api.config.IPluginConfig;
 import space.controlnet.ae2federation.router.DeviceStructure;
+import space.controlnet.ae2federation.router.DeviceStructureUpdater;
 import space.controlnet.ae2federation.router.DeviceSummary;
 
 /**
@@ -33,7 +33,9 @@ enum DeviceProvider implements IBlockComponentProvider, IServerDataProvider<Bloc
                 var size = valid.max().subtract(valid.min());
                 data.putIntArray(SIZE, new int[] {size.getX() + 1, size.getY() + 1, size.getZ() + 1});
             }
-            case DeviceStructure.Invalid invalid -> data.putString(BODY, invalid.reason().name().toLowerCase(Locale.ROOT));
+            case DeviceStructure.Invalid invalid -> data.putString(BODY,
+                    DeviceStructureUpdater.reasonKey(level.getBlockState(accessor.getPosition()).getBlock(),
+                            invalid.reason()));
             case DeviceStructure.Unknown unknown -> data.putString(BODY, "unloaded");
         }
         summary.networks().ifPresent(count -> data.putInt(NETWORKS, count));

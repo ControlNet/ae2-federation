@@ -481,7 +481,7 @@ Profiling note: `jfr print` cuts stacks to 5 frames unless given `--stack-depth 
 "truncated" stacks were this. A copy of the JDK's `profile.jfc` with the `jdk.ExecutionSample` period at 1 ms, attached
 with `jcmd <pid> JFR.start settings=<file>`, gives ~700 server-thread samples per second.
 
-## Final systems table, chunk saving off (2026-10-25, `save-off-2026-10-25`, median of 3) - the reference result
+## Final systems table, chunk saving off (2026-10-25, `save-off-2026-10-25`, median of 3) - reference until 2026-10-30
 Owner approved: `busFarm` sets the level's `noSave` (as `/save-off`) from the warm-up to the end of the measurement
 window, then restores it, so vanilla's eager chunk saves no longer set the max tick. Machine load average ~4.6 during
 the run.
@@ -512,3 +512,46 @@ Max tick per run (ms):
 Max ticks are now within a few ms of each other in every workload: at 1000x10 the one domain 21-27 ms against AE2 one
 network 17-24 ms (31-62 ms with saving on). The 1000x10 Bridges median moves between runs: 17.0-17.7 ms here, 15.2-16.4
 in `stock-teardown-permits-final-2026-10-25`, 18.1 in `statistics-metering-2026-10-25`.
+
+## Statistics prune spike (2026-10-30, fixed in dc026274)
+
+A/B of dev 5c324e59 against 0a25b577 showed 1000x10 Bridges max ticks of 62-75 ms against 22-26 ms. Timing Pre to
+Post per tick put a fixed spike at game tick ~1229, inside the measurement window: `FederationStatistics.completePass`
+runs `book.prune` every 60 game seconds, and since 61f8cbfa (game-time axis) that always lands there. Prune asked
+every timeline and top-key set whether it was idle by reading its longest range, which built full readings for 1000+
+networks. `Timeline.idle` and `TopKeys.idle` now answer from the bucket numbers alone (unit tests check they agree
+with the reading). After the fix: max 27.6 ms, median 16.9 ms on the same scene.
+
+## Systems table after the prune fix (2026-10-30, 9d3389f7, `final-fixed-2026-10-30`, median of 3)
+
+Machine load average 9-10 during the run (other projects' builds), against ~4.6 for `save-off-2026-10-25`, so
+medians run 0-2 ms higher across all systems, AE2's own included.
+
+| workload | system | Federation blocks | AE2 Grids | setup max tick | setup total | median | mean | max | median vs AE2 one network | mean vs AE2 one network | all rules | rule off | rule on | break tick | restore tick | teardown |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10x1000 | AE2 one network | - | 1 | 698 ms | 3.9 s | 9.3 ms | 10.0 ms | 15.8 ms | 100% | 100% | - | - | - | - | - | 594 ms |
+| 10x1000 | AE2 subnets | - | 11 | 664 ms | 3.0 s | 9.5 ms | 9.5 ms | 20.7 ms | 102% | 95% | - | - | - | - | - | 254 ms |
+| 10x1000 | Federation Bridges | - | 11 | 584 ms | 3.3 s | 11.7 ms | 11.9 ms | 20.0 ms | 126% | 119% | 35.2 ms | 1.7 ms | 1.4 ms | - | - | 278 ms |
+| 10x1000 | Federation one domain | 320 | 11 | 612 ms | 3.0 s | 9.7 ms | 10.2 ms | 18.0 ms | 104% | 102% | 17.0 ms | 2.0 ms | 1.4 ms | 18.8 ms | 17.7 ms | 263 ms |
+| 1000x10 | AE2 one network | - | 1 | 618 ms | 6.6 s | 13.8 ms | 14.3 ms | 21.4 ms | 100% | 100% | - | - | - | - | - | 508 ms |
+| 1000x10 | AE2 subnets | - | 1001 | 1.41 s | 3.4 s | 17.4 ms | 17.9 ms | 33.1 ms | 126% | 125% | - | - | - | - | - | 400 ms |
+| 1000x10 | Federation Bridges | - | 1001 | 1.07 s | 3.3 s | 17.7 ms | 17.7 ms | 26.0 ms | 128% | 124% | 109 ms | 28.1 ms | 25.0 ms | - | - | 669 ms |
+| 1000x10 | Federation one domain | 3494 | 1001 | 315 ms | 3.2 s | 15.3 ms | 15.6 ms | 23.6 ms | 111% | 109% | 161 ms | 28.0 ms | 23.5 ms | 79.5 ms | 69.9 ms | 1.72 s |
+| 1000x10 | Federation one domain, 10k blocks | 10046 | 1001 | 445 ms | 3.4 s | 16.2 ms | 16.5 ms | 24.3 ms | 117% | 115% | 134 ms | 24.3 ms | 21.9 ms | 116 ms | 109 ms | 2.87 s |
+
+Max tick per run (ms):
+- 10x1000 AE2 one network: 15.8/12.4/22.3
+- 10x1000 AE2 subnets: 12.7/21.6/20.7
+- 10x1000 Federation Bridges: 20.2/20.0/17.7
+- 10x1000 Federation one domain: 18.0/19.5/11.2
+- 1000x10 AE2 one network: 20.5/21.4/27.9
+- 1000x10 AE2 subnets: 33.1/18.0/37.0
+- 1000x10 Federation Bridges: 26.0/24.6/26.3
+- 1000x10 Federation one domain: 23.6/24.8/21.7
+- 1000x10 Federation one domain, 10k blocks: 24.3/20.5/30.6
+
+The 10x1000 Bridges median (samples 13.1/11.7/9.5) was rechecked with 5 runs each (`tenbridges-recheck-2026-10-30`,
+load 11-22): AE2 one network 10.2 ms median (11.7/11.3/10.2/9.0/8.1), Bridges 10.2 ms (11.3/15.5/9.6/10.2/9.2), so
+the gap is load noise. One Bridges run of the five had a 108 ms max tick while the load average peaked at 22; the
+other four were 15-19 ms. Rule edits got cheaper than in `save-off-2026-10-25` (1000x10 all rules 161 -> 109 ms
+Bridges, 212 -> 161 ms one domain), break/restore ticks too.

@@ -4,6 +4,7 @@ import appeng.api.config.FuzzyMode;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.crafting.ICraftingProvider;
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import java.lang.reflect.InvocationHandler;
@@ -11,10 +12,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
+import space.controlnet.ae2federation.compat.adapters.CompatAdapters;
 
 /**
  * One real pattern provider of another network, offered to a consumer network's crafting service as AE2 offers its
@@ -34,11 +39,16 @@ import java.util.Set;
  *
  * <p>The proxy also shows AE2's own provider logic ({@link #shownLogic}) through
  * {@link ProjectedProviderLogic#getLogic()}, so Neo ECO's CPU pushes many runs as one scaled pattern here as it does to
- * that logic on its own network, still through {@link #pushPattern}; AdvancedAE's logic is shown the same way. Other
- * logic stays hidden: add-ons that recognise their own logic, such as AE2LT's overloaded provider, push into it
- * directly, past the projection and its return ledger.
+ * that logic on its own network, still through {@link #pushPattern}; an add-on's logic of that kind, such as
+ * AdvancedAE's, is shown the same way ({@link AddonProjections#showsLogic}). Other logic stays hidden: add-ons that
+ * recognise their own logic, such as AE2LT's overloaded provider, push into it directly, past the projection and its
+ * return ledger.
+ *
+ * <p>A projection of a provider with an add-on's interface that an adapter knows, such as one of Neo ECO's batch
+ * interfaces on a crafting system's pattern bus or the Large Integrated Working Station's interface, has that
+ * interface too ({@link AddonProjections#interfaces}): Neo ECO's batches go through {@link #pushBatch}.
  */
-final class PatternProjection implements ICraftingProvider {
+final class PatternProjection implements ICraftingProvider, ProjectedProvider {
     /** Captures dispatch context before external callbacks; the returned action runs only for an accepted push. */
     interface PushListener {
         /**
@@ -49,8 +59,16 @@ final class PatternProjection implements ICraftingProvider {
                 KeyCounter inputs);
     }
 
-    /** AdvancedAE's provider logic, which Neo ECO reads and pushes to only through its provider interface. */
-    private static final String ADVANCED_AE_LOGIC = "net.pedroksl.advanced_ae.common.logic.AdvPatternProviderLogic";
+    /** Whether an add-on's providers of a type are logic a projection shows. */
+    private static final ClassValue<Boolean> ADDON_LOGIC = new ClassValue<>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            for (var addon : CompatAdapters.PROJECTIONS) {
+                if (addon.showsLogic(type)) return true;
+            }
+            return false;
+        }
+    };
 
     private final ICraftingProvider real;
     private final PushListener listener;
@@ -66,21 +84,34 @@ final class PatternProjection implements ICraftingProvider {
         this.listener = Objects.requireNonNull(listener);
         patterns = List.copyOf(real.getAvailablePatterns());
         priority = real.getPatternPriority();
-        registered = withMarkers(this, addonMarkers(real.getClass()), shownLogic() != null);
+        registered = withMarkers(this, addonMarkers(real.getClass()), shownLogic() != null,
+                addonInterfaces(real.getClass()));
     }
 
     /**
      * The real provider when its logic is one add-ons only read and push to through {@link #pushPattern}: a plain AE2
-     * Pattern Provider's, a Federation Pattern Provider's Lane, or AdvancedAE's Advanced Pattern Provider's. Null
-     * otherwise.
+     * Pattern Provider's, a Federation Pattern Provider's Lane, or an add-on's such as AdvancedAE's Advanced Pattern
+     * Provider's. Null otherwise.
      */
     Object shownLogic() {
         return real.getClass() == PatternProviderLogic.class
                 || real instanceof space.controlnet.ae2federation.ae2.processing.NativeProviderLane
-                || real.getClass().getName().equals(ADVANCED_AE_LOGIC) ? real : null;
+                || ADDON_LOGIC.get(real.getClass()) ? real : null;
     }
 
-    /** What the consumer's crafting service holds for this projection: itself, or a proxy with add-on markers. */
+    /** The add-on interfaces among {@code type}'s that adapters know, each with the adapter that answers it. */
+    private static Map<Class<?>, AddonProjections> addonInterfaces(Class<?> type) {
+        var interfaces = new LinkedHashMap<Class<?>, AddonProjections>();
+        for (var addon : CompatAdapters.PROJECTIONS) {
+            for (var known : addon.interfaces(type)) interfaces.putIfAbsent(known, addon);
+        }
+        return interfaces;
+    }
+
+    /**
+     * What the consumer's crafting service holds for this projection: itself, or a proxy with add-on markers and
+     * interfaces.
+     */
     ICraftingProvider registered() {
         return registered;
     }
@@ -120,32 +151,43 @@ final class PatternProjection implements ICraftingProvider {
     }
 
     /**
-     * {@code projection} as a provider that also has {@code markers}, and {@link ProjectedProviderLogic} with
-     * {@code showsLogic}: the projection itself when there is nothing to add, a {@link ProjectionShowingLogic} for the
-     * logic alone, and a proxy for markers. With markers that cannot be combined, such as when they live in class
-     * loaders that cannot see each other, the projection itself.
+     * {@code projection} as a provider that also has {@code markers}, {@link ProjectedProviderLogic} with
+     * {@code showsLogic}, and the add-on {@code interfaces}: the projection itself when there is nothing to add,
+     * a {@link ProjectionShowingLogic} for the logic alone, and a proxy otherwise. With interfaces that cannot be
+     * combined, such as when they live in class loaders that cannot see each other, only the markers.
      */
     private static ICraftingProvider withMarkers(PatternProjection projection, List<Class<?>> markers,
-            boolean showsLogic) {
-        if (markers.isEmpty()) return showsLogic ? new ProjectionShowingLogic(projection) : projection;
+            boolean showsLogic, Map<Class<?>, AddonProjections> addon) {
+        if (markers.isEmpty() && addon.isEmpty()) {
+            return showsLogic ? new ProjectionShowingLogic(projection) : projection;
+        }
         var interfaces = new ArrayList<Class<?>>();
         interfaces.add(ICraftingProvider.class);
         if (showsLogic) interfaces.add(ProjectedProviderLogic.class);
+        interfaces.addAll(addon.keySet());
         interfaces.addAll(markers);
         try {
-            return (ICraftingProvider) Proxy.newProxyInstance(markers.getFirst().getClassLoader(),
-                    interfaces.toArray(Class<?>[]::new), new Markers(projection));
+            return (ICraftingProvider) Proxy.newProxyInstance(
+                    (addon.isEmpty() ? markers : List.copyOf(addon.keySet())).getFirst().getClassLoader(),
+                    interfaces.toArray(Class<?>[]::new), new Markers(projection, Map.copyOf(addon)));
         } catch (IllegalArgumentException exception) {
-            // The markers matter more than the logic: an add-on that marks its providers pushes only to marked ones.
-            return showsLogic ? withMarkers(projection, markers, false) : projection;
+            // The markers matter more than the logic and the add-on interfaces: an add-on that marks its providers
+            // pushes only to marked ones.
+            return showsLogic || !addon.isEmpty() ? withMarkers(projection, markers, false, Map.of()) : projection;
         }
     }
 
-    /** Answers every provider call with the projection's own, and is equal only to itself. */
-    private record Markers(PatternProjection projection) implements InvocationHandler {
+    /**
+     * Answers every provider call with the projection's own, and a call of an add-on interface with its adapter's; is
+     * equal only to itself.
+     */
+    private record Markers(PatternProjection projection, Map<Class<?>, AddonProjections> addon)
+            implements InvocationHandler {
         @Override
         public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
             if (method.getDeclaringClass() == ProjectedProviderLogic.class) return projection.shownLogic();
+            var adapter = addon.get(method.getDeclaringClass());
+            if (adapter != null) return adapter.invoke(projection, proxy, method, arguments);
             if (method.getDeclaringClass() == Object.class) {
                 return switch (method.getName()) {
                     case "equals" -> proxy == arguments[0];
@@ -161,7 +203,8 @@ final class PatternProjection implements ICraftingProvider {
         }
     }
 
-    ICraftingProvider real() {
+    @Override
+    public ICraftingProvider real() {
         return real;
     }
 
@@ -201,6 +244,11 @@ final class PatternProjection implements ICraftingProvider {
     }
 
     @Override
+    public boolean isLive() {
+        return live;
+    }
+
+    @Override
     public List<IPatternDetails> getAvailablePatterns() {
         return live ? patterns : List.of();
     }
@@ -227,6 +275,34 @@ final class PatternProjection implements ICraftingProvider {
         if (!real.pushPattern(patternDetails, inputHolder)) return false;
         accepted.run();
         return true;
+    }
+
+    @Override
+    public boolean pushBatch(IPatternDetails details, List<GenericStack> outputs, KeyCounter containerItems,
+            KeyCounter inputs, BooleanSupplier handOver) {
+        if (!live) return false;
+        var accepted = listener.prepare(this, new BatchPattern(details, outputs), containerItems, inputs);
+        if (!handOver.getAsBoolean()) return false;
+        accepted.run();
+        return true;
+    }
+
+    /** A batch of {@code pattern}'s crafts, whose outputs are the batch's totals. */
+    private record BatchPattern(IPatternDetails pattern, List<GenericStack> outputs) implements IPatternDetails {
+        @Override
+        public appeng.api.stacks.AEItemKey getDefinition() {
+            return pattern.getDefinition();
+        }
+
+        @Override
+        public IInput[] getInputs() {
+            return pattern.getInputs();
+        }
+
+        @Override
+        public List<GenericStack> getOutputs() {
+            return outputs;
+        }
     }
 
     /**

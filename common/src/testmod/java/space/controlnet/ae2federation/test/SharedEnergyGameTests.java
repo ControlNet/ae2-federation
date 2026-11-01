@@ -88,8 +88,10 @@ public final class SharedEnergyGameTests {
                 fixture.charge(1_000);
                 providerBefore[0] = fixture.providerStored();
                 fixture.enable(fixture.reverseKey());
-                helper.assertTrue(fixture.shares(fixture.key()), "A rule in the other direction must share too");
-                helper.assertTrue(!fixture.configured(fixture.key()), "The cold Grid must hold no rule of its own");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(fixture.shares(fixture.key()), "A rule in the other direction must share too");
+                    helper.assertTrue(!fixture.configured(fixture.key()), "The cold Grid must hold no rule of its own");
+                });
                 phase[0] = 1;
                 helper.assertTrue(false, "Waiting for native powered-state stabilization");
             }
@@ -114,21 +116,23 @@ public final class SharedEnergyGameTests {
         var fixture = new RingEnergyFixture(helper);
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for settled three-Grid energy topology");
-            fixture.chargeThird(300);
-            fixture.enableChain();
-            var before = fixture.totalStored();
-            var accepted = fixture.extractFirst(400);
-            var after = fixture.totalStored();
-            helper.assertValueEqual(fixture.grids().stream().distinct().count(), 3L,
-                    "The pool must keep three independent native Grids");
-            helper.assertValueEqual(fixture.sharedPairCount(), 2, "Exactly the two ruled pairs must share");
-            helper.assertTrue(!fixture.shares(fixture.keys().get(2)), "First and third must hold no rule");
-            helper.assertValueEqual(accepted, 300.0, "Demand must stop at the pool's real energy");
-            helper.assertValueEqual(before - after, accepted, "The pool's debit must equal the acceptance");
-            SharedEnergyEvidence.write("energysharedtransitive", 7, Map.of(
-                    "distinctGridCount", "3", "ruledPairs", "2", "firstThirdRule", "false",
-                    "totalBefore", number(before), "totalAfter", number(after), "requested", "400.0",
-                    "accepted", number(accepted), "totalDebit", number(before - after), "createdEnergy", "0"));
+            GameTestChecks.once(helper, () -> {
+                fixture.chargeThird(300);
+                fixture.enableChain();
+                var before = fixture.totalStored();
+                var accepted = fixture.extractFirst(400);
+                var after = fixture.totalStored();
+                helper.assertValueEqual(fixture.grids().stream().distinct().count(), 3L,
+                        "The pool must keep three independent native Grids");
+                helper.assertValueEqual(fixture.sharedPairCount(), 2, "Exactly the two ruled pairs must share");
+                helper.assertTrue(!fixture.shares(fixture.keys().get(2)), "First and third must hold no rule");
+                helper.assertValueEqual(accepted, 300.0, "Demand must stop at the pool's real energy");
+                helper.assertValueEqual(before - after, accepted, "The pool's debit must equal the acceptance");
+                SharedEnergyEvidence.write("energysharedtransitive", 7, Map.of(
+                        "distinctGridCount", "3", "ruledPairs", "2", "firstThirdRule", "false",
+                        "totalBefore", number(before), "totalAfter", number(after), "requested", "400.0",
+                        "accepted", number(accepted), "totalDebit", number(before - after), "createdEnergy", "0"));
+            });
             fixture.close();
         });
     }
@@ -177,22 +181,24 @@ public final class SharedEnergyGameTests {
                 helper.assertTrue(fixture.ready(), "Waiting for settled disconnect topology");
                 fixture.charge(1_000);
                 fixture.enable(fixture.key());
-                var initial = fixture.extract(200);
-                helper.assertValueEqual(initial, 200.0, "The connected pair must share native energy");
-                helper.assertTrue(fixture.shares(fixture.key()), "The connected pair must share energy");
-                fixture.disconnect();
-                var providerBefore = fixture.providerStored();
-                var afterDisconnect = fixture.extract(100);
-                var providerAfter = fixture.providerStored();
-                var availableAfterDisconnect = fixture.consumerAvailable();
-                helper.assertValueEqual(afterDisconnect, 0.0, "A removed bridge must leave nothing to draw at once");
-                helper.assertValueEqual(providerAfter, providerBefore, "A removed bridge must not debit the provider");
-                helper.assertValueEqual(availableAfterDisconnect, 0.0,
-                        "The disconnected consumer must see no provider energy");
-                facts.putAll(Map.of("initialTransfer", number(initial), "sharedWhileConnected", "true",
-                        "extractedAfterDisconnect", number(afterDisconnect),
-                        "providerMutationAfterDisconnect", number(providerBefore - providerAfter),
-                        "availableAfterDisconnect", number(availableAfterDisconnect), "distinctGrids", "true"));
+                GameTestChecks.once(helper, () -> {
+                    var initial = fixture.extract(200);
+                    helper.assertValueEqual(initial, 200.0, "The connected pair must share native energy");
+                    helper.assertTrue(fixture.shares(fixture.key()), "The connected pair must share energy");
+                    fixture.disconnect();
+                    var providerBefore = fixture.providerStored();
+                    var afterDisconnect = fixture.extract(100);
+                    var providerAfter = fixture.providerStored();
+                    var availableAfterDisconnect = fixture.consumerAvailable();
+                    helper.assertValueEqual(afterDisconnect, 0.0, "A removed bridge must leave nothing to draw at once");
+                    helper.assertValueEqual(providerAfter, providerBefore, "A removed bridge must not debit the provider");
+                    helper.assertValueEqual(availableAfterDisconnect, 0.0,
+                            "The disconnected consumer must see no provider energy");
+                    facts.putAll(Map.of("initialTransfer", number(initial), "sharedWhileConnected", "true",
+                            "extractedAfterDisconnect", number(afterDisconnect),
+                            "providerMutationAfterDisconnect", number(providerBefore - providerAfter),
+                            "availableAfterDisconnect", number(availableAfterDisconnect), "distinctGrids", "true"));
+                });
                 phase[0] = 1;
             }
             helper.assertTrue(!fixture.shares(fixture.key()), "The disconnected pair must stop sharing");
@@ -242,32 +248,36 @@ public final class SharedEnergyGameTests {
                 helper.assertTrue(fixture.ready(), "Waiting for the adjacent Routers to link");
                 fixture.chargeProvider(1_000);
                 fixture.enable();
-                var before = fixture.providerStored();
-                var accepted = fixture.extractFromConsumer(250);
-                var after = fixture.providerStored();
-                helper.assertTrue(fixture.routersLinked(), "The touching Router faces must link with no native edge");
-                helper.assertTrue(fixture.shares(), "The ME power rule must share across the adjacent Routers");
-                helper.assertValueEqual(accepted, 250.0, "The consumer must draw on the provider's cell");
-                helper.assertValueEqual(before - after, accepted, "The provider's debit must equal the draw");
-                helper.assertTrue(fixture.consumerGrid() != fixture.providerGrid(), "The native Grids must stay distinct");
-                facts.put("routersLinked", "true");
-                facts.put("sharedWhileLinked", "true");
-                facts.put("initialTransfer", number(accepted));
-                facts.put("providerDebit", number(before - after));
-                facts.put("distinctGrids", "true");
+                GameTestChecks.once(helper, () -> {
+                    var before = fixture.providerStored();
+                    var accepted = fixture.extractFromConsumer(250);
+                    var after = fixture.providerStored();
+                    helper.assertTrue(fixture.routersLinked(), "The touching Router faces must link with no native edge");
+                    helper.assertTrue(fixture.shares(), "The ME power rule must share across the adjacent Routers");
+                    helper.assertValueEqual(accepted, 250.0, "The consumer must draw on the provider's cell");
+                    helper.assertValueEqual(before - after, accepted, "The provider's debit must equal the draw");
+                    helper.assertTrue(fixture.consumerGrid() != fixture.providerGrid(), "The native Grids must stay distinct");
+                    facts.put("routersLinked", "true");
+                    facts.put("sharedWhileLinked", "true");
+                    facts.put("initialTransfer", number(accepted));
+                    facts.put("providerDebit", number(before - after));
+                    facts.put("distinctGrids", "true");
+                });
                 fixture.removeProviderRouter();
                 phase[0] = 1;
                 helper.assertTrue(false, "Waiting for the pool to split");
             }
             helper.assertTrue(!fixture.shares(), "Removing a Router must stop the sharing");
             // Measured around the draw itself: the provider's own devices keep using their idle power.
-            var providerBefore = fixture.providerStored();
-            var extracted = fixture.extractFromConsumer(100);
-            helper.assertValueEqual(extracted, 0.0, "The split consumer must draw nothing");
-            helper.assertValueEqual(fixture.providerStored(), providerBefore,
-                    "The split consumer's draw must not reach the provider's cell");
-            facts.put("sharedAfterRemoval", "false");
-            facts.put("extractedAfterRemoval", number(extracted));
+            GameTestChecks.once(helper, () -> {
+                var providerBefore = fixture.providerStored();
+                var extracted = fixture.extractFromConsumer(100);
+                helper.assertValueEqual(extracted, 0.0, "The split consumer must draw nothing");
+                helper.assertValueEqual(fixture.providerStored(), providerBefore,
+                        "The split consumer's draw must not reach the provider's cell");
+                facts.put("sharedAfterRemoval", "false");
+                facts.put("extractedAfterRemoval", number(extracted));
+            });
             SharedEnergyEvidence.write("energyadjacentrouters", 8, facts);
             fixture.close();
         });
@@ -333,7 +343,7 @@ public final class SharedEnergyGameTests {
         var fixture = new SharedEnergyFixture(helper);
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for shared energy fixture");
-            assertions.accept(fixture);
+            GameTestChecks.once(helper, () -> assertions.accept(fixture));
             fixture.close();
         });
     }

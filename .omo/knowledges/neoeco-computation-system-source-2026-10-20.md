@@ -50,7 +50,7 @@ The cluster sums them:
 
 ## Spike results (feature/function-system, 2026-10-20)
 
-Package `automation/neoeco`. Only `NeoEcoSupport` is touched when NeoECO is absent; it checks neoecoae >= 21.2.1.
+Package `automation/neoeco` (since 2026-11-01 `compat/neoecoae/computation`). Only `NeoEcoSupport` is touched when NeoECO is absent; it checks neoecoae >= 21.2.1.
 - `NeoEcoComputing` registers `eco_computation_system_<l4|l6|l9>`. The block subclasses `ECOComputationSystem`, and
   the block entity subclasses `ECOComputationSystemBlockEntity`. Each type gets its own calculator through
   `NEBlockEntity.registerCalculatorFactory` (new in 21.2.1).

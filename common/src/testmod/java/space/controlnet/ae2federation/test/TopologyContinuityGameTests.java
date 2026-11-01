@@ -169,10 +169,12 @@ public final class TopologyContinuityGameTests {
                 scene.awaitPowered();
                 var reference = scene.reference();
                 helper.setBlock(PATH_CABLE, Blocks.AIR);
-                helper.assertTrue(!scene.registry().isCurrent(reference), "Cutting the path must invalidate the domain at once");
-                helper.assertTrue(scene.sharedDomains().isEmpty(), "Cutting the path must separate A and B at once");
-                helper.assertTrue(!scene.shares(), "Cutting the path must stop A and B sharing energy at once");
-                helper.assertValueEqual(scene.consumerAvailable(), 0.0, "B must reach no power through a cut path");
+                GameTestChecks.once(helper, () -> {
+                    helper.assertTrue(!scene.registry().isCurrent(reference), "Cutting the path must invalidate the domain at once");
+                    helper.assertTrue(scene.sharedDomains().isEmpty(), "Cutting the path must separate A and B at once");
+                    helper.assertTrue(!scene.shares(), "Cutting the path must stop A and B sharing energy at once");
+                    helper.assertValueEqual(scene.consumerAvailable(), 0.0, "B must reach no power through a cut path");
+                });
                 phase[0] = 1;
                 throw new GameTestAssertException("Waiting for AE2 to publish B's power state");
             }
