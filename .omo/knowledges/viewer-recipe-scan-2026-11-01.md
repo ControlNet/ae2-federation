@@ -33,6 +33,12 @@ JEI, scanned on the client and cached in the world save.
   (`ISideConfiguration.getConfig().getConfig(TransmissionType.ITEM).setDataType(DataType.INPUT, side)` then
   `sideChanged`). AE2's `PatternContainerGroup.fromMachine` needs an item or fluid handler on the face, so a
   provider's `targets` miss an unconfigured Mekanism machine. That is AE2's own rule, kept.
+- A registry's `byNameCodec` reads an ID it no longer has as its default value (air for items) instead of failing,
+  so a saved AE2 stack of a removed mod's item decodes without error. `ViewerRecipes.load` keeps a recipe only when
+  it encodes back to the same tag (any key type). GameTest `asavedviewerscanislistedwithnoplayeronline` saves,
+  tampers one recipe's item ID, loads, and lists the rest with no player online.
+- Timing: one scan per server start and per `/reload` (the done flag is in memory only); until the last page arrives
+  programs read the saved catalog, and `replace` swaps it in one server-thread call.
 - `GameTestHelper.makeMockServerPlayerInLevel` is forRemoval but the only mock that joins the player list.
 - `RegistryFriendlyByteBuf(ByteBuf, RegistryAccess)` is deprecated in NeoForge 21.1; pass the ConnectionType.
 - `AddonCodeContractTest` treats two/three-letter roots as optional mods; `io.netty` is now on its required list.

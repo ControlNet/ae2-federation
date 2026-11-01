@@ -69,6 +69,10 @@ import java.util.ArrayList;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import net.minecraft.core.component.DataComponents;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -1178,6 +1182,50 @@ public final class ProgramHostGameTests {
             server.getPlayerList().remove(second);
         }
         helper.succeed();
+    }
+
+    /**
+     * A scan saved with the world is read back with no player online: {@code mc.recipes_for} lists its recipe with
+     * the tag slot, fluid, byproduct and machines it was saved with, and a saved recipe whose item is gone (a mod
+     * removed) is dropped alone.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void aSavedViewerScanIsListedWithNoPlayerOnline(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var registries = server.registryAccess();
+        var previous = scanFromAStandInViewer(helper);
+        var saved = ViewerRecipes.get(server).save(new CompoundTag(), registries);
+        var recipes = saved.getList("recipes", Tag.TAG_COMPOUND);
+        try {
+            recipes.add(TagParser.parseTag(recipes.getCompound(0).toString()
+                    .replace("minecraft:prismarine_crystals", "gone:crystals")));
+        } catch (CommandSyntaxException broken) {
+            throw new IllegalStateException(broken);
+        }
+        var loaded = ViewerRecipes.load(saved, registries);
+        helper.assertValueEqual(loaded.size(), 2, "The saved recipes load, the one with a gone item dropped");
+        server.overworld().getDataStorage().set("ae2federation_viewer_recipes", loaded);
+        helper.assertValueEqual(server.getPlayerList().getPlayerCount(), 0, "No player is online");
+        var fixtures = build(helper, Blocks.AIR.defaultBlockState());
+        run(helper, fixtures, "host_saved_viewer", """
+                def run() -> str:
+                    found = mc.recipes_for("minecraft:prismarine_crystals")
+                    recipe = found[0]
+                    sands: list[str] = []
+                    for stack in recipe.inputs[0]:
+                        sands.append(stack.resource)
+                    water = recipe.inputs[1][0].resource + "x" + str(recipe.inputs[1][0].amount)
+                    made = recipe.outputs[0].resource + "x" + str(recipe.outputs[0].amount)
+                    extra = recipe.byproducts[0].resource + "x" + str(recipe.byproducts[0].amount)
+                    return " ".join([str(len(found)), str(recipe.id), ",".join(recipe.machines),
+                                     str("minecraft:red_sand" in sands), water, made, extra])
+                """, "1 testviewer:crushing/prismarine minecraft:grindstone True minecraft:waterx1000 "
+                        + "minecraft:prismarine_crystalsx2 minecraft:prismarine_shardx1",
+                "The saved recipe is listed as it was scanned", () -> {
+                    ViewerScans.requestWith(previous);
+                    ViewerRecipes.get(server).replace(List.of(), List.of());
+                });
     }
 
     /**

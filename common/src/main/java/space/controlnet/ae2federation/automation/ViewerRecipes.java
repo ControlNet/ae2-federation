@@ -204,8 +204,11 @@ public final class ViewerRecipes extends SavedData {
 
     // ---- the world save ----
 
-    /** Recipe by recipe, so one whose item is gone (a mod removed) is dropped alone. */
-    private static ViewerRecipes load(CompoundTag tag, HolderLookup.Provider registries) {
+    /**
+     * Recipe by recipe, so one whose item is gone (a mod removed) is dropped alone. A registry reads an ID it no
+     * longer has as its default (air for items), so a recipe counts as loaded only when it saves back as it was.
+     */
+    public static ViewerRecipes load(CompoundTag tag, HolderLookup.Provider registries) {
         var ops = registries.createSerializationContext(NbtOps.INSTANCE);
         var data = new ViewerRecipes();
         var categories = new ArrayList<Category>();
@@ -215,7 +218,8 @@ public final class ViewerRecipes extends SavedData {
         var recipes = new ArrayList<Recipe>();
         int dropped = 0;
         for (var each : tag.getList("recipes", Tag.TAG_COMPOUND)) {
-            var recipe = Recipe.CODEC.parse(ops, each).result();
+            var recipe = Recipe.CODEC.parse(ops, each).result()
+                    .filter(read -> Recipe.CODEC.encodeStart(ops, read).result().filter(each::equals).isPresent());
             if (recipe.isPresent()) {
                 recipes.add(recipe.get());
             } else {
