@@ -84,6 +84,29 @@ JEI, scanned on the client and cached in the world save.
 - After the last page the server fell 35 s behind (replace + index + save of 202k recipes); cache file 6.2 MB,
   `save-all` about 2 s.
 
+## Content keys for recipes without IDs (ATM10 measurement, 2026-11-01, probe not committed)
+
+- Proposal (not approved): split each category into hash buckets (about 500 recipes each) of the recipe ID, or of a
+  content key when there is none; a task is "category X, bucket k", which any client can answer from its own JEI; a
+  per-bucket digest tells the server which buckets changed.
+- Content key = SHA-256 of `IRecipeManager.getRecipeIngredients(category, recipe)` per role, each ingredient as
+  `type:getUniqueId(UidContext.Recipe)xamount`, sorted within the role. No layout, no tooltips.
+- Run it at least two minutes after `onRuntimeAvailable`: MineColonies (about 60k) and FTB Quests add their recipes
+  later; at runtime-available they are missing.
+- Scanned scope (400 categories, 253,924 recipes): 21.8 s of render-thread CPU for all keys (about 0.086 ms a
+  recipe; layout scan is about 0.6 ms). No-ID categories alone: 104,399 recipes, 9.4 s. create:automatic_shaped is the
+  costliest (6.7 s for 38,450). Server-read types are far costlier (smelting about 23 ms a recipe) but not scanned.
+- Two client starts: 21 of 1,021 buckets differ (12 of 453 no-ID buckets). Unstable: ftbquests:quest (2,110 keys),
+  evilcraftcompat:spirit_furnace (412), productivemetalworks:item_casting, xycraft extractor, tombstone:combine; JEI
+  brewing (vanilla and Create) has stable contents but its generated IDs move between recipes. MineColonies, sawmill,
+  anvil and arcane anvil are stable.
+- About 1,000 recipes in scope throw NullPointerException from the ingredient supplier (create:automatic_shaped 402,
+  minecolonies:sawmill 389, mechanic 91, domum_ornamentum:architects_cutter 82); they need another key.
+- Same-key duplicates in no-ID categories: 2,511 of 104,399 (e.g. Industrial Foregoing mycelial generators list the
+  same ingredients); harmless when the bucket is the unit.
+- The compat assembler hard-links the client's and server's mod jars: `cp` into one replaces the other's jar in
+  place. Stop both JVMs before copying a new jar into either.
+
 ## Open (assistant choices, not owner decisions)
 
 - Trust: any player's JEI replaces the catalog for the whole world.
