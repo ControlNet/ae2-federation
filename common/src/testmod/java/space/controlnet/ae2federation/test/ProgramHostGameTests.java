@@ -15,7 +15,10 @@ import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
 import appeng.core.definitions.AEParts;
+import appeng.api.parts.IPartHost;
 import appeng.parts.automation.ImportBusPart;
+import appeng.parts.p2p.ItemP2PTunnelPart;
+import appeng.parts.p2p.P2PTunnelPart;
 import appeng.parts.storagebus.StorageBusPart;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -33,6 +36,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.automation.AutomationInterfaceBlockEntity;
 import space.controlnet.ae2federation.automation.AutomationInterfaces;
 import space.controlnet.ae2federation.automation.AutomationRegistration;
@@ -42,6 +46,7 @@ import space.controlnet.ae2federation.automation.ProgramHost;
 import space.controlnet.ae2federation.automation.ProgramRun;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
+import space.controlnet.ae2federation.domain.CableCapacityLimit;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.script.DictValue;
 import space.controlnet.ae2federation.script.RunError;
@@ -50,6 +55,7 @@ import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.automation.TestEnd;
 import space.controlnet.ae2federation.test.automation.WallClock;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingFixtures;
+import space.controlnet.ae2federation.test.p2p.FederationP2PScene;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
 
@@ -63,6 +69,11 @@ public final class ProgramHostGameTests {
     private static final BlockPos CENTER = new BlockPos(6, 6, 6);
     private static final BlockPos INTERFACE = CENTER.east();
     private static final BlockPos TARGET = CENTER.east(2);
+    /** The cable bus with the tunnels in {@link #tunnelScene}, and the interface on top of it. */
+    private static final BlockPos TUNNEL_BUS = CENTER.east();
+    private static final BlockPos TUNNEL_INTERFACE = TUNNEL_BUS.above();
+    /** The interface of the carrier's domain in {@link #programLinkingFederationTunnelsCanOverloadADomain}. */
+    private static final BlockPos CARRIER_INTERFACE = FederationP2PScene.CARRIER_CABLE.above(2).south();
 
     private ProgramHostGameTests() {
     }
@@ -990,6 +1001,136 @@ public final class ProgramHostGameTests {
                 });
     }
 
+    /**
+     * A program links the P2P tunnels on a cable of its domain as a memory card does: the item tunnel facing the
+     * interface becomes an input with a new frequency, a second item tunnel its output, and an energy tunnel an item
+     * tunnel and a second output. Unlinking the input leaves both outputs without one.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void programLinksTheP2PTunnelsOfItsDomain(GameTestHelper helper) {
+        var fixtures = tunnelScene(helper);
+        var bus = TUNNEL_BUS;
+        run(helper, TUNNEL_INTERFACE, 1, () -> helper.assertTrue(
+                        tunnel(helper, bus, Direction.UP) != null && tunnel(helper, bus, Direction.UP).isActive()
+                                && tunnel(helper, bus, Direction.NORTH).isActive()
+                                && tunnel(helper, bus, Direction.SOUTH).isActive(),
+                        "Waiting for the tunnels' channels"),
+                "host_tunnels", """
+                def run(port: Interface) -> str:
+                    tunnels = ae2.tunnels()
+                    a = tunnels[0]
+                    c = tunnels[1]
+                    b = tunnels[2]
+                    before = " ".join([str(len(tunnels)), str(a.frequency), c.type,
+                                       str(ae2.tunnel_at(ae2f.select(port)) == a)])
+                    linked = ae2.link_tunnel(a, b) and ae2.link_tunnel(a, c)
+                    mc.wait(2)
+                    tunnels = ae2.tunnels()
+                    a = tunnels[0]
+                    c = tunnels[1]
+                    b = tunnels[2]
+                    after = " ".join([str(linked), str(a.output), str(a.frequency > 0), str(b.output),
+                                      str(b.frequency == a.frequency), c.type, str(c.output),
+                                      str(a.linked == [c.id, b.id]), str(b.linked == [a.id])])
+                    unlinked = ae2.unlink_tunnel(a)
+                    tunnels = ae2.tunnels()
+                    return " / ".join([before, after, " ".join([str(unlinked), str(tunnels[0].frequency),
+                                                               str(tunnels[0].output), str(tunnels[2].linked)])])
+                """, "3 0 ae2:fe_p2p_tunnel True / True False True True True ae2:item_p2p_tunnel True True True"
+                        + " / True 0 False []",
+                "The tunnels link as with a memory card and unlink", () -> {
+                    var energy = tunnel(helper, bus, Direction.NORTH);
+                    var output = tunnel(helper, bus, Direction.SOUTH);
+                    helper.assertTrue(energy instanceof ItemP2PTunnelPart && energy.isOutput(),
+                            "The energy tunnel is an item tunnel's output now");
+                    helper.assertTrue(output.isOutput() && output.getInput() == null,
+                            "The output has no input once the input is unlinked");
+                    fixtures.close();
+                });
+    }
+
+    /**
+     * Relinking Federation P2P tunnels from a program changes cables as a player's memory card does: the carrier
+     * network's domain links the two tunnels, which joins two networks through a region of capacity 1, and that domain
+     * stops over capacity.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void programLinkingFederationTunnelsCanOverloadADomain(GameTestHelper helper) {
+        var scene = new FederationP2PScene(helper);
+        var routers = new RouterFixtures(helper);
+        var placed = new boolean[1];
+        Runnable restore = () -> CableCapacityLimit.set(true, CableCapacityLimit.DEFAULT_CAPACITY);
+        run(helper, CARRIER_INTERFACE, 1, () -> {
+            helper.assertTrue(scene.networks().networksSettled(), "Waiting for the networks to settle");
+            if (!placed[0]) {
+                placed[0] = true;
+                scene.placeCable(FederationP2PScene.LEFT_BUS);
+                scene.placeCable(FederationP2PScene.RIGHT_BUS);
+                scene.attunedTunnel(FederationP2PScene.LEFT_BUS, Direction.WEST);
+                scene.attunedTunnel(FederationP2PScene.RIGHT_BUS, Direction.EAST);
+                scene.placeRouters();
+                // The carrier joins a domain of its own, which the program runs in.
+                routers.placeSwitch(CARRIER_INTERFACE.north().below());
+                routers.placeFederationCable(CARRIER_INTERFACE.north());
+                helper.setBlock(CARRIER_INTERFACE, AutomationRegistration.INTERFACE.get().defaultBlockState()
+                        .setValue(BlockStateProperties.FACING, Direction.UP));
+                CableCapacityLimit.set(true, 1);
+            }
+            helper.assertTrue(FederationP2PScene.online(scene.tunnel(FederationP2PScene.LEFT_BUS, Direction.WEST),
+                    scene.tunnel(FederationP2PScene.RIGHT_BUS, Direction.EAST)), "Waiting for the tunnels' channels");
+            helper.assertFalse(scene.networks().connected(), "The two networks share no domain before the link");
+        }, "host_federation_tunnels", """
+                def run(port: Interface) -> str:
+                    tunnels = ae2.tunnels()
+                    return " ".join([str(len(tunnels)), tunnels[0].type, str(ae2.link_tunnel(tunnels[0], tunnels[1]))])
+                """, "2 ae2federation:federation_p2p_tunnel True",
+                "The program links the carrier's two Federation tunnels", () -> {
+                    var registry = FederationDomainRegistryAccess.get(helper.getLevel());
+                    var key = scene.networks().key();
+                    var joined = registry.federationdomainsFor(key.consumerNetworkId()).stream()
+                            .filter(registry.federationdomainsFor(key.providerNetworkId())::contains).toList();
+                    helper.assertTrue(!joined.isEmpty() && registry.overCapacity(joined.getFirst()),
+                            "Waiting for the linked tunnels to join the networks in a domain over capacity");
+                }, () -> {
+                    restore.run();
+                    scene.close();
+                    routers.close();
+                });
+    }
+
+    /**
+     * A Switch with a cable bus under it, powered by a Creative Energy Cell, a Federation Cable beside the Switch and an
+     * interface on the bus's far end looking down at it. The bus has an item tunnel on top, facing the interface, an
+     * energy tunnel to the north and another item tunnel to the south.
+     */
+    private static RouterFixtures tunnelScene(GameTestHelper helper) {
+        BlockPos.betweenClosed(CENTER.offset(-3, -1, -2), CENTER.offset(3, 3, 2))
+                .forEach(position -> helper.setBlock(position, Blocks.AIR));
+        var fixtures = new RouterFixtures(helper);
+        var switchAt = TUNNEL_BUS.west(2).above();
+        fixtures.placeSwitch(switchAt);
+        fixtures.placeFederationCable(switchAt.east());
+        helper.setBlock(TUNNEL_INTERFACE, AutomationRegistration.INTERFACE.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.DOWN));
+        helper.setBlock(TUNNEL_BUS.west(2).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        for (var bus : List.of(TUNNEL_BUS.west(2), TUNNEL_BUS.west(), TUNNEL_BUS)) {
+            PartHelper.setPart(helper.getLevel(), helper.absolutePos(bus), null, null,
+                    AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT));
+        }
+        var at = helper.absolutePos(TUNNEL_BUS);
+        PartHelper.setPart(helper.getLevel(), at, Direction.UP, null, AEParts.ITEM_P2P_TUNNEL.asItem());
+        PartHelper.setPart(helper.getLevel(), at, Direction.NORTH, null, AEParts.FE_P2P_TUNNEL.asItem());
+        PartHelper.setPart(helper.getLevel(), at, Direction.SOUTH, null, AEParts.ITEM_P2P_TUNNEL.asItem());
+        return fixtures;
+    }
+
+    private static @Nullable P2PTunnelPart<?> tunnel(GameTestHelper helper, BlockPos bus, Direction side) {
+        return helper.getLevel().getBlockEntity(helper.absolutePos(bus)) instanceof IPartHost host
+                && host.getPart(side) instanceof P2PTunnelPart<?> tunnel ? tunnel : null;
+    }
+
     /** The editor's dry run of a pattern write says it would land and leaves the blank pattern and provider alone. */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 600, required = true, manualOnly = true)
@@ -1098,10 +1239,18 @@ public final class ProgramHostGameTests {
      */
     private static void run(GameTestHelper helper, BlockPos interfaceAt, int networks, Runnable ready, String file,
             String text, Object expected, String message, Runnable after) {
+        run(helper, interfaceAt, networks, ready, file, text, expected, message, () -> {
+        }, after);
+    }
+
+    /** As above; once the result is checked, waits until {@code settle} passes before {@code after}. */
+    private static void run(GameTestHelper helper, BlockPos interfaceAt, int networks, Runnable ready, String file,
+            String text, Object expected, String message, Runnable settle, Runnable after) {
         var level = helper.getLevel();
         var server = level.getServer();
         var store = ProgramStore.get(server);
         var holder = new ProgramRun[1];
+        var checked = new boolean[1];
         helper.startSequence()
                 .thenWaitUntil(() -> {
                     ready.run();
@@ -1146,6 +1295,18 @@ public final class ProgramHostGameTests {
                 .thenExecute(() -> {
                     if (!(expected instanceof Stops)) {
                         helper.assertValueEqual(holder[0].runner().result(), expected, message);
+                    }
+                    checked[0] = true;
+                })
+                // A wrong result has failed the test already; its message stays the one reported.
+                .thenWaitUntil(() -> {
+                    if (checked[0]) {
+                        settle.run();
+                    }
+                })
+                .thenExecute(() -> {
+                    if (!checked[0]) {
+                        return;
                     }
                     after.run();
                     RouterEvidence.write(file.replace("_", ""), 1, Map.of("result", expected instanceof Stops stops

@@ -53,7 +53,12 @@ public final class StandardLibrary {
             "Provider", List.of(arg("id", "str"), arg("name", "Optional[str]"), arg("targets", "list[Item]"),
                     arg("group", "str"), arg("block", "Item"), arg("network", "Network"), arg("x", "int"),
                     arg("y", "int"), arg("z", "int"), arg("dimension", "str"), arg("slots", "int"), arg("free", "int"),
-                    arg("makes", "list[Resource]"), arg("in_terminal", "bool")));
+                    arg("makes", "list[Resource]"), arg("in_terminal", "bool")),
+            // A frequency of 0 is a tunnel not linked yet; linked lists the IDs at the other end.
+            "Tunnel", List.of(arg("id", "str"), arg("type", "Item"), arg("name", "Optional[str]"),
+                    arg("frequency", "int"), arg("output", "bool"), arg("linked", "list[str]"), arg("active", "bool"),
+                    arg("network", "Network"), arg("x", "int"), arg("y", "int"), arg("z", "int"),
+                    arg("dimension", "str"), arg("side", "Side")));
 
     public static final Map<String, List<Signature>> NAMESPACES = Map.of(
             "ae2", List.of(
@@ -230,7 +235,35 @@ public final class StandardLibrary {
                                 return False
                             """, arg("provider", "Provider"), arg("recipe", "Recipe"),
                             new Signature.Arg("items", type("dict[int, Item]"), "{}"),
-                            new Signature.Arg("substitutes", type("bool"), "False"))),
+                            new Signature.Arg("substitutes", type("bool"), "False")),
+                    fn("tunnels", "list[Tunnel]", "The P2P tunnels.", """
+                            def unlinked() -> list[Tunnel]:
+                                found: list[Tunnel] = []
+                                for tunnel in ae2.tunnels():
+                                    if tunnel.frequency == 0:
+                                        found.append(tunnel)
+                                return found
+                            """, network()),
+                    fn("tunnel_at", "Optional[Tunnel]",
+                            "The P2P tunnel at the block; None if there is none of this domain.", """
+                            def tunnel_below(port: Interface) -> Optional[Tunnel]:
+                                return ae2.tunnel_at(ae2f.select(port, side="up"))
+                            """, arg("block", "Block")),
+                    act("link_tunnel", "bool",
+                            "Links the output to the input, as a memory card does: the input gets a frequency if it "
+                                    + "has none, and the output becomes the input's kind of tunnel.", """
+                            def feed_from(port: Interface, source: Tunnel) -> bool:
+                                machine = ae2.tunnel_at(ae2f.select(port))
+                                if machine is None:
+                                    return False
+                                return ae2.link_tunnel(source, machine)
+                            """, arg("input", "Tunnel"), arg("output", "Tunnel")),
+                    act("unlink_tunnel", "bool",
+                            "Unlinks the tunnel, as it was when placed; an input's outputs are left without one.", """
+                            def stop_feeding(port: Interface) -> bool:
+                                machine = ae2.tunnel_at(ae2f.select(port))
+                                return machine is not None and ae2.unlink_tunnel(machine)
+                            """, arg("tunnel", "Tunnel"))),
             "ae2f", List.of(
                     fn("select", "Block", "The block in front of the interface, reach blocks away, seen from a side.",
                             """

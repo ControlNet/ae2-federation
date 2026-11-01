@@ -48,8 +48,8 @@ import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
 
 /**
  * The library calls that reach ME networks: the domain's storage, crafting, energy and rules, inventories at a
- * selected block, the settings of a device there ({@link DeviceCalls}), and pattern providers and the recipes written
- * into them ({@link PatternCalls}). A program reaches every network of its domain directly, whatever the rules share (user decision).
+ * selected block, the settings of a device there ({@link DeviceCalls}), pattern providers and the recipes written
+ * into them ({@link PatternCalls}), and P2P tunnels ({@link TunnelCalls}). A program reaches every network of its domain directly, whatever the rules share (user decision).
  *
  * <p>Assistant choices: {@code network=None} is every network of the domain. Amounts are read from each network's own
  * storage (its drives, cells and storage buses, never what the Federation mounts from other networks), so a sum over
@@ -73,6 +73,7 @@ final class DomainCalls {
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
     private final DeviceCalls devices;
     private final PatternCalls patterns;
+    private final TunnelCalls tunnels;
     private Map<NetworkId, IGrid> grids = Map.of();
     private int gridsTick = -1;
 
@@ -87,6 +88,7 @@ final class DomainCalls {
         this.resources = new RegistryResources(server.registryAccess());
         this.devices = new DeviceCalls(simulate, this::key);
         this.patterns = new PatternCalls(server, simulate, this);
+        this.tunnels = new TunnelCalls(server, simulate, this);
     }
 
     Object call(ProgramHost host, String namespace, String name, List<Object> args) {
@@ -114,6 +116,8 @@ final class DomainCalls {
                     "ae2.set_config" -> devices.call(host, name, args);
             case "ae2.providers", "ae2.provider_at", "ae2.provider_patterns", "ae2.write_pattern", "mc.recipes_for" ->
                     patterns.call(host, namespace + "." + name, args);
+            case "ae2.tunnels", "ae2.tunnel_at", "ae2.link_tunnel", "ae2.unlink_tunnel" ->
+                    tunnels.call(host, namespace + "." + name, args);
             case "ae2f.online" -> online((String) args.get(0));
             case "ae2f.rule" -> ruleName(PolicyChanges.mode(policies(), policyKey(args)));
             case "ae2f.set_rule" -> setRule(policyKey(args), (String) args.get(3));

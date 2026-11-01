@@ -31,6 +31,9 @@ display and so on) are not current requirements.
 - **Refreshes:** AE2 tells every tunnel of a frequency at once when the frequency changes. Each tunnel is published
   once per burst of such refreshes instead of republishing the whole frequency for every tunnel told.
 - **Carrier:** the ME network carrying the tunnels never becomes a Federation member through them.
+- **Programs:** a program whose domain holds the carrier network links and unlinks the tunnels with
+  `ae2.link_tunnel` and `ae2.unlink_tunnel`, as a memory card does, so a relink can join, split or overload the
+  domains the tunnels carry (`programlinkingfederationtunnelscanoverloadadomain`).
 - **Power and channels:** as AE2's native tunnels: 1 AE/t idle and one channel each. There is no transfer tax,
   because a tunnel carries only topology.
 - **Across dimensions:** a carrier that a Quantum Network Bridge joins across dimensions links its tunnels the same

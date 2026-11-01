@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "CableBusIdentityInitializationMixin",
+    "P2PTunnelPartAccess",
     "PatternProviderLogicAccess",
     "PatternProviderLogicTargetBinding",
     "SmithingTransformRecipeAccess",

@@ -64,7 +64,7 @@ final class StandardLibraryTest {
         StandardLibrary.NAMESPACES.forEach((namespace, signatures) -> signatures.stream().filter(Signature::effect)
                 .forEach(s -> actions.add(namespace + "." + s.name())));
         assertEquals(java.util.Set.of("ae2.craft", "ae2.cancel", "ae2.import_from", "ae2.export_to", "ae2.move",
-                "ae2.set_setting", "ae2.set_priority", "ae2.set_config", "ae2.write_pattern", "ae2f.set_rule", "ae2f.set_filter", "mc.move", "mc.set_redstone", "mc.break_block", "mc.place_block", "mc.wait",
+                "ae2.set_setting", "ae2.set_priority", "ae2.set_config", "ae2.write_pattern", "ae2.link_tunnel", "ae2.unlink_tunnel", "ae2f.set_rule", "ae2f.set_filter", "mc.move", "mc.set_redstone", "mc.break_block", "mc.place_block", "mc.wait",
                 "mc.move_fe", "fs.write", "fs.append", "fs.delete", "net.http",
                 "net.connect", "net.send", "net.disconnect"), actions);
     }

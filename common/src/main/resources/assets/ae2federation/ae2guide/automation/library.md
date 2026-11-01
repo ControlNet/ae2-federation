@@ -132,6 +132,32 @@ later calls, its anvil `name` or `None`, `targets`, its `group` in the Pattern A
 `network`, `x`, `y`, `z` and `dimension`, its pattern `slots` and how many are `free`, what its patterns `makes`, and
 whether it is shown `in_terminal`.
 
+## ae2: P2P tunnels
+
+A tunnel here is a P2P tunnel on a network of the domain: AE2's own, an addon's, or a Federation P2P tunnel whose
+carrier network belongs to the domain.
+
+| Function | Gives |
+| --- | --- |
+| `ae2.tunnels(network)` | the P2P tunnels, as `Tunnel`s |
+| `ae2.tunnel_at(block)` | the tunnel at a selected block's side, or `None` if there is none of this domain |
+| `ae2.link_tunnel(input, output)` | **action:** links the output to the input, as a memory card does |
+| `ae2.unlink_tunnel(tunnel)` | **action:** unlinks the tunnel |
+
+`ae2.link_tunnel` works as the memory card: the input first becomes an input, with a new frequency if it has none or
+was an output, and the output takes its frequency. An output of another kind becomes the input's kind of tunnel, as
+when the card is used on it. Tunnels link only on one network, as in AE2: two on different networks stop the run with
+a `ValueError`. `ae2.unlink_tunnel` puts the tunnel back as it was placed, an input with no frequency, so an input's
+outputs are left without one. Both give `False` when a tunnel cannot be reached now.
+
+A `Tunnel` has its `id` (its block and side), which names it in later calls, its `type` (the tunnel's item), its anvil
+`name` or `None`, its `frequency` (0 when not linked), whether it is an `output`, the ids it is `linked` to (an
+input's outputs, an output's input), whether it is `active` (powered, with a channel), its `network`, `x`, `y`, `z`,
+`dimension` and `side`.
+
+Relinking a Federation P2P tunnel changes the Federation cables it carries, as the memory card does: it can join two
+domains, split one, or put a cable over its [capacity](../mechanics/capacity.md), which stops that domain.
+
 ## ae2f: the Federation
 
 | Function | Gives |

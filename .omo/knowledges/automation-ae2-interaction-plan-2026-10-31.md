@@ -43,6 +43,11 @@ Decisions by the owner on extending Federation Automation beyond storage, crafti
   name is what its units were renamed to in an anvil. The GameTest sets the other CPU to MACHINE_ONLY, because
   with two equal ANY CPUs AE2 happened to pick the named one anyway and the test proved nothing.
 
+- 328ef0f0 device settings, e5c24351 crafting-family pattern writing, 2e4e1193 completion trim.
+- d3e63574 recipe index built at server start and reload (cost table below).
+- P2P tunnels: `ae2.tunnels`, `ae2.tunnel_at`, `ae2.link_tunnel`, `ae2.unlink_tunnel`; see
+  `automation-p2p-tunnels-2026-11-01.md`.
+
 ## Recipe coverage measurement (2026-10-31)
 
 Runtime dump of every recipe's codec JSON on ATM10 8.3, NAST 2.2.1 and CUS2 12.9.0 server packs (throwaway dump
