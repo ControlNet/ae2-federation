@@ -117,6 +117,34 @@ JEI, scanned on the client and cached in the world save.
   same ingredients); harmless when the bucket is the unit.
 - The compat assembler hard-links the client's and server's mod jars: `cp` into one replaces the other's jar in
   place. Stop both JVMs before copying a new jar into either.
+- The earlier ~1,000 NullPointerExceptions came from JEI/mod subtype interpreters behind `getUniqueId`, not from
+  `getRecipeIngredients`: encoding ItemStacks ourselves had 0 failures.
+
+## Fingerprint variants (ATM10, two client starts, 2026-11-01, probe not committed)
+
+Scope: 536 categories, 418,043 JEI recipes (all but the six server types and ftbquests:quest; includes
+generatorgalore:solid_fuels 127,242, which the scan itself does not send). Raw data: worktree
+`build/fingerprint-check/` (compare.txt, textdiffs, Create chance dump).
+
+- A = ingredients per role, item/fluid ID + data component patch via codec + amount: 29.3 s render thread
+  (0.070 ms/recipe, about 25% over the JEI-uid key); costliest create:automatic_shaped 5.9 s, minecraft:anvil 4.4 s,
+  arcane_anvil 4.2 s, domum architects_cutter 13.5 ms/recipe. 0 failures; 934 component patches cannot be encoded
+  (Industrial Foregoing mycelial disenchantment/potion).
+- B = `Recipe.STREAM_CODEC` bytes when the JEI object is a RecipeHolder/Recipe: 10.5 us per covered recipe; covers
+  128,065 (30.6%); 348 categories fully. Not covered: JEI anvil, MineColonies GenericRecipe (~60k), arcane anvil,
+  fuel/generator displays, jei:information, brewing. Fails on generatorgalore (class init, every recipe: stop after
+  the first failure in a category), mekanism nutritional_liquifier, create:block_cutting (empty stack), display-only
+  recipe classes. Carries chances: create:milling/calcite bytes hold 0.75 (3f400000), as in Create's JSON.
+- C = B else A: 19.6 s (about 6.5 min at 2.5 ms/tick).
+- Stability (buckets differing between two starts): A 174/1,485 (11.7%), B 32/648 (4.9%), C 194/1,485 (13.1%),
+  JEI-uid key 2%. Sources: item components filled at random (Relics `relics:data` 215 keys, 196 in anvil; Astral
+  Sorcery artifact; Draconic provider UUID; IE revolver perks), hash-ordered sets/maps in components or serializers
+  (`neoforge:cures`, jeistuff trades/loot, Apotheosis affixes, Draconic module NBT order), client-built recipes
+  whose IDs move (Create potion mixing), loot-rolled recipes (EvilCraft, Tombstone, casting, extractor).
+  In anvil (no IDs) a changed key moved recipes between buckets: 124 of 128 buckets dirty.
+- Takeaways (assistant): the partition key must ignore components (item/fluid IDs + amounts) so recipes never move;
+  the change digest (C) is per recipe, compared per bucket first and then per recipe, so noise costs re-reading the
+  noisy recipes only, not whole buckets.
 
 ## Open (assistant choices, not owner decisions)
 
