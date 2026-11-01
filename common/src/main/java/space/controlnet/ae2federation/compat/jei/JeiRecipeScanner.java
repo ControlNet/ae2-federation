@@ -71,6 +71,12 @@ final class JeiRecipeScanner implements ViewerScanner {
             RecipeTypes.SMELTING.getUid(), "minecraft:smelting",
             RecipeTypes.BLASTING.getUid(), "minecraft:blasting",
             RecipeTypes.SMOKING.getUid(), "minecraft:smoking");
+    /**
+     * JEI categories left out entirely. Owner decision (2026-11-01): FTB Quests shows quest rewards, which no machine
+     * makes, and rolls loot rewards anew each time the client loads.
+     */
+    private static final Set<ResourceLocation> SKIPPED = Set.of(ResourceLocation.fromNamespaceAndPath("ftbquests",
+            "quest"));
     private static final List<String> CHANCE = List.of("chance", "probab", "%", "概率", "几率", "機率", "確率", "확률");
 
     private final IJeiRuntime runtime;
@@ -118,6 +124,9 @@ final class JeiRecipeScanner implements ViewerScanner {
                 }
                 category = categories.next();
                 var type = category.getRecipeType();
+                if (SKIPPED.contains(type.getUid())) {
+                    continue;
+                }
                 var server = SERVER_TYPES.get(type.getUid());
                 categoryId = server != null ? server : type.getUid().toString();
                 var machines = new LinkedHashSet<String>();
