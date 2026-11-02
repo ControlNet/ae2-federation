@@ -250,7 +250,9 @@ Order: scanner filters (done, 9553df74) -> bucket math (done, `RecipeBuckets`, 6
 (done: `BucketedRecipes` + `ViewerRecipes.CategoryFile`, files `ae2federation_vr_<id part>_<6 hex>`; the old
 whole-scan protocol replaced) -> client fingerprints + protocol + leases (done: `ViewerScans` hello/task/prints/
 reads/records, `ViewerScanClient`, `JeiRecipeScanner.Printing`; Mekanism+Create UI run: hello 32 s after JEI, 4,975
-recipes + 109 skipped in 56 categories, ~25 s) -> protocol + leases -> GameTests -> ATM10 -> Recipe sync tab (canvas board
+recipes + 109 skipped in 56 categories, ~25 s; the old whole scan saved 4,784: all 191 extra are
+`create:automatic_brewing` potions its dedupe key merged, as `AEFluidKey.toString` leaves out potion components;
+file `build/viewer-storage-check/old-vs-new-categories.txt`) -> protocol + leases -> GameTests -> ATM10 -> Recipe sync tab (canvas board
 RecipeSyncV1Downloader + V1First/V1Done/V1Failed).
 
 - Fingerprint per recipe, computed on the client from `IRecipeManager.getRecipeIngredients` (no layout, ~0.07 ms):
