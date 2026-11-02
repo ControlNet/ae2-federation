@@ -1361,7 +1361,8 @@ public final class ProgramHostGameTests {
             helper.assertTrue(status.checkedAt() > 0, "The round finished");
             var sorting = sortingRow(status);
             helper.assertValueEqual(List.of(sorting.recipes(), sorting.read(), sorting.toRead(), sorting.dropped(),
-                    sorting.listed()), List.of(1_200, 1_200, 1_200, 0, 1_200), "Every recipe was read and saved");
+                    sorting.changed(), sorting.listed()), List.of(1_200, 1_200, 1_200, 0, 1_200, 1_200),
+                    "Every recipe was read, saved and is new");
             helper.assertValueEqual(buckets(sorting), Set.of(ViewerSyncStatus.Bucket.UPDATED),
                     "The first sync updates every bucket");
             var row = viewerRow(status, viewer);
@@ -1389,8 +1390,8 @@ public final class ProgramHostGameTests {
             status = ViewerScans.status(server);
             sorting = sortingRow(status);
             helper.assertValueEqual(viewer.read, 2_400, "The forced rescan read every recipe again");
-            helper.assertValueEqual(List.of(sorting.recipes(), sorting.read(), sorting.dropped()),
-                    List.of(1_200, 1_200, 0), "Nothing was dropped, as every recipe came back");
+            helper.assertValueEqual(List.of(sorting.recipes(), sorting.read(), sorting.dropped(), sorting.changed()),
+                    List.of(1_200, 1_200, 0, 0), "Nothing was dropped or changed, as every recipe came back");
             helper.assertValueEqual(buckets(sorting), Set.of(ViewerSyncStatus.Bucket.MATCHED),
                     "Every bucket holds what it held");
             helper.assertTrue(ViewerScans.progress(server).done(), "The round is done");

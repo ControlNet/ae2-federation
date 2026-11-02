@@ -653,7 +653,7 @@ public final class AutomationTabScenario implements UIScenario {
                 .key(GLFW.GLFW_KEY_ENTER)
                 .type("mc.recipes_for(\"minecraft:stick\")[0].")
                 .waitUntil("a recipe lists its fields", context -> popupLabels(context).equals(java.util.List.of(
-                        "height", "id", "inputs", "kind", "outputs", "width")))
+                        "byproducts", "height", "id", "inputs", "kind", "machines", "outputs", "type", "width")))
                 .frames(2).screenshot("ui-automation-completion-recipe")
                 .key(GLFW.GLFW_KEY_ESCAPE)
                 // The Library: namespaces with their counts, a function's page and the way back, a search.

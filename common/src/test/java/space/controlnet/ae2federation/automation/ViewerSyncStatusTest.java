@@ -16,10 +16,10 @@ final class ViewerSyncStatusTest {
     void theStatusReadsBackAsItWasSent() {
         var status = new ViewerSyncStatus(42, true, 1_762_000_000_000L, List.of(
                 new CategoryRow("create:milling", 51, 3, 1, List.of("create:milling/broken"), new byte[] {
-                        Bucket.UPDATED.code(), Bucket.READING.code(), Bucket.FAILED.code() }, 12, 30, 2, 51,
+                        Bucket.UPDATED.code(), Bucket.READING.code(), Bucket.FAILED.code() }, 12, 30, 2, 9, 51,
                         List.of(new Lease("Alex", 1, 1))),
                 new CategoryRow("gonemod:pressing", 7, 0, 0, List.of(), new byte[] { Bucket.UNCHECKED.code() }, 0, 0, 0,
-                        -1, List.of())),
+                        0, -1, List.of())),
                 List.of(new ViewerRow("Alex", ViewerState.READING, "create:milling", 1, 1, 12, 30, 68.5f, 12),
                         new ViewerRow("Kai", ViewerState.WAITING, "", 0, 0, 0, 0, 0, 0)));
         var read = ViewerSyncStatus.decode(status.encode());
@@ -33,8 +33,8 @@ final class ViewerSyncStatusTest {
         assertArrayEquals(status.categories().get(0).buckets(), milling.buckets());
         assertEquals(List.of("create:milling/broken"), milling.failedIds());
         assertEquals(List.of(new Lease("Alex", 1, 1)), milling.leases());
-        assertEquals(List.of(51, 3, 1, 12, 30, 2, 51), List.of(milling.recipes(), milling.skipped(), milling.failed(),
-                milling.read(), milling.toRead(), milling.dropped(), milling.listed()));
+        assertEquals(List.of(51, 3, 1, 12, 30, 2, 9, 51), List.of(milling.recipes(), milling.skipped(), milling.failed(),
+                milling.read(), milling.toRead(), milling.dropped(), milling.changed(), milling.listed()));
         assertEquals(-1, read.categories().get(1).listed(), "A category no viewer lists");
         assertEquals(Bucket.FAILED, Bucket.of(milling.buckets()[2]));
     }

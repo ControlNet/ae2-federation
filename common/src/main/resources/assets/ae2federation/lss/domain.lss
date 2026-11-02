@@ -112,6 +112,9 @@
 // The Automation tab: the programs on the left, the opened ones as tabs above the script on the right.
 .auto-view { width: 100%; height: 100%; flex-direction: row; gap-all: 6; }
 .domain-panel .header-tools .auto-action { width: 40; }
+.domain-panel .header-tools .range-chip.sync-action { width: 60; }
+.sync-page { flex-direction: column; }
+.sync-board { flex: 1; width: 100%; min-height: 0; }
 .auto-install-canvas { flex: 1; min-width: 0; height: 100%; scroller-view-mode: vertical; }
 .auto-install-canvas .__scroller_view_view-port__ { padding-all: 0; background: #00000000; }
 .auto-install-canvas .__scroller_view_view-container__ { width: 100%; }

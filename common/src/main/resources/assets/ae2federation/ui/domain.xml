@@ -10,6 +10,7 @@
                 <button id="tab_statistics" class="rail-tab" text=""/>
                 <button id="tab_programs" class="rail-tab" text=""/>
                 <button id="tab_automation" class="rail-tab" text=""/>
+                <button id="tab_sync" class="rail-tab" text=""/>
             </element>
         </element>
         <element id="domain_window" class="domain-panel">
@@ -26,6 +27,7 @@
                         <label id="scope_caption" class="domain-caption members-caption"/>
                         <label id="automation_summary" class="domain-caption members-caption off-page"/>
                         <label id="automation_answer" class="domain-caption automation-answer off-page"/>
+                        <label id="sync_summary" class="domain-caption members-caption off-page"/>
                     </element>
                 </element>
                 <element id="header_graph_tools" class="header-tools">
@@ -44,6 +46,9 @@
                 <element id="header_auto_tools" class="header-tools">
                     <button id="auto_push" class="range-chip auto-action" text="ae2federation.ui.automation.push"/>
                     <button id="auto_delete" class="range-chip auto-action" text="ae2federation.ui.automation.delete"/>
+                </element>
+                <element id="header_sync_tools" class="header-tools">
+                    <button id="sync_rescan_all" class="range-chip sync-action" text="ae2federation.ui.sync.rescan_all"/>
                 </element>
                 <text-field id="graph_search" mode="string" value=""/>
                 <button id="return_provider" class="return-provider" text="ae2federation.ui.workspace.back_provider"/>
@@ -215,6 +220,9 @@
                     <scroller-view id="auto_install_canvas" class="auto-box auto-install-canvas"/>
                     <scroller-view id="auto_install_aside" class="auto-install-aside"/>
                 </element>
+            </element>
+            <element id="page_sync" class="workspace-page sync-page">
+                <element id="sync_board" class="sync-board"/>
             </element>
             <element id="domain_footer" class="domain-footer">
                 <label id="ack_status" class="domain-status pending"/>

@@ -215,6 +215,25 @@ final class FederationIcons {
             "................",
             "................");
 
+    /** Two arrows, down and up: recipes coming in from the players' recipe viewers. */
+    static final IGuiTexture SYNC = glyph(
+            "................",
+            "...#............",
+            "...#.......#....",
+            "...#......###...",
+            "...#.....#.#.#..",
+            "...#....#..#..#.",
+            "...#.......#....",
+            "...#.......#....",
+            "...#.......#....",
+            "...#.......#....",
+            "#..#..#....#....",
+            ".#.#.#.....#....",
+            "..###......#....",
+            "...#.......#....",
+            "................",
+            "................");
+
     private FederationIcons() {}
 
     /** Puts {@code icon} on a text-less button, centred above its bottom lip. */

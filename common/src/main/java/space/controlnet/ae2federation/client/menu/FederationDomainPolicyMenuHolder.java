@@ -43,6 +43,13 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     private long statisticsBuiltAt;
     /** The pins the page last sent; server side. */
     private net.minecraft.nbt.Tag statisticsPinned = new net.minecraft.nbt.ListTag();
+    /** What the client's Recipe sync page asked for: empty while it is closed; server side. */
+    private String syncAsked = "";
+    /** The last rescan the page asked for, numbered by the page, so one request rescans once. */
+    private int syncRescanned;
+    private net.minecraft.nbt.CompoundTag syncPayload = new net.minecraft.nbt.CompoundTag();
+    private int syncBuiltRevision = -1;
+    private int syncBuiltAt;
     /** The largest size this screen grows to; it fills the screen up to it. */
     private final int maxWidth;
     private final int maxHeight;
@@ -125,6 +132,18 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         statisticsSync.addClass("state-sync");
         ui.rootElement.addChild(statisticsSync);
         workspace.bindStatistics(statistics);
+        // The Recipe sync page: open or closed, and the rescans it asks for; the server sends the status while it is open.
+        var syncAsk = new BindableValue<String>("");
+        syncAsk.bind(DataBindingBuilder.string(() -> syncAsked, this::acceptSyncRequest).initialValue("").build());
+        syncAsk.addClass("state-sync");
+        ui.rootElement.addChild(syncAsk);
+        var sync = new FederationRecipeSyncView(ui, value -> syncAsk.setValue(value, true));
+        var syncStatus = new BindableValue<net.minecraft.nbt.Tag>(new net.minecraft.nbt.CompoundTag());
+        syncStatus.bind(DataBindingBuilder.tagS2C(this::syncPayload).initialValue(new net.minecraft.nbt.CompoundTag())
+                .remoteSetter(sync::accept).build());
+        syncStatus.addClass("state-sync");
+        ui.rootElement.addChild(syncStatus);
+        workspace.bindSync(sync);
         // The programs are global; the domain picks the devices the tab counts and lists.
         var automation = new FederationAutomationView(ui, session == null);
         var domain = new BindableValue<String>("");
@@ -466,6 +485,50 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             statisticsBuiltAt = now;
         }
         return statisticsPayload;
+    }
+
+    /**
+     * "open" while the Recipe sync page is open, "open/n/category" once it asks for its n-th rescan ("*" for every
+     * category), empty once it closes. A rescan needs the menu's domain context, as every other request here does
+     * (assistant choice: whoever may open this screen may have the viewers check again).
+     */
+    private void acceptSyncRequest(String value) {
+        syncAsked = value;
+        var parts = value.split("/", 3);
+        if (session == null || parts.length != 3 || !parts[0].equals("open")) return;
+        int number;
+        try {
+            number = Integer.parseInt(parts[1]);
+        } catch (NumberFormatException exception) {
+            return;
+        }
+        if (number == syncRescanned || session.context().isEmpty()) return;
+        syncRescanned = number;
+        space.controlnet.ae2federation.automation.ViewerScans.rescan(session.player().server,
+                parts[2].equals("*") ? null : parts[2]);
+        syncBuiltRevision = -1;
+    }
+
+    /**
+     * The open page's status, rebuilt at most once a second when something changed and every five seconds anyway (for
+     * players joining and leaving); the same tag in between, so nothing is resent.
+     */
+    private net.minecraft.nbt.Tag syncPayload() {
+        if (session == null || syncAsked.isEmpty()) {
+            if (!syncPayload.isEmpty()) syncPayload = new net.minecraft.nbt.CompoundTag();
+            syncBuiltRevision = -1;
+            return syncPayload;
+        }
+        var server = session.player().server;
+        int now = server.getTickCount();
+        int revision = space.controlnet.ae2federation.automation.ViewerScans.revision(server);
+        if (syncBuiltRevision < 0 || revision != syncBuiltRevision && now - syncBuiltAt >= 20
+                || now - syncBuiltAt >= 100 || now < syncBuiltAt) {
+            syncPayload = space.controlnet.ae2federation.automation.ViewerScans.status(server).encode();
+            syncBuiltRevision = revision;
+            syncBuiltAt = now;
+        }
+        return syncPayload;
     }
 
     private String statusCode() {

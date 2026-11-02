@@ -51,10 +51,11 @@ public record ViewerSyncStatus(int revision, boolean firstSync, long checkedAt, 
 
     /**
      * A category: its saved recipes, skipped and failed entries, bucket states, what this round read (of how many to
-     * read) and dropped, how many recipes its viewers list (-1 when none lists it), and the leases on it.
+     * read) and dropped, how many recipes changed (new or gone, as a forced rescan reads unchanged ones too), how many
+     * recipes its viewers list (-1 when none lists it), and the leases on it.
      */
     public record CategoryRow(String id, int recipes, int skipped, int failed, List<String> failedIds, byte[] buckets,
-            int read, int toRead, int dropped, int listed, List<Lease> leases) {
+            int read, int toRead, int dropped, int changed, int listed, List<Lease> leases) {
     }
 
     /** What an online player's viewer is doing. */
@@ -90,7 +91,7 @@ public record ViewerSyncStatus(int revision, boolean firstSync, long checkedAt, 
             var each = new CompoundTag();
             each.putString("id", row.id());
             each.putIntArray("n", new int[] { row.recipes(), row.skipped(), row.failed(), row.read(), row.toRead(),
-                    row.dropped(), row.listed() });
+                    row.dropped(), row.listed(), row.changed() });
             var failed = new ListTag();
             row.failedIds().forEach(id -> failed.add(StringTag.valueOf(id)));
             each.put("failed", failed);
@@ -125,7 +126,7 @@ public record ViewerSyncStatus(int revision, boolean firstSync, long checkedAt, 
         var categories = new ArrayList<CategoryRow>();
         for (var element : tag.getList("categories", Tag.TAG_COMPOUND)) {
             var each = (CompoundTag) element;
-            var n = numbers(each.getIntArray("n"), 7);
+            var n = numbers(each.getIntArray("n"), 8);
             var failed = new ArrayList<String>();
             each.getList("failed", Tag.TAG_STRING).forEach(id -> failed.add(id.getAsString()));
             var leases = new ArrayList<Lease>();
@@ -134,7 +135,7 @@ public record ViewerSyncStatus(int revision, boolean firstSync, long checkedAt, 
                 leases.add(new Lease(one.getString("viewer"), one.getInt("first"), one.getInt("count")));
             }
             categories.add(new CategoryRow(each.getString("id"), n[0], n[1], n[2], List.copyOf(failed),
-                    each.getByteArray("buckets"), n[3], n[4], n[5], n[6], List.copyOf(leases)));
+                    each.getByteArray("buckets"), n[3], n[4], n[5], n[7], n[6], List.copyOf(leases)));
         }
         var viewers = new ArrayList<ViewerRow>();
         var states = ViewerState.values();

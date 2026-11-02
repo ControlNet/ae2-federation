@@ -20,7 +20,8 @@ final class FederationWorkspace {
      * The topology (with each Endpoint's panel), the wires view, the statistics, the programs' editor and their
      * installations on the devices; an Endpoint's details are on the topology.
      */
-    private static final List<String> PAGES = List.of("overview", "mapping", "statistics", "programs", "automation");
+    private static final List<String> PAGES = List.of("overview", "mapping", "statistics", "programs", "automation",
+            "sync");
     /** The server's choice groups; the wires view and the topology present them. */
     private static final List<String> CHOICE_GROUPS = List.of("mapping_provider", "slot", "target", "endpoint");
     private final PatternChoices patterns = new PatternChoices();
@@ -30,7 +31,7 @@ final class FederationWorkspace {
     private final Map<String, com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture> icons =
             Map.of("overview", FederationIcons.TOPOLOGY, "mapping", FederationIcons.PROCESSING, "statistics",
                     FederationIcons.STATISTICS, "programs", FederationIcons.PROGRAMS, "automation",
-                    FederationIcons.AUTOMATION);
+                    FederationIcons.AUTOMATION, "sync", FederationIcons.SYNC);
     private final Map<String, List<JsonObject>> choices = new HashMap<>();
     private boolean entranceApplied;
     private String navigationGroup;
@@ -40,6 +41,7 @@ final class FederationWorkspace {
     private FederationProcessingGraph processing;
     private FederationStatisticsView statistics;
     private FederationAutomationView automation;
+    private FederationRecipeSyncView sync;
     private boolean authorityAllowsNavigation;
     private String page = "overview";
 
@@ -86,6 +88,11 @@ final class FederationWorkspace {
         view.setOpen("statistics".equals(page));
     }
 
+    void bindSync(FederationRecipeSyncView view) {
+        sync = view;
+        view.setOpen("sync".equals(page));
+    }
+
     void bindAutomation(FederationAutomationView view) {
         automation = view;
         view.onOpenInEditor(() -> show("programs"));
@@ -117,15 +124,19 @@ final class FederationWorkspace {
         element("header_graph_tools", UIElement.class).setDisplay("overview".equals(page));
         element("header_stats_tools", UIElement.class).setDisplay("statistics".equals(page));
         element("header_auto_tools", UIElement.class).setDisplay("programs".equals(page));
+        element("header_sync_tools", UIElement.class).setDisplay("sync".equals(page));
         if (statistics != null) statistics.setOpen("statistics".equals(page));
+        if (sync != null) sync.setOpen("sync".equals(page));
         if (automation != null) {
             automation.setInstalling("automation".equals(page));
             automation.setOpen(programs(page));
         }
         // Classes, not setDisplay: the narrow layout's LSS also folds the summary away.
         boolean programs = programs(page);
-        for (var summary : Map.of("members_value", !mapping && !programs, "processing_summary", mapping, "scope_caption",
-                "overview".equals(page), "automation_summary", programs, "automation_answer", programs).entrySet()) {
+        boolean syncing = "sync".equals(page);
+        for (var summary : Map.of("members_value", !mapping && !programs && !syncing, "processing_summary", mapping,
+                "scope_caption", "overview".equals(page), "automation_summary", programs, "automation_answer", programs,
+                "sync_summary", syncing).entrySet()) {
             var label = element(summary.getKey(), UIElement.class);
             label.removeClass("off-page");
             if (!summary.getValue()) label.addClass("off-page");

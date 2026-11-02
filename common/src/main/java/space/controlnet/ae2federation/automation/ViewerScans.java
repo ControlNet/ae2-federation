@@ -214,6 +214,8 @@ public final class ViewerScans {
         int read;
         int toRead;
         int dropped;
+        /** Recipes this round added that were not saved, and dropped that did not come back. */
+        int changed;
 
         Work(String category, boolean force) {
             this.category = category;
@@ -660,13 +662,19 @@ public final class ViewerScans {
             for (var bucket = lease.first; bucket < lease.first + lease.count; bucket++) {
                 // Forced, a bucket drops what it adds back; only what it does not add back is gone.
                 var gone = new ArrayList<>(lease.drops.getOrDefault(bucket, List.of()));
-                added.getOrDefault(bucket, List.of()).forEach(entry -> gone.remove(entry.fingerprint()));
+                var fresh = 0;
+                for (var entry : added.getOrDefault(bucket, List.of())) {
+                    if (!gone.remove(entry.fingerprint())) {
+                        fresh++;
+                    }
+                }
                 var changed = saved.digest(bucket) != digests[bucket - lease.first];
                 var failed = saved.bucket(bucket).stream()
                         .anyMatch(entry -> entry.status() == BucketedRecipes.Status.FAILED);
                 work.buckets[bucket] = (failed ? ViewerSyncStatus.Bucket.FAILED : changed
                         ? ViewerSyncStatus.Bucket.UPDATED : ViewerSyncStatus.Bucket.MATCHED).code();
                 work.dropped += gone.size();
+                work.changed += fresh + gone.size();
             }
             work.read += lease.received.size();
             work.out--;
@@ -716,6 +724,11 @@ public final class ViewerScans {
         }
     }
 
+    /** Bumped on every change to what {@link #status} shows but the players online. */
+    public static synchronized int revision(MinecraftServer server) {
+        return state(server).revision;
+    }
+
     /**
      * What the Recipe sync page shows: this round's categories in the order viewers listed them, then saved ones no
      * viewer lists; every online player, with or without a viewer.
@@ -737,8 +750,9 @@ public final class ViewerScans {
             int skipped = 0;
             int failed = 0;
             var failedIds = new ArrayList<String>();
-            if (file != null) {
-                for (var entry : file.recipes().entries()) {
+            var saved = file == null ? null : file.recipes();
+            for (var bucket = 0; saved != null && bucket < 1 << saved.bits(); bucket++) {
+                for (var entry : saved.bucket(bucket)) {
                     switch (entry.status()) {
                         case RECIPE -> read++;
                         case SKIPPED -> skipped++;
@@ -771,6 +785,7 @@ public final class ViewerScans {
                             lease.count)).toList();
             categories.add(new ViewerSyncStatus.CategoryRow(id, read, skipped, failed, List.copyOf(failedIds), buckets,
                     work == null ? 0 : work.read, work == null ? 0 : work.toRead, work == null ? 0 : work.dropped,
+                    work == null ? 0 : work.changed,
                     listed, leases));
         }
         var now = clock.getAsLong();
