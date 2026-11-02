@@ -171,6 +171,15 @@ Partition key hashed with SHA-256 (first 8 bytes) of category + key, bucket = ha
 - Doubling a category's bucket count sends bucket b only to b or b + n (checked on every 50th recipe). A synthetic
   edit of 100 random run-2 digests (test-only data) was found exactly: 100 re-reads.
 
+## Owner decision: real recipes only (2026-11-02)
+
+The scan keeps only JEI recipe objects that are a `RecipeHolder` or a `Recipe`; every display object (built by JEI or a
+mod's plugin: anvil, MineColonies workers, arcane anvil, fuel/generator tables, info pages, brewing, botany pots, ...)
+is noise and is dropped, with no per-category opt-in. ATM10 (scope above): 159,333 display objects dropped, about
+131,000 real recipes kept (128,065 encodable by `Recipe.STREAM_CODEC`, about 3,400 whose codec throws), of which
+29,995 reach JEI as a bare `Recipe` without their holder ID. Lists: worktree `build/bucket-key-check/`
+(`id-object-cross.txt`, `display-processing.txt`, `classes-by-category.tsv`).
+
 ## Open (assistant choices, not owner decisions)
 
 - Trust: any player's JEI replaces the catalog for the whole world.
