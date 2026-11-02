@@ -103,7 +103,7 @@ public final class ViewerRecipePayloads {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("2");
+        var registrar = event.registrar("3");
         registrar.playToServer(Hello.TYPE, Hello.STREAM_CODEC, (payload, context) -> context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
                 ViewerScans.hello(player, payload.hello());

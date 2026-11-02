@@ -431,7 +431,8 @@ public final class ViewerRecipes extends SavedData {
                         default -> null;
                     };
                     if (status != null) {
-                        entries.add(new BucketedRecipes.Entry<>(fingerprint, status, null));
+                        entries.add(new BucketedRecipes.Entry<>(fingerprint, status, null,
+                                entry.contains("i", Tag.TAG_STRING) ? entry.getString("i") : null));
                     } else {
                         dropped++;
                     }
@@ -461,6 +462,9 @@ public final class ViewerRecipes extends SavedData {
                     entry.put("r", record.get());
                 } else {
                     entry.putString("s", each.status() == BucketedRecipes.Status.FAILED ? "failed" : "skipped");
+                    if (each.id() != null) {
+                        entry.putString("i", each.id());
+                    }
                 }
                 entries.add(entry);
             }

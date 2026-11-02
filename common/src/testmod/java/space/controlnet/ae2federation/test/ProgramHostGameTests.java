@@ -55,6 +55,7 @@ import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.automation.RecipeBuckets;
 import space.controlnet.ae2federation.automation.ViewerRecipes;
 import space.controlnet.ae2federation.automation.ViewerScans;
+import space.controlnet.ae2federation.automation.ViewerSyncStatus;
 import space.controlnet.ae2federation.domain.CableCapacityLimit;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.script.DictValue;
@@ -71,6 +72,7 @@ import space.controlnet.ae2federation.test.router.RouterFixtures;
 import io.netty.buffer.Unpooled;
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.Set;
 import net.minecraft.core.component.DataComponents;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.nbt.CompoundTag;
@@ -1336,6 +1338,85 @@ public final class ProgramHostGameTests {
             forgetViewerRecipes(server, previous);
         }
         helper.succeed();
+    }
+
+    /**
+     * The Recipe sync page's status follows a viewer's round: the first sync updates every bucket; checking all again
+     * reads nothing that matches; a forced rescan of the category leases its buckets, reads every recipe again and drops
+     * none, so its buckets match.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 100, required = true, manualOnly = true)
+    public static void aForcedRescanReadsTheWholeCategory(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var previous = StandInViewer.install();
+        try {
+            ViewerScans.reloaded(server);
+            var recipes = sortingRecipes(1_200);
+            var viewer = new StandInViewer(helper, Map.of("testviewer:sorting", List.of("minecraft:hopper")), recipes);
+            viewer.hello();
+            StandInViewer.pumpAll(List.of(viewer));
+            var status = ViewerScans.status(server);
+            helper.assertTrue(status.firstSync(), "The round began with no recipes saved");
+            helper.assertTrue(status.checkedAt() > 0, "The round finished");
+            var sorting = sortingRow(status);
+            helper.assertValueEqual(List.of(sorting.recipes(), sorting.read(), sorting.toRead(), sorting.dropped(),
+                    sorting.listed()), List.of(1_200, 1_200, 1_200, 0, 1_200), "Every recipe was read and saved");
+            helper.assertValueEqual(buckets(sorting), Set.of(ViewerSyncStatus.Bucket.UPDATED),
+                    "The first sync updates every bucket");
+            var row = viewerRow(status, viewer);
+            helper.assertValueEqual(List.of(row.state(), row.read()), List.of(ViewerSyncStatus.ViewerState.IDLE,
+                    1_200), "The viewer is done, having read every recipe");
+
+            ViewerScans.rescan(server, null);
+            StandInViewer.pumpAll(List.of(viewer));
+            status = ViewerScans.status(server);
+            helper.assertTrue(!status.firstSync(), "Checking again begins with recipes saved");
+            helper.assertValueEqual(viewer.read, 1_200, "Checking all again reads nothing that matches");
+            helper.assertValueEqual(buckets(sortingRow(status)), Set.of(ViewerSyncStatus.Bucket.MATCHED),
+                    "Every bucket matches");
+
+            var revision = status.revision();
+            ViewerScans.rescan(server, "testviewer:sorting");
+            status = ViewerScans.status(server);
+            helper.assertTrue(status.revision() > revision, "A rescan is a change the page is sent");
+            helper.assertValueEqual(buckets(sortingRow(status)), Set.of(ViewerSyncStatus.Bucket.READING),
+                    "The forced task leases every bucket");
+            helper.assertValueEqual(sortingRow(status).leases().size(), 1, "To the one viewer");
+            helper.assertValueEqual(viewerRow(status, viewer).state(), ViewerSyncStatus.ViewerState.CHECKING,
+                    "The viewer is fingerprinting its task");
+            StandInViewer.pumpAll(List.of(viewer));
+            status = ViewerScans.status(server);
+            sorting = sortingRow(status);
+            helper.assertValueEqual(viewer.read, 2_400, "The forced rescan read every recipe again");
+            helper.assertValueEqual(List.of(sorting.recipes(), sorting.read(), sorting.dropped()),
+                    List.of(1_200, 1_200, 0), "Nothing was dropped, as every recipe came back");
+            helper.assertValueEqual(buckets(sorting), Set.of(ViewerSyncStatus.Bucket.MATCHED),
+                    "Every bucket holds what it held");
+            helper.assertTrue(ViewerScans.progress(server).done(), "The round is done");
+            viewer.leave();
+        } finally {
+            forgetViewerRecipes(server, previous);
+        }
+        helper.succeed();
+    }
+
+    private static ViewerSyncStatus.CategoryRow sortingRow(ViewerSyncStatus status) {
+        return status.categories().stream().filter(row -> row.id().equals("testviewer:sorting")).findFirst()
+                .orElseThrow();
+    }
+
+    private static Set<ViewerSyncStatus.Bucket> buckets(ViewerSyncStatus.CategoryRow row) {
+        var out = new java.util.HashSet<ViewerSyncStatus.Bucket>();
+        for (var code : row.buckets()) {
+            out.add(ViewerSyncStatus.Bucket.of(code));
+        }
+        return out;
+    }
+
+    private static ViewerSyncStatus.ViewerRow viewerRow(ViewerSyncStatus status, StandInViewer viewer) {
+        var name = viewer.player.getGameProfile().getName();
+        return status.viewers().stream().filter(row -> row.name().equals(name)).findFirst().orElseThrow();
     }
 
     /**

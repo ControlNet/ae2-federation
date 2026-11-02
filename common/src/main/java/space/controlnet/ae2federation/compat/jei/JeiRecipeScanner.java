@@ -338,7 +338,7 @@ final class JeiRecipeScanner implements ViewerScanner {
                     var queue = behind.get(print);
                     var object = queue == null ? null : queue.poll();
                     out.accept(object == null || category == null
-                            ? new BucketedRecipes.Entry<>(print, BucketedRecipes.Status.FAILED, null)
+                            ? new BucketedRecipes.Entry<>(print, BucketedRecipes.Status.FAILED, null, null)
                             : entry(category, categoryId, print, object));
                 }
                 return false;
@@ -356,11 +356,13 @@ final class JeiRecipeScanner implements ViewerScanner {
         } catch (RuntimeException | LinkageError broken) {
             layout = Optional.empty();
         }
+        var id = serverId(object);
+        var named = id == null || id.toString().length() > 256 ? null : id.toString();
         if (layout.isEmpty()) {
-            return new BucketedRecipes.Entry<>(print, BucketedRecipes.Status.FAILED, null);
+            return new BucketedRecipes.Entry<>(print, BucketedRecipes.Status.FAILED, null, named);
         }
-        var recipe = read(layout.get().getRecipeSlotsView(), categoryId, serverId(object));
-        return recipe == null ? new BucketedRecipes.Entry<>(print, BucketedRecipes.Status.SKIPPED, null)
+        var recipe = read(layout.get().getRecipeSlotsView(), categoryId, id);
+        return recipe == null ? new BucketedRecipes.Entry<>(print, BucketedRecipes.Status.SKIPPED, null, named)
                 : new BucketedRecipes.Entry<>(print, BucketedRecipes.Status.RECIPE, recipe);
     }
 

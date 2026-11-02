@@ -113,11 +113,11 @@ public final class ViewerScanClient {
         }
         var task = working;
         try {
-            if (listing != null) {
-                if (listing.step(deadline)) {
-                    listing = null;
-                }
-            } else if (task != null && task.step(deadline) && working == task) {
+            if (listing != null && listing.step(deadline)) {
+                listing = null;
+            }
+            // While listing, a task still sends its keep-alive parts so its lease does not end.
+            if (task != null && task.step(listing == null ? deadline : System.nanoTime()) && working == task) {
                 working = null;
             }
         } catch (RuntimeException failure) {
@@ -267,7 +267,7 @@ public final class ViewerScanClient {
             return System.nanoTime() - lastSent >= QUIET_NANOS;
         }
 
-        /** The fingerprints of the buckets whose digest differs from the server's, in parts. */
+        /** The fingerprints of the buckets whose digest differs from the server's, or of all when forced, in parts. */
         private void compare() {
             var byBucket = new TreeMap<Integer, List<RecipeBuckets.Fingerprint>>();
             for (var print : fingerprints) {
@@ -281,7 +281,7 @@ public final class ViewerScanClient {
             for (var index = 0; index < task.digests().size(); index++) {
                 var bucket = task.first() + index;
                 var mine = byBucket.getOrDefault(bucket, List.of());
-                if (RecipeBuckets.digest(mine) != task.digests().get(index)) {
+                if (task.force() || RecipeBuckets.digest(mine) != task.digests().get(index)) {
                     differing.add(bucket);
                     out.addAll(mine);
                 }
@@ -310,7 +310,8 @@ public final class ViewerScanClient {
                 size += measure.writerIndex();
                 if (size > PAGE_BYTES - 64) {
                     tooLarge++;
-                    entry = new BucketedRecipes.Entry<>(entry.fingerprint(), BucketedRecipes.Status.SKIPPED, null);
+                    entry = new BucketedRecipes.Entry<>(entry.fingerprint(), BucketedRecipes.Status.SKIPPED, null,
+                            entry.record().id().orElse(null));
                     size = 40;
                 }
             }

@@ -23,13 +23,20 @@ public final class BucketedRecipes<R> {
         RECIPE, SKIPPED, FAILED
     }
 
-    /** A fingerprinted recipe and, when it was read, its record. */
-    public record Entry<R>(Fingerprint fingerprint, Status status, @Nullable R record) {
+    /**
+     * A fingerprinted recipe and, when it was read, its record; one that was not read may name its recipe ID, so the
+     * Recipe sync page can say which failed.
+     */
+    public record Entry<R>(Fingerprint fingerprint, Status status, @Nullable R record, @Nullable String id) {
         public Entry {
             Objects.requireNonNull(fingerprint);
             if ((status == Status.RECIPE) != (record != null)) {
                 throw new IllegalArgumentException("A read recipe has a record, and only it");
             }
+        }
+
+        public Entry(Fingerprint fingerprint, Status status, @Nullable R record) {
+            this(fingerprint, status, record, null);
         }
     }
 

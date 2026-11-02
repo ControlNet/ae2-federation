@@ -84,8 +84,9 @@ public final class ViewerScans {
                     entry -> entry.status(),
                     ViewerRecipes.Recipe.STREAM_CODEC.apply(ByteBufCodecs::optional),
                     entry -> Optional.ofNullable(entry.record()),
-                    (fingerprint, status, record) -> new BucketedRecipes.Entry<>(fingerprint, status,
-                            record.orElse(null)));
+                    ByteBufCodecs.stringUtf8(256).apply(ByteBufCodecs::optional), entry -> Optional.ofNullable(entry.id()),
+                    (fingerprint, status, record, id) -> new BucketedRecipes.Entry<>(fingerprint, status,
+                            record.orElse(null), id.orElse(null)));
 
     /** A category a viewer shows: its ID, how many recipes it lists, and the items of its machines. */
     public record Listed(String category, int count, List<String> machines) {
@@ -106,14 +107,18 @@ public final class ViewerScans {
                 Hello::new);
     }
 
-    /** A task leased to a viewer: the server's digests of {@code digests.size()} buckets from {@code first}. */
-    public record Task(int lease, String category, int bits, int first, List<Long> digests) {
+    /**
+     * A task leased to a viewer: the server's digests of {@code digests.size()} buckets from {@code first}; forced, every
+     * bucket counts as differing and every recipe in it is read again.
+     */
+    public record Task(int lease, String category, int bits, int first, List<Long> digests, boolean force) {
         public static final StreamCodec<RegistryFriendlyByteBuf, Task> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Task::lease,
                 ByteBufCodecs.stringUtf8(256), Task::category,
                 ByteBufCodecs.VAR_INT, Task::bits,
                 ByteBufCodecs.VAR_INT, Task::first,
                 LONG.apply(ByteBufCodecs.list(BUCKETS_PER_TASK)), Task::digests,
+                ByteBufCodecs.BOOL, Task::force,
                 Task::new);
     }
 
@@ -164,8 +169,15 @@ public final class ViewerScans {
 
     private static final class State {
         int nextLease = 1;
+        /** Bumped on every change, so the Recipe sync page is sent a status only when there is something new. */
+        int revision;
+        /** Whether the round began with no recipes saved; when it last finished (wall clock), 0 before. */
+        boolean firstSync;
+        long checkedAt;
         final Map<UUID, Viewer> viewers = new LinkedHashMap<>();
-        /** This round's categories still to check, in the order viewers listed them. */
+        /** This round's categories, checked or not, in the order viewers listed them. */
+        final Map<String, Work> round = new LinkedHashMap<>();
+        /** This round's categories still to check. */
         final Map<String, Work> work = new LinkedHashMap<>();
         /** This round's categories handed to {@link #work} once, so a later hello does not check them again. */
         final Set<String> checking = new HashSet<>();
@@ -179,19 +191,33 @@ public final class ViewerScans {
         final Map<String, Listed> parts = new LinkedHashMap<>();
         Map<String, Listed> listed = Map.of();
         boolean ready;
+        /** Whether its last task ended badly; it waits for its next hello. */
+        boolean stopped;
         @Nullable Lease lease;
+        /** Entries it sent read this round. */
+        int read;
     }
 
-    /** A category's buckets in this round: those not handed out yet, those to hand out again, and those out. */
+    /**
+     * A category's buckets in this round: those not handed out yet, those to hand out again, and those out; each
+     * bucket's state ({@link ViewerSyncStatus.Bucket}), and what was read and dropped.
+     */
     private static final class Work {
         final String category;
+        /** Whether every bucket is read again, whatever its digest. */
+        final boolean force;
         int bits = -1;
         int next;
         final ArrayDeque<Integer> retry = new ArrayDeque<>();
         int out;
+        byte[] buckets = new byte[0];
+        int read;
+        int toRead;
+        int dropped;
 
-        Work(String category) {
+        Work(String category, boolean force) {
             this.category = category;
+            this.force = force;
         }
 
         boolean finished() {
@@ -206,7 +232,12 @@ public final class ViewerScans {
         final int bits;
         final int first;
         final int count;
+        boolean force;
         long heard;
+        long started;
+        /** Reads the server asked for, and entries received. */
+        int asked;
+        int got;
         int nextPart;
         final Set<Integer> buckets = new HashSet<>();
         final List<Fingerprint> prints = new ArrayList<>();
@@ -282,6 +313,7 @@ public final class ViewerScans {
 
     public static synchronized void hello(ServerPlayer player, Hello hello) {
         var state = state(player.server);
+        state.revision++;
         var viewer = state.viewers.computeIfAbsent(player.getUUID(), id -> new Viewer());
         if (hello.generation() != viewer.generation) {
             // The viewer reloaded its recipes: what it was sending may be from before.
@@ -290,6 +322,7 @@ public final class ViewerScans {
             viewer.ready = false;
             viewer.listed = Map.of();
         }
+        viewer.stopped = false;
         if (hello.part() == 0) {
             viewer.nextPart = 0;
             viewer.parts.clear();
@@ -316,6 +349,7 @@ public final class ViewerScans {
 
     public static synchronized void prints(ServerPlayer player, Prints prints) {
         var state = state(player.server);
+        state.revision++;
         var lease = lease(state, player, prints.lease());
         if (lease == null) {
             return;
@@ -347,11 +381,17 @@ public final class ViewerScans {
         var drops = new TreeMap<Integer, List<Fingerprint>>();
         var reads = new ArrayList<Fingerprint>();
         viewerPrints.forEach((bucket, viewer) -> {
-            var difference = RecipeBuckets.compare(recipes.fingerprints(bucket), viewer);
-            drops.put(bucket, difference.drop());
+            var saved = recipes.fingerprints(bucket);
+            var difference = RecipeBuckets.compare(lease.force ? List.of() : saved, viewer);
+            drops.put(bucket, lease.force ? saved : difference.drop());
             reads.addAll(difference.read());
         });
         lease.drops = drops;
+        lease.asked = reads.size();
+        var work = state.round.get(lease.category);
+        if (work != null) {
+            work.toRead += reads.size();
+        }
         reads.forEach(print -> lease.awaited.merge(print, 1, Integer::sum));
         lease.nextPart = 0;
         if (reads.isEmpty()) {
@@ -363,6 +403,7 @@ public final class ViewerScans {
 
     public static synchronized void records(ServerPlayer player, Records records) {
         var state = state(player.server);
+        state.revision++;
         var lease = lease(state, player, records.lease());
         if (lease == null) {
             return;
@@ -370,6 +411,7 @@ public final class ViewerScans {
         if (records.part() < 0) {
             var viewer = state.viewers.get(lease.player);
             viewer.ready = false;
+            viewer.stopped = true;
             end(state, viewer);
             assign(player.server, state);
             return;
@@ -386,6 +428,7 @@ public final class ViewerScans {
         }
         lease.heard = clock.getAsLong();
         lease.nextPart++;
+        lease.got += records.entries().size();
         lease.received.addAll(records.entries());
         if (!records.last()) {
             return;
@@ -399,6 +442,7 @@ public final class ViewerScans {
 
     public static synchronized void left(ServerPlayer player) {
         var state = state(player.server);
+        state.revision++;
         var viewer = state.viewers.remove(player.getUUID());
         if (viewer != null) {
             end(state, viewer);
@@ -409,14 +453,55 @@ public final class ViewerScans {
     /** Datapacks reloaded: a new round, once the viewers reloaded their recipes and said hello again. */
     public static synchronized void reloaded(MinecraftServer server) {
         var state = state(server);
+        state.revision++;
+        newRound(state);
+        state.viewers.values().forEach(viewer -> viewer.ready = false);
+    }
+
+    /**
+     * Checks again: every category, a new round with the ready viewers' listings, each bucket compared by its digest;
+     * or one category, every recipe in it read again whatever its digest.
+     */
+    public static synchronized void rescan(MinecraftServer server, @Nullable String category) {
+        var state = state(server);
+        state.revision++;
+        if (category == null) {
+            newRound(state);
+            state.viewers.values().stream().filter(viewer -> viewer.ready)
+                    .forEach(viewer -> listed(server, state, viewer));
+        } else {
+            for (var lease : List.copyOf(state.leases.values())) {
+                if (lease.category.equals(category)) {
+                    drop(state, lease);
+                }
+            }
+            var work = new Work(category, true);
+            state.checking.add(category);
+            state.round.put(category, work);
+            state.work.put(category, work);
+        }
+        assign(server, state);
+    }
+
+    private static void newRound(State state) {
         state.leases.clear();
         state.work.clear();
+        state.round.clear();
         state.checking.clear();
         state.saved = 0;
         state.viewers.values().forEach(viewer -> {
             viewer.lease = null;
-            viewer.ready = false;
+            viewer.read = 0;
         });
+    }
+
+    /** A lease gone with nothing handed out again: its category was forgotten or starts over. */
+    private static void drop(State state, Lease lease) {
+        state.leases.remove(lease.id);
+        var holder = state.viewers.get(lease.player);
+        if (holder != null && holder.lease == lease) {
+            holder.lease = null;
+        }
     }
 
     /** Leases silent for two minutes end, and their tasks go to the next ready viewer. */
@@ -426,9 +511,11 @@ public final class ViewerScans {
         var expired = state.leases.values().stream().filter(lease -> now - lease.heard >= LEASE_MILLIS).toList();
         for (var lease : expired) {
             LOGGER.warn("A recipe viewer task of {} expired", lease.category);
+            state.revision++;
             var viewer = state.viewers.get(lease.player);
             if (viewer != null) {
                 viewer.ready = false;
+                viewer.stopped = true;
                 end(state, viewer);
             } else {
                 giveBack(state, lease);
@@ -455,21 +542,23 @@ public final class ViewerScans {
                 LOGGER.info("Forgot the viewer recipes of {}: the viewer does not list it and its mod is gone",
                         category);
                 state.work.remove(category);
+                state.round.remove(category);
                 for (var lease : List.copyOf(state.leases.values())) {
                     if (lease.category.equals(category)) {
-                        state.leases.remove(lease.id);
-                        var holder = state.viewers.get(lease.player);
-                        if (holder != null && holder.lease == lease) {
-                            holder.lease = null;
-                        }
+                        drop(state, lease);
                     }
                 }
                 recipes.remove(category);
             }
         }
+        if (state.round.isEmpty()) {
+            state.firstSync = recipes.size() == 0;
+        }
         for (var category : viewer.listed.keySet()) {
             if (state.checking.add(category)) {
-                state.work.put(category, new Work(category));
+                var work = new Work(category, false);
+                state.round.put(category, work);
+                state.work.put(category, work);
             }
         }
     }
@@ -509,6 +598,7 @@ public final class ViewerScans {
                     recipes.create(work.category, RecipeBuckets.bitsFor(listed.count()));
                 }
                 work.bits = recipes.split(work.category);
+                work.buckets = new byte[1 << work.bits];
             }
             int first;
             if (!work.retry.isEmpty()) {
@@ -522,6 +612,9 @@ public final class ViewerScans {
             var count = Math.min(BUCKETS_PER_TASK, (1 << work.bits) - first);
             var lease = new Lease(state.nextLease++, id, work.category, work.bits, first, count);
             lease.heard = clock.getAsLong();
+            lease.started = lease.heard;
+            lease.force = work.force;
+            java.util.Arrays.fill(work.buckets, first, first + count, ViewerSyncStatus.Bucket.READING.code());
             work.out++;
             state.leases.put(lease.id, lease);
             viewer.lease = lease;
@@ -530,7 +623,7 @@ public final class ViewerScans {
             for (var bucket = first; bucket < first + count; bucket++) {
                 digests.add(stored.digest(bucket));
             }
-            sender.task(player, new Task(lease.id, work.category, work.bits, first, List.copyOf(digests)));
+            sender.task(player, new Task(lease.id, work.category, work.bits, first, List.copyOf(digests), work.force));
             return;
         }
     }
@@ -541,6 +634,11 @@ public final class ViewerScans {
         var added = new TreeMap<Integer, List<BucketedRecipes.Entry<ViewerRecipes.Recipe>>>();
         lease.received.forEach(entry -> added.computeIfAbsent(RecipeBuckets.bucket(
                 entry.fingerprint().partition(), lease.bits), bucket -> new ArrayList<>()).add(entry));
+        var before = recipes.category(lease.category).recipes();
+        var digests = new long[lease.count];
+        for (var index = 0; index < lease.count; index++) {
+            digests[index] = before.digest(lease.first + index);
+        }
         lease.drops.forEach((bucket, drop) -> {
             var add = added.getOrDefault(bucket, List.of());
             if (!drop.isEmpty() || !add.isEmpty()) {
@@ -550,17 +648,34 @@ public final class ViewerScans {
         state.saved += (int) lease.received.stream().filter(entry -> entry.record() != null).count();
         state.leases.remove(lease.id);
         var viewer = state.viewers.get(lease.player);
-        if (viewer != null && viewer.lease == lease) {
-            viewer.lease = null;
+        if (viewer != null) {
+            viewer.read += lease.received.size();
+            if (viewer.lease == lease) {
+                viewer.lease = null;
+            }
         }
-        var work = state.work.get(lease.category);
+        var work = state.round.get(lease.category);
         if (work != null) {
+            var saved = recipes.category(lease.category).recipes();
+            for (var bucket = lease.first; bucket < lease.first + lease.count; bucket++) {
+                // Forced, a bucket drops what it adds back; only what it does not add back is gone.
+                var gone = new ArrayList<>(lease.drops.getOrDefault(bucket, List.of()));
+                added.getOrDefault(bucket, List.of()).forEach(entry -> gone.remove(entry.fingerprint()));
+                var changed = saved.digest(bucket) != digests[bucket - lease.first];
+                var failed = saved.bucket(bucket).stream()
+                        .anyMatch(entry -> entry.status() == BucketedRecipes.Status.FAILED);
+                work.buckets[bucket] = (failed ? ViewerSyncStatus.Bucket.FAILED : changed
+                        ? ViewerSyncStatus.Bucket.UPDATED : ViewerSyncStatus.Bucket.MATCHED).code();
+                work.dropped += gone.size();
+            }
+            work.read += lease.received.size();
             work.out--;
             if (work.finished()) {
                 state.work.remove(lease.category);
             }
         }
         if (state.work.isEmpty() && state.leases.isEmpty()) {
+            state.checkedAt = System.currentTimeMillis();
             LOGGER.info("Checked every recipe viewer category: {} recipes read, {} saved in {} categories",
                     state.saved, recipes.size(), recipes.stored().size());
         }
@@ -572,6 +687,7 @@ public final class ViewerScans {
         var viewer = state.viewers.get(lease.player);
         if (viewer != null) {
             viewer.ready = false;
+            viewer.stopped = true;
             end(state, viewer);
         } else {
             giveBack(state, lease);
@@ -595,6 +711,90 @@ public final class ViewerScans {
         if (work != null) {
             work.out--;
             work.retry.add(lease.first);
+            java.util.Arrays.fill(work.buckets, lease.first, lease.first + lease.count,
+                    ViewerSyncStatus.Bucket.QUEUED.code());
         }
+    }
+
+    /**
+     * What the Recipe sync page shows: this round's categories in the order viewers listed them, then saved ones no
+     * viewer lists; every online player, with or without a viewer.
+     */
+    public static synchronized ViewerSyncStatus status(MinecraftServer server) {
+        var state = state(server);
+        var recipes = ViewerRecipes.get(server);
+        var ids = new java.util.LinkedHashSet<>(state.round.keySet());
+        ids.addAll(recipes.stored());
+        var names = new HashMap<UUID, String>();
+        for (var player : server.getPlayerList().getPlayers()) {
+            names.put(player.getUUID(), player.getGameProfile().getName());
+        }
+        var categories = new ArrayList<ViewerSyncStatus.CategoryRow>();
+        for (var id : ids) {
+            var work = state.round.get(id);
+            var file = recipes.category(id);
+            int read = 0;
+            int skipped = 0;
+            int failed = 0;
+            var failedIds = new ArrayList<String>();
+            if (file != null) {
+                for (var entry : file.recipes().entries()) {
+                    switch (entry.status()) {
+                        case RECIPE -> read++;
+                        case SKIPPED -> skipped++;
+                        case FAILED -> {
+                            failed++;
+                            if (entry.id() != null && failedIds.size() < ViewerSyncStatus.FAILED_IDS) {
+                                failedIds.add(entry.id());
+                            }
+                        }
+                    }
+                }
+            }
+            var listed = state.viewers.values().stream().filter(viewer -> viewer.ready)
+                    .map(viewer -> viewer.listed.get(id)).filter(java.util.Objects::nonNull)
+                    .mapToInt(Listed::count).max().orElse(-1);
+            byte[] buckets;
+            if (work == null) {
+                buckets = new byte[file == null ? 0 : 1 << file.recipes().bits()];
+                java.util.Arrays.fill(buckets, ViewerSyncStatus.Bucket.UNCHECKED.code());
+            } else if (work.bits >= 0) {
+                buckets = work.buckets.clone();
+            } else {
+                // Not started: as many buckets as it has or will have, all queued.
+                buckets = new byte[file != null ? 1 << file.recipes().bits()
+                        : listed > 0 ? 1 << RecipeBuckets.bitsFor(listed) : 0];
+            }
+            var leases = state.leases.values().stream().filter(lease -> lease.category.equals(id))
+                    .sorted(java.util.Comparator.comparingInt(lease -> lease.first))
+                    .map(lease -> new ViewerSyncStatus.Lease(names.getOrDefault(lease.player, ""), lease.first,
+                            lease.count)).toList();
+            categories.add(new ViewerSyncStatus.CategoryRow(id, read, skipped, failed, List.copyOf(failedIds), buckets,
+                    work == null ? 0 : work.read, work == null ? 0 : work.toRead, work == null ? 0 : work.dropped,
+                    listed, leases));
+        }
+        var now = clock.getAsLong();
+        var viewers = new ArrayList<ViewerSyncStatus.ViewerRow>();
+        for (var player : server.getPlayerList().getPlayers()) {
+            var viewer = state.viewers.get(player.getUUID());
+            var name = player.getGameProfile().getName();
+            if (viewer == null || (!viewer.ready && !viewer.stopped)) {
+                viewers.add(new ViewerSyncStatus.ViewerRow(name, ViewerSyncStatus.ViewerState.WAITING, "", 0, 0, 0, 0,
+                        0, 0));
+                continue;
+            }
+            var lease = viewer.lease;
+            if (lease == null) {
+                viewers.add(new ViewerSyncStatus.ViewerRow(name, viewer.stopped ? ViewerSyncStatus.ViewerState.STOPPED
+                        : ViewerSyncStatus.ViewerState.IDLE, "", 0, 0, 0, 0, 0, viewer.read));
+                continue;
+            }
+            var seconds = Math.max(1, now - lease.started) / 1000f;
+            viewers.add(new ViewerSyncStatus.ViewerRow(name, lease.drops == null ? ViewerSyncStatus.ViewerState.CHECKING
+                    : ViewerSyncStatus.ViewerState.READING, lease.category, lease.first, lease.count, lease.got,
+                    lease.asked, lease.got / seconds, viewer.read));
+        }
+        return new ViewerSyncStatus(state.revision, state.firstSync, state.checkedAt, List.copyOf(categories),
+                List.copyOf(viewers));
     }
 }

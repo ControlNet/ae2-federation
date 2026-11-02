@@ -148,7 +148,7 @@ public final class StandInViewer {
             var bucket = task.first() + index;
             var mine = fingerprints(task.category()).stream()
                     .filter(print -> RecipeBuckets.bucket(print.partition(), task.bits()) == bucket).toList();
-            if (RecipeBuckets.digest(mine) != task.digests().get(index)) {
+            if (task.force() || RecipeBuckets.digest(mine) != task.digests().get(index)) {
                 differing.add(bucket);
                 prints.addAll(mine);
             }

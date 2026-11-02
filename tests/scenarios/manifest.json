@@ -230,6 +230,7 @@
     {"id":"programs.host-viewer-pattern","backend":"gametest","testId":"programwritesarecipeviewerrecipe","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.viewer-leaves-hands-task-over","backend":"gametest","testId":"aviewerthatleaveshandsitstasktothenext","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.viewer-silent-loses-task","backend":"gametest","testId":"asilentviewerlosesitstaskaftertwominutes","structure":"ae2federation_test:harness_native_smoke","assertions":1},
+    {"id":"programs.viewer-forced-rescan","backend":"gametest","testId":"aforcedrescanreadsthewholecategory","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.viewer-second-sync-reads-changes","backend":"gametest","testId":"asecondviewersyncreadsonlywhatchanged","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.viewer-category-forgotten-with-mod","backend":"gametest","testId":"aviewercategoryisforgottenonlywithitsmod","structure":"ae2federation_test:harness_native_smoke","assertions":1},
     {"id":"programs.saved-viewer-scan","backend":"gametest","testId":"asavedviewerscanislistedwithnoplayeronline","structure":"ae2federation_test:harness_native_smoke","assertions":1},
