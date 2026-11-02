@@ -187,6 +187,36 @@ IDs move; Productive Metalworks casting and XyCraft extractor: JEI lists a subse
 about 100 more change only their `Recipe.STREAM_CODEC` bytes (hash-ordered sets: create:automatic_shaped, jeistuff).
 Every JEI ID is unique within its category and present in both starts (`real-only.txt`).
 
+## Server-known recipes and appearance time (ATM10 probe, 2026-11-02, probe not committed)
+
+Raw data: worktree `build/recipe-class-check/` (recipes.tsv.gz, timeline.tsv, summary.txt). Server-known = present
+in the recipes the server synced to the client (`getConnection().getRecipeManager()`, 97,301 holders).
+
+| JEI object | server-known | not known |
+|---|---|---|
+| RecipeHolder | 69,682 (57,493 the synced holder itself; 12,189 same ID, other value) | 28,206 |
+| bare Recipe | 23,912 (all by identity with a synced holder's value) | 9,670 |
+| display | 1 | 159,332 |
+
+- Same ID, other value: Create's automatic_shapeless/packing, block_cutting, Dragons Plus and CEI categories wrap
+  the server's crafting/stonecutting recipe in their own holder; `byKey(id)` returns the server's recipe.
+- Holders with IDs the server lacks are client-built: Dragons Plus coloring 10,170, MI/EI generated machine recipes,
+  Create draining/automatic_brewing/deploying/spout_filling, jeistuff, IE potions, mekanism:smelting, casting.
+- Bare recipes the server lacks: minecolonies:composting 3,789, mekanism:nutritional_liquifier 2,150, Productive Bees
+  (beehive 1,849, incubation, centrifuge, breeding), Productive Trees, PneumaticCraft heat properties, ...
+- `mekanism:(de)condensentrating`: JEI's `getRegistryName` differs from the holder ID (`mekanism:rotary/...`).
+- Server recipe type differs from the JEI category ID in 79 categories (create:sawing -> create:cutting, ...).
+- Appearance: every holder is in JEI at `onRuntimeAvailable`; the only late categories (0 at T0, full within 20.8 s,
+  not even listed by JEI at T0) are the 32 minecolonies:* (about 56k, all display except composting), EvilCraft spirit
+  furnace (display) and ftbquests:loot_crate. MineColonies logs its client data sync at T0+6.6 s: the late recipes
+  come with the server's data sync. Nothing changed after 20.8 s (watched to 205 s).
+
+## Blast radius of one mod (offline, real processing recipes, 2026-11-02)
+
+Recipes of other mods that mention a mod's items or fluids (upper bound of what removing the mod, or changing its
+tag entries, can change): median 79, p90 about 3,000; largest minecraft 52,596, productivetrees 16,744, bibliocraft
+10,415, aether 9,940. Script and table: worktree `build/bucket-key-check/blast*`.
+
 ## Open (assistant choices, not owner decisions)
 
 - Trust: any player's JEI replaces the catalog for the whole world.
