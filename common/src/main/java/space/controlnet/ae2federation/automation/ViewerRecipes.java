@@ -139,6 +139,10 @@ public final class ViewerRecipes extends SavedData {
         return recipes.size();
     }
 
+    public List<Recipe> recipes() {
+        return recipes;
+    }
+
     /** The items of the machines the viewer shows for a category or recipe type; empty if it shows none. */
     List<String> machines(@Nullable String category) {
         return category == null ? List.of() : machines.getOrDefault(category, List.of());

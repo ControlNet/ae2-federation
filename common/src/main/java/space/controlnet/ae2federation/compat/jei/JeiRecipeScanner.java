@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -39,6 +40,8 @@ import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.jetbrains.annotations.Nullable;
@@ -61,6 +64,13 @@ import space.controlnet.ae2federation.compat.ae2jeiintegration.Ae2JeiStacks;
  * finds one, looked up in a table built once a scan: JEI's own lookup walks every item tag for each slot, which in a
  * pack of hundreds of mods made the scan a few dozen recipes a second. Of several such tags the smallest ID is taken,
  * so a scan of the same pack saves the same tags (JEI takes the first in a hash order that changes from run to run).
+ *
+ * <p>Owner decisions (2026-11-02): only real recipes are read, those JEI holds as a {@link RecipeHolder} or a bare
+ * {@link Recipe}; what JEI or a mod's plugin builds to show something (anvil combinations, MineColonies workers, fuel
+ * tables, information pages, brewing) is left out. So is a recipe with no inputs, no outputs, or outputs equal to its
+ * inputs. A recipe keeps an ID only when the server has a recipe of that ID: a holder's own, or, for a bare recipe, the
+ * ID of the holder the server sent with that very object (NeoForge 1.21.1 sends every recipe to the client). Holders
+ * that a mod builds on the client carry IDs the server lacks; those recipes are told apart by content.
  */
 final class JeiRecipeScanner implements ViewerScanner {
     /** JEI's categories of the recipe types the server reads itself, by the server's recipe type. */
@@ -95,6 +105,9 @@ final class JeiRecipeScanner implements ViewerScanner {
         private final IIngredientManager ingredients;
         private final IFocusGroup noFocus;
         private final Map<List<Item>, ResourceLocation> tags = itemTags();
+        /** The server's recipes as the client received them: the IDs, and each recipe object's ID. */
+        private final Set<ResourceLocation> serverIds = new HashSet<>();
+        private final Map<Recipe<?>, ResourceLocation> serverIdOf = new IdentityHashMap<>();
         private final Iterator<IRecipeCategory<?>> categories;
         private final List<ViewerRecipes.Category> found = new ArrayList<>();
         private final Set<String> seen = new HashSet<>();
@@ -107,6 +120,13 @@ final class JeiRecipeScanner implements ViewerScanner {
             ingredients = runtime.getIngredientManager();
             noFocus = runtime.getJeiHelpers().getFocusFactory().getEmptyFocusGroup();
             categories = manager.createRecipeCategoryLookup().get().toList().iterator();
+            var connection = Minecraft.getInstance().getConnection();
+            if (connection != null) {
+                for (var holder : connection.getRecipeManager().getRecipes()) {
+                    serverIds.add(holder.id());
+                    serverIdOf.put(holder.value(), holder.id());
+                }
+            }
         }
 
         @Override
@@ -161,6 +181,14 @@ final class JeiRecipeScanner implements ViewerScanner {
 
         @SuppressWarnings("unchecked")
         private <T> ViewerRecipes.@Nullable Recipe read(IRecipeCategory<T> category, Object object) {
+            ResourceLocation id;
+            if (object instanceof RecipeHolder<?> holder) {
+                id = serverIds.contains(holder.id()) ? holder.id() : null;
+            } else if (object instanceof Recipe<?> bare) {
+                id = serverIdOf.get(bare);
+            } else {
+                return null;
+            }
             var recipe = (T) object;
             Optional<? extends mezz.jei.api.gui.IRecipeLayoutDrawable<T>> layout;
             try {
@@ -194,15 +222,26 @@ final class JeiRecipeScanner implements ViewerScanner {
                 }
                 (stacks.size() > 1 || chance(slot, ingredients) ? byproducts : outputs).add(stacks.get(0));
             }
-            var id = category.getRegistryName(recipe);
             if (inputs.isEmpty() || outputs.isEmpty() || inputs.size() > ViewerRecipes.MAX_SLOTS
-                    || outputs.size() > ViewerRecipes.MAX_STACKS || byproducts.size() > ViewerRecipes.MAX_STACKS) {
+                    || outputs.size() > ViewerRecipes.MAX_STACKS || byproducts.size() > ViewerRecipes.MAX_STACKS
+                    || makesWhatItTakes(inputs, outputs, byproducts)) {
                 return null;
             }
             var named = id == null || id.toString().length() > 256 ? Optional.<String>empty()
                     : Optional.of(id.toString());
             return new ViewerRecipes.Recipe(categoryId, named, inputs, outputs, byproducts);
         }
+    }
+
+    /** Whether the outputs and byproducts are the inputs' first stacks, counted as a multiset. */
+    private static boolean makesWhatItTakes(List<ViewerRecipes.Slot> inputs, List<GenericStack> outputs,
+            List<GenericStack> byproducts) {
+        var taken = new HashMap<GenericStack, Integer>();
+        inputs.forEach(slot -> taken.merge(slot.stacks().get(0), 1, Integer::sum));
+        var made = new HashMap<GenericStack, Integer>();
+        outputs.forEach(stack -> made.merge(stack, 1, Integer::sum));
+        byproducts.forEach(stack -> made.merge(stack, 1, Integer::sum));
+        return taken.equals(made);
     }
 
     /** Each item tag by its items in order; of tags with the same items, the smallest ID. */

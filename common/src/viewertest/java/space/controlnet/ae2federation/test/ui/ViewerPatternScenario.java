@@ -80,6 +80,7 @@ abstract class ViewerPatternScenario implements UIScenario {
                 .timeoutMs(240_000)
                 .waitUntilServer("JEI's recipes reached the server", context ->
                         ViewerRecipes.get(context.server()).size() > 0)
+                .server("the scan kept only real recipes that make something else", ViewerPatternScenario::onlyReal)
                 .server("build the scene", this::build)
                 .awaitClientChunk(new BlockPos(x, 64, z))
                 .waitUntilServer("the provider is active in the interface's domain", this::ready)
@@ -116,6 +117,37 @@ abstract class ViewerPatternScenario implements UIScenario {
                 .check("the pointer is on the first pattern slot", context -> context.screenAs(
                         PatternProviderScreen.class).getSlotUnderMouse() == firstPatternSlot(context))
                 .screenshot("ui-" + name + "-after");
+    }
+
+    /**
+     * JEI's own display categories (anvil, brewing, fuel, information pages) are not recipes; each saved recipe makes
+     * something other than what it takes; a saved ID is one the server has (client-built recipes carry made-up IDs).
+     */
+    private static void onlyReal(ServerContext context) {
+        var recipes = ViewerRecipes.get(context.server()).recipes();
+        var display = java.util.Set.of("minecraft:anvil", "minecraft:brewing", "minecraft:fuel", "jei:information");
+        var named = 0;
+        for (var recipe : recipes) {
+            if (display.contains(recipe.category())) {
+                throw new IllegalStateException("A display object was saved: " + recipe);
+            }
+            var taken = recipe.inputs().stream().map(slot -> slot.stacks().get(0)).collect(
+                    java.util.stream.Collectors.groupingBy(stack -> stack, java.util.stream.Collectors.counting()));
+            var made = java.util.stream.Stream.concat(recipe.outputs().stream(), recipe.byproducts().stream()).collect(
+                    java.util.stream.Collectors.groupingBy(stack -> stack, java.util.stream.Collectors.counting()));
+            if (taken.equals(made)) {
+                throw new IllegalStateException("A recipe making what it takes was saved: " + recipe);
+            }
+            if (recipe.id().isPresent()) {
+                named++;
+                if (context.server().getRecipeManager().byKey(ResourceLocation.parse(recipe.id().get())).isEmpty()) {
+                    throw new IllegalStateException("A recipe kept an ID the server does not have: " + recipe);
+                }
+            }
+        }
+        if (named == 0) {
+            throw new IllegalStateException("No saved recipe has the server's ID");
+        }
     }
 
     private static net.minecraft.world.inventory.Slot firstPatternSlot(TestContext context) {

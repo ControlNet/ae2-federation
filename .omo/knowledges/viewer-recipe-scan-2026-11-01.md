@@ -187,6 +187,14 @@ IDs move; Productive Metalworks casting and XyCraft extractor: JEI lists a subse
 about 100 more change only their `Recipe.STREAM_CODEC` bytes (hash-ordered sets: create:automatic_shaped, jeistuff).
 Every JEI ID is unique within its category and present in both starts (`real-only.txt`).
 
+Implemented in `JeiRecipeScanner` (2026-11-02): a JEI object that is neither `RecipeHolder` nor `Recipe` is skipped
+before layout; a recipe whose outputs and byproducts equal its inputs' first stacks (multiset) is dropped; a holder
+keeps its ID only if the client's copy of the server's recipes has it, a bare recipe gets the ID of the holder whose
+value is that very object. This relies on NeoForge 1.21.1 sending every recipe to the client; 1.21.2+ sends only some,
+so the lookup must move to the server there. Viewer UI scenarios (Mekanism + Create test pack): 5,482 -> 4,784 recipes;
+the LDLib2 test display recipe that threw NoClassDefFoundError in layout is no longer laid out. Check step
+`the scan kept only real recipes that make something else`; logs in worktree `build/recipe-filter-check/`.
+
 ## Server-known recipes and appearance time (ATM10 probe, 2026-11-02, probe not committed)
 
 Raw data: worktree `build/recipe-class-check/` (recipes.tsv.gz, timeline.tsv, summary.txt). Server-known = present
