@@ -225,6 +225,38 @@ Recipes of other mods that mention a mod's items or fluids (upper bound of what 
 tag entries, can change): median 79, p90 about 3,000; largest minecraft 52,596, productivetrees 16,744, bibliocraft
 10,415, aether 9,940. Script and table: worktree `build/bucket-key-check/blast*`.
 
+## Bucketed sync design (assistant plan, 2026-11-02; owner approved the direction and GUI variant 1)
+
+Order: scanner filters (done, 9553df74) -> bucket math (done, `RecipeBuckets`, 63b0af1a) -> per-category storage
+-> client fingerprints -> protocol + leases -> GameTests -> ATM10 -> Recipe sync tab (canvas board
+RecipeSyncV1Downloader + V1First/V1Done/V1Failed).
+
+- Fingerprint per recipe, computed on the client from `IRecipeManager.getRecipeIngredients` (no layout, ~0.07 ms):
+  partition = hash(category + "\0" + "id:" + server ID), else hash of the ingredients per role without data
+  components (item/fluid ID + amount, sorted); digest = hash(holder ID + `Recipe.STREAM_CODEC` bytes) when THIS recipe
+  encodes, else hash of the ingredients per role with components (a codec error written as `{!}`). Per recipe, never
+  "give up B for the category": that would make the digest depend on JEI's order and two clients disagree.
+- Cheap filters at fingerprint time (object kind, an input and an output role non-empty); the layout-based filters
+  (outputs == inputs, unreadable slots, too large) only at read time, where the result is stored as a "skipped" or
+  "failed" entry with its fingerprint, so the bucket still matches next time and nothing is asked again.
+- Server storage: one index SavedData (categories, machines, bits) + one SavedData per category (flat file name:
+  sanitized ID + short hash), entries (partition, digest, status, record); bucket digests cached; per-category output
+  index, so a change re-indexes and re-saves only its category (the old whole-catalog replace stalled 35 s).
+- Protocol per task = (category, bucket range of <= 8 buckets), one lease per task with an attempt number; a task's
+  server bucket digests go to the client, the client answers with the fingerprints of the buckets that differ, the
+  server answers with the fingerprints to read, the client lays those out and sends records (pages <= 30,000 bytes);
+  each bucket is committed when all of its reads arrived. Lease expiry (no message for 120 s) or the player leaving
+  hands the task to the next ready viewer; committed buckets stay, so the next one only checks them.
+- A check round runs once per server start, `/reload` and Rescan all (Rescan of a category forces all its buckets);
+  categories already checked in the round are not handed out again.
+- Readiness: the client waits until JEI's category set and counts are unchanged for 30 s (MineColonies categories are
+  absent at runtime-available and arrive within ~21 s), then says hello with (category, count, machines); later changes
+  send another hello for the changed categories.
+- A stored category the viewer does not list is removed only when the server has no mod of its namespace (the pack
+  dropped the mod); otherwise it is kept (that viewer lacks a client mod).
+- A new category gets bits from the viewer's count; a category splits its buckets on the server (from stored
+  partitions) once it holds 4x what they were made for.
+
 ## Open (assistant choices, not owner decisions)
 
 - Trust: any player's JEI replaces the catalog for the whole world.
