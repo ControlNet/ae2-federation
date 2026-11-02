@@ -18,6 +18,20 @@ public final class NeoForgeClientEntrypoint {
         modBus.addListener(space.controlnet.ae2federation.client.DeviceStructureBakedModel::bake);
         modBus.addListener(space.controlnet.ae2federation.client.FacePlateBakedModel::bake);
         modBus.addListener(space.controlnet.ae2federation.client.RefinedDeviceBakedModel::bake);
+        modBus.addListener(space.controlnet.ae2federation.client.FederationComputationModel::bake);
+        space.controlnet.ae2federation.compat.neoecoae.FederationComputationLooks.registerRepaint(bounds ->
+                net.minecraft.client.Minecraft.getInstance().levelRenderer.setBlocksDirty(bounds.minX(), bounds.minY(),
+                        bounds.minZ(), bounds.maxX(), bounds.maxY(), bounds.maxZ()));
+        if (space.controlnet.ae2federation.compat.neoecoae.computation.NeoEcoSupport.available()) {
+            // After the hosts' client setup has registered the renderers this wraps.
+            NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn event) ->
+                    space.controlnet.ae2federation.compat.neoecoae.HostFixedRenderers.install());
+        }
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.level.LevelEvent.Unload event) -> {
+            if (event.getLevel().isClientSide()) {
+                space.controlnet.ae2federation.compat.neoecoae.FederationComputationLooks.clear();
+            }
+        });
         modBus.addListener((net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) ->
                 space.controlnet.ae2federation.client.RefinedDeviceRenderer.register(event));
         modBus.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::register);

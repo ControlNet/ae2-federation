@@ -16,12 +16,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.automation.AutomationInterfaceBook;
 import space.controlnet.ae2federation.automation.ComputingDevices;
 import space.controlnet.ae2federation.automation.ComputingHost;
 import space.controlnet.ae2federation.automation.DomainDevice;
 import space.controlnet.ae2federation.automation.ProgramScheduler;
+import space.controlnet.ae2federation.compat.neoecoae.FederationComputationLooks;
 import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -41,6 +43,8 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
      * this one is ticked beside it. It builds what {@link #getBuildDefinition()} gives.
      */
     private final MultiBlockBuildController builder = new MultiBlockBuildController(this);
+    private static final String FORMED_MIN = "ae2federation:formed_min";
+    private static final String FORMED_MAX = "ae2federation:formed_max";
     /** Whether a redstone signal reached it at the last update, so only a rising edge triggers; kept across loads. */
     private boolean powered;
 
@@ -157,11 +161,32 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
         }
     }
 
-    /** The structure formed or broke: it links to the interfaces only while it is formed. */
+    /**
+     * The structure formed or broke: it links to the interfaces only while it is formed, and its clients learn its
+     * bounds.
+     */
     @Override
     public void updateState(boolean updateExposed) {
         super.updateState(updateExposed);
         device.openPorts();
+        if (level != null && !level.isClientSide()) {
+            markForUpdate();
+        }
+    }
+
+    /**
+     * The formed structure's bounds, so the client draws its parts dark. They travel in the update tag itself: Neo ECO
+     * adds its own sync data there, so AE2 hands the whole tag to {@link #loadTag} instead of reading its update stream.
+     */
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        var tag = super.getUpdateTag(registries);
+        var cluster = getCluster();
+        if (cluster != null) {
+            tag.putLong(FORMED_MIN, cluster.getBoundsMin().asLong());
+            tag.putLong(FORMED_MAX, cluster.getBoundsMax().asLong());
+        }
+        return tag;
     }
 
     @Override
@@ -179,12 +204,18 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
     @Override
     public void onChunkUnloaded() {
         device.onChunkUnloaded();
+        if (level != null && level.isClientSide()) {
+            FederationComputationLooks.place(worldPosition, null);
+        }
         super.onChunkUnloaded();
     }
 
     @Override
     public void setRemoved() {
         device.setRemoved();
+        if (level != null && level.isClientSide()) {
+            FederationComputationLooks.place(worldPosition, null);
+        }
         super.setRemoved();
     }
 
@@ -193,6 +224,10 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
         super.loadTag(tag, registries);
         device.load(tag);
         powered = tag.getBoolean("powered");
+        if (level != null && level.isClientSide()) {
+            FederationComputationLooks.place(worldPosition, tag.contains(FORMED_MIN) ? BoundingBox.fromCorners(
+                    BlockPos.of(tag.getLong(FORMED_MIN)), BlockPos.of(tag.getLong(FORMED_MAX))) : null);
+        }
     }
 
     @Override

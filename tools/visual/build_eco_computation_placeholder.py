@@ -8,7 +8,10 @@ unchanged otherwise, so the tier colours stay Neo ECO's. The communication inter
 frame's dark ring painted white, so an interface sits in the side face as a light square, as Neo ECO's own did, and
 blends with the face's light rim (user asked for no dark border, 2026-10-21). The client composes them like a
 Router's faces, framing a lone interface and joining a filled 2x2 square into one panel (user, 2026-10-21). The
-artist replaces those four files to change the look. The artist of both mods allowed the recolour. Tier colours (L4 blue, L6 orange, L9
+artist replaces those four files to change the look. Formed, the Federation system is dark (user, 2026-11-02): the
+grey body of the controller's formed sheets is darkened here, and dark copies of the hosts' part textures in
+DARK_PARTS go to eco_computation/dark/<host>/, which the client draws in place of the hosts' own on the parts of a
+formed Federation structure; coloured pixels (tier lights, coolant) keep the hosts' colours. The artist of both mods allowed the recolour. Tier colours (L4 blue, L6 orange, L9
 purple) live in textures this leaves to Neo ECO, so the tiers still read apart. ECO - N1 gets the same treatment from
 Neo ECO Prototype's C1 sheets (its author allowed it as our placeholder, 2026-10-25): its chips turn green, its ME
 interface cell is painted over and its green L1 lights are kept; the models stay Prototype's geometry. The network switch variants map to
@@ -35,6 +38,10 @@ TEXTURES = ['controller/screen_off', 'controller_formed/controller_formed', 'con
 GREEN = 130 / 360
 LIGHTS = [f'controller_formed/controller_formed_light_{tier}{mirror}' for tier in 'abc' for mirror in ('', '_switch')]
 TILES = ('base', 'corner', 'side_hor', 'side_ver')
+# The parts' textures, by path under the host's computation folder, that turn dark: every part's grey body, with its
+# coloured lights and coolant kept (user picked this over keeping the cores and cooling controller, 2026-11-02).
+DARK_PARTS = ('casing', 'drive/', 'transmitter/', 'cable/', 'core/', 'cooling_controller/')
+DARK = 0.5
 
 
 def jar(path=JAR):
@@ -56,6 +63,39 @@ def recolour(image, low=210 / 360):
             r2, g2, b2 = colorsys.hls_to_rgb(GREEN, l, s)
             pixels[x, y] = (round(r2 * 255), round(g2 * 255), round(b2 * 255), a)
     return out
+
+
+def darken(image):
+    """The grey body darker: opaque pixels of low saturation, short of white, keep their hue at DARK times the
+    lightness; coloured pixels (lights, chips, coolant) and translucent ones (glass) stay."""
+    out = image.copy()
+    pixels = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            r, g, b, a = pixels[x, y]
+            h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+            if a < 255 or s >= 0.2 or l > 0.97:
+                continue
+            r2, g2, b2 = colorsys.hls_to_rgb(h, l * DARK, s)
+            pixels[x, y] = (round(r2 * 255), round(g2 * 255), round(b2 * 255), a)
+    return out
+
+
+def dark_parts(archive, source, host):
+    """Dark copies of the host's part textures in DARK_PARTS, at their paths under eco_computation/dark/<host>/, with
+    their animation files; the client swaps them in on a formed Federation structure."""
+    out = OUT / 'dark' / host
+    for name in archive.namelist():
+        relative = name.removeprefix(source)
+        # Cells are drawn by the host's drive renderer, never from a block model, so they stay as they are.
+        if (relative == name or not relative.endswith('.png') or not relative.startswith(DARK_PARTS)
+                or relative.startswith('drive/cell_')):
+            continue
+        target = out / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        darken(Image.open(io.BytesIO(archive.read(name))).convert('RGBA')).save(target)
+        if name + '.mcmeta' in archive.namelist():
+            (out / (relative + '.mcmeta')).write_bytes(archive.read(name + '.mcmeta'))
 
 
 def without_me_interface(image, name):
@@ -115,8 +155,8 @@ def prototype_l1(archive, l4_state):
         return Image.open(io.BytesIO(archive.read(PROTOTYPE_SOURCE + name + '.png'))).convert('RGBA')
     recolour(read('controller/screen_off')).save(out / 'screen_off.png')
     for mirror in ('', '_switch'):
-        without_me_interface(recolour(read('controller_formed/controller_formed' + mirror)),
-                             mirror).save(out / f'controller_formed{mirror}.png')
+        darken(without_me_interface(recolour(read('controller_formed/controller_formed' + mirror)),
+                                    mirror)).save(out / f'controller_formed{mirror}.png')
         without_me_interface(read('controller_formed/controller_formed_light_a' + mirror),
                              mirror).save(out / f'controller_formed_light_a{mirror}.png')
     ours = 'ae2federation:block/eco_computation/l1/'
@@ -155,7 +195,7 @@ with zipfile.ZipFile(jar()) as archive:
         image = Image.open(io.BytesIO(archive.read(SOURCE + name + '.png'))).convert('RGBA')
         image = recolour(image)
         if name.startswith('controller_formed/'):
-            image = without_me_interface(image, name)
+            image = darken(without_me_interface(image, name))
         image.save(OUT / (name.split('/')[-1] + '.png'))
     for name in LIGHTS:
         image = Image.open(io.BytesIO(archive.read(SOURCE + name + '.png'))).convert('RGBA')
@@ -215,6 +255,8 @@ with zipfile.ZipFile(jar()) as archive:
                                                                        + '\n')
     (ASSETS / 'models/item/eco_computation_interface.json').write_text(json.dumps(
         {'parent': 'ae2federation:block/eco_computation/interface'}, indent=2) + '\n')
+    dark_parts(archive, SOURCE, 'neoecoae')
 with zipfile.ZipFile(jar(PROTOTYPE_JAR)) as archive:
     prototype_l1(archive, l4_state)
+    dark_parts(archive, PROTOTYPE_SOURCE, 'neoecoprototype')
 print('Wrote temporary Federation computation system textures, models and blockstates.')
