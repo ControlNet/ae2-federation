@@ -228,7 +228,8 @@ tag entries, can change): median 79, p90 about 3,000; largest minecraft 52,596, 
 ## Bucketed sync design (assistant plan, 2026-11-02; owner approved the direction and GUI variant 1)
 
 Order: scanner filters (done, 9553df74) -> bucket math (done, `RecipeBuckets`, 63b0af1a) -> per-category storage
--> client fingerprints -> protocol + leases -> GameTests -> ATM10 -> Recipe sync tab (canvas board
+(done: `BucketedRecipes` + `ViewerRecipes.CategoryFile`, files `ae2federation_vr_<id part>_<6 hex>`; the old
+whole-scan protocol still feeds it through `replace`, fingerprints derived from records) -> client fingerprints -> protocol + leases -> GameTests -> ATM10 -> Recipe sync tab (canvas board
 RecipeSyncV1Downloader + V1First/V1Done/V1Failed).
 
 - Fingerprint per recipe, computed on the client from `IRecipeManager.getRecipeIngredients` (no layout, ~0.07 ms):

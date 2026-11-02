@@ -45,11 +45,13 @@ import space.controlnet.ae2federation.automation.AutomationInterfaceBlockEntity;
 import space.controlnet.ae2federation.automation.AutomationInterfaces;
 import space.controlnet.ae2federation.automation.AutomationRegistration;
 import space.controlnet.ae2federation.automation.AutomationRule;
+import space.controlnet.ae2federation.automation.BucketedRecipes;
 import space.controlnet.ae2federation.automation.ProgramDryRun;
 import space.controlnet.ae2federation.automation.ProgramHost;
 import space.controlnet.ae2federation.automation.ProgramRun;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
+import space.controlnet.ae2federation.automation.RecipeBuckets;
 import space.controlnet.ae2federation.automation.ViewerRecipes;
 import space.controlnet.ae2federation.automation.ViewerScans;
 import space.controlnet.ae2federation.domain.CableCapacityLimit;
@@ -1242,25 +1244,37 @@ public final class ProgramHostGameTests {
     /**
      * A scan saved with the world is read back with no player online: {@code mc.recipes_for} lists its recipe with
      * the tag slot, fluid, byproduct and machines it was saved with, and a saved recipe whose item is gone (a mod
-     * removed) is dropped alone.
+     * removed) is dropped alone. The category's recipes are saved in a file of their own, beside the list of
+     * categories, and a freshly loaded list finds them there.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
     public static void aSavedViewerScanIsListedWithNoPlayerOnline(GameTestHelper helper) {
         var server = helper.getLevel().getServer();
         var registries = server.registryAccess();
+        var storage = server.overworld().getDataStorage();
         var previous = scanFromAStandInViewer(helper);
-        var saved = ViewerRecipes.get(server).save(new CompoundTag(), registries);
-        var recipes = saved.getList("recipes", Tag.TAG_COMPOUND);
+        var index = ViewerRecipes.get(server).save(new CompoundTag(), registries);
+        helper.assertTrue(!index.toString().contains("prismarine"), "The list of categories holds no recipe");
+        var crushing = ViewerRecipes.get(server).category("testviewer:crushing");
+        helper.assertTrue(crushing != null, "The crushing category has its own file");
+        var saved = crushing.save(new CompoundTag(), registries);
+        var entries = saved.getList("entries", Tag.TAG_COMPOUND);
         try {
-            recipes.add(TagParser.parseTag(recipes.getCompound(0).toString()
-                    .replace("minecraft:prismarine_crystals", "gone:crystals")));
+            for (var each : List.copyOf(entries)) {
+                if (each.toString().contains("testviewer:crushing/prismarine")) {
+                    entries.add(TagParser.parseTag(each.toString()
+                            .replace("minecraft:prismarine_crystals", "gone:crystals")));
+                }
+            }
         } catch (CommandSyntaxException broken) {
             throw new IllegalStateException(broken);
         }
-        var loaded = ViewerRecipes.load(saved, registries);
-        helper.assertValueEqual(loaded.size(), 2, "The saved recipes load, the one with a gone item dropped");
-        server.overworld().getDataStorage().set("ae2federation_viewer_recipes", loaded);
+        helper.assertValueEqual(entries.size(), 3, "A copy of the crushing recipe with a gone item was saved");
+        var loaded = ViewerRecipes.CategoryFile.load("testviewer:crushing", saved, registries);
+        helper.assertValueEqual(loaded.recipes().size(), 2, "The saved recipes load, the one with a gone item dropped");
+        storage.set("ae2federation_viewer_recipes", ViewerRecipes.load(index, registries));
+        storage.set(ViewerRecipes.fileName("testviewer:crushing"), loaded);
         helper.assertValueEqual(server.getPlayerList().getPlayerCount(), 0, "No player is online");
         var fixtures = build(helper, Blocks.AIR.defaultBlockState());
         run(helper, fixtures, "host_saved_viewer", """
@@ -1281,6 +1295,42 @@ public final class ProgramHostGameTests {
                     ViewerScans.requestWith(previous);
                     ViewerRecipes.get(server).replace(List.of(), List.of());
                 });
+    }
+
+    /**
+     * Saving a viewer's answer for one bucket marks that category's file alone to be saved again, not the list of
+     * categories or another category's recipes, however many there are.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 100, required = true, manualOnly = true)
+    public static void aViewerBucketSavesOnlyItsCategory(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var previous = scanFromAStandInViewer(helper);
+        try {
+            var recipes = ViewerRecipes.get(server);
+            var smelting = new ViewerRecipes.Recipe("testviewer:smelting", Optional.empty(), List.of(
+                    new ViewerRecipes.Slot(List.of(new GenericStack(AEItemKey.of(Items.SAND), 1)), Optional.empty())),
+                    List.of(new GenericStack(AEItemKey.of(Items.GLASS), 1)), List.of());
+            recipes.create("testviewer:smelting", 1);
+            recipes.apply("testviewer:smelting", 1, List.of(), List.of(new BucketedRecipes.Entry<>(
+                    new RecipeBuckets.Fingerprint(7, 7), BucketedRecipes.Status.RECIPE, smelting)));
+            var crushing = recipes.category("testviewer:crushing");
+            var file = recipes.category("testviewer:smelting");
+            recipes.setDirty(false);
+            crushing.setDirty(false);
+            file.setDirty(false);
+            recipes.apply("testviewer:smelting", 0, List.of(), List.of(new BucketedRecipes.Entry<>(
+                    new RecipeBuckets.Fingerprint(8, 8), BucketedRecipes.Status.SKIPPED, null)));
+            helper.assertTrue(file.isDirty(), "The changed category is saved");
+            helper.assertTrue(!crushing.isDirty(), "Another category is not saved again");
+            helper.assertTrue(!recipes.isDirty(), "The list of categories is not saved again");
+            helper.assertValueEqual(file.recipes().size(), 2, "The category holds the read recipe and the skipped one");
+            helper.assertValueEqual(recipes.size(), 3, "Only read recipes count, in every category");
+        } finally {
+            ViewerScans.requestWith(previous);
+            ViewerRecipes.get(server).replace(List.of(), List.of());
+        }
+        helper.succeed();
     }
 
     /** A viewer's scan of a crushing recipe and a polishing recipe, in two pages ({@link #standInViewerSends}). */
