@@ -180,6 +180,13 @@ is noise and is dropped, with no per-category opt-in. ATM10 (scope above): 159,3
 29,995 reach JEI as a bare `Recipe` without their holder ID. Lists: worktree `build/bucket-key-check/`
 (`id-object-cross.txt`, `display-processing.txt`, `classes-by-category.tsv`).
 
+Also dropped (owner, 2026-11-02): real recipes with no inputs, no outputs, or outputs equal to inputs (as a multiset;
+e.g. jeistuff chest loot, `entangled:entangled_clear_nbt`): 2,786 in ATM10. Of the real recipes, 49 change their
+ingredients between two client starts (Create automatic brewing: client-built recipes whose `potion_mixing_vanilla_<n>`
+IDs move; Productive Metalworks casting and XyCraft extractor: JEI lists a subset of an unordered collection) and
+about 100 more change only their `Recipe.STREAM_CODEC` bytes (hash-ordered sets: create:automatic_shaped, jeistuff).
+Every JEI ID is unique within its category and present in both starts (`real-only.txt`).
+
 ## Open (assistant choices, not owner decisions)
 
 - Trust: any player's JEI replaces the catalog for the whole world.
