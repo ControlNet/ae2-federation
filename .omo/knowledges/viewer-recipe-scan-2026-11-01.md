@@ -325,6 +325,18 @@ RecipeSyncV1Downloader + V1First/V1Done/V1Failed).
   time (the saved input and output count differ between any two runs, before the change too).
 - What is left: fingerprinting (ingredients, codec encode) and JEI layouts; 31 s of 400 s is between tasks.
 
+## ATM10 sync scenarios on 865a996f (2026-11-02, worktree `build/viewer-sync-atm10-check/results.txt`)
+
+- First sync, client rejoin (no new round: `checking` outlives the player), `/reload` (9,784 read), server restart
+  (9,385), Ice and Fire removed (12,006); no lease expired or dropped. Most re-reads are `sawmill:woodcutting`,
+  which regenerates a different recipe set (17-19k) whenever its datapack hash changes; the rest is 72-115.
+- After `/reload` the client's JEI listed 509 of 542 categories (mods such as PneumaticCraft find no world while
+  JEI reloads). The 33 keep their saved recipes and join the round on the next hello that lists them.
+- Ice and Fire names its JEI categories `minecraft:*dragonforge`, so forgetting by the category's namespace never
+  fires for them (raised with the owner).
+- Fixed b43f5894: recipes dropped while loading a category file were dropped only in memory until the category
+  changed again.
+
 ## Open (assistant choices, not owner decisions)
 
 - Trust: any player's JEI replaces the catalog for the whole world.
