@@ -311,6 +311,20 @@ RecipeSyncV1Downloader + V1First/V1Done/V1Failed).
   looks for a task, so when it came last the round ended without `checkedAt` or its log line. GameTest
   `aForcedRescanReadsTheWholeCategory` lists an empty category last.
 
+## Sync speed on ATM10 (measured 2026-11-02, evidence in worktree `build/recipe-sync-speed-check/results.txt`)
+
+- 865a996f: first sync 24:26 from hello to "Checked" for 125k recipes. Tasks run one after another and fill the
+  wall time (client debug log "Sent N recipes of X in Y ms"); a read cost about 0.5 ms of the 2.5 ms tick budget.
+- JFR (`jcmd <client pid> JFR.start settings=profile`; portablemc's launcher JVM matches the client too):
+  85% of the scan built output slots' full tooltips for the chance check, i.e. every mod's item tooltip code.
+- Fix: run only JEI's slot tooltip callbacks (private `RecipeSlot.tooltipCallbacks`, same in JEI 19.44-19.64) on a
+  tooltip holding the stack's name; fall back to the full tooltip for slots with their own renderer, a failing
+  callback or another slot class. Seeding the name matters: Farmer's Delight's legacy callback inserts its chance at
+  index 1 and threw on an empty tooltip, losing 20 chance outputs.
+- After: 6:41, records identical to 865a996f's except `framedblocks:framing_saw`, whose layout cycles its input with
+  time (the saved input and output count differ between any two runs, before the change too).
+- What is left: fingerprinting (ingredients, codec encode) and JEI layouts; 31 s of 400 s is between tasks.
+
 ## Open (assistant choices, not owner decisions)
 
 - Trust: any player's JEI replaces the catalog for the whole world.

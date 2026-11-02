@@ -2,6 +2,8 @@ package space.controlnet.ae2federation.compat.jei;
 
 import appeng.api.stacks.GenericStack;
 import com.mojang.serialization.DynamicOps;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -24,9 +26,11 @@ import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.ingredient.IRecipeSlotDrawable;
+import mezz.jei.api.gui.ingredient.IRecipeSlotRichTooltipCallback;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.ingredients.IIngredientSupplier;
+import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.ingredients.subtypes.UidContext;
 import mezz.jei.api.recipe.IFocusGroup;
@@ -457,6 +461,12 @@ final class JeiRecipeScanner implements ViewerScanner {
     /**
      * Whether the slot's name, or a line its tooltip adds to the stack's own, reads as a chance. JEI 19.64 marks the
      * slot's tooltip for removal and offers no other way to read it; once it is gone, only slot names count.
+     *
+     * <p>The added lines are what the slot's tooltip callbacks write, run on a tooltip of the stack's name alone:
+     * building the stack's own tooltip runs every mod's tooltip code, which in ATM10 was 85% of the scan (JFR,
+     * 2026-11-02). A slot with a renderer of its own, whose tooltip may add lines as well, a callback that fails
+     * without the stack's own lines, and a JEI whose slot class reads otherwise, build the whole tooltip and take
+     * the stack's own lines out of it.
      */
     @SuppressWarnings("removal")
     private static boolean chance(IRecipeSlotView slot, IIngredientManager ingredients) {
@@ -467,6 +477,10 @@ final class JeiRecipeScanner implements ViewerScanner {
             return false;
         }
         try {
+            var callbacks = SlotCallbacks.added(slot, ingredients);
+            if (callbacks != null) {
+                return callbacks.stream().anyMatch(JeiRecipeScanner::chance);
+            }
             var lines = new Lines();
             drawable.getTooltip(lines);
             if (lines.text.stream().noneMatch(JeiRecipeScanner::chance)) {
@@ -479,6 +493,69 @@ final class JeiRecipeScanner implements ViewerScanner {
             return added.stream().anyMatch(JeiRecipeScanner::chance);
         } catch (RuntimeException | LinkageError broken) {
             return false;
+        }
+    }
+
+    /** The tooltip callbacks of JEI's own slot class, read from its fields: JEI's API has no way to run them alone. */
+    private static final class SlotCallbacks {
+        private static final @Nullable Field CALLBACKS = field("tooltipCallbacks");
+        private static final @Nullable Field OVERRIDES = field("rendererOverrides");
+        private static final @Nullable Method OVERRIDE = OVERRIDES == null ? null
+                : method(OVERRIDES.getType(), "getIngredientRenderer", IIngredientType.class);
+
+        private SlotCallbacks() {
+        }
+
+        /**
+         * The lines the slot's callbacks add, after the stack's name, as callbacks expect a tooltip to start (Farmer's
+         * Delight puts its chance second); null when the slot has its own renderer, cannot be read so, or a callback
+         * fails on a tooltip without the stack's own lines.
+         */
+        static @Nullable List<String> added(IRecipeSlotView slot, IIngredientManager ingredients) {
+            if (CALLBACKS == null || OVERRIDE == null || !CALLBACKS.getDeclaringClass().isInstance(slot)) {
+                return null;
+            }
+            try {
+                var overrides = OVERRIDES.get(slot);
+                var displayed = slot.getDisplayedIngredient();
+                if (overrides != null && displayed.isPresent()
+                        && ((Optional<?>) OVERRIDE.invoke(overrides, displayed.get().getType())).isPresent()) {
+                    return null;
+                }
+                var lines = new Lines();
+                var name = displayed.map(typed -> name(typed, ingredients));
+                name.ifPresent(lines.text::add);
+                for (var callback : (List<?>) CALLBACKS.get(slot)) {
+                    ((IRecipeSlotRichTooltipCallback) callback).onRichTooltip(slot, lines);
+                }
+                var added = new ArrayList<>(lines.text);
+                name.ifPresent(added::remove);
+                return added;
+            } catch (ReflectiveOperationException | RuntimeException | LinkageError unreadable) {
+                return null;
+            }
+        }
+
+        private static <T> String name(ITypedIngredient<T> typed, IIngredientManager ingredients) {
+            return ingredients.getIngredientHelper(typed.getType()).getDisplayName(typed.getIngredient());
+        }
+
+        private static @Nullable Field field(String name) {
+            try {
+                var field = Class.forName("mezz.jei.library.gui.ingredients.RecipeSlot").getDeclaredField(name);
+                field.setAccessible(true);
+                return field;
+            } catch (ReflectiveOperationException | RuntimeException | LinkageError missing) {
+                return null;
+            }
+        }
+
+        private static @Nullable Method method(Class<?> owner, String name, Class<?>... parameters) {
+            try {
+                return owner.getMethod(name, parameters);
+            } catch (ReflectiveOperationException | RuntimeException | LinkageError missing) {
+                return null;
+            }
         }
     }
 
