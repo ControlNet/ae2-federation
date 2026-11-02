@@ -1494,6 +1494,9 @@ public final class ProgramHostGameTests {
         helper.assertValueEqual(entries.size(), 3, "A copy of the crushing recipe with a gone item was saved");
         var loaded = ViewerRecipes.CategoryFile.load("testviewer:crushing", saved, registries);
         helper.assertValueEqual(loaded.recipes().size(), 2, "The saved recipes load, the one with a gone item dropped");
+        helper.assertTrue(loaded.isDirty(), "A category that dropped a recipe on loading is saved again");
+        helper.assertTrue(!ViewerRecipes.CategoryFile.load("testviewer:crushing", crushing.save(new CompoundTag(),
+                registries), registries).isDirty(), "A category that loads whole is not saved again");
         storage.set("ae2federation_viewer_recipes", ViewerRecipes.load(index, registries));
         storage.set(ViewerRecipes.fileName("testviewer:crushing"), loaded);
         helper.assertValueEqual(server.getPlayerList().getPlayerCount(), 0, "No player is online");

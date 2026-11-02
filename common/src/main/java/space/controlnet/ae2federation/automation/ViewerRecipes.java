@@ -442,7 +442,12 @@ public final class ViewerRecipes extends SavedData {
                 LOGGER.info("Dropped {} saved viewer recipes of {} that no longer load", dropped, id);
             }
             var bits = Math.max(0, Math.min(RecipeBuckets.MAX_BITS, tag.getInt("bits")));
-            return new CategoryFile(id, BucketedRecipes.of(bits, entries));
+            var file = new CategoryFile(id, BucketedRecipes.of(bits, entries));
+            if (dropped > 0) {
+                // Saved without them, or the file keeps them until a viewer next changes the category.
+                file.setDirty();
+            }
+            return file;
         }
 
         @Override
