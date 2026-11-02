@@ -333,7 +333,8 @@ RecipeSyncV1Downloader + V1First/V1Done/V1Failed).
 - After `/reload` the client's JEI listed 509 of 542 categories (mods such as PneumaticCraft find no world while
   JEI reloads). The 33 keep their saved recipes and join the round on the next hello that lists them.
 - Ice and Fire names its JEI categories `minecraft:*dragonforge`, so forgetting by the category's namespace never
-  fires for them (raised with the owner).
+  fires for them. Owner decision (2026-11-02): keep the rule as it is; the recipes whose items are gone drop on
+  load, and the few left (ATM10: one Allthemodium alloy per forge) stay.
 - Fixed b43f5894: recipes dropped while loading a category file were dropped only in memory until the category
   changed again.
 
