@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
@@ -60,6 +61,7 @@ import space.controlnet.ae2federation.script.DictValue;
 import space.controlnet.ae2federation.script.RunError;
 import space.controlnet.ae2federation.script.Runner;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.test.automation.StandInViewer;
 import space.controlnet.ae2federation.test.automation.TestEnd;
 import space.controlnet.ae2federation.test.automation.WallClock;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingFixtures;
@@ -69,7 +71,6 @@ import space.controlnet.ae2federation.test.router.RouterFixtures;
 import io.netty.buffer.Unpooled;
 import java.util.ArrayList;
 import java.util.Optional;
-import java.util.function.BiConsumer;
 import net.minecraft.core.component.DataComponents;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.nbt.CompoundTag;
@@ -1088,7 +1089,7 @@ public final class ProgramHostGameTests {
     }
 
     /**
-     * A recipe viewer's scan, sent in two pages through the payload codec by a stand-in client, is listed by
+     * A recipe viewer's recipes, synced through the payload codecs by a stand-in client, are listed by
      * {@code mc.recipes_for}: an input slot that is an item tag reads as the tag's items, a fluid input and a chance
      * output (a byproduct) come with it, and a program writes it with the item it picks. The viewer's machines for
      * smelting add to the furnace while its crafting table does not reach crafting recipes, and its recipe making an
@@ -1100,7 +1101,7 @@ public final class ProgramHostGameTests {
         var crafting = new NativeCraftingFixtures(helper, true, false);
         var server = helper.getLevel().getServer();
         var stocked = new boolean[] { false };
-        var previous = new ArrayList<BiConsumer<ServerPlayer, Integer>>();
+        var previous = new ArrayList<ViewerScans.Sender>();
         run(helper, patternScene(helper), 1, () -> {
             helper.assertTrue(crafting.ready(), "Waiting for the network");
             if (!stocked[0]) {
@@ -1131,8 +1132,7 @@ public final class ProgramHostGameTests {
                         + "minecraft:furnace,minecraft:smoker ae2:molecular_assembler True",
                 "The viewer's recipe is listed and written with sand",
                 () -> {
-                    ViewerScans.requestWith(previous.get(0));
-                    ViewerRecipes.get(server).replace(List.of(), List.of());
+                    forgetViewerRecipes(server, previous.get(0));
                     var patterns = crafting.providerPatterns();
                     helper.assertValueEqual(patterns.size(), 1, "The provider holds one pattern");
                     var pattern = (appeng.crafting.pattern.AEProcessingPattern) patterns.get(0);
@@ -1157,7 +1157,7 @@ public final class ProgramHostGameTests {
         var crafting = new NativeCraftingFixtures(helper, true, false);
         var server = helper.getLevel().getServer();
         var stocked = new boolean[] { false };
-        var previous = new ArrayList<BiConsumer<ServerPlayer, Integer>>();
+        var previous = new ArrayList<ViewerScans.Sender>();
         run(helper, patternScene(helper), 1, () -> {
             helper.assertTrue(crafting.ready(), "Waiting for the network");
             if (!stocked[0]) {
@@ -1166,8 +1166,8 @@ public final class ProgramHostGameTests {
                         List.of(new ViewerRecipes.Slot(List.of(new GenericStack(AEItemKey.of(Items.IRON_INGOT), 9)),
                                 Optional.empty())), List.of(new GenericStack(AEItemKey.of(Items.IRON_BLOCK), 1)),
                         List.of());
-                previous.add(standInViewerSends(helper, List.of(new ViewerRecipes.Category("testviewer:packing",
-                        List.of("minecraft:cauldron"))), List.of(List.of(packing))));
+                previous.add(syncFromAStandInViewer(helper, Map.of("testviewer:packing",
+                        List.of("minecraft:cauldron")), List.of(packing)));
                 stocked[0] = true;
                 helper.fail("Waiting for the storage cache to see the blank pattern");
             }
@@ -1186,8 +1186,7 @@ public final class ProgramHostGameTests {
                 """, "crafting/minecraft:crafting,processing/testviewer:packing True",
                 "The packing recipe is listed after the crafting one and written",
                 () -> {
-                    ViewerScans.requestWith(previous.get(0));
-                    ViewerRecipes.get(server).replace(List.of(), List.of());
+                    forgetViewerRecipes(server, previous.get(0));
                     var patterns = crafting.providerPatterns();
                     helper.assertValueEqual(patterns.size(), 1, "The provider holds one pattern");
                     helper.assertTrue(patterns.get(0) instanceof appeng.crafting.pattern.AEProcessingPattern,
@@ -1202,41 +1201,176 @@ public final class ProgramHostGameTests {
     }
 
     /**
-     * A viewer scan whose page comes out of order is dropped and the next ready viewer is asked; what that one sends
-     * replaces the saved recipes, and a page from the dropped scan changes nothing afterwards.
+     * A viewer that leaves while it holds a task hands the task to the next ready viewer, which saves the recipes;
+     * one that sends its records out of order loses its task, and gets no other until it says hello again.
      */
-    @SuppressWarnings("removal") // The only mock player a server sees in its player list in 1.21.1.
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 100, required = true, manualOnly = true)
-    public static void aViewerScanOutOfOrderAsksTheNextViewer(GameTestHelper helper) {
+    public static void aViewerThatLeavesHandsItsTaskToTheNext(GameTestHelper helper) {
         var server = helper.getLevel().getServer();
-        var first = helper.makeMockServerPlayerInLevel();
-        var second = helper.makeMockServerPlayerInLevel();
-        var asked = new ArrayList<String>();
-        var scans = new HashMap<ServerPlayer, Integer>();
-        var previous = ViewerScans.requestWith((to, scan) -> {
-            asked.add(to == first ? "first" : to == second ? "second" : "other");
-            scans.put(to, scan);
-        });
+        var previous = StandInViewer.install();
         try {
             ViewerScans.reloaded(server);
-            ViewerScans.ready(first);
-            ViewerScans.ready(second);
-            helper.assertValueEqual(asked, List.of("first"), "Only the first ready viewer is asked");
-            var recipe = new ViewerRecipes.Recipe("testviewer:crushing", Optional.of("testviewer:crushing/glass"),
-                    List.of(new ViewerRecipes.Slot(List.of(new GenericStack(AEItemKey.of(Items.SAND), 1)),
-                            Optional.empty())), List.of(new GenericStack(AEItemKey.of(Items.GLASS), 1)), List.of());
-            ViewerScans.page(first, new ViewerScans.Page(scans.get(first), 1, true, List.of(), List.of(recipe)));
-            helper.assertValueEqual(asked, List.of("first", "second"), "The second viewer is asked after the drop");
-            ViewerScans.page(second, new ViewerScans.Page(scans.get(second), 0, true, List.of(),
-                    List.of(recipe, recipe)));
-            ViewerScans.page(first, new ViewerScans.Page(scans.get(first), 0, true, List.of(), List.of(recipe)));
-            helper.assertValueEqual(ViewerRecipes.get(server).size(), 2, "The second viewer's two recipes are kept");
+            var recipes = sortingRecipes(3);
+            var categories = Map.of("testviewer:sorting", List.of("minecraft:hopper"));
+            var first = new StandInViewer(helper, categories, recipes);
+            var second = new StandInViewer(helper, categories, recipes);
+            first.silent = true;
+            first.hello();
+            second.hello();
+            StandInViewer.pumpAll(List.of(first, second));
+            helper.assertValueEqual(List.of(first.tasks, second.tasks), List.of(1, 0),
+                    "The one task went to the first viewer");
+            first.leave();
+            StandInViewer.pumpAll(List.of(second));
+            helper.assertValueEqual(second.tasks, 1, "The second viewer took the task over");
+            helper.assertValueEqual(ViewerRecipes.get(server).size(), 3, "The second viewer's recipes are saved");
+            helper.assertTrue(ViewerScans.progress(server).done(), "The round is done");
+
+            ViewerScans.reloaded(server);
+            var third = new StandInViewer(helper, categories, recipes);
+            second.show(sortingRecipes(4));
+            second.outOfOrder = true;
+            second.hello();
+            third.hello();
+            StandInViewer.pumpAll(List.of(second, third));
+            helper.assertValueEqual(List.of(second.tasks, third.tasks), List.of(2, 1),
+                    "The task went to the third viewer after the second sent its records out of order");
+            helper.assertValueEqual(ViewerRecipes.get(server).size(), 3, "The third viewer's recipes are saved");
+            helper.assertTrue(ViewerScans.progress(server).done(), "The round is done");
+            second.leave();
+            third.leave();
         } finally {
-            ViewerScans.requestWith(previous);
-            ViewerRecipes.get(server).replace(List.of(), List.of());
-            server.getPlayerList().remove(first);
-            server.getPlayerList().remove(second);
+            forgetViewerRecipes(server, previous);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A viewer silent for two minutes loses its task to the next ready viewer, and gets no other until it says hello
+     * again.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 100, required = true, manualOnly = true)
+    public static void aSilentViewerLosesItsTaskAfterTwoMinutes(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var previous = StandInViewer.install();
+        var now = new long[] { 1_000_000 };
+        var clock = ViewerScans.clockWith(() -> now[0]);
+        try {
+            ViewerScans.reloaded(server);
+            var categories = Map.of("testviewer:sorting", List.of("minecraft:hopper"));
+            var first = new StandInViewer(helper, categories, sortingRecipes(5));
+            var second = new StandInViewer(helper, categories, sortingRecipes(5));
+            first.silent = true;
+            first.hello();
+            second.hello();
+            StandInViewer.pumpAll(List.of(first, second));
+            now[0] += 119_000;
+            ViewerScans.expire(server);
+            StandInViewer.pumpAll(List.of(first, second));
+            helper.assertValueEqual(second.tasks, 0, "A minute and 59 seconds of silence keep the task");
+            now[0] += 1_000;
+            ViewerScans.expire(server);
+            first.silent = false;
+            StandInViewer.pumpAll(List.of(first, second));
+            helper.assertValueEqual(List.of(first.tasks, second.tasks), List.of(1, 1),
+                    "Two minutes of silence hand the task over, and the silent viewer gets no other");
+            helper.assertValueEqual(ViewerRecipes.get(server).size(), 5, "The second viewer's recipes are saved");
+            first.leave();
+            second.leave();
+        } finally {
+            ViewerScans.clockWith(clock);
+            forgetViewerRecipes(server, previous);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Two viewers share a category of 4,500 recipes, a task each (sixteen buckets, eight a task). After a reload with
+     * one recipe changed, one gone and one new, only the changed and the new one are read again, and the gone one is
+     * dropped.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void aSecondViewerSyncReadsOnlyWhatChanged(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var previous = StandInViewer.install();
+        try {
+            ViewerScans.reloaded(server);
+            var recipes = sortingRecipes(4_500);
+            var categories = Map.of("testviewer:sorting", List.of("minecraft:hopper"));
+            var first = new StandInViewer(helper, categories, recipes);
+            var second = new StandInViewer(helper, categories, recipes);
+            first.hello();
+            second.hello();
+            StandInViewer.pumpAll(List.of(first, second));
+            var saved = ViewerRecipes.get(server);
+            helper.assertValueEqual(saved.size(), 4_500, "Every recipe is saved");
+            helper.assertValueEqual(saved.category("testviewer:sorting").recipes().bits(), 4, "In sixteen buckets");
+            helper.assertValueEqual(List.of(first.tasks, second.tasks), List.of(1, 1), "A task each");
+            helper.assertValueEqual(first.read + second.read, 4_500, "Each recipe was read once");
+            helper.assertTrue(first.read > 0 && second.read > 0, "Both viewers read");
+
+            var changed = new ArrayList<>(recipes);
+            changed.set(10, sortingRecipe(10, 2));
+            changed.remove(20);
+            changed.add(sortingRecipe(9_999, 1));
+            ViewerScans.reloaded(server);
+            first.show(changed);
+            second.show(changed);
+            first.read = 0;
+            second.read = 0;
+            first.hello();
+            second.hello();
+            StandInViewer.pumpAll(List.of(first, second));
+            helper.assertValueEqual(first.read + second.read, 2, "Only the changed and the new recipe were read");
+            helper.assertValueEqual(saved.size(), 4_500, "The gone recipe is dropped");
+            helper.assertValueEqual(saved.recipes().stream().filter(recipe -> recipe.id().orElse("")
+                    .equals("testviewer:sorting/10")).findFirst().orElseThrow().outputs().get(0).amount(), 2L,
+                    "The changed recipe is saved as it is now");
+            helper.assertTrue(ViewerScans.progress(server).done(), "The round is done");
+            first.leave();
+            second.leave();
+        } finally {
+            forgetViewerRecipes(server, previous);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A saved category that a viewer no longer lists is forgotten when the server has no mod of its namespace, and kept
+     * when it has one (that viewer may lack a client mod).
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 100, required = true, manualOnly = true)
+    public static void aViewerCategoryIsForgottenOnlyWithItsMod(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var previous = StandInViewer.install();
+        var mods = ViewerScans.modsWith(namespace -> !namespace.equals("gonemod"));
+        try {
+            ViewerScans.reloaded(server);
+            var both = new ArrayList<ViewerRecipes.Recipe>();
+            both.add(new ViewerRecipes.Recipe("gonemod:pressing", Optional.empty(), List.of(sandSlot(1)),
+                    List.of(new GenericStack(AEItemKey.of(Items.SANDSTONE), 1)), List.of()));
+            both.add(new ViewerRecipes.Recipe("keptmod:pressing", Optional.empty(), List.of(sandSlot(4)),
+                    List.of(new GenericStack(AEItemKey.of(Items.SANDSTONE), 1)), List.of()));
+            var before = new StandInViewer(helper, Map.of("gonemod:pressing", List.of(), "keptmod:pressing",
+                    List.of()), both);
+            before.hello();
+            StandInViewer.pumpAll(List.of(before));
+            helper.assertValueEqual(ViewerRecipes.get(server).stored(), List.of("gonemod:pressing",
+                    "keptmod:pressing"), "Both categories are saved");
+            before.leave();
+            var after = new StandInViewer(helper, Map.of("testviewer:sorting", List.of()), sortingRecipes(1));
+            after.hello();
+            StandInViewer.pumpAll(List.of(after));
+            helper.assertValueEqual(ViewerRecipes.get(server).stored(), List.of("keptmod:pressing",
+                    "testviewer:sorting"), "The category of the gone mod is forgotten, the other kept");
+            after.leave();
+        } finally {
+            ViewerScans.modsWith(mods);
+            forgetViewerRecipes(server, previous);
         }
         helper.succeed();
     }
@@ -1291,10 +1425,7 @@ public final class ProgramHostGameTests {
                                      str("minecraft:red_sand" in sands), water, made, extra])
                 """, "1 testviewer:crushing/prismarine minecraft:grindstone True minecraft:waterx1000 "
                         + "minecraft:prismarine_crystalsx2 minecraft:prismarine_shardx1",
-                "The saved recipe is listed as it was scanned", () -> {
-                    ViewerScans.requestWith(previous);
-                    ViewerRecipes.get(server).replace(List.of(), List.of());
-                });
+                "The saved recipe is listed as it was scanned", () -> forgetViewerRecipes(server, previous));
     }
 
     /**
@@ -1327,14 +1458,13 @@ public final class ProgramHostGameTests {
             helper.assertValueEqual(file.recipes().size(), 2, "The category holds the read recipe and the skipped one");
             helper.assertValueEqual(recipes.size(), 3, "Only read recipes count, in every category");
         } finally {
-            ViewerScans.requestWith(previous);
-            ViewerRecipes.get(server).replace(List.of(), List.of());
+            forgetViewerRecipes(server, previous);
         }
         helper.succeed();
     }
 
-    /** A viewer's scan of a crushing recipe and a polishing recipe, in two pages ({@link #standInViewerSends}). */
-    private static BiConsumer<ServerPlayer, Integer> scanFromAStandInViewer(GameTestHelper helper) {
+    /** A viewer's crushing recipe and polishing recipe, synced by a stand-in client ({@link #syncFromAStandInViewer}). */
+    private static ViewerScans.Sender scanFromAStandInViewer(GameTestHelper helper) {
         var named = new ItemStack(Items.PRISMARINE_CRYSTALS, 2);
         named.set(DataComponents.CUSTOM_NAME, Component.literal("Polished"));
         var crushing = new ViewerRecipes.Recipe("testviewer:crushing", Optional.of("testviewer:crushing/prismarine"),
@@ -1347,45 +1477,55 @@ public final class ProgramHostGameTests {
         var polishing = new ViewerRecipes.Recipe("testviewer:crushing", Optional.empty(), List.of(
                 new ViewerRecipes.Slot(List.of(new GenericStack(AEItemKey.of(Items.PRISMARINE_SHARD), 1)),
                         Optional.empty())), List.of(GenericStack.fromItemStack(named)), List.of());
-        var categories = List.of(new ViewerRecipes.Category("testviewer:crushing", List.of("minecraft:grindstone")),
-                new ViewerRecipes.Category("minecraft:smelting", List.of("minecraft:furnace", "minecraft:smoker")),
-                new ViewerRecipes.Category("minecraft:crafting", List.of("minecraft:crafting_table")));
-        return standInViewerSends(helper, categories, List.of(List.of(crushing), List.of(polishing)));
+        var categories = new LinkedHashMap<String, List<String>>();
+        categories.put("testviewer:crushing", List.of("minecraft:grindstone"));
+        categories.put("minecraft:smelting", List.of("minecraft:furnace", "minecraft:smoker"));
+        categories.put("minecraft:crafting", List.of("minecraft:crafting_table"));
+        return syncFromAStandInViewer(helper, categories, List.of(crushing, polishing));
     }
 
     /**
-     * A mock player says its viewer is ready, and sends the scan the server asks for page by page, each through the
-     * payload's codec, the categories on the last page. Returns the server's way of asking a client, to put back.
+     * A mock player's viewer says hello with these categories and recipes and answers the server's tasks until every
+     * recipe is saved, then leaves. Returns the server's way of reaching clients, to put back.
      */
-    @SuppressWarnings("removal") // The only mock player a server sees in its player list in 1.21.1.
-    private static BiConsumer<ServerPlayer, Integer> standInViewerSends(GameTestHelper helper,
-            List<ViewerRecipes.Category> categories, List<List<ViewerRecipes.Recipe>> pages) {
+    private static ViewerScans.Sender syncFromAStandInViewer(GameTestHelper helper, Map<String, List<String>> categories,
+            List<ViewerRecipes.Recipe> recipes) {
         var server = helper.getLevel().getServer();
-        var player = helper.makeMockServerPlayerInLevel();
-        var asked = new int[] { -1 };
-        var previous = ViewerScans.requestWith((to, scan) -> {
-            if (to == player) {
-                asked[0] = scan;
-            }
-        });
+        var previous = StandInViewer.install();
         ViewerScans.reloaded(server);
-        ViewerScans.ready(player);
-        helper.assertTrue(asked[0] > 0, "The server asked the ready viewer for its recipes");
-        for (int index = 0; index < pages.size(); index++) {
-            var last = index == pages.size() - 1;
-            ViewerScans.page(player, throughCodec(server, new ViewerScans.Page(asked[0], index, last,
-                    last ? categories : List.of(), pages.get(index))));
-        }
-        helper.assertValueEqual(ViewerRecipes.get(server).size(), pages.stream().mapToInt(List::size).sum(),
-                "Every recipe was kept");
-        server.getPlayerList().remove(player);
+        var viewer = new StandInViewer(helper, categories, recipes);
+        viewer.hello();
+        StandInViewer.pumpAll(List.of(viewer));
+        helper.assertTrue(ViewerScans.progress(server).done(), "The viewer's round is done");
+        helper.assertValueEqual(ViewerRecipes.get(server).size(), recipes.size(), "Every recipe was kept");
+        viewer.leave();
         return previous;
     }
 
-    private static ViewerScans.Page throughCodec(MinecraftServer server, ViewerScans.Page page) {
-        var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), server.registryAccess(), ConnectionType.NEOFORGE);
-        ViewerRecipePayloads.Page.STREAM_CODEC.encode(buffer, new ViewerRecipePayloads.Page(page));
-        return ViewerRecipePayloads.Page.STREAM_CODEC.decode(buffer).page();
+    /** Every saved viewer category forgotten, a new round, and the server's way of reaching clients put back. */
+    private static void forgetViewerRecipes(MinecraftServer server, ViewerScans.Sender previous) {
+        ViewerScans.sendWith(previous);
+        ViewerScans.reloaded(server);
+        var recipes = ViewerRecipes.get(server);
+        recipes.stored().forEach(recipes::remove);
+    }
+
+    /** Sorting recipes, each with an ID: recipe n takes n % 64 + 1 sand and makes one glass. */
+    private static List<ViewerRecipes.Recipe> sortingRecipes(int count) {
+        var out = new ArrayList<ViewerRecipes.Recipe>();
+        for (var n = 0; n < count; n++) {
+            out.add(sortingRecipe(n, 1));
+        }
+        return out;
+    }
+
+    private static ViewerRecipes.Recipe sortingRecipe(int n, long glass) {
+        return new ViewerRecipes.Recipe("testviewer:sorting", Optional.of("testviewer:sorting/" + n),
+                List.of(sandSlot(n % 64 + 1)), List.of(new GenericStack(AEItemKey.of(Items.GLASS), glass)), List.of());
+    }
+
+    private static ViewerRecipes.Slot sandSlot(long amount) {
+        return new ViewerRecipes.Slot(List.of(new GenericStack(AEItemKey.of(Items.SAND), amount)), Optional.empty());
     }
 
     /** An item picked for a slot that the slot does not take stops the run. */

@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -163,34 +162,6 @@ public final class ViewerRecipes extends SavedData {
         this.files = Collections.unmodifiableSortedMap(files);
     }
 
-    /**
-     * Replaces everything with a scan's categories and recipes, each recipe fingerprinted from its record: partitioned
-     * by its ID, else by the items and amounts it takes and makes.
-     */
-    public void replace(List<Category> categories, List<Recipe> recipes) {
-        var byCategory = new LinkedHashMap<String, List<BucketedRecipes.Entry<Recipe>>>();
-        for (var recipe : recipes) {
-            byCategory.computeIfAbsent(recipe.category(), id -> new ArrayList<>()).add(new BucketedRecipes.Entry<>(
-                    fingerprint(recipe), BucketedRecipes.Status.RECIPE, recipe));
-        }
-        var listed = new ArrayList<>(categories);
-        byCategory.keySet().stream().filter(id -> categories.stream().noneMatch(each -> each.id().equals(id)))
-                .forEach(id -> listed.add(new Category(id, List.of())));
-        for (var file : files.values()) {
-            if (!byCategory.containsKey(file.id)) {
-                file.set(BucketedRecipes.of(0, List.of()));
-            }
-        }
-        var files = new TreeMap<String, CategoryFile>();
-        byCategory.forEach((id, entries) -> {
-            var file = file(id);
-            file.set(BucketedRecipes.of(RecipeBuckets.bitsFor(entries.size()), entries));
-            files.put(id, file);
-        });
-        this.files = Collections.unmodifiableSortedMap(files);
-        list(listed);
-    }
-
     /** A category with no recipes in buckets of those bits; one already saved starts over. */
     public void create(String category, int bits) {
         var file = file(category);
@@ -213,6 +184,62 @@ public final class ViewerRecipes extends SavedData {
             throw new IllegalArgumentException("No saved viewer category " + category);
         }
         file.set(file.recipes().apply(bucket, drop, add));
+    }
+
+    /** A category's recipes forgotten: dropped from the list, its file saved empty. */
+    public void remove(String category) {
+        var file = files.get(category);
+        if (file != null) {
+            file.set(BucketedRecipes.of(0, List.of()));
+            var files = new TreeMap<>(this.files);
+            files.remove(category);
+            this.files = Collections.unmodifiableSortedMap(files);
+        }
+        if (categories.stream().anyMatch(each -> each.id().equals(category))) {
+            list(categories.stream().filter(each -> !each.id().equals(category)).toList());
+        }
+    }
+
+    /** A category's buckets split once it outgrew them ({@link BucketedRecipes#split}); its bits after. */
+    public int split(String category) {
+        var file = files.get(category);
+        if (file == null) {
+            throw new IllegalArgumentException("No saved viewer category " + category);
+        }
+        var split = file.recipes().split();
+        if (split != file.recipes()) {
+            file.set(split);
+        }
+        return split.bits();
+    }
+
+    /** The categories that have a file, in order. */
+    public List<String> stored() {
+        return List.copyOf(files.keySet());
+    }
+
+    /** The machines a viewer shows for these categories, each replacing what was saved; saved only if one changed. */
+    public void machines(Map<String, List<String>> shown) {
+        var listed = new ArrayList<Category>();
+        var changed = false;
+        for (var category : categories) {
+            var machines = shown.get(category.id());
+            if (machines != null && !machines.equals(category.machines())) {
+                listed.add(new Category(category.id(), List.copyOf(machines)));
+                changed = true;
+            } else {
+                listed.add(category);
+            }
+        }
+        for (var each : shown.entrySet()) {
+            if (categories.stream().noneMatch(category -> category.id().equals(each.getKey()))) {
+                listed.add(new Category(each.getKey(), List.copyOf(each.getValue())));
+                changed = true;
+            }
+        }
+        if (changed) {
+            list(listed);
+        }
     }
 
     /** A category's file, or null when none is saved. */
@@ -298,20 +325,6 @@ public final class ViewerRecipes extends SavedData {
         }
         machines.replaceAll((id, items) -> List.copyOf(new LinkedHashSet<>(items)));
         this.machines = machines;
-    }
-
-    private static RecipeBuckets.Fingerprint fingerprint(Recipe recipe) {
-        var partition = recipe.id().map(id -> "id:" + id).orElseGet(() -> "in:" + amounts(recipe.inputs().stream()
-                .map(slot -> slot.stacks().get(0)).toList()) + "\0out:" + amounts(recipe.outputs()) + "\0by:"
-                + amounts(recipe.byproducts()));
-        return new RecipeBuckets.Fingerprint(RecipeBuckets.hash(recipe.category() + "\0" + partition),
-                RecipeBuckets.hash(recipe.toString()));
-    }
-
-    /** The stacks' resource IDs and amounts, sorted: what a recipe takes or makes, without components. */
-    private static String amounts(List<GenericStack> stacks) {
-        return String.join(",", stacks.stream().map(stack -> stack.what().getId() + "x" + stack.amount()).sorted()
-                .toList());
     }
 
     // ---- the world save ----

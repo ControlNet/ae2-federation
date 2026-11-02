@@ -46,7 +46,9 @@ JEI, scanned on the client and cached in the world save.
 
 ## Runs
 
-- GameTests: `programwritesarecipeviewerrecipe`, `aviewerscanoutoforderasksthenextviewer`.
+- GameTests: `--manifest --match viewer` (8): stand-in clients in `test/automation/StandInViewer` answer through
+  the payload codecs; lease handover, two-minute expiry (clock injected), second sync reads only changes (4,500
+  recipes, 16 buckets, two viewers), deletion rule (mod test injected), per-category saving.
 - UI: `./gradlew :neoforge-1.21.1:runViewerUiTestClient -PenableViewerCompatibility=true
   -PfederationUiSelection=ui.automation-viewer-pattern -PfederationUiOutputDir=$PWD/build/viewer-pattern-check
   -PfederationUiWatchdogSec=600` under `xvfb-run`; source set `viewerTest` (`common/src/viewertest/java`), game
@@ -225,16 +227,35 @@ Recipes of other mods that mention a mod's items or fluids (upper bound of what 
 tag entries, can change): median 79, p90 about 3,000; largest minecraft 52,596, productivetrees 16,744, bibliocraft
 10,415, aether 9,940. Script and table: worktree `build/bucket-key-check/blast*`.
 
+## Mod change on ATM10 (measured 2026-11-02, raw data in worktree `build/mod-change-check/`)
+
+Real processing recipes (128,612), digest C = network bytes else ingredients, A = ingredients with components.
+
+- Noise floor: two client starts against one server start: C 97, A 49 recipes. Server restart with the same mods:
+  C 4,851, A 2,495 (Universal Sawmill `sawmill:woodcutting` regenerates its ~18k no-ID recipes whenever the mod list
+  changes and comes out different each time; IE potion mixer/bottling and Create automatic_* change C only).
+- Update mekmm 1.4.1 -> 1.4.2 (no new items): A changes only its own recipes (+2,367); other mods 0.
+- Remove iceandfire: A: its own 425 gone, other mods' 1,337 with ID + 1,073 without ID changed (shared tags), 42
+  gone; matches the offline blast radius (2,474). C: 93,007 to read (72%): 73,070 recipes with unchanged ingredients
+  changed their `Recipe.STREAM_CODEC` bytes, category by category all or nothing. Inferred cause: the network encoding
+  writes registry entries by number, and removing a mod renumbers them.
+- Consequence (assistant choice): the digest uses the datapack codec (`Recipe.CODEC` to NBT text, entries by name),
+  else the ingredients; to be measured again with the implementation.
+- oritech cannot be removed from ATM10: its KubeJS pack ships oritech worldgen JSON and the server stops at
+  "Failed to load registries".
+
 ## Bucketed sync design (assistant plan, 2026-11-02; owner approved the direction and GUI variant 1)
 
 Order: scanner filters (done, 9553df74) -> bucket math (done, `RecipeBuckets`, 63b0af1a) -> per-category storage
 (done: `BucketedRecipes` + `ViewerRecipes.CategoryFile`, files `ae2federation_vr_<id part>_<6 hex>`; the old
-whole-scan protocol still feeds it through `replace`, fingerprints derived from records) -> client fingerprints -> protocol + leases -> GameTests -> ATM10 -> Recipe sync tab (canvas board
+whole-scan protocol replaced) -> client fingerprints + protocol + leases (done: `ViewerScans` hello/task/prints/
+reads/records, `ViewerScanClient`, `JeiRecipeScanner.Printing`; Mekanism+Create UI run: hello 32 s after JEI, 4,975
+recipes + 109 skipped in 56 categories, ~25 s) -> protocol + leases -> GameTests -> ATM10 -> Recipe sync tab (canvas board
 RecipeSyncV1Downloader + V1First/V1Done/V1Failed).
 
 - Fingerprint per recipe, computed on the client from `IRecipeManager.getRecipeIngredients` (no layout, ~0.07 ms):
   partition = hash(category + "\0" + "id:" + server ID), else hash of the ingredients per role without data
-  components (item/fluid ID + amount, sorted); digest = hash(holder ID + `Recipe.STREAM_CODEC` bytes) when THIS recipe
+  components (item/fluid ID + amount, sorted); digest = hash(server ID + `Recipe.CODEC` NBT text; was STREAM_CODEC bytes, see Mod change) when THIS recipe
   encodes, else hash of the ingredients per role with components (a codec error written as `{!}`). Per recipe, never
   "give up B for the category": that would make the digest depend on JEI's order and two clients disagree.
 - Cheap filters at fingerprint time (object kind, an input and an output role non-empty); the layout-based filters

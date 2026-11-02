@@ -1,6 +1,9 @@
 package space.controlnet.ae2federation.compat.jei;
 
 import appeng.api.stacks.GenericStack;
+import com.mojang.serialization.DynamicOps;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -22,7 +25,10 @@ import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.ingredient.IRecipeSlotDrawable;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
+import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
+import mezz.jei.api.ingredients.IIngredientSupplier;
 import mezz.jei.api.ingredients.ITypedIngredient;
+import mezz.jei.api.ingredients.subtypes.UidContext;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.IRecipeManager;
 import mezz.jei.api.recipe.RecipeIngredientRole;
@@ -32,7 +38,10 @@ import mezz.jei.api.runtime.IJeiKeyMapping;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
@@ -45,7 +54,10 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.automation.BucketedRecipes;
+import space.controlnet.ae2federation.automation.RecipeBuckets;
 import space.controlnet.ae2federation.automation.ViewerRecipes;
+import space.controlnet.ae2federation.automation.ViewerScans;
 import space.controlnet.ae2federation.client.automation.ViewerScanner;
 import space.controlnet.ae2federation.compat.ae2jeiintegration.Ae2JeiStacks;
 
@@ -59,8 +71,7 @@ import space.controlnet.ae2federation.compat.ae2jeiintegration.Ae2JeiStacks;
  * outputs. An output is a byproduct, never promised by a pattern, when its slot shows several stacks or its tooltip
  * reads as a chance ("chance", "probab", "%", "概率", "几率" ...): JEI has no field for chance outputs, so this reads
  * the text mods show, and may miss. Items and fluids convert themselves; other kinds (Mekanism chemicals) go through
- * AE2 JEI Integration's converters when that mod is installed. A recipe is told apart from another of its category
- * by its ID, else by what it takes and makes. A slot's item tag is a tag whose items are the slot's, in order, as JEI
+ * AE2 JEI Integration's converters when that mod is installed. A slot's item tag is a tag whose items are the slot's, in order, as JEI
  * finds one, looked up in a table built once a scan: JEI's own lookup walks every item tag for each slot, which in a
  * pack of hundreds of mods made the scan a few dozen recipes a second. Of several such tags the smallest ID is taken,
  * so a scan of the same pack saves the same tags (JEI takes the first in a hash order that changes from run to run).
@@ -71,6 +82,12 @@ import space.controlnet.ae2federation.compat.ae2jeiintegration.Ae2JeiStacks;
  * inputs. A recipe keeps an ID only when the server has a recipe of that ID: a holder's own, or, for a bare recipe, the
  * ID of the holder the server sent with that very object (NeoForge 1.21.1 sends every recipe to the client). Holders
  * that a mod builds on the client carry IDs the server lacks; those recipes are told apart by content.
+ *
+ * <p>Before reading, each recipe is fingerprinted ({@link RecipeBuckets}) from what JEI says it takes and makes, without
+ * laying it out (about a tenth of a read): partitioned by its server ID, else by its items and fluids with their
+ * amounts but not their components, so a recipe stays in its bucket however its contents change; its digest is its
+ * ID and its datapack encoding when its serializer gives one, else its ingredients with their components. Per recipe,
+ * never per category, so two clients agree whatever order JEI lists them in.
  */
 final class JeiRecipeScanner implements ViewerScanner {
     /** JEI's categories of the recipe types the server reads itself, by the server's recipe type. */
@@ -89,37 +106,80 @@ final class JeiRecipeScanner implements ViewerScanner {
             "quest"));
     private static final List<String> CHANCE = List.of("chance", "probab", "%", "概率", "几率", "機率", "確率", "확률");
 
-    private final IJeiRuntime runtime;
+    private static final List<RecipeIngredientRole> CONTENT = List.of(RecipeIngredientRole.INPUT,
+            RecipeIngredientRole.OUTPUT, RecipeIngredientRole.CATALYST);
+
+    private final IRecipeManager manager;
+    private final IIngredientManager ingredients;
+    private final IFocusGroup noFocus;
+    private @Nullable Map<List<Item>, ResourceLocation> tags;
+    /** The server's recipes as the client received them: the IDs, and each recipe object's ID. */
+    private @Nullable Set<ResourceLocation> serverIds;
+    private final Map<Recipe<?>, ResourceLocation> serverIdOf = new IdentityHashMap<>();
 
     JeiRecipeScanner(IJeiRuntime runtime) {
-        this.runtime = runtime;
+        manager = runtime.getRecipeManager();
+        ingredients = runtime.getIngredientManager();
+        noFocus = runtime.getJeiHelpers().getFocusFactory().getEmptyFocusGroup();
     }
 
     @Override
-    public Job start() {
-        return new Scan(runtime);
+    public Set<String> categoryIds() {
+        return categories().keySet();
     }
 
-    private static final class Scan implements Job {
-        private final IRecipeManager manager;
-        private final IIngredientManager ingredients;
-        private final IFocusGroup noFocus;
-        private final Map<List<Item>, ResourceLocation> tags = itemTags();
-        /** The server's recipes as the client received them: the IDs, and each recipe object's ID. */
-        private final Set<ResourceLocation> serverIds = new HashSet<>();
-        private final Map<Recipe<?>, ResourceLocation> serverIdOf = new IdentityHashMap<>();
-        private final Iterator<IRecipeCategory<?>> categories;
-        private final List<ViewerRecipes.Category> found = new ArrayList<>();
-        private final Set<String> seen = new HashSet<>();
-        private @Nullable IRecipeCategory<?> category;
-        private String categoryId = "";
-        private Iterator<?> recipes = Collections.emptyIterator();
+    /** JEI's categories by the ID the server knows them by, but those left out and those of too long an ID. */
+    private Map<String, IRecipeCategory<?>> categories() {
+        var out = new LinkedHashMap<String, IRecipeCategory<?>>();
+        manager.createRecipeCategoryLookup().get().forEach(category -> {
+            var uid = category.getRecipeType().getUid();
+            var id = SERVER_TYPES.getOrDefault(uid, uid.toString());
+            if (!SKIPPED.contains(uid) && id.length() <= 256) {
+                out.putIfAbsent(id, category);
+            }
+        });
+        return out;
+    }
 
-        Scan(IJeiRuntime runtime) {
-            manager = runtime.getRecipeManager();
-            ingredients = runtime.getIngredientManager();
-            noFocus = runtime.getJeiHelpers().getFocusFactory().getEmptyFocusGroup();
-            categories = manager.createRecipeCategoryLookup().get().toList().iterator();
+    @Override
+    public Job<ViewerScans.Listed> list() {
+        var categories = categories().entrySet().iterator();
+        return (deadline, out) -> {
+            while (System.nanoTime() < deadline) {
+                if (!categories.hasNext()) {
+                    return true;
+                }
+                var next = categories.next();
+                var type = next.getValue().getRecipeType();
+                var machines = new LinkedHashSet<String>();
+                manager.createRecipeCatalystLookup(type).get(VanillaTypes.ITEM_STACK)
+                        .forEach(stack -> machines.add(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString()));
+                var count = SERVER_TYPES.containsKey(type.getUid()) ? 0
+                        : (int) manager.createRecipeLookup(type).get().filter(JeiRecipeScanner::real).count();
+                out.accept(new ViewerScans.Listed(next.getKey(), count, machines.stream()
+                        .limit(ViewerRecipes.MAX_MACHINES).toList()));
+            }
+            return false;
+        };
+    }
+
+    @Override
+    public Prints fingerprint(String categoryId) {
+        var category = categories().get(categoryId);
+        var recipes = category == null || SERVER_TYPES.containsKey(category.getRecipeType().getUid())
+                ? Collections.emptyIterator() : manager.createRecipeLookup(category.getRecipeType()).get().iterator();
+        return new Printing(categoryId, category, recipes);
+    }
+
+    /** What JEI holds as a recipe of the game: a holder, or a bare recipe; anything else a mod built to show. */
+    private static boolean real(Object object) {
+        return object instanceof RecipeHolder<?> || object instanceof Recipe<?>;
+    }
+
+    /** The server's ID of a recipe object: a holder's own when the server has it, else the bare recipe's. */
+    private @Nullable ResourceLocation serverId(Object object) {
+        if (serverIds == null) {
+            serverIds = new HashSet<>();
             var connection = Minecraft.getInstance().getConnection();
             if (connection != null) {
                 for (var holder : connection.getRecipeManager().getRecipes()) {
@@ -128,109 +188,229 @@ final class JeiRecipeScanner implements ViewerScanner {
                 }
             }
         }
+        if (object instanceof RecipeHolder<?> holder) {
+            return serverIds.contains(holder.id()) ? holder.id() : null;
+        }
+        return object instanceof Recipe<?> bare ? serverIdOf.get(bare) : null;
+    }
+
+    /** A category's real recipes with ingredients going in and coming out, fingerprinted; then read on request. */
+    private final class Printing implements Prints {
+        private final String categoryId;
+        private final @Nullable IRecipeCategory<?> category;
+        private final Iterator<?> recipes;
+        private final List<Object> objects = new ArrayList<>();
+        private final List<RecipeBuckets.Fingerprint> prints = new ArrayList<>();
+        private final DynamicOps<Tag> ops;
+
+        Printing(String categoryId, @Nullable IRecipeCategory<?> category, Iterator<?> recipes) {
+            this.categoryId = categoryId;
+            this.category = category;
+            this.recipes = recipes;
+            ops = Minecraft.getInstance().getConnection().registryAccess()
+                    .createSerializationContext(NbtOps.INSTANCE);
+        }
 
         @Override
-        public boolean step(long deadline, Consumer<ViewerRecipes.Recipe> out) {
+        public boolean step(long deadline, Consumer<RecipeBuckets.Fingerprint> out) {
             while (System.nanoTime() < deadline) {
-                if (recipes.hasNext()) {
-                    var recipe = read(category, recipes.next());
-                    if (recipe != null && seen.add(key(recipe))) {
-                        out.accept(recipe);
-                    }
-                    continue;
-                }
-                if (!categories.hasNext()) {
+                if (!recipes.hasNext()) {
                     return true;
                 }
-                category = categories.next();
-                var type = category.getRecipeType();
-                if (SKIPPED.contains(type.getUid())) {
+                var object = recipes.next();
+                if (!real(object)) {
                     continue;
                 }
-                var server = SERVER_TYPES.get(type.getUid());
-                categoryId = server != null ? server : type.getUid().toString();
-                var machines = new LinkedHashSet<String>();
-                manager.createRecipeCatalystLookup(type).get(VanillaTypes.ITEM_STACK)
-                        .forEach(stack -> machines.add(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString()));
-                if (categoryId.length() <= 256) {
-                    found.add(new ViewerRecipes.Category(categoryId, machines.stream()
-                            .limit(ViewerRecipes.MAX_MACHINES).toList()));
+                var print = fingerprint(category, object);
+                if (print != null) {
+                    objects.add(object);
+                    prints.add(print);
+                    out.accept(print);
                 }
-                recipes = server != null || categoryId.length() > 256 ? Collections.emptyIterator()
-                        : manager.createRecipeLookup(type).get().iterator();
             }
             return false;
         }
 
-        @Override
-        public List<ViewerRecipes.Category> categories() {
-            return found;
-        }
-
-        /** The item tag whose items are the slot's, in order; none when the slot holds anything but items. */
-        private Optional<ResourceLocation> tag(IRecipeSlotView slot) {
-            var items = new ArrayList<Item>();
-            for (var typed : slot.getAllIngredients().toList()) {
-                if (!(typed.getIngredient() instanceof ItemStack stack)) {
-                    return Optional.empty();
-                }
-                items.add(stack.getItem());
-            }
-            return Optional.ofNullable(tags.get(items));
-        }
-
+        /**
+         * Partitioned by the server's ID, else by the items and amounts the recipe takes and makes without
+         * components; changed when the recipe's own datapack encoding changes, else when its ingredients with their
+         * components do. None for a recipe JEI cannot give ingredients for, or one that takes or makes nothing.
+         */
         @SuppressWarnings("unchecked")
-        private <T> ViewerRecipes.@Nullable Recipe read(IRecipeCategory<T> category, Object object) {
-            ResourceLocation id;
-            if (object instanceof RecipeHolder<?> holder) {
-                id = serverIds.contains(holder.id()) ? holder.id() : null;
-            } else if (object instanceof Recipe<?> bare) {
-                id = serverIdOf.get(bare);
-            } else {
-                return null;
-            }
-            var recipe = (T) object;
-            Optional<? extends mezz.jei.api.gui.IRecipeLayoutDrawable<T>> layout;
+        private <T> RecipeBuckets.@Nullable Fingerprint fingerprint(IRecipeCategory<T> category, Object object) {
+            IIngredientSupplier supplier;
             try {
-                layout = manager.createRecipeLayoutDrawable(category, recipe, noFocus);
-            } catch (RuntimeException broken) {
+                supplier = manager.getRecipeIngredients(category, (T) object);
+            } catch (RuntimeException | LinkageError broken) {
                 return null;
             }
-            if (layout.isEmpty()) {
+            if (supplier.getIngredients(RecipeIngredientRole.INPUT).isEmpty()
+                    || supplier.getIngredients(RecipeIngredientRole.OUTPUT).isEmpty()) {
                 return null;
             }
-            var view = layout.get().getRecipeSlotsView();
-            var inputs = new ArrayList<ViewerRecipes.Slot>();
-            for (var slot : view.getSlotViews(RecipeIngredientRole.INPUT)) {
-                if (slot.isEmpty()) {
-                    continue;
-                }
-                var stacks = stacks(slot);
-                if (stacks.isEmpty()) {
-                    return null;
-                }
-                var tag = tag(slot);
-                inputs.add(new ViewerRecipes.Slot(tag.isPresent() ? stacks.subList(0, 1)
-                        : stacks.subList(0, Math.min(stacks.size(), ViewerRecipes.MAX_STACKS)), tag));
+            var id = serverId(object);
+            var partition = id != null ? "id:" + id : text(supplier, List.of(RecipeIngredientRole.INPUT,
+                    RecipeIngredientRole.OUTPUT), false);
+            var encoded = encoded(object instanceof RecipeHolder<?> holder ? holder.value() : (Recipe<?>) object);
+            long digest;
+            if (encoded != null) {
+                var named = ((id == null ? "" : id.toString()) + "\0").getBytes(StandardCharsets.UTF_8);
+                var bytes = new byte[named.length + encoded.length];
+                System.arraycopy(named, 0, bytes, 0, named.length);
+                System.arraycopy(encoded, 0, bytes, named.length, encoded.length);
+                digest = RecipeBuckets.hash(bytes);
+            } else {
+                digest = RecipeBuckets.hash(text(supplier, CONTENT, true));
             }
-            var outputs = new ArrayList<GenericStack>();
-            var byproducts = new ArrayList<GenericStack>();
-            for (var slot : view.getSlotViews(RecipeIngredientRole.OUTPUT)) {
-                var stacks = stacks(slot);
-                if (stacks.isEmpty()) {
-                    continue;
-                }
-                (stacks.size() > 1 || chance(slot, ingredients) ? byproducts : outputs).add(stacks.get(0));
-            }
-            if (inputs.isEmpty() || outputs.isEmpty() || inputs.size() > ViewerRecipes.MAX_SLOTS
-                    || outputs.size() > ViewerRecipes.MAX_STACKS || byproducts.size() > ViewerRecipes.MAX_STACKS
-                    || makesWhatItTakes(inputs, outputs, byproducts)) {
-                return null;
-            }
-            var named = id == null || id.toString().length() > 256 ? Optional.<String>empty()
-                    : Optional.of(id.toString());
-            return new ViewerRecipes.Recipe(categoryId, named, inputs, outputs, byproducts);
+            return new RecipeBuckets.Fingerprint(RecipeBuckets.hash(categoryId + "\0" + partition), digest);
         }
+
+        /**
+         * The recipe as a datapack writes it, every registry entry by name; null when its serializer cannot write it.
+         * Not the network encoding: that writes registry entries by number, and a pack that drops a mod renumbers
+         * most of them (ATM10, 2026-11-02: 73,070 recipes with unchanged ingredients changed their bytes).
+         */
+        private byte @Nullable [] encoded(Recipe<?> recipe) {
+            try {
+                return Recipe.CODEC.encodeStart(ops, recipe).result().map(tag -> tag.toString()
+                        .getBytes(StandardCharsets.UTF_8)).orElse(null);
+            } catch (RuntimeException | LinkageError broken) {
+                return null;
+            }
+        }
+
+        /** Each role's ingredients as text, sorted, with their components or without. */
+        private String text(IIngredientSupplier supplier, List<RecipeIngredientRole> roles, boolean components) {
+            var text = new StringBuilder();
+            for (var role : roles) {
+                var parts = new ArrayList<String>();
+                for (var typed : supplier.getIngredients(role)) {
+                    parts.add(text(typed, components));
+                }
+                parts.sort(null);
+                text.append(role.name()).append('[').append(String.join(";", parts)).append(']');
+            }
+            return text.toString();
+        }
+
+        /** JEI 19.64 marks {@code getUniqueId} for removal; {@code getUid} gives an object with no stable text. */
+        @SuppressWarnings("removal")
+        private <V> String text(ITypedIngredient<V> typed, boolean components) {
+            if (typed.getIngredient() instanceof ItemStack stack) {
+                return "i:" + BuiltInRegistries.ITEM.getKey(stack.getItem())
+                        + (components ? patch(stack.getComponentsPatch()) : "") + "x" + stack.getCount();
+            }
+            if (typed.getIngredient() instanceof FluidStack fluid) {
+                return "f:" + BuiltInRegistries.FLUID.getKey(fluid.getFluid())
+                        + (components ? patch(fluid.getComponentsPatch()) : "") + "x" + fluid.getAmount();
+            }
+            try {
+                var helper = ingredients.getIngredientHelper(typed.getType());
+                return typed.getType().getUid() + ":" + helper.getUniqueId(typed.getIngredient(), UidContext.Recipe)
+                        + "x" + helper.getAmount(typed.getIngredient());
+            } catch (RuntimeException | LinkageError broken) {
+                return typed.getType().getUid() + ":{!}";
+            }
+        }
+
+        /** A component patch as text; {@code Tag.toString} sorts compound keys, so map order does not show. */
+        private String patch(DataComponentPatch patch) {
+            if (patch.isEmpty()) {
+                return "";
+            }
+            var result = DataComponentPatch.CODEC.encodeStart(ops, patch);
+            return result.result().map(Tag::toString).orElse("{!}");
+        }
+
+        @Override
+        public Job<BucketedRecipes.Entry<ViewerRecipes.Recipe>> read(List<RecipeBuckets.Fingerprint> wanted) {
+            var behind = new HashMap<RecipeBuckets.Fingerprint, ArrayDeque<Object>>();
+            for (var index = 0; index < prints.size(); index++) {
+                behind.computeIfAbsent(prints.get(index), each -> new ArrayDeque<>()).add(objects.get(index));
+            }
+            var next = wanted.iterator();
+            return (deadline, out) -> {
+                while (System.nanoTime() < deadline) {
+                    if (!next.hasNext()) {
+                        return true;
+                    }
+                    var print = next.next();
+                    var queue = behind.get(print);
+                    var object = queue == null ? null : queue.poll();
+                    out.accept(object == null || category == null
+                            ? new BucketedRecipes.Entry<>(print, BucketedRecipes.Status.FAILED, null)
+                            : entry(category, categoryId, print, object));
+                }
+                return false;
+            };
+        }
+    }
+
+    /** The slots JEI lays a recipe out with, read as a record; skipped when it reads as no processing recipe. */
+    @SuppressWarnings("unchecked")
+    private <T> BucketedRecipes.Entry<ViewerRecipes.Recipe> entry(IRecipeCategory<T> category, String categoryId,
+            RecipeBuckets.Fingerprint print, Object object) {
+        Optional<? extends mezz.jei.api.gui.IRecipeLayoutDrawable<T>> layout;
+        try {
+            layout = manager.createRecipeLayoutDrawable(category, (T) object, noFocus);
+        } catch (RuntimeException | LinkageError broken) {
+            layout = Optional.empty();
+        }
+        if (layout.isEmpty()) {
+            return new BucketedRecipes.Entry<>(print, BucketedRecipes.Status.FAILED, null);
+        }
+        var recipe = read(layout.get().getRecipeSlotsView(), categoryId, serverId(object));
+        return recipe == null ? new BucketedRecipes.Entry<>(print, BucketedRecipes.Status.SKIPPED, null)
+                : new BucketedRecipes.Entry<>(print, BucketedRecipes.Status.RECIPE, recipe);
+    }
+
+    /** The item tag whose items are the slot's, in order; none when the slot holds anything but items. */
+    private Optional<ResourceLocation> tag(IRecipeSlotView slot) {
+        if (tags == null) {
+            tags = itemTags();
+        }
+        var items = new ArrayList<Item>();
+        for (var typed : slot.getAllIngredients().toList()) {
+            if (!(typed.getIngredient() instanceof ItemStack stack)) {
+                return Optional.empty();
+            }
+            items.add(stack.getItem());
+        }
+        return Optional.ofNullable(tags.get(items));
+    }
+
+    private ViewerRecipes.@Nullable Recipe read(IRecipeSlotsView view, String categoryId,
+            @Nullable ResourceLocation id) {
+        var inputs = new ArrayList<ViewerRecipes.Slot>();
+        for (var slot : view.getSlotViews(RecipeIngredientRole.INPUT)) {
+            if (slot.isEmpty()) {
+                continue;
+            }
+            var stacks = stacks(slot);
+            if (stacks.isEmpty()) {
+                return null;
+            }
+            var tag = tag(slot);
+            inputs.add(new ViewerRecipes.Slot(tag.isPresent() ? stacks.subList(0, 1)
+                    : stacks.subList(0, Math.min(stacks.size(), ViewerRecipes.MAX_STACKS)), tag));
+        }
+        var outputs = new ArrayList<GenericStack>();
+        var byproducts = new ArrayList<GenericStack>();
+        for (var slot : view.getSlotViews(RecipeIngredientRole.OUTPUT)) {
+            var stacks = stacks(slot);
+            if (stacks.isEmpty()) {
+                continue;
+            }
+            (stacks.size() > 1 || chance(slot, ingredients) ? byproducts : outputs).add(stacks.get(0));
+        }
+        if (inputs.isEmpty() || outputs.isEmpty() || inputs.size() > ViewerRecipes.MAX_SLOTS
+                || outputs.size() > ViewerRecipes.MAX_STACKS || byproducts.size() > ViewerRecipes.MAX_STACKS
+                || makesWhatItTakes(inputs, outputs, byproducts)) {
+            return null;
+        }
+        var named = id == null || id.toString().length() > 256 ? Optional.<String>empty()
+                : Optional.of(id.toString());
+        return new ViewerRecipes.Recipe(categoryId, named, inputs, outputs, byproducts);
     }
 
     /** Whether the outputs and byproducts are the inputs' first stacks, counted as a multiset. */
@@ -358,10 +538,5 @@ final class JeiRecipeScanner implements ViewerScanner {
     private static boolean chance(String text) {
         var lower = text.toLowerCase(Locale.ROOT);
         return CHANCE.stream().anyMatch(lower::contains);
-    }
-
-    private static String key(ViewerRecipes.Recipe recipe) {
-        return recipe.category() + "|" + recipe.id().orElseGet(() -> recipe.inputs() + ">" + recipe.outputs() + "+"
-                + recipe.byproducts());
     }
 }

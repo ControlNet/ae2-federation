@@ -31,6 +31,7 @@ import space.controlnet.ae2federation.automation.AutomationRegistration;
 import space.controlnet.ae2federation.automation.ProgramHost;
 import space.controlnet.ae2federation.automation.ProgramRun;
 import space.controlnet.ae2federation.automation.ViewerRecipes;
+import space.controlnet.ae2federation.automation.ViewerScans;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.script.Runner;
 
@@ -79,7 +80,7 @@ abstract class ViewerPatternScenario implements UIScenario {
                 .teardownServer("remove the scene", this::remove)
                 .timeoutMs(240_000)
                 .waitUntilServer("JEI's recipes reached the server", context ->
-                        ViewerRecipes.get(context.server()).size() > 0)
+                        ViewerScans.progress(context.server()).done())
                 .server("the scan kept only real recipes that make something else", ViewerPatternScenario::onlyReal)
                 .server("build the scene", this::build)
                 .awaitClientChunk(new BlockPos(x, 64, z))
