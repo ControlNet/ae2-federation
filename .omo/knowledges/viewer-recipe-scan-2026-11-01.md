@@ -53,6 +53,11 @@ JEI, scanned on the client and cached in the world save.
   -PfederationUiSelection=ui.automation-viewer-pattern -PfederationUiOutputDir=$PWD/build/viewer-pattern-check
   -PfederationUiWatchdogSec=600` under `xvfb-run`; source set `viewerTest` (`common/src/viewertest/java`), game
   directory `run-viewer-uitest`.
+- Recipe sync page: same command with `-PfederationUiSelection=ui.viewer-recipe-sync` (about 80 s; the world is
+  fresh each run, `saves/ldtest_<pid>`, so the first sync is always a first sync). Shots: first sync, done, Rescan
+  all (reads nothing), a row opened, its forced rescan (reads the whole category, changes nothing), Chinese. GameTest
+  `aForcedRescanReadsTheWholeCategory` checks the status model (bucket states, viewer states, revision).
+- `timeoutMs` in a uitest scenario covers only the next step; put it before every long wait.
 
 ## Create 6.0.10 (scan read 2026-11-01)
 
@@ -280,6 +285,25 @@ RecipeSyncV1Downloader + V1First/V1Done/V1Failed).
   dropped the mod); otherwise it is kept (that viewer lacks a client mod).
 - A new category gets bits from the viewer's count; a category splits its buckets on the server (from stored
   partitions) once it holds 4x what they were made for.
+
+## Recipe sync page (built 2026-11-02, commits 3bac840a server model, 5727a20c page)
+
+- Server keeps every category of the round (`State.round`) with per-bucket states (`ViewerSyncStatus.Bucket`), read /
+  asked / dropped / changed counts, per-lease asked and received counts and start time; `revision` bumps on every
+  message. `ViewerScans.status(server)` builds `ViewerSyncStatus`; the menu sends it as a tag only while the page is
+  open, rebuilt at most once a second on a new revision and every 5 s anyway (players joining).
+- `changed` = entries added that were not saved + saved ones that did not come back, per committed bucket; a bucket is
+  UPDATED only if its digest changed. So a forced rescan (Task `force`, every bucket treated as differing, the server
+  drops and re-adds) of an unchanged category reports 0 changed and MATCHED buckets.
+- Rescan from the page: both-ways string binding `open/<n>/<category or *>`, n counted by the page so one press
+  rescans once; gated on the menu's domain context (assistant choice). Skipped/failed entries carry the recipe ID
+  (saved as `i`) so the failed row can name them.
+- Client page `FederationRecipeSyncView`: one custom-drawn board (statistics-view primitives), viewer colours by
+  order, the bucket grid shrinks 4/3/2 px and then shares squares (most important state wins).
+- Differences from canvas V1 (assistant choices): the legend says "to check", not "to re-read" (a queued bucket may
+  match); a viewer that has not said hello is "Waiting for a recipe viewer" (the server cannot tell no JEI from JEI
+  still loading); the Changed column shows only what committed buckets changed, not a forecast.
+- Payload registrar version 3 (Task gained `force`, Entry its ID).
 
 ## Open (assistant choices, not owner decisions)
 
