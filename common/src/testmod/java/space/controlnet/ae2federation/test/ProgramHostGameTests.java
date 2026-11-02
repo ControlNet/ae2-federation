@@ -1341,7 +1341,8 @@ public final class ProgramHostGameTests {
     }
 
     /**
-     * The Recipe sync page's status follows a viewer's round: the first sync updates every bucket; checking all again
+     * The Recipe sync page's status follows a viewer's round: the first sync updates every bucket and finishes though an
+     * empty category is listed last; checking all again
      * reads nothing that matches; a forced rescan of the category leases its buckets, reads every recipe again and drops
      * none, so its buckets match.
      */
@@ -1353,12 +1354,16 @@ public final class ProgramHostGameTests {
         try {
             ViewerScans.reloaded(server);
             var recipes = sortingRecipes(1_200);
-            var viewer = new StandInViewer(helper, Map.of("testviewer:sorting", List.of("minecraft:hopper")), recipes);
+            // A category with no recipes, listed last: the round still finishes once the last task is saved.
+            var categories = new LinkedHashMap<String, List<String>>();
+            categories.put("testviewer:sorting", List.of("minecraft:hopper"));
+            categories.put("testviewer:empty", List.of());
+            var viewer = new StandInViewer(helper, categories, recipes);
             viewer.hello();
             StandInViewer.pumpAll(List.of(viewer));
             var status = ViewerScans.status(server);
             helper.assertTrue(status.firstSync(), "The round began with no recipes saved");
-            helper.assertTrue(status.checkedAt() > 0, "The round finished");
+            helper.assertTrue(status.checkedAt() > 0, "The round finished, its empty category too");
             var sorting = sortingRow(status);
             helper.assertValueEqual(List.of(sorting.recipes(), sorting.read(), sorting.toRead(), sorting.dropped(),
                     sorting.changed(), sorting.listed()), List.of(1_200, 1_200, 1_200, 0, 1_200, 1_200),

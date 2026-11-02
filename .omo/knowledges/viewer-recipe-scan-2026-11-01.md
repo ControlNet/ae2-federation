@@ -55,7 +55,9 @@ JEI, scanned on the client and cached in the world save.
   directory `run-viewer-uitest`.
 - Recipe sync page: same command with `-PfederationUiSelection=ui.viewer-recipe-sync` (about 80 s; the world is
   fresh each run, `saves/ldtest_<pid>`, so the first sync is always a first sync). Shots: first sync, done, Rescan
-  all (reads nothing), a row opened, its forced rescan (reads the whole category, changes nothing), Chinese. GameTest
+  all (reads nothing), a row opened, its forced rescan (reads the whole category, changes nothing); Chinese is its own
+  scenario `ui.viewer-recipe-sync-zh` (language chosen before the screen opens; switching with the screen open leaves
+  the XML labels English; run it alone, as scenarios in one run share the world and its first sync). GameTest
   `aForcedRescanReadsTheWholeCategory` checks the status model (bucket states, viewer states, revision).
 - `timeoutMs` in a uitest scenario covers only the next step; put it before every long wait.
 
@@ -304,6 +306,10 @@ RecipeSyncV1Downloader + V1First/V1Done/V1Failed).
   match); a viewer that has not said hello is "Waiting for a recipe viewer" (the server cannot tell no JEI from JEI
   still loading); the Changed column shows only what committed buckets changed, not a forecast.
 - Payload registrar version 3 (Task gained `force`, Entry its ID).
+- Bug found by the Chinese run (fixed with the round's `open` flag and `finish()` after every assign): JEI lists
+  categories in another order per language; a listed category with 0 recipes leaves the work only when a viewer next
+  looks for a task, so when it came last the round ended without `checkedAt` or its log line. GameTest
+  `aForcedRescanReadsTheWholeCategory` lists an empty category last.
 
 ## Open (assistant choices, not owner decisions)
 

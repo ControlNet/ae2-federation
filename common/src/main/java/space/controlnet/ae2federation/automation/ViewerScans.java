@@ -174,6 +174,8 @@ public final class ViewerScans {
         /** Whether the round began with no recipes saved; when it last finished (wall clock), 0 before. */
         boolean firstSync;
         long checkedAt;
+        /** Whether the round has work it has not finished: set when work is added, cleared when it finishes. */
+        boolean open;
         final Map<UUID, Viewer> viewers = new LinkedHashMap<>();
         /** This round's categories, checked or not, in the order viewers listed them. */
         final Map<String, Work> round = new LinkedHashMap<>();
@@ -481,11 +483,13 @@ public final class ViewerScans {
             state.checking.add(category);
             state.round.put(category, work);
             state.work.put(category, work);
+            state.open = true;
         }
         assign(server, state);
     }
 
     private static void newRound(State state) {
+        state.open = false;
         state.leases.clear();
         state.work.clear();
         state.round.clear();
@@ -561,6 +565,7 @@ public final class ViewerScans {
                 var work = new Work(category, false);
                 state.round.put(category, work);
                 state.work.put(category, work);
+                state.open = true;
             }
         }
     }
@@ -582,6 +587,7 @@ public final class ViewerScans {
                 next(server, state, each.getKey(), viewer, player);
             }
         }
+        finish(server, state);
     }
 
     private static void next(MinecraftServer server, State state, UUID id, Viewer viewer, ServerPlayer player) {
@@ -682,12 +688,22 @@ public final class ViewerScans {
                 state.work.remove(lease.category);
             }
         }
-        if (state.work.isEmpty() && state.leases.isEmpty()) {
-            state.checkedAt = System.currentTimeMillis();
-            LOGGER.info("Checked every recipe viewer category: {} recipes read, {} saved in {} categories",
-                    state.saved, recipes.size(), recipes.stored().size());
-        }
         assign(server, state);
+    }
+
+    /**
+     * The round, once it has no work and no task left: a category listed with no recipes leaves the work only when a
+     * viewer next looks for a task, which may be after the last task was saved.
+     */
+    private static void finish(MinecraftServer server, State state) {
+        if (!state.open || !state.work.isEmpty() || !state.leases.isEmpty()) {
+            return;
+        }
+        state.open = false;
+        state.checkedAt = System.currentTimeMillis();
+        var recipes = ViewerRecipes.get(server);
+        LOGGER.info("Checked every recipe viewer category: {} recipes read, {} saved in {} categories",
+                state.saved, recipes.size(), recipes.stored().size());
     }
 
     private static void refuse(MinecraftServer server, State state, Lease lease, String why) {

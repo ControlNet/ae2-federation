@@ -15,8 +15,8 @@ import space.controlnet.ae2federation.automation.ViewerSyncStatus.CategoryRow;
 /**
  * The Recipe sync page while the client's JEI sends its recipes for the first time, once the round is done, after
  * Rescan all (every bucket matches, nothing read again), and after the largest category's row is opened and rescanned
- * (every recipe in it read again, none dropped or changed), then in Simplified Chinese. Runs only on the viewer client
- * ({@code viewerUiTestClient}).
+ * (every recipe in it read again, none dropped or changed). Runs only on the viewer client ({@code viewerUiTestClient});
+ * {@link ViewerRecipeSyncChineseScenario} has the page in Chinese.
  */
 @LDLRegisterClient(name = "ui.viewer-recipe-sync", group = "ae2federation", registry = UIScenario.REGISTRY,
         environment = RegistrationEnvironment.DEV_ONLY)
@@ -80,30 +80,7 @@ public final class ViewerRecipeSyncScenario implements UIScenario {
                 .frames(30)
                 .check("a forced rescan that changed nothing says so", context ->
                         context.el("#sync_summary").text().endsWith("no changes"))
-                .screenshot("ui-recipe-sync-row-rescanned")
-                .teardown("restore English even after failure", context -> {
-                    if (context.firstAttempt()) {
-                        context.mc().getLanguageManager().setSelected("en_us");
-                        context.mc().options.languageCode = "en_us";
-                        context.put("languageRestore", context.mc().reloadResourcePacks());
-                    }
-                    java.util.concurrent.CompletableFuture<Void> reload = context.get("languageRestore");
-                    if (!reload.isDone()) context.repeat("English resource reload");
-                    else reload.join();
-                })
-                .step("select Simplified Chinese", context -> {
-                    if (context.firstAttempt()) {
-                        context.mc().getLanguageManager().setSelected("zh_cn");
-                        context.mc().options.languageCode = "zh_cn";
-                        context.put("languageReload", context.mc().reloadResourcePacks());
-                    }
-                    java.util.concurrent.CompletableFuture<Void> reload = context.get("languageReload");
-                    if (!reload.isDone()) context.repeat("Chinese resource reload");
-                    else reload.join();
-                }).timeoutMs(45_000)
-                .waitUntil("Chinese resources finish loading", context -> context.mc().getOverlay() == null)
-                .frames(10)
-                .screenshot("ui-recipe-sync-zh");
+                .screenshot("ui-recipe-sync-row-rescanned");
     }
 
     private static boolean leased(ServerContext context) {
