@@ -146,6 +146,31 @@ generatorgalore:solid_fuels 127,242, which the scan itself does not send). Raw d
   the change digest (C) is per recipe, compared per bucket first and then per recipe, so noise costs re-reading the
   noisy recipes only, not whole buckets.
 
+## Partition keys (offline, on the two fingerprint runs, 2026-11-02)
+
+Same 290,801 recipes as the fingerprint runs minus generatorgalore:solid_fuels; bucket count per category = smallest
+power of two >= count / 500, fixed from run 1 (1,229 buckets). Script and report: worktree `build/bucket-key-check/`.
+Partition key hashed with SHA-256 (first 8 bytes) of category + key, bucket = hash mod count.
+
+| Key | Largest bucket | Buckets with other members in run 2 | Dirty buckets (C digest) | Digests listed | Re-read |
+|---|---|---|---|---|---|
+| K1: item/fluid ID + amount | 664 (p99 527) | 7 (230 keys) | 143 | 48,479 (388 KB) | 1,058 |
+| K3: K1 + component type names | 1,042 | 7 | 128 | 43,492 | 1,058 |
+| KA: with component values | 537 | 163 (anvil 124) | 185 | 64,341 | 1,058 |
+| KID: recipe ID, else KA | 537 | 153 (anvil 124) | 183 | 64,041 | 1,073 |
+
+- K1 buckets stay even: same-key groups exist (Reliquary mob charm info 376, potion/enchanted-book combos 155) but no
+  bucket passes 1,000. The 7 unstable K1 buckets are loot-rolled recipes (EvilCraft spirit furnace, Productive
+  Metalworks casting, Tombstone combine, Astral altar, XyCraft extractor): their contents really differ per run.
+- With the per-recipe diff the re-read count does not depend on the partition key (a recipe that moves bucket is
+  re-read in its new bucket either way); the key decides how many buckets get dirty, the digest list size, and whether
+  a finished bucket task stays finished.
+- 465 of the 1,058 re-reads were industrialforegoing:mycelial_potion: the component codec fails and its error text
+  holds `Potion@<hash>`. Hashing a fixed marker for a failed encoding instead: 593 re-reads, 142 dirty buckets.
+  The rest: EvilCraft 212, anvil 210 (Relics random data), jeistuff chest loot 51, casting 27, Create brewing 26.
+- Doubling a category's bucket count sends bucket b only to b or b + n (checked on every 50th recipe). A synthetic
+  edit of 100 random run-2 digests (test-only data) was found exactly: 100 re-reads.
+
 ## Open (assistant choices, not owner decisions)
 
 - Trust: any player's JEI replaces the catalog for the whole world.
