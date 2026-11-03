@@ -67,8 +67,8 @@ public final class WrenchDismantleGameTests {
                 helper.assertTrue(RouterBlock.formed(helper.getBlockState(converter)), "Waiting for the converter to form");
                 // A plain wrench click on a cable only selects for a bundle.
                 use(helper, player, new BlockPos(12, 2, 4), false);
-                helper.assertTrue(helper.getBlockState(new BlockPos(12, 2, 4))
-                        .is(RouterRegistration.FEDERATION_CABLE.get()), "a plain wrench click removes nothing");
+                GameTestChecks.once(helper, () -> helper.assertTrue(helper.getBlockState(new BlockPos(12, 2, 4))
+                        .is(RouterRegistration.FEDERATION_CABLE.get()), "a plain wrench click removes nothing"));
                 for (var cell : blocks.keySet()) use(helper, player, cell, true);
                 phase[0] = 1;
                 throw new GameTestAssertException("Waiting for the rest of the converter to unform");
