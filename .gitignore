@@ -47,3 +47,8 @@ __pycache__/
 /docs/art/cable-flow-prototype/artifact.json
 /docs/art/cable-flow-prototype/profiles.json
 /build/scratch.py
+
+# Forge 1.20.1 port
+forge-1.20.1/libs/*.jar
+forge-1.20.1/run/
+forge-1.20.1/build/

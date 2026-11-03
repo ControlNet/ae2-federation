@@ -11,12 +11,12 @@ def configuredProjectPaths = providers.provider {
 
 tasks.register('verifyTaskOneStructure') {
     group = 'verification'
-    description = 'Verifies that Task 1 exposes exactly one Minecraft target.'
+    description = 'Verifies that Task 1 exposes the NeoForge 1.21.1 target and the Forge 1.20.1 port target.'
     def actualProjects = configuredProjectPaths.get()
     inputs.property('configuredProjectPaths', actualProjects.toList().sort())
 
     doLast {
-        def expectedProjects = [':neoforge-1.21.1'] as Set
+        def expectedProjects = [':neoforge-1.21.1', ':forge-1.20.1'] as Set
         if (actualProjects != expectedProjects) {
             throw new GradleException("Expected only ${expectedProjects}, found ${actualProjects}")
         }
