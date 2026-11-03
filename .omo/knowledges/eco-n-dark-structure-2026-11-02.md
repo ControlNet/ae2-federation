@@ -45,6 +45,15 @@ body darkens, and coloured pixels (tier lights, coolant) keep the hosts' colours
   round, coolers included. `c4-n4-back.png` shows the cooler regression and its fix.
 - Unit: `FederationComputationLooksTest` (3). Whole suite 2191/2191.
 - Compat: `python3 tools/compat_run.py --accept-eula -j 2 neoecoae neoecoprototype` -> 58/58 and 74/74.
+- 2026-11-03 follow-up, current jar (`build/eco-dark-check/run_tiers.sh`, scene `tiers_scene.py`): C6/N6/C9/N9 side by
+  side, `tiers-{angle,back}-before-after.png` - C6/C9 unchanged, N6/N9 dark. N9 stays dark after a nether trip and
+  after going 3000 blocks away and back (`n9-reload.png`: client level unload and chunk reload refill the bounds). Same
+  scene with Sodium 0.8.13 on the client: identical (`tiers-sodium.png`).
+- Neo ECO calls `updateState` on cluster changes, disconnects and main-node state changes, not per tick, so the
+  `markForUpdate` it now triggers is event-driven.
+- The quad cache is keyed by quad identity; it stays bounded because the hosts' part models (drive, cooler wrappers)
+  return their baked quads, not new ones per call (checked in Neo ECO 21.2.10 and Prototype 1.4.0 bytecode). A host
+  model that built fresh quads per call would grow it.
 - `tools/visual/validate_assets.py` fails on `gui/eco_computation_controller` on HEAD as well (the shipped 21.2.1 GUI
   atlas size); not caused by this.
 
@@ -57,4 +66,6 @@ body darkens, and coloured pixels (tier lights, coolant) keep the hosts' colours
   identical part textures (checked). Regenerate if a host redraws them.
 - The dark copies are more adapted host art (GPL-3.0); list them with the N-series recolours when the notices'
   Artwork section is written.
-- Not checked under Sodium/Embeddium: no client profile with them ran.
+- Breaking or hitting a dark part sprays the host's light particles: the particle sprite comes from the block
+  entity's model data, which does not carry the structure flag.
+- Embeddium and Iris shader packs not checked (Sodium checked, see above).
