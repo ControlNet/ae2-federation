@@ -14,7 +14,7 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  * branch covers, so the junction sits on the branch's own beam. The beam also turns toward a device that takes a whole
  * side row of its layer, as an ordinary cable's beam runs into a device, once for every stretch of layers one device
  * body takes: at the middle layer, or between the two middle ones, whose box then covers both. Every other cell draws
- * none ({@code length} 0).
+ * none ({@code length} 0), and neither does a layer an earlier layer's box covers.
  *
  * @param mask the sides the stretched beam leaves through, as {@link CableVisualConnections#mask} encodes them
  */
@@ -63,38 +63,76 @@ public record BundleBeam(Direction.Axis axis, int mask, int length, int side) {
     }
 
     /**
-     * The beam of a layer with no branch. Where devices take its side rows, the layers whose rows the same bodies take
-     * make one stretch, and only its middle turns toward them.
+     * The beam of a layer with no branch. Each device body that takes its side rows turns the beam once, at the middle
+     * layer of the stretch it takes or at the boundary of its two middle ones. Two layers share one box for such a
+     * boundary only when every body touching either layer turns there; otherwise the body turns at its lower middle
+     * layer, so no turn lands where its body is not.
      */
     private static BundleBeam plain(BundleLook look, IntFunction<Optional<BundleLook>> layer, Direction before,
             Direction after, int side) {
         var axis = look.axis();
-        int turns = contacts(look);
-        int back = 0;
-        for (var at = look; at.contactsBefore() != 0; back++) {
-            var previous = layer.apply(-back - 1).filter(BundleBeam::branchless);
-            if (previous.isEmpty()) break;
-            at = previous.get();
-            turns |= contacts(at);
+        var here = Turns.of(look, 0, layer);
+        if (here.upper() != 0 && layer.apply(-1).filter(BundleBeam::branchless)
+                .filter(previous -> Turns.paired(previous, Turns.of(previous, -1, layer), look, here)).isPresent()) {
+            return new BundleBeam(axis, 0, 0, side);
         }
-        int ahead = 0;
-        for (var at = look; at.contactsAfter() != 0; ahead++) {
-            var next = layer.apply(ahead + 1).filter(BundleBeam::branchless);
-            if (next.isEmpty()) break;
-            at = next.get();
-            turns |= contacts(at);
-        }
-        int stretch = back + 1 + ahead;
-        int middle = (stretch - 1) / 2;
         int mask = leaves(look, before) ? bit(before) : 0;
-        if (stretch % 2 == 0 && back == middle + 1) return new BundleBeam(axis, 0, 0, side);
-        if (stretch % 2 == 0 && back == middle) {
+        var next = here.lower() == 0 ? Optional.<BundleLook>empty() : layer.apply(1).filter(BundleBeam::branchless);
+        if (next.filter(upper -> Turns.paired(look, here, upper, Turns.of(upper, 1, layer))).isPresent()) {
             // The two middle layers share one box, which turns at their boundary.
-            if (layer.apply(1).filter(next -> leaves(next, after)).isPresent()) mask |= bit(after);
-            return new BundleBeam(axis, mask | turns, 2, side);
+            if (leaves(next.get(), after)) mask |= bit(after);
+            return new BundleBeam(axis, mask | here.lower(), 2, side);
         }
         if (leaves(look, after)) mask |= bit(after);
-        return new BundleBeam(axis, back == middle ? mask | turns : mask, 1, side);
+        return new BundleBeam(axis, mask | here.middle() | here.lower(), 1, side);
+    }
+
+    /**
+     * The sides of one layer whose device body turns the beam: at the middle layer of the stretch the body takes
+     * ({@code middle}), or at the boundary of its two middle layers, this layer being the lower or the upper one.
+     */
+    private record Turns(int middle, int lower, int upper) {
+        /** The turns of {@code look}, the layer {@code offset} layers along from the one {@code layer} counts from. */
+        static Turns of(BundleLook look, int offset, IntFunction<Optional<BundleLook>> layer) {
+            int middle = 0;
+            int lower = 0;
+            int upper = 0;
+            for (var side : Direction.values()) {
+                if (!look.contact(side)) continue;
+                int bit = bit(side);
+                int back = run(look, offset, -1, side, layer);
+                int stretch = back + 1 + run(look, offset, 1, side, layer);
+                int half = (stretch - 1) / 2;
+                if (stretch % 2 == 1) {
+                    if (back == half) middle |= bit;
+                } else if (back == half) {
+                    lower |= bit;
+                } else if (back == half + 1) {
+                    upper |= bit;
+                }
+            }
+            return new Turns(middle, lower, upper);
+        }
+
+        /** Whether the boundary between two adjacent layers is where every body touching either of them turns. */
+        static boolean paired(BundleLook lowerLook, Turns lower, BundleLook upperLook, Turns upper) {
+            return lower.lower() != 0 && lower.lower() == contacts(lowerLook) && upper.upper() == contacts(upperLook)
+                    && lower.lower() == upper.upper();
+        }
+
+        /** How many layers further {@code step}'s way the body on {@code side} still takes, without a branch. */
+        private static int run(BundleLook look, int offset, int step, Direction side,
+                IntFunction<Optional<BundleLook>> layer) {
+            // BundleLook's masks count sides by their 3D data value.
+            int bit = 1 << side.get3DDataValue();
+            int count = 0;
+            for (var at = look; ((step < 0 ? at.contactsBefore() : at.contactsAfter()) & bit) != 0; count++) {
+                var neighbour = layer.apply(offset + step * (count + 1)).filter(BundleBeam::branchless);
+                if (neighbour.isEmpty()) break;
+                at = neighbour.get();
+            }
+            return count;
+        }
     }
 
     private static boolean branchless(BundleLook look) {

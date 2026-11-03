@@ -69,6 +69,8 @@ public final class RefinedDeviceRenderer<T extends BlockEntity> implements Block
                     var adjacent=cell.relative(face);
                     if (!(level.getBlockEntity(adjacent) instanceof FederationCableBlockEntity cable)) continue;
                     var bundle=cable.bundleBeam();
+                    if (bundle!=null && bundle.length()==0 && face.getAxisDirection()==Direction.AxisDirection.NEGATIVE)
+                        bundle=covering(level,adjacent,face,bundle);
                     int bit=java.util.List.of(space.controlnet.ae2federation.router.CableVisualConnections.DIRECTIONS)
                             .indexOf(face.getOpposite());
                     if (((bundle==null ? cable.flowMask() : bundle.mask()) & 1<<bit)==0) continue;
@@ -94,6 +96,20 @@ public final class RefinedDeviceRenderer<T extends BlockEntity> implements Block
         }
         stack.popPose();
         CableFlowRenderer.endSceneBatch(level,buffers);
+    }
+    /**
+     * The beam of the box an earlier layer stretches over {@code cell}'s layer, looking back {@code back} along the
+     * bundle, or {@code own} when no box covers it: such a layer draws none, but the carrier still leaves through it.
+     */
+    private static BundleBeam covering(net.minecraft.world.level.Level level,BlockPos cell,Direction back,BundleBeam own) {
+        for (int k=1;k<own.side();k++) {
+            if (!(level.getBlockEntity(cell.relative(back,k)) instanceof FederationCableBlockEntity cable)) break;
+            var beam=cable.bundleBeam();
+            if (beam==null || beam.axis()!=back.getAxis()) break;
+            if (beam.length()>k) return beam;
+            if (beam.length()>0) break;
+        }
+        return own;
     }
     private static void drawCore(String name,PoseStack stack,MultiBufferSource buffers,int light,int overlay) {
         for (int pass=0;pass<2;pass++) {
