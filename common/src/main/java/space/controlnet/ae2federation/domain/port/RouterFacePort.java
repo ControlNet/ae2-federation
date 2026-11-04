@@ -292,9 +292,25 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     }
 
     private RouterPortBinding resolve() {
+        refreshSweptCache();
         syncNode();
         var link = resolveLink();
         return linking.getAsBoolean() ? link : RouterPortBinding.Disconnected.INSTANCE;
+    }
+
+    /**
+     * In a sweep, reads the neighbour's Federation port as it is now, before the face's node and its link both read the
+     * cache: a face that links again then drops its node in the same resolve.
+     */
+    private void refreshSweptCache() {
+        var neighborPosition = routerPosition.relative(face);
+        if (!sweeping || level == null || !level.isLoaded(neighborPosition) || federationCache == null) return;
+        sweeping = false;
+        var current = level.getCapability(FederationPortCapability.BLOCK, neighborPosition, face.getOpposite());
+        if (!java.util.Objects.equals(current, federationCache.getCapability())) {
+            // The cache missed an invalidation: a new one reads the neighbour as it is now from here on.
+            federationCache = federationCache();
+        }
     }
 
     private RouterPortBinding resolveLink() {
@@ -303,15 +319,6 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
             return RouterPortBinding.Disconnected.INSTANCE;
         }
         var federationPort = federationCache.getCapability();
-        if (sweeping) {
-            sweeping = false;
-            var current = level.getCapability(FederationPortCapability.BLOCK, neighborPosition, face.getOpposite());
-            if (!java.util.Objects.equals(current, federationPort)) {
-                // The cache missed an invalidation: a new one reads the neighbour as it is now from here on.
-                federationCache = federationCache();
-                federationPort = current;
-            }
-        }
         if (reciprocal(federationPort)) {
             return new RouterPortBinding.Federation(federationPort);
         }

@@ -805,6 +805,77 @@ public final class RouterGameTests {
     }
 
     /**
+     * A Switch face beside a Provider's front whose cache went stale while the face still had a node, as a missed event
+     * leaves it, links in its sweep and drops the node in that same resolve, not one resolve later. TEST-ONLY: the
+     * stale cache and the leftover node are made through reflection.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void switchFaceDropsItsNodeWhenItsSweepLinks(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeSwitch(CENTER);
+        helper.setBlock(CENTER.east(), space.controlnet.ae2federation.processing.ProcessingRegistration.PROVIDER.get()
+                .defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING,
+                        Direction.WEST));
+        var phase = new int[1];
+        var staleAt = new long[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                        "Waiting for the Provider's front to link");
+                helper.assertTrue(faceNode(router, Direction.EAST) == null, "A linked face has no node");
+                staleFederationCache(router, Direction.EAST);
+                leftoverNode(router, Direction.EAST);
+                staleAt[0] = helper.getTick();
+                phase[0] = 1;
+                helper.fail("Waiting for the sweep");
+            }
+            helper.assertTrue(helper.getTick() <= staleAt[0] + 150, "The sweep must find the face within its period");
+            helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                    "Waiting for the sweep to link the face again");
+            // Checked once, on the tick the link comes back: a later resolve would drop the node anyway.
+            GameTestChecks.once(helper, () -> helper.assertTrue(faceNode(router, Direction.EAST) == null,
+                    "The resolve that links the face must also drop its node"));
+            RouterEvidence.write("switchfacedropsitsnodewhenitssweeplinks", 3, Map.of(
+                    "sweepRecovers", "federation", "nodeDropped", "same resolve", "sweepWithinTicks", "150"));
+            fixtures.close();
+        });
+    }
+
+    private static Object facePort(space.controlnet.ae2federation.router.RouterBlockEntity router, Direction face)
+            throws ReflectiveOperationException {
+        var portsField = space.controlnet.ae2federation.router.RouterBlockEntity.class.getDeclaredField("facePorts");
+        portsField.setAccessible(true);
+        return ((java.util.Map<?, ?>) portsField.get(router)).get(face);
+    }
+
+    private static Object faceNode(space.controlnet.ae2federation.router.RouterBlockEntity router, Direction face) {
+        try {
+            var port = facePort(router, face);
+            var nodeField = port.getClass().getDeclaredField("boundaryNode");
+            nodeField.setAccessible(true);
+            return nodeField.get(port);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("The test must reach the Switch face's node", exception);
+        }
+    }
+
+    /** TEST-ONLY: gives the face the node it would still hold from before, and leaves no work pending. */
+    private static void leftoverNode(space.controlnet.ae2federation.router.RouterBlockEntity router, Direction face) {
+        try {
+            var port = facePort(router, face);
+            var createNode = port.getClass().getDeclaredMethod("createNode");
+            createNode.setAccessible(true);
+            createNode.invoke(port);
+            var dirtyField = port.getClass().getDeclaredField("dirty");
+            dirtyField.setAccessible(true);
+            dirtyField.setBoolean(port, false);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("The test must reach the Switch face's node", exception);
+        }
+    }
+
+    /**
      * A face that resolves to the same link again, as in every sweep or a neighbour update that changed nothing, keeps
      * the binding it had, so whoever holds it still owns the face's link.
      */
