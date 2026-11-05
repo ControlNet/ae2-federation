@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.bundle;
 
+import appeng.util.InteractionUtil;
 import java.util.Objects;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -132,6 +133,10 @@ public final class BundleInteraction {
             player.displayClientMessage(BundleText.notEnough(cost, held), true);
             return;
         }
+        // As AE2's tools: a refused position stops the placement without a word.
+        for (var cell : placement.cells()) {
+            if (!WrenchDismantle.permitted(player, level, cell)) return;
+        }
         var cable = RouterRegistration.FEDERATION_CABLE.get().defaultBlockState();
         for (var cell : placement.cells()) level.setBlock(cell, cable, Block.UPDATE_ALL);
         if (!player.getAbilities().instabuild) take(player, hand, cost);
@@ -162,11 +167,13 @@ public final class BundleInteraction {
     }
 
     /**
-     * The client's three clicks, checked again here: each near the player, a valid box, and every cell a free
-     * Federation Cable. Tells the player what became of them on the action bar.
+     * The client's three clicks, checked again here: a player who is no spectator and holds a wrench, each click near
+     * the player, a valid box, every cell a free Federation Cable the player may change. Tells the player what became
+     * of them on the action bar; like AE2's tools, it says nothing when the player may not change a cell.
      */
     public static void form(ServerPlayer player, BlockPos first, BlockPos second, BlockPos third, Direction face) {
         var level = player.serverLevel();
+        if (player.isSpectator() || !holdsWrench(player)) return;
         for (var click : new BlockPos[] {first, second, third}) {
             if (player.distanceToSqr(Vec3.atCenterOf(click)) > MAX_DISTANCE * MAX_DISTANCE) {
                 player.displayClientMessage(BundleText.tooFar(), true);
@@ -179,6 +186,9 @@ public final class BundleInteraction {
             return;
         }
         var segment = ((BundleSelection.Box) result).segment();
+        for (var cell : segment.cells()) {
+            if (!WrenchDismantle.permitted(player, level, cell)) return;
+        }
         var bundles = BundledCables.get(level);
         var refusal = bundles.formable(level, segment);
         if (refusal.isPresent()) {
@@ -192,6 +202,11 @@ public final class BundleInteraction {
         var sound = cable.getSoundType(level, third, player);
         level.playSound(null, third, sound.getPlaceSound(), SoundSource.BLOCKS, (sound.getVolume() + 1) / 2,
                 sound.getPitch() * 0.8f);
+    }
+
+    private static boolean holdsWrench(Player player) {
+        return InteractionUtil.canWrenchDisassemble(player.getMainHandItem())
+                || InteractionUtil.canWrenchDisassemble(player.getOffhandItem());
     }
 
     private static void consume(PlayerInteractEvent.RightClickBlock event) {
