@@ -646,7 +646,7 @@
   "ae2federation.jade.endpoint.claimed": "联邦模式 · 已归属",
   "ae2federation.jade.endpoint.unclaimed": "联邦模式 · 尚无归属",
   "ae2federation.jade.pattern_provider": "样板 %s/%s · 映射 %s",
-  "config.jade.plugin_ae2federation.device": "联邦路由器、交换机与光束转换器",
+  "config.jade.plugin_ae2federation.device": "联邦设备结构与交换机网络（路由器、交换机、光束转换器、光束成型器、量子立方）",
   "config.jade.plugin_ae2federation.endpoint": "联邦处理端点模式",
   "config.jade.plugin_ae2federation.pattern_provider": "联邦样板供应器样板",
   "config.jade.plugin_ae2federation.beam_converter": "联邦光束转换器缓存",

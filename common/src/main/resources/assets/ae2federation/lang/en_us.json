@@ -646,7 +646,7 @@
   "ae2federation.jade.endpoint.claimed": "Federated mode · claimed",
   "ae2federation.jade.endpoint.unclaimed": "Federated mode · unclaimed",
   "ae2federation.jade.pattern_provider": "Patterns %s/%s · mappings %s",
-  "config.jade.plugin_ae2federation.device": "Federation Router, Switch and Beam Converter",
+  "config.jade.plugin_ae2federation.device": "Federation device bodies and Switch networks (Router, Switch, Beam Converter, Beam Former, Quantum Cube)",
   "config.jade.plugin_ae2federation.endpoint": "Federation Processing Endpoint mode",
   "config.jade.plugin_ae2federation.pattern_provider": "Federation Pattern Provider patterns",
   "config.jade.plugin_ae2federation.beam_converter": "Federation Beam Converter buffer",
