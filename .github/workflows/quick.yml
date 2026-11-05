@@ -86,8 +86,8 @@ jobs:
           retention-days: 7
 
   # Persistence across a real restart: each case prepares a world in one server process and checks it in a second
-  # one, which the one-batch run above cannot do. federationVerify takes one restart case per call, and the Policy
-  # lifecycle case only with Task 14's canonical case set.
+  # one, which the one-batch run above cannot do. federationVerify takes one restart case per call, and the identity
+  # and Policy lifecycle cases only with their task's canonical case set (Task 4, Task 14).
   restart:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -100,7 +100,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
       - name: Identity, domain id and Policy survive a server restart
         run: |
-          for cases in identity.restart domain-id.restart \
+          for cases in identity.replace-all-access,identity.restart,identity.ambiguous-split,identity.copied-node \
+              domain-id.restart \
               policy.lifecycle-matrix,policy.new-bridge-restore,policy.reject-stale-edit,policy.delete-reconnect,policy.sparse-scale; do
             ./gradlew :neoforge-1.21.1:federationVerify -Pcases="$cases" -PevidenceDir=build/restart-ci \
                 --dependency-verification=strict --no-configuration-cache
