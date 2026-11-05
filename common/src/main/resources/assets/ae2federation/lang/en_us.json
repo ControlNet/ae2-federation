@@ -627,6 +627,7 @@
   "ae2federation.bundle.place.blocked": "Something is in the way",
   "ae2federation.bundle.place.occupied": "Another bundle is in the way",
   "ae2federation.bundle.place.too_short": "Too short to branch here: a branch takes %s layers",
+  "ae2federation.bundle.place.overlaps_branch": "Would share only some layers with another branch: line it up or move it clear",
   "ae2federation.bundle.place.not_an_end": "Right-click an end face to extend",
   "ae2federation.bundle.place.not_a_side": "Right-click a side to branch",
   "ae2federation.bundle.place.not_bundled": "Not a bundled cable",

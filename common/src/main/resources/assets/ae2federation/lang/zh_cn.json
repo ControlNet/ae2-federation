@@ -627,6 +627,7 @@
   "ae2federation.bundle.place.blocked": "有东西挡住了",
   "ae2federation.bundle.place.occupied": "被另一条粗线缆挡住了",
   "ae2federation.bundle.place.too_short": "这里太短，分叉要占 %s 层",
+  "ae2federation.bundle.place.overlaps_branch": "会和另一个分叉只共用一部分层：要么对齐，要么错开",
   "ae2federation.bundle.place.not_an_end": "请右键端面来延伸",
   "ae2federation.bundle.place.not_a_side": "请右键侧面来分叉",
   "ae2federation.bundle.place.not_bundled": "这不是粗线缆",

@@ -85,7 +85,7 @@ public final class BundleInteraction {
 
     /**
      * Why the placement's cells cannot take cables, or null when they can: each must be loaded, replaceable and clear
-     * of entities.
+     * of entities, and the new cells must not leave two branches of one run sharing only some of their layers.
      */
     public static @Nullable Component blocked(Level level, BundleSet.Placement placement) {
         var cable = RouterRegistration.FEDERATION_CABLE.get().defaultBlockState();
@@ -96,7 +96,8 @@ public final class BundleInteraction {
                 return BundleText.blocked();
             }
         }
-        return null;
+        return BundleView.overlapsBranch(level, placement.segment())
+                ? BundleText.refused(BundleSet.Problem.OVERLAPS_BRANCH, 0) : null;
     }
 
     /** Federation Cables {@code player} carries, or {@link Integer#MAX_VALUE} in creative. */
@@ -194,6 +195,10 @@ public final class BundleInteraction {
         if (refusal.isPresent()) {
             player.displayClientMessage(BundleText.cells(refusal.get().problem(), refusal.get().count(),
                     refusal.get().total()), true);
+            return;
+        }
+        if (bundles.overlapsBranch(segment)) {
+            player.displayClientMessage(BundleText.refused(BundleSet.Problem.OVERLAPS_BRANCH, 0), true);
             return;
         }
         bundles.form(level, segment);

@@ -311,6 +311,55 @@ public final class BundledCableGameTests {
     }
 
     /**
+     * The server refuses a branch that would share only some layers with a branch on another side of the run, whether
+     * a player branches with cables or forms a box against the run with the wrench, and takes nothing for it; a branch
+     * over the same layers is placed.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void bundleBranchesShareAllTheirLayersOrNone(GameTestHelper helper) {
+        clear(helper);
+        var fixtures = new RouterFixtures(helper);
+        var run = CENTER.west(3);
+        for (var pos : BlockPos.betweenClosed(run, CENTER.offset(2, 1, 1))) fixtures.placeFederationCable(pos.immutable());
+        var level = helper.getLevel();
+        var bundles = BundledCables.get(level);
+        bundles.form(level, new BundleSegment(helper.absolutePos(run), helper.absolutePos(CENTER.offset(2, 1, 1)),
+                Direction.Axis.X));
+        var player = MockServerPlayers.inLevel(helper);
+        player.setPos(Vec3.atCenterOf(helper.absolutePos(CENTER.above(3))));
+        player.setGameMode(GameType.SURVIVAL);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(RouterRegistration.FEDERATION_CABLE_ITEM.get(), 12));
+
+        // A click in the middle of a cell centres the branch on that cell's far boundary: these take the west and
+        // centre layers.
+        use(helper, player, CENTER.west().south(), Direction.SOUTH);
+        helper.assertTrue(bundled(helper, CENTER.south(2)) && bundled(helper, CENTER.west().south(2)),
+                "the south branch takes the west and centre layers");
+        use(helper, player, CENTER, Direction.NORTH);
+        helper.assertTrue(helper.getBlockState(CENTER.east().north()).isAir(),
+                "a north branch over the centre and east layers is refused");
+        helper.assertValueEqual(player.getMainHandItem().getCount(), 8, "the refused branch used nothing");
+        use(helper, player, CENTER.west(), Direction.NORTH);
+        helper.assertTrue(bundled(helper, CENTER.north()) && bundled(helper, CENTER.west().north()),
+                "a north branch over the same layers is placed");
+
+        // A 2x2 standing on the run's top over the centre and east layers.
+        var box = CENTER.above(2);
+        for (var pos : BlockPos.betweenClosed(box, box.offset(1, 1, 1))) fixtures.placeFederationCable(pos.immutable());
+        player.setItemInHand(InteractionHand.MAIN_HAND, AEItems.CERTUS_QUARTZ_WRENCH.stack());
+        BundleInteraction.form(player, helper.absolutePos(box), helper.absolutePos(box.offset(1, 0, 1)),
+                helper.absolutePos(box.above()), Direction.UP);
+        helper.assertFalse(bundled(helper, box), "a wrench box that would be such a branch is refused");
+        RouterEvidence.write("bundlebranchessharealltheirlayersornone", 5, Map.of("southBranch", "placed",
+                "overlappingBranch", "refused", "refusedUsesNothing", "true", "alignedBranch", "placed",
+                "overlappingWrenchBox", "refused"));
+        clear(helper);
+        fixtures.close();
+        helper.succeed();
+    }
+
+    /**
      * What a 2x2 bundle three long shows, read on the server as a client reads it: one shell, so a cell's outline
      * reaches the faces it shares with other cells and stops 2 voxels short of the outer ones; beams that run along the
      * bundle, end at a closed end, and reach a Router body that covers the whole end face; and no join to the

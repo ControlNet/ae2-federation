@@ -71,6 +71,11 @@ public final class BundledCables extends SavedData {
         return Optional.empty();
     }
 
+    /** {@link BundleSet#overlapsBranch} in this level. */
+    public boolean overlapsBranch(BundleSegment segment) {
+        return set.overlapsBranch(segment);
+    }
+
     /** Bundles the cables of {@code segment}, which {@link #formable} accepted. */
     public BundleSet.Bundle form(ServerLevel level, BundleSegment segment) {
         // The new bundle holds every cell whose links may change, including what it merged with.

@@ -166,4 +166,35 @@ final class BundleSetTest {
         set.form(new BundleSegment(new BlockPos(6, 0, 0), new BlockPos(8, 0, 1), Direction.Axis.X));
         assertEquals(2, set.bundles().size());
     }
+
+    @Test
+    void aBranchMaySitAcrossAnotherOnlyOverTheSameLayers() {
+        var set = new BundleSet();
+        set.form(RUN);
+        set.apply((BundleSet.Placement) set.planBranch(new BlockPos(3, 0, 1), Direction.SOUTH, 0.25));
+        // The south branch takes layers 2 and 3; a north branch over 3 and 4, or 1 and 2, shares only one of them.
+        assertEquals(BundleSet.Problem.OVERLAPS_BRANCH, assertInstanceOf(BundleSet.Refused.class,
+                set.planBranch(new BlockPos(4, 0, 0), Direction.NORTH, 0.25)).problem());
+        assertEquals(BundleSet.Problem.OVERLAPS_BRANCH, assertInstanceOf(BundleSet.Refused.class,
+                set.planBranch(new BlockPos(2, 0, 0), Direction.NORTH, 0.25)).problem());
+        assertInstanceOf(BundleSet.Placement.class, set.planBranch(new BlockPos(3, 0, 0), Direction.NORTH, 0.25),
+                "across over the same layers");
+        assertInstanceOf(BundleSet.Placement.class, set.planBranch(new BlockPos(4, 1, 0), Direction.UP, 0.75),
+                "beside it, over the next layers");
+    }
+
+    @Test
+    void anExtensionThatWouldLinkAnOverlappingBranchIsRefused() {
+        var set = new BundleSet();
+        var run = new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(3, 1, 1), Direction.Axis.X);
+        set.form(run);
+        set.apply((BundleSet.Placement) set.planBranch(new BlockPos(3, 0, 1), Direction.SOUTH, 0.25));
+        // A 2x2 along Z north of layers 3 and 4: it links once the run reaches layer 4, sharing layer 3 with the branch.
+        set.form(new BundleSegment(new BlockPos(3, 0, -3), new BlockPos(4, 1, -1), Direction.Axis.Z));
+        assertTrue(set.overlapsBranch(new BundleSegment(new BlockPos(4, 0, 0), new BlockPos(4, 1, 1),
+                Direction.Axis.X)));
+        assertEquals(BundleSet.Problem.OVERLAPS_BRANCH, assertInstanceOf(BundleSet.Refused.class,
+                set.planExtend(new BlockPos(3, 0, 0), Direction.EAST)).problem());
+        assertEquals(2, set.bundles().size(), "asking changed nothing");
+    }
 }
