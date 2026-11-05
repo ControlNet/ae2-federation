@@ -62,9 +62,13 @@ Gameplay:
 
 Permissions (multiplayer):
 - `BundleInteraction.form` (above).
-- `WrenchDismantle.java:50`: checks only `mayInteract`; no `BreakEvent`, no adventure-mode check. It matches AE2's own
-  wrench hook, so claim mods protect it only as far as they block the right-click. Creative players also get the drops
-  (`:53`); the old cable path gave none, AE2 gives them too.
+- `WrenchDismantle` is not a defect (checked 2026-11-05 against AE2 19.2.17 sources): AE2's
+  `WrenchHook.onPlayerUseBlock` checks spectator, main hand, `InteractionUtil.isInAlternateUseMode` (shift),
+  `InteractionUtil.canWrenchDisassemble` (`c:tools/wrench`) and `Platform.hasPermissions`, which is only "same level +
+  `level.mayInteract`". Ours checks the same; neither fires `BreakEvent`. Both listeners use the default
+  `receiveCanceled = false`, so a claim mod that cancels the right-click stops ours as it stops AE2's. AE2 applies
+  `Platform.hasPermissions` to every world-changing tool (wrench, network tool, entropy manipulator, color applicator,
+  matter cannon); that is the rule `BundleInteraction.form`/`place` should follow.
 
 Rendering (visual only):
 - V08 `RefinedDeviceRenderer.java:92`: the cube carrier computes its own beam style; an unpowered cable draws thin red,
