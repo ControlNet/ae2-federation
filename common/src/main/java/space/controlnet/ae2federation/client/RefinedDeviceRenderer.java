@@ -60,19 +60,42 @@ public final class RefinedDeviceRenderer<T extends BlockEntity> implements Block
             var front=Vec3.atLowerCornerOf(body.facing().getNormal()).scale(body.section());
             beam(stack,buffers,front,front.scale(-.75),body.section(),level.getGameTime(),partialTick,CableBeamStyle.fromLoad(0,false));
         } else {
-            // Each connected cable contributes one carrier; bundle non-owners contribute none.
+            // Each connected cable contributes one carrier; bundle non-owners contribute none. A thick bundle against a
+            // face from its side turns its one beam into the body once per stretch: its layer's beam owner carries it.
+            var sideOwners=new java.util.HashSet<BlockPos>();
             for (var face:Direction.values()) {
                 var axis=face.getAxis();
                 int edge=face.getAxisDirection()==Direction.AxisDirection.POSITIVE ? body.max().get(axis) : body.min().get(axis);
+                int bit=java.util.List.of(space.controlnet.ae2federation.router.CableVisualConnections.DIRECTIONS)
+                        .indexOf(face.getOpposite());
                 for (var cell:BlockPos.betweenClosed(body.min(),body.max())) {
                     if (cell.get(axis)!=edge) continue;
+                    // The port rule excludes the frame's outer one-block border.
+                    boolean inside=true;
+                    for (var across:Direction.Axis.values()) if (across!=axis
+                            && (cell.get(across)<=body.min().get(across) || cell.get(across)>=body.max().get(across))) inside=false;
+                    if (!inside) continue;
                     var adjacent=cell.relative(face);
                     if (!(level.getBlockEntity(adjacent) instanceof FederationCableBlockEntity cable)) continue;
                     var bundle=cable.bundleBeam();
+                    var segment=cable.bundleSegment();
+                    if (bundle!=null && segment!=null && bundle.axis()!=axis) {
+                        var owner=sideOwner(level,adjacent,segment,bundle.axis());
+                        if (owner==null || !sideOwners.add(owner.pos()) || (owner.beam().mask()&1<<bit)==0) continue;
+                        int side=owner.beam().side();
+                        var start=Vec3.atLowerCornerOf(owner.pos());
+                        for (var across:Direction.Axis.values()) {
+                            var direction=Direction.fromAxisAndDirection(across,Direction.AxisDirection.POSITIVE);
+                            double reach=across==owner.beam().axis() ? owner.beam().length()/2.0 : side/2.0;
+                            start=start.add(Vec3.atLowerCornerOf(direction.getNormal()).scale(reach));
+                        }
+                        start=start.add(Vec3.atLowerCornerOf(face.getOpposite().getNormal()).scale(side/2.0));
+                        beam(stack,buffers,start.subtract(centre),Vec3.ZERO,side,level.getGameTime(),partialTick,
+                                CableFlowRenderer.style(owner.cable()));
+                        continue;
+                    }
                     if (bundle!=null && bundle.length()==0 && face.getAxisDirection()==Direction.AxisDirection.NEGATIVE)
                         bundle=covering(level,adjacent,face,bundle);
-                    int bit=java.util.List.of(space.controlnet.ae2federation.router.CableVisualConnections.DIRECTIONS)
-                            .indexOf(face.getOpposite());
                     if (((bundle==null ? cable.flowMask() : bundle.mask()) & 1<<bit)==0) continue;
                     int side=1;
                     var start=Vec3.atCenterOf(cell).add(Vec3.atLowerCornerOf(face.getNormal()).scale(.5));
@@ -84,13 +107,8 @@ public final class RefinedDeviceRenderer<T extends BlockEntity> implements Block
                             start=start.add(Vec3.atLowerCornerOf(direction.getNormal()).scale((side-1)/2.0));
                         }
                     }
-                    // The port rule excludes the frame's outer one-block border.
-                    boolean inside=true;
-                    for (var across:Direction.Axis.values()) if (across!=axis
-                            && (cell.get(across)<=body.min().get(across) || cell.get(across)>=body.max().get(across))) inside=false;
-                    if (!inside) continue;
-                    var style=CableBeamStyle.fromLoad(cable.capacityLoad(),cable.unpowered() || cable.capacityLoad()>1);
-                    beam(stack,buffers,start.subtract(centre),Vec3.ZERO,side,level.getGameTime(),partialTick,style);
+                    beam(stack,buffers,start.subtract(centre),Vec3.ZERO,side,level.getGameTime(),partialTick,
+                            CableFlowRenderer.style(cable));
                 }
             }
         }
@@ -110,6 +128,28 @@ public final class RefinedDeviceRenderer<T extends BlockEntity> implements Block
             if (beam.length()>0) break;
         }
         return own;
+    }
+    /** The cell that draws the beam over a layer, with that beam and its cable. */
+    private record Owner(BlockPos pos,BundleBeam beam,FederationCableBlockEntity cable) {}
+    /**
+     * The owner of the beam that runs over {@code cell}'s layer of {@code segment}: the layer's low corner, or the
+     * earlier layer whose box stretches over it.
+     */
+    private static Owner sideOwner(net.minecraft.world.level.Level level,BlockPos cell,
+            space.controlnet.ae2federation.bundle.BundleSegment segment,Direction.Axis along) {
+        var corner=cell;
+        for (var across:Direction.Axis.values()) if (across!=along)
+            corner=space.controlnet.ae2federation.bundle.BundleSegment.with(corner,across,segment.min().get(across));
+        var back=Direction.fromAxisAndDirection(along,Direction.AxisDirection.NEGATIVE);
+        for (int k=0;k<3;k++) {
+            var at=corner.relative(back,k);
+            if (!(level.getBlockEntity(at) instanceof FederationCableBlockEntity cable)) return null;
+            var beam=cable.bundleBeam();
+            if (beam==null || beam.axis()!=along) return null;
+            if (beam.length()>k) return new Owner(at,beam,cable);
+            if (beam.length()>0) return null;
+        }
+        return null;
     }
     private static void drawCore(String name,PoseStack stack,MultiBufferSource buffers,int light,int overlay) {
         for (int pass=0;pass<2;pass++) {
@@ -139,6 +179,12 @@ public final class RefinedDeviceRenderer<T extends BlockEntity> implements Block
     @Override public AABB getRenderBoundingBox(T device) {
         var body=body(device);
         return body==null ? new AABB(device.getBlockPos()) : new AABB(Vec3.atLowerCornerOf(body.min()),Vec3.atLowerCornerOf(body.max().offset(1,1,1)));
+    }
+    /** The owner's body may reach into sections the camera keeps while it culls the owner's own. */
+    @Override public boolean shouldRenderOffScreen(T device) {
+        var state=device.getBlockState();
+        int negative=(1<<Direction.WEST.get3DDataValue())|(1<<Direction.DOWN.get3DDataValue())|(1<<Direction.NORTH.get3DDataValue());
+        return RouterBlock.formed(state) && (RouterBlock.connections(state)&negative)==0;
     }
     @Override public int getViewDistance() { return 128; }
 }

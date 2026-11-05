@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.bundle.BundleLook;
 import space.controlnet.ae2federation.bundle.BundleSegment;
 import space.controlnet.ae2federation.bundle.BundledCables;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
@@ -120,6 +121,43 @@ public final class QuantumCubeGameTests {
             helper.assertTrue(!linked(helper, offCentre.get(0), middle), "a bundle pressed on the border links nothing");
             RouterEvidence.write("quantumcubelinksinsideitsfacecentres", 5, Map.of("centre", "linked",
                     "border", "unlinked", "2x2On4", "linked", "2x2OffCentre", "unlinked", "2x2On5", "linked"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A 2x2 bundle running along a 4³ face meets the face's 2x2 centre over two layers: the beam turns into the cube
+     * once for those two, and stops short of the border rows on either side, which belong to the same body but link no
+     * cable.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void quantumCubeBorderRowsTakeNoBundleTurn(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        cube(helper, new BlockPos(4, 1, 4), 4);
+        var run = box(new BlockPos(2, 2, 2), 8, 2, 2);
+        run.forEach(fixtures::placeFederationCable);
+        var level = helper.getLevel();
+        int south = 1 << Direction.SOUTH.get3DDataValue();
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                BundledCables.get(level).form(level, new BundleSegment(helper.absolutePos(run.get(0)),
+                        helper.absolutePos(run.get(run.size() - 1)), Direction.Axis.X));
+                phase[0] = 1;
+                throw new GameTestAssertException("Waiting for the bundle to settle");
+            }
+            var low = BundleLook.of(level, helper.absolutePos(new BlockPos(5, 2, 3))).orElseThrow();
+            var high = BundleLook.of(level, helper.absolutePos(new BlockPos(6, 2, 3))).orElseThrow();
+            helper.assertTrue(low.contact(Direction.SOUTH) && high.contact(Direction.SOUTH),
+                    "the face's centre takes both layers' rows");
+            helper.assertTrue((low.contactsAfter() & south) != 0 && (high.contactsBefore() & south) != 0,
+                    "the two centre layers turn once together");
+            helper.assertTrue((low.contactsBefore() & south) == 0, "no turn runs onto the low border row");
+            helper.assertTrue((high.contactsAfter() & south) == 0, "no turn runs onto the high border row");
+            helper.assertTrue(((low.armsBefore() | high.armsAfter()) & south) == 0, "no arm runs onto a border row");
+            RouterEvidence.write("quantumcubeborderrowstakenobundleturn", 5, Map.of("centreContacts", "true",
+                    "centrePaired", "true", "lowBorder", "none", "highBorder", "none", "arms", "none"));
             fixtures.close();
         });
     }
