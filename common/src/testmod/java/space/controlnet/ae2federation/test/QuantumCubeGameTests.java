@@ -196,6 +196,27 @@ public final class QuantumCubeGameTests {
     }
 
     /**
+     * Sneak-use in the air clears a Memory Card, as AE2 clears its own copied settings: the cube it held goes too, so the
+     * card no longer binds another cube to it.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 100, required = true, manualOnly = true)
+    public static void quantumCubeCardClearsWithTheMemoryCard(GameTestHelper helper) {
+        var player = MockServerPlayers.inLevel(helper);
+        var card = AEItems.MEMORY_CARD.stack();
+        card.set(QuantumRegistration.CARD_CUBE.get(),
+                GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(2, 2, 2))));
+        player.setItemInHand(InteractionHand.MAIN_HAND, card);
+        player.setShiftKeyDown(true);
+        card.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+        player.setShiftKeyDown(false);
+        helper.assertTrue(player.getMainHandItem().get(QuantumRegistration.CARD_CUBE.get()) == null,
+                "clearing the Memory Card drops the cube it held");
+        RouterEvidence.write("quantumcubecardclearswiththememorycard", 1, Map.of("cleared", "true"));
+        helper.succeed();
+    }
+
+    /**
      * A Memory Card binds an overworld cube to a nether one and the cables on both join one domain. As AE2's bridge,
      * the pair unlinks while the nether chunks really unload (their tickets released) and links again when they load;
      * when the nether level closes, the overworld cube reads its partner as not loaded.

@@ -237,6 +237,7 @@
     {"id":"quantum.cube-shapes","backend":"gametest","testId":"quantumcubeshapes","structure":"ae2federation_test:scale_36_empty","assertions":6},
     {"id":"quantum.links-inside-face-centres","backend":"gametest","testId":"quantumcubelinksinsideitsfacecentres","structure":"ae2federation_test:scale_36_empty","assertions":5},
     {"id":"quantum.pair-binds-with-a-memory-card","backend":"gametest","testId":"quantumcubepairbindswithamemorycard","structure":"ae2federation_test:scale_36_empty","assertions":8},
+    {"id":"quantum.card-clears-with-the-memory-card","backend":"gametest","testId":"quantumcubecardclearswiththememorycard","structure":"ae2federation_test:scale_36_empty","assertions":1},
     {"id":"quantum.pair-needs-its-size-of-converter","backend":"gametest","testId":"quantumcubepairneedsitssizeofconverter","structure":"ae2federation_test:scale_36_empty","assertions":5},
     {"id":"quantum.pair-links-across-dimensions","backend":"gametest","testId":"quantumcubepairlinksacrossdimensions","structure":"ae2federation_test:scale_36_empty","assertions":7},
     {"id":"power.runs-a-domain","backend":"gametest","testId":"operatingpowerrunsadomain","structure":"ae2federation_test:harness_native_smoke","assertions":8},
