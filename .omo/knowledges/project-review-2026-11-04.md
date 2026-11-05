@@ -87,3 +87,34 @@ Rendering (visual only):
 
 Checked clean: the RouterFacePort sweep reorder, the statistics idle checks, the creative converter removal, the
 renderer's `covering()` lookup. Dropped: V05 and V11 (nothing to check), V09 (needs add-on API drift), V04.
+
+## Fixed (2026-11-05)
+
+Every finding above is fixed on dev; each code fix has a test that fails on the old code.
+
+| Finding | Commit | Test |
+| --- | --- | --- |
+| V06 card component left by AE2's clearing | 70f041b0 (`ae2:exported_settings` tag) | GameTest `quantum.card-clears-with-the-memory-card` |
+| V01 Data Energistics commit failure | 4fcfe09a (owe once the inputs were taken) | `DataEnergisticsCountedProjectionsTest` (5) |
+| Bundle form/extend permissions | eb701408 (AE2's wrench rules: no spectator, wrench, `Platform.hasPermissions`) | GameTest `bundle.wrench-and-permission` |
+| V12 overlapping branches | b7f33150: placement rule `OVERLAPS_BRANCH`, judged on the bundle after the change (branch, extension, wrench box) | `BundleSetTest` (2), GameTest `bundle.branches-share-layers` |
+| V02, V08, V13, V14 | ca7dc943 | GameTest `quantum.border-rows-take-no-bundle-turn` (V02); V08/V13/V14 are client rendering |
+| V07 unformed converter occlusion | 4e1ece4d (Provider front shape; back only) | `DeviceOcclusionContractTest`, GameTest `visual.device-occlusion` (13) |
+| V10 Jade toggle scope | ec56e606 + 2f504664 ("Federation device structure"; the five-name label overflowed Jade's row) | `FederationJadeTextTest` |
+| Tests CI never ran | c3031255 + a restart-job fix | 19 manifest cases; `packetauthority` now expects the Policy counter before + 1 |
+
+V12 was fixed by refusing the placement, not by drawing one union box: a union box would put the branch's beam off its
+own axis by half a layer. Branches over the same layers stay allowed.
+
+Restart cases in CI (`quick.yml` job `restart`): `federationVerify` takes one restart case per call, and
+`identity.restart` / `policy.lifecycle-matrix` only with their task's canonical set (Task 4, Task 14):
+`identity.replace-all-access,identity.restart,identity.ambiguous-split,identity.copied-node`; `domain-id.restart`;
+`policy.lifecycle-matrix,policy.new-bridge-restore,policy.reject-stale-edit,policy.delete-reconnect,policy.sparse-scale`.
+Locally about 2, 1 and 3 minutes.
+
+In game: `build/review-fixes-check/*-before-after.png` (tools/shoot.sh and friends: guide client on Xvfb :95, `/tp`
+angles computed from the feet + 1.62 eye height, wrench clicks aimed at block centres, which hit an ordinary cable's
+core). An unformed converter's gaps show only through its two 1-pixel top slots near the front: a close-up from 0.4
+above the top shows sky before, the stone's face after. Jade is not on the dev classpath; dropping its jar into
+`run-guide/mods` loads it for a capture (remove it afterwards). V08 and V13 had no separate image: the scenes'
+beams were all unpowered, and V13 needs the owner member's section culled while the body is on screen.
