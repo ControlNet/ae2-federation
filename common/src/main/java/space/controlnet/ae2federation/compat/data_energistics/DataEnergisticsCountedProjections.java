@@ -82,9 +82,11 @@ public final class DataEnergisticsCountedProjections implements DataEnergisticsP
 
     /**
      * A batch the real provider admitted. The CPU commits it with one craft's inputs, {@code prototype}, and the real
-     * provider pushes them {@link #count} times; the consumer is owed {@code count} crafts' outputs.
+     * provider pushes them {@link #count} times; the consumer is owed {@code count} crafts' outputs. Data Energistics
+     * counts a batch as committed once the real provider took its inputs, even when its commit then answers false or
+     * throws, and its CPU waits for the outputs: the consumer is owed them then too.
      */
-    private record ProjectedAdmission(ProjectedProvider projection, IPatternDetails details,
+    record ProjectedAdmission(ProjectedProvider projection, IPatternDetails details,
             CountedCraftingAdmission admission) implements CountedCraftingAdmission {
         @Override
         public long count() {
@@ -107,10 +109,58 @@ public final class DataEnergisticsCountedProjections implements DataEnergisticsP
             for (var holder : prototype) {
                 if (holder != null) inputs.addAll(holder);
             }
-            return projection.pushBatch(details, outputs,
-                    times(ProjectedProvider.containerItems(details, prototype), crafts), times(inputs, crafts),
-                    () -> admission.commit(prototype));
+            var untouched = copy(prototype);
+            var accepted = new boolean[1];
+            var failure = new RuntimeException[1];
+            projection.pushBatch(details, outputs,
+                    times(ProjectedProvider.containerItems(details, prototype), crafts), times(inputs, crafts), () -> {
+                        try {
+                            accepted[0] = admission.commit(prototype);
+                        } catch (RuntimeException exception) {
+                            failure[0] = exception;
+                        }
+                        return accepted[0] || tookInputs(untouched, prototype);
+                    });
+            if (failure[0] != null) throw failure[0];
+            return accepted[0];
         }
+
+        /** Whether the real provider took the batch's inputs, as Data Energistics' committer judges it. */
+        private boolean tookInputs(KeyCounter[] untouched, KeyCounter[] prototype) {
+            if (!same(untouched, prototype)) return true;
+            try {
+                return admission.hasTransferredInputOwnership();
+            } catch (RuntimeException exception) {
+                // Data Energistics treats a provider that cannot tell as having taken them.
+                return true;
+            }
+        }
+    }
+
+    private static KeyCounter[] copy(KeyCounter[] counters) {
+        var copy = new KeyCounter[counters.length];
+        for (int index = 0; index < counters.length; index++) {
+            copy[index] = new KeyCounter();
+            if (counters[index] != null) copy[index].addAll(counters[index]);
+        }
+        return copy;
+    }
+
+    private static boolean same(KeyCounter[] expected, KeyCounter[] actual) {
+        if (expected.length != actual.length) return false;
+        for (int index = 0; index < expected.length; index++) {
+            var now = actual[index] == null ? new KeyCounter() : actual[index];
+            if (!contains(expected[index], now) || !contains(now, expected[index])) return false;
+        }
+        return true;
+    }
+
+    /** Whether {@code actual} holds every amount {@code expected} holds. */
+    private static boolean contains(KeyCounter expected, KeyCounter actual) {
+        for (var entry : expected) {
+            if (actual.get(entry.getKey()) != entry.getLongValue()) return false;
+        }
+        return true;
     }
 
     private static KeyCounter times(KeyCounter perCraft, long crafts) {

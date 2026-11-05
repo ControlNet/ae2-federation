@@ -534,7 +534,7 @@ configurations {
     dataEnergisticsApi {
         canBeConsumed = false
         canBeResolved = true
-        description = 'Data Energistics, compiled against by its optional plugin only; on no run or test classpath.'
+        description = 'Data Energistics, compiled against by its optional plugin and its unit test only; on no run classpath.'
     }
     appliedFluxCompatibility {
         canBeConsumed = false
@@ -563,6 +563,8 @@ configurations {
 }
 
 sourceSets.main.compileClasspath += configurations.jadeApi + configurations.dataEnergisticsApi
+sourceSets.test.compileClasspath += configurations.dataEnergisticsApi
+sourceSets.test.runtimeClasspath += configurations.dataEnergisticsApi
 
 dependencies {
     implementation("org.appliedenergistics:appliedenergistics2:${ae2_version}")
