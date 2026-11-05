@@ -432,7 +432,8 @@ public final class RouterGameTests {
 
     /**
      * The device models have gaps, so their neighbours must keep the faces seen through them: all six around the
-     * Router, the one in front of a Provider or Endpoint. Behind those two the model is closed and still hides it.
+     * Router, the one in front of a Provider or Endpoint, and those in front of and beside an unformed Beam Converter.
+     * Behind those three the model is closed and still hides it.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 100, required = true, manualOnly = true)
@@ -466,8 +467,23 @@ public final class RouterGameTests {
                     "The closed back still hides the block behind it");
             assertions += 2;
         }
+        // A lone Beam Converter block stays unformed and draws the single-block model, which closes only its back.
+        var converter = CENTER.east(3);
+        helper.setBlock(converter, space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get()
+                .defaultBlockState().setValue(facing, Direction.EAST));
+        for (var face : new Direction[] {Direction.EAST, Direction.WEST, Direction.NORTH}) {
+            helper.setBlock(converter.relative(face), stone);
+        }
+        helper.assertTrue(faceDrawn(helper, converter.east(), Direction.WEST),
+                "The unformed converter's open front must not hide the block in front of it");
+        helper.assertTrue(faceDrawn(helper, converter.north(), Direction.SOUTH),
+                "The unformed converter's notched side must not hide the block beside it");
+        helper.assertTrue(!faceDrawn(helper, converter.west(), Direction.EAST),
+                "The unformed converter's closed back still hides the block behind it");
+        assertions += 3;
         RouterEvidence.write("deviceocclusion", assertions, Map.of(
-                "routerFacesDrawn", "6", "frontFaceDrawn", "2", "backFaceHidden", "2"));
+                "routerFacesDrawn", "6", "frontFaceDrawn", "2", "backFaceHidden", "2",
+                "converterFrontAndSideDrawn", "2", "converterBackHidden", "1"));
         helper.succeed();
     }
 

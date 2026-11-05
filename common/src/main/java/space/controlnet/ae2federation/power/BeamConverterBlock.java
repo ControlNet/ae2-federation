@@ -52,12 +52,20 @@ public final class BeamConverterBlock extends BaseEntityBlock implements Formabl
         registerDefaultState(state);
     }
 
-    /** The open device mesh must not hide neighbours or cast a solid cuboid shadow. */
+    /**
+     * The open device mesh must not hide neighbours or cast a solid cuboid shadow. Unformed, the block's own model
+     * closes only its back, as a Provider's does, so it hides only the neighbour behind that.
+     */
     @Override
     protected net.minecraft.world.phys.shapes.VoxelShape getOcclusionShape(BlockState state,
             net.minecraft.world.level.BlockGetter level, BlockPos position) {
         return RouterBlock.formed(state) ? net.minecraft.world.phys.shapes.Shapes.empty()
-                : super.getOcclusionShape(state, level, position);
+                : space.controlnet.ae2federation.router.DeviceOcclusion.front(state.getValue(FACING));
+    }
+
+    @Override
+    protected boolean useShapeForLightOcclusion(BlockState state) {
+        return true;
     }
 
     @Override
