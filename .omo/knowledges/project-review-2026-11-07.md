@@ -85,6 +85,7 @@ UI scenario `ui.review-fixes` (`runUiTestClient -PfederationUiSelection=ui.revie
 | "1.3kk", "1000k", English time units, ", " joins | d86d759d, 9268c1ea | `StatisticsFormatTest`, `ProviderReturnsTextTest` |
 | Identity settlements / policy tombstones grow | 443f72a5 (settlements removed; tombstones dropped on load) | `NetworkIdentityRegistryTest`, `PolicyStoreTest` |
 | Statistics memory | 2cc608f2 (flat TopKeys arrays, lazy Timeline tiers, one tag per range; save format 4) | `StatisticsFootprintTest` (5-key ranking 187 KB -> 32 KB per route) |
+| Compat pins drifted | 8043f11b (newest releases as of 2026-11-07; DE plugin links against 3.3 and 3.4), df1bbf13 (owner: Data Energistics stays 3.3.5, with ExtendedAE-Plus 1.6.3 and UselessMod 2.4.6.2 in its profiles), cfa58d28 (notices) | every addon profile, atm10 93/93, cus2 61/61; DE 3.4.0 upgrade bug reported upstream as ModularMCLib/DataEnergistics#431 |
 | mmcr startup race (upstream) | patch in `build/upstream/mmcr/` for the owner to submit | compiles against mmcr 0.1.3 + KubeJS |
 
 Not changed, by judgement: `FederationStatistics.pollJobs` per tick (polling every N ticks would miss short jobs).

@@ -66,3 +66,6 @@ running them: Data Energistics 3.3.5's mixin `ae.extendedaeplus.EaepPatternEncod
 UselessMod 2.4.6.5 needs Data Energistics 3.4.0, so `useless-mod-addons` keeps UselessMod 2.4.6.2. Results: 29/29,
 130/130, 117/117. Profiles without Data Energistics stay on ExtendedAE-Plus 1.6.4.1 and UselessMod 2.4.6.5. Our plugin
 still works on both 3.3.5 and 3.4.0. Move these up once Data Energistics restores the connector-mode default.
+
+Reported upstream: https://github.com/ModularMCLib/DataEnergistics/issues/431 (still unfixed on the `1.21` branch at
+ec06088). Source: https://github.com/ModularMCLib/DataEnergistics.
