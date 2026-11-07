@@ -96,6 +96,8 @@ public final class NetherProviderProjectionScene implements AutoCloseable {
     private @Nullable Future<ICraftingPlan> planFuture;
     private long returned;
     private boolean machineRuns = true;
+    /** What the stand-in machine also returns for each input, a byproduct no pattern names; null for none. */
+    private @Nullable AEItemKey byproduct;
     private int step;
 
     public NetherProviderProjectionScene(GameTestHelper helper) {
@@ -190,6 +192,36 @@ public final class NetherProviderProjectionScene implements AutoCloseable {
         helper.assertTrue(result instanceof PolicyMutationResult.Accepted, "The rules must be accepted: " + result);
     }
 
+    /** Only the consumer's crafting rule on the provider network, no storage rule. */
+    public void enableCraftingRule() {
+        var policies = PolicyService.get(helper.getLevel());
+        var crafting = new PolicyKey(consumerNetwork(), providerNetwork(), PolicyCapability.CRAFTING);
+        var result = policies.editAll(List.of(new PolicyEdit(crafting, policies.revision(crafting),
+                PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)))));
+        helper.assertTrue(result instanceof PolicyMutationResult.Accepted, "The rule must be accepted: " + result);
+    }
+
+    /** Takes the cell out of the provider network's only ME chest, so that network stores nothing. */
+    public void takeProviderCell() {
+        bridge.providerChest().setCell(ItemStack.EMPTY);
+    }
+
+    /** Has the stand-in machine also return one {@code byproduct} for each input it takes. */
+    public void machineByproduct(AEItemKey byproduct) {
+        this.byproduct = byproduct;
+    }
+
+    /** What the Provider's Lane still holds of {@code what} in its return inventory. */
+    public long inLaneReturns(AEKey what) {
+        var returns = provider().lane(0).getReturnInv();
+        long amount = 0;
+        for (int slot = 0; slot < returns.size(); slot++) {
+            var stack = returns.getStack(slot);
+            if (stack != null && stack.what().equals(what)) amount += stack.amount();
+        }
+        return amount;
+    }
+
     public int projections() {
         return CraftingProjectionService.get(helper.getLevel()).projectionCount(consumerNetwork(), providerNetwork());
     }
@@ -257,11 +289,16 @@ public final class NetherProviderProjectionScene implements AutoCloseable {
         var handler = site.level().getCapability(Capabilities.ItemHandler.BLOCK, site.absolute(ENDPOINT), RETURN_SIDE);
         if (available <= 0 || handler == null) return;
         var taken = storage.extract(INPUT, available, Actionable.MODULATE, IActionSource.empty());
-        var remainder = new ItemStack(Items.DIAMOND, (int) taken);
-        for (int slot = 0; slot < handler.getSlots() && !remainder.isEmpty(); slot++) {
-            remainder = handler.insertItem(slot, remainder, false);
+        var products = new java.util.ArrayList<ItemStack>();
+        products.add(new ItemStack(Items.DIAMOND, (int) taken));
+        if (byproduct != null) products.add(byproduct.toStack((int) taken));
+        for (var product : products) {
+            var remainder = product;
+            for (int slot = 0; slot < handler.getSlots() && !remainder.isEmpty(); slot++) {
+                remainder = handler.insertItem(slot, remainder, false);
+            }
+            helper.assertTrue(remainder.isEmpty(), "The Endpoint must take the machine's products");
         }
-        helper.assertTrue(remainder.isEmpty(), "The Endpoint must take the machine's products");
         returned += taken;
     }
 

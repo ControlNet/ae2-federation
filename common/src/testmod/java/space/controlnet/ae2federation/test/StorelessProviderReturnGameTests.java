@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.policy.RuleMode;
+import space.controlnet.ae2federation.test.crafting.NetherProviderProjectionScene;
 import space.controlnet.ae2federation.test.crafting.PatternProjectionFixture;
 import space.controlnet.ae2federation.test.crafting.ProjectionChainFixture;
 
@@ -260,6 +261,47 @@ public final class StorelessProviderReturnGameTests {
             helper.assertValueEqual(fixture.amount(SOURCE, gravel()), 1L, "The source keeps only the first gravel");
             helper.assertValueEqual(fixture.amount(CONSUMER, stone()), 2L, "The consumer stores its second stone");
             fixture.close();
+        });
+    }
+
+    /**
+     * The same through a Federation Pattern Provider: its Lane drives an Endpoint whose machine returns a gravel with
+     * each diamond. The provider network has no storage and no CPU. The diamonds reach the consumer's job and the gravel
+     * its chest; the Lane keeps nothing. A Lane hands its returns to the network as itself, but its node is the
+     * Provider's physical node, which publishes no crafting provider, so the pusher is found by the Lane's own source.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void storelessLaneByproduct(GameTestHelper helper) {
+        var scene = new NetherProviderProjectionScene(helper);
+        var stage = new int[1];
+        helper.succeedWhen(() -> {
+            scene.runMachine();
+            if (stage[0] == 0) {
+                helper.assertTrue(scene.ready(), "Waiting for the nether Provider's lane to its Endpoint");
+                scene.takeProviderCell();
+                scene.machineByproduct(gravel());
+                scene.enableCraftingRule();
+                stage[0] = 1;
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(scene.consumerCrafts(), "Waiting for the Lane's pattern on the consumer");
+                scene.putInConsumer(NetherProviderProjectionScene.INPUT, 2);
+                scene.begin(2);
+                stage[0] = 2;
+            }
+            if (stage[0] == 2) {
+                helper.assertTrue(scene.submitWhenPlanned(), "Waiting for the consumer's plan");
+                stage[0] = 3;
+            }
+            helper.assertValueEqual(scene.returned(), 2L, "Waiting for the machine to make both diamonds");
+            helper.assertFalse(scene.consumerBusy(), "Waiting for the consumer's job to finish");
+            helper.assertValueEqual(scene.owed(), 0L, "Both diamonds reach the job");
+            helper.assertValueEqual(scene.inConsumerChest(NetherProviderProjectionScene.OUTPUT), 2L,
+                    "The consumer stores its diamonds");
+            helper.assertValueEqual(scene.inLaneReturns(gravel()), 0L, "The Lane keeps no gravel");
+            helper.assertValueEqual(scene.inConsumerChest(gravel()), 2L, "The gravel goes to the consumer's chest");
+            scene.close();
         });
     }
 

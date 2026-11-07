@@ -531,6 +531,7 @@ public final class CraftingProjectionService implements AutoCloseable {
         var node = source.machine().map(IActionHost::getActionableNode).orElse(null);
         if (node == null || node.getGrid() != executing) return null;
         var provider = node.getService(ICraftingProvider.class);
+        if (provider == null) provider = sourceLogic(executing, source);
         if (provider == null) return null;
         NetworkId consumer = null;
         long latest = 0;
@@ -543,6 +544,25 @@ public final class CraftingProjectionService implements AutoCloseable {
             }
         }
         return consumer;
+    }
+
+    /**
+     * The projected pattern provider logic of {@code executing} that hands its returns with {@code source}. A Federation
+     * Pattern Provider's Lane names the Provider's physical node, which publishes no crafting provider of its own, so
+     * only the source object itself tells which Lane gave the return.
+     */
+    private @Nullable ICraftingProvider sourceLogic(IGrid executing, IActionSource source) {
+        for (var entry : projected.values()) {
+            if (entry.provider() != executing) continue;
+            for (var real : entry.projections().keySet()) {
+                if (real instanceof appeng.helpers.patternprovider.PatternProviderLogic logic
+                        && ((space.controlnet.ae2federation.mixin.PatternProviderLogicAccess) (Object) logic)
+                                .ae2federation$getActionSource() == source) {
+                    return real;
+                }
+            }
+        }
+        return null;
     }
 
     /** Whether {@code first} and {@code second} are joined through Federation Domains now. */

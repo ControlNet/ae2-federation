@@ -145,6 +145,7 @@
     {"id":"crafting.storeless-byproduct-waits-for-storage","backend":"gametest","testId":"storelessbyproductwaitsforstorage","structure":"ae2federation_test:harness_native_smoke","assertions":11},
     {"id":"crafting.provider-own-job-keeps-byproduct","backend":"gametest","testId":"providerownjobkeepsbyproduct","structure":"ae2federation_test:harness_native_smoke","assertions":15},
     {"id":"crafting.shared-provider-byproduct-to-last-pusher","backend":"gametest","testId":"sharedproviderbyproducttolastpusher","structure":"ae2federation_test:harness_native_smoke","assertions":22},
+    {"id":"crafting.storeless-lane-byproduct","backend":"gametest","testId":"storelesslanebyproduct","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"survival.recipes","backend":"gametest","testId":"survivalrecipes","structure":"ae2federation_test:harness_native_smoke","assertions":56},
     {"id":"survival.inscriber","backend":"gametest","testId":"survivalinscriber","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"automation.interface-stock","backend":"gametest","testId":"automationinterfacestock","structure":"ae2federation_test:harness_native_smoke","assertions":14},
