@@ -6,8 +6,11 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import space.controlnet.ae2federation.processing.provider.ProviderObservationRegistry;
 
+/**
+ * Counts what a machine fills into or drains from a Lane's return inventory. A NeoForge millibucket is one AE2 fluid unit
+ * ({@link AEFluidKey#AMOUNT_BUCKET} is 1000), so amounts are recorded as they are.
+ */
 final class ObservedFluidReturnHandler implements IFluidHandler {
-    private static final long DROPLETS_PER_MILLIBUCKET = 81_000L;
     private final ServerLevel level;
     private final EndpointReturnOwner owner;
     private final IFluidHandler delegate;
@@ -67,6 +70,6 @@ final class ObservedFluidReturnHandler implements IFluidHandler {
 
     private void record(FluidStack stack, int amount) {
         owner.lane().ifPresent(lane -> ProviderObservationRegistry.recordAggregateReturn(level, lane,
-                AEFluidKey.of(stack.getFluid()), Math.multiplyExact(amount, DROPLETS_PER_MILLIBUCKET)));
+                AEFluidKey.of(stack.getFluid()), amount));
     }
 }

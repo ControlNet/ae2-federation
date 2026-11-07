@@ -18,6 +18,7 @@ import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
+import space.controlnet.ae2federation.observability.state.FlowState;
 import space.controlnet.ae2federation.observability.statistics.FederationStatistics;
 import space.controlnet.ae2federation.observability.statistics.StatisticsBook;
 import space.controlnet.ae2federation.observability.statistics.StatisticsNames;
@@ -282,6 +283,31 @@ public final class StatisticsGameTests {
         helper.assertValueEqual(loaded.pins(stock), book.pins(stock), "Pins survive");
         PolicyEvidence.write("statisticssurviveasave", 16, Map.of("ranges", "4", "pins", "2"));
         helper.succeed();
+    }
+
+    /**
+     * A bucket of water a machine fills back into a Federated Lane's return inventory counts as 1000: on NeoForge one
+     * millibucket is one AE2 fluid unit, as the storage flows count it.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 400)
+    public static void statisticsCountFluidReturnInMillibuckets(GameTestHelper helper) {
+        var scene = new RealObservationScene(helper, true);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(scene.ready(), "Waiting for the Provider and Endpoint: " + scene.status());
+            GameTestChecks.once(helper, () -> {
+                helper.assertValueEqual(scene.returnWater(1000), 1000, "The return inventory takes a bucket of water");
+                var returns = LevelObservabilityService.get(helper.getLevel()).transportMeter()
+                        .window(scene.firstScope()).events().stream()
+                        .filter(flow -> flow.attribution() == FlowState.Attribution.AGGREGATE_LANE_RETURN
+                                && flow.resource().equals("minecraft:water")).toList();
+                helper.assertValueEqual(returns.size(), 1, "One fill is one returned flow");
+                helper.assertValueEqual(returns.getFirst().amount(), 1000L, "A bucket counts as 1000 AE2 fluid units");
+                PolicyEvidence.write("statisticscountfluidreturninmillibuckets", 4, Map.of("filled", "1000",
+                        "recorded", String.valueOf(returns.getFirst().amount())));
+            });
+            scene.close();
+        });
     }
 
     private static double latest(double[] points) {
