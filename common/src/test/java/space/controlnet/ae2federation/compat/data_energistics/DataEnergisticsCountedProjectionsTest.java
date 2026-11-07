@@ -1,6 +1,8 @@
 package space.controlnet.ae2federation.compat.data_energistics;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -13,6 +15,10 @@ import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import com.fish_dan_.data_energistics.api.crafting.dispatch.CountedCraftingAdmission;
+import com.fish_dan_.data_energistics.api.crafting.dispatch.CountedCraftingProviderAdapter;
+import com.fish_dan_.data_energistics.api.crafting.dispatch.CountedCraftingTarget;
+import com.fish_dan_.data_energistics.api.registry.provider.runtime.ExternalPatternProviderIdentity;
+import com.fish_dan_.data_energistics.api.registry.provider.runtime.PatternProviderIdentitySource;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import net.minecraft.core.BlockPos;
@@ -79,6 +85,24 @@ class DataEnergisticsCountedProjectionsTest {
         };
         assertFalse(admission(projection, unsure).commit(prototype()));
         assertTrue(projection.owed);
+    }
+
+    /** The identity is built through its record's canonical constructor, which 3.3 and 3.4 declare differently. */
+    @Test
+    void theIdentityNamesTheProjection() throws Throwable {
+        var identity = (ExternalPatternProviderIdentity) DataEnergisticsCountedProjections.invoke(new Projection(), null,
+                PatternProviderIdentitySource.class.getMethod("providerIdentity"), new Object[0]);
+        assertEquals(ResourceLocation.fromNamespaceAndPath("ae2federation", "pattern_projection"), identity.type());
+        assertTrue(identity.canonicalFieldsFast().isEmpty());
+    }
+
+    /** A projection's only target is the provider itself; 3.4 asks for it without a default method. */
+    @Test
+    void aTargetOtherThanTheProviderIsNotPrepared() throws Throwable {
+        var method = CountedCraftingProviderAdapter.class.getMethod("prepareBatchForTarget", IPatternDetails.class,
+                KeyCounter[].class, long.class, CountedCraftingTarget.class);
+        assertNull(DataEnergisticsCountedProjections.invoke(new Projection(), null, method,
+                new Object[] {new Pattern(), prototype(), 1L, CountedCraftingTarget.route("machine")}));
     }
 
     private static CountedCraftingAdmission admission(Projection projection, CountedCraftingAdmission real) {

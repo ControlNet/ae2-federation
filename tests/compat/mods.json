@@ -6,26 +6,26 @@
     "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
     "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
   },
-  "ae2-lightning-tech@2.1.1": {
+  "ae2-lightning-tech@2.1.3": {
     "name": "ae2-lightning-tech",
-    "version": "2.1.1",
-    "file": "ae2lt-2.1.1.jar",
-    "url": "https://cdn.modrinth.com/data/ArHeh5Fz/versions/S2Li22o0/ae2lt-2.1.1.jar",
-    "sha512": "2963783c8adf50841f244b495f485b23eaf076883c47ff3146092031a2ce21f9ccd968ad140addcd63071874601202cea78468f8ffedd5850b58b40999c058a5"
+    "version": "2.1.3",
+    "file": "ae2lt-2.1.3.jar",
+    "url": "https://cdn.modrinth.com/data/ArHeh5Fz/versions/GGx4RqQt/ae2lt-2.1.3.jar",
+    "sha512": "6604fb1b2c879d6ef274b7f89136a3e3ee1f34ab042f9025dfb923fe2e5b6cb5d3825cd915971ca3ac75a5e63f7be3310da44ca34e158335b872c9c01d57eaec"
   },
-  "ae2-pattern-disk@0.9.4": {
+  "ae2-pattern-disk@0.9.11": {
     "name": "ae2-pattern-disk",
-    "version": "0.9.4",
-    "file": "ae2_pattern_disk-0.9.4.jar",
-    "url": "https://github.com/xingluo01/AE2-Pattern-Disk/releases/download/v0.9.4/ae2_pattern_disk-0.9.4.jar",
-    "sha512": "5910ffebf78e49a24bd27f3d9dc64f592d0df984e24792b33de056c9a5b00771418310523edf036b608feaddff9935dded2b3fc4b4fa08c8274153c674594efa"
+    "version": "0.9.11",
+    "file": "ae2_pattern_disk-0.9.11.jar",
+    "url": "https://github.com/xingluo01/AE2-Pattern-Disk/releases/download/v0.9.11/ae2_pattern_disk-0.9.11.jar",
+    "sha512": "1a39eadc223f06ba3d74381d0e8f62adc54107ca1e99b2ce4dc5053a5b8484ee266665d2e198bc31e485623887cc446b5063b62caf43a8a58418561d224d9b07"
   },
-  "ae2-wcwt@1.3.10": {
+  "ae2-wcwt@1.3.11": {
     "name": "ae2-wcwt",
-    "version": "1.3.10",
-    "file": "wcwt-1.3.10.jar",
-    "url": "https://cdn.modrinth.com/data/4inoel9g/versions/wEtjFnU4/wcwt-1.3.10.jar",
-    "sha512": "d88c3601ad04ceca27a2993c70b2c1858f6d766f3a56fe4ed6a82f1c061409d7753b84fee2ce3b71f1d566e00c3f72907067458d20f011e88ab9e6298f4453ad"
+    "version": "1.3.11",
+    "file": "wcwt-1.3.11.jar",
+    "url": "https://cdn.modrinth.com/data/4inoel9g/versions/7ALTIpjQ/wcwt-1.3.11.jar",
+    "sha512": "7ef9fecb5091c7265b3be532ce701748dd08a9db382cce501fca86dae580ed489c1f07029147a25fc4c32138099e0f62369ff7918b5c15abe845e3784e12a605"
   },
   "ae2@19.2.17": {
     "name": "ae2",
@@ -69,12 +69,12 @@
     "url": "https://cdn.modrinth.com/data/pNabrMMw/versions/CxSEpEnO/ae2wtlib-19.5.1.jar",
     "sha512": "0659d755c6ae91551d30c20b948d5bde0a39b2ae9825b1a4e132f0bbd10e032f18d82b6847261360589f36980ed3597ef6c6947b680523a1de767a9b7953682e"
   },
-  "aeallpattern@0.2.6": {
+  "aeallpattern@0.2.8": {
     "name": "aeallpattern",
-    "file": "aeallpattern-1.21.1-neoforge-0.2.6.jar",
-    "url": "https://mediafilez.forgecdn.net/files/8902/411/aeallpattern-1.21.1-neoforge-0.2.6.jar",
-    "sha512": "fb90f83da5ea7db4e49e23232ff91ef5e7601196048ee82eebee59f228c7f52e56d796732d16751e7eed5081ffbd7d1b7df5be8b2fcc48bde02e43dfefc62f30",
-    "version": "0.2.6"
+    "version": "0.2.8",
+    "file": "aeallpattern-1.21.1-neoforge-0.2.8.jar",
+    "url": "https://mediafilez.forgecdn.net/files/9352/704/aeallpattern-1.21.1-neoforge-0.2.8.jar",
+    "sha512": "7c2653e42d0cc26108e08d9a03cf87d6d2acf1d8c8fa10e5ea5f5f87059441c12ede474252e12138ad0119ffb3ee35db2f09512b1204bb77ecff5d7f6f9c0dcb"
   },
   "appflux@1.21-2.1.5-neoforge": {
     "name": "appflux",
@@ -90,12 +90,12 @@
     "url": "https://cdn.modrinth.com/data/IiATswDj/versions/TpUCzFaW/Applied-Mekanistics-1.6.3.jar",
     "sha512": "1a693c3c05862805bd88cf1265fd4b9b98b2da4efe986c9ff26efa0e675df14373983ffdf7ededb26f07864b6702fabc299ac1a06fb8fa35de0b341b596dbf9b"
   },
-  "appliedenhancements@1.1.5": {
+  "appliedenhancements@1.1.6": {
     "name": "appliedenhancements",
-    "version": "1.1.5",
-    "file": "appliedenhancements-1.1.5.jar",
-    "url": "https://mediafilez.forgecdn.net/files/9329/280/appliedenhancements-1.1.5.jar",
-    "sha512": "3e6501cc1bc6a5495cd495da1fb3230b53f8609ef454f8875ef19a097c3747ff2cafd0719ca7d9adcfff104124d714b0e04dea78171fcd50940049e0a249b79e"
+    "version": "1.1.6",
+    "file": "appliedenhancements-1.1.6.jar",
+    "url": "https://mediafilez.forgecdn.net/files/9437/521/appliedenhancements-1.1.6.jar",
+    "sha512": "a4e08f34e00ac54d8d6adf727501a62588ad5787b51f67298d64dd36d987fa3b5ed284140127d63f2bcc3ccf7547af01cbcf403f3e9acf2df34153255e313450"
   },
   "create@6.0.10+mc1.21.1": {
     "name": "create",
@@ -111,12 +111,12 @@
     "url": "https://cdn.modrinth.com/data/kU1G12Nn/versions/hsjVajlP/createaddition-1.7.2.jar",
     "sha512": "f3a3ddb5600189da818fc71ea659d17f0d1097c5ad664433eed400b3ecc67d0f9305b348e5b7c5fd872d7a6e51330c7158b3181e77192c576c205a74dd0298ff"
   },
-  "data-energistics@3.3.5": {
+  "data-energistics@3.4.0": {
     "name": "data-energistics",
-    "version": "3.3.5",
-    "file": "data_energistics-1.21.1-3.3.5.jar",
-    "url": "https://mediafilez.forgecdn.net/files/9095/664/data_energistics-1.21.1-3.3.5.jar",
-    "sha512": "08828754faf99dafb16d448d7fa1d37428bf6b6f5a6492e9a21850b43d7536386f834ccad685f60e365bd03edf27cd85e45bf0eb4951237dedff1a1981d6017f"
+    "version": "3.4.0",
+    "file": "data_energistics-1.21.1-3.4.0.jar",
+    "url": "https://mediafilez.forgecdn.net/files/9449/535/data_energistics-1.21.1-3.4.0.jar",
+    "sha512": "87e329004b12d2c5d9d50eba225ee07bad57de4fba02851b0a2aac7b0c9c760db096d5663044ee4fb2564ee3b75bf045069047cc0ed0ff116bde20179ef5936a"
   },
   "enderio@v8.2.12-beta": {
     "name": "enderio",
@@ -125,19 +125,19 @@
     "url": "https://cdn.modrinth.com/data/49ZofO4f/versions/2bHl1dCW/enderio-8.2.12-beta.jar",
     "sha512": "c4415c1e835fa7eaf7f4528fd685412151968b092e9be91528add11dd981943ba6243eee41ff73923df64d59d8f907901cb006edcb5c02783e73ab656524c995"
   },
-  "extendedae-plus@1.6.3": {
+  "extendedae-plus@1.6.4.1": {
     "name": "extendedae-plus",
-    "version": "1.6.3",
-    "file": "extendedae_plus-1.6.3.jar",
-    "url": "https://cdn.modrinth.com/data/xr109llC/versions/AtuOmKkV/extendedae_plus-1.6.3.jar",
-    "sha512": "5c43dcff863603f2fd390c2d5335d35a04a7cec4707d01bddd3f3890398104952d6b369d98ede87111b8ef125a9e90fe0e1beab748a908327f54229210886bcc"
+    "version": "1.6.4.1",
+    "file": "extendedae_plus-1.6.4.1.jar",
+    "url": "https://cdn.modrinth.com/data/xr109llC/versions/rfBfT1Uq/extendedae_plus-1.6.4.1.jar",
+    "sha512": "ee5819be711c7ce800462fc59f1712ad595d0ac42472919b773dab6e1923bdfe76665ce0e49079bc45a60a3b572c8d7b5edd20238f70f49d2c0ae8ef269dec96"
   },
-  "extendedae@2.2.42": {
+  "extendedae@2.2.43": {
     "name": "extendedae",
-    "version": "2.2.42",
-    "file": "ExtendedAE-1.21-2.2.42-neoforge.jar",
-    "url": "https://mediafilez.forgecdn.net/files/9305/327/ExtendedAE-1.21-2.2.42-neoforge.jar",
-    "sha512": "1e995681500fb8748ffa62375632eeddafad0fcd62934394a66c793f5f491f204ca91a8a784debcb71666e419507b7fb815c309c6b0e21d27f423e4a4a88ecdd"
+    "version": "2.2.43",
+    "file": "ExtendedAE-1.21-2.2.43-neoforge.jar",
+    "url": "https://mediafilez.forgecdn.net/files/9391/213/ExtendedAE-1.21-2.2.43-neoforge.jar",
+    "sha512": "78b0fdbb93a194df6e5b600d226640ff7af94dd417e3be08c4014c4cdd8d3afd70df33e3b6b671ce5fb855def8f2e0d9550582c8eee7a29790aa198128bfe62b"
   },
   "functional-storage@1.21-1.5.7": {
     "name": "functional-storage",
@@ -160,12 +160,12 @@
     "url": "https://cdn.modrinth.com/data/UhW5uCKw/versions/pfbmdJ3b/Glodium-1.21-2.2-neoforge.jar",
     "sha512": "56a387a1bdaf0146c9a7e14de0aca8b6f53f25d3ba9d46255f142043387282ed9e4fa0011d309e32d9ffe5362b129c07e301226dd4ac11eda9a4f42f27c0b5d1"
   },
-  "guideme@21.1.20": {
+  "guideme@21.1.22": {
     "name": "guideme",
-    "version": "21.1.20",
-    "file": "guideme-21.1.20.jar",
-    "url": "https://cdn.modrinth.com/data/Ck4E7v7R/versions/mUlgxNj8/guideme-21.1.20.jar",
-    "sha512": "5e87550a56f97a23996b4c2e06a067a985f9dbbb3a79dd07a302fab275ff24637ed875e50eeafce030dd828799d323e50d86cc2509d53011069c895886a1cbdb"
+    "version": "21.1.22",
+    "file": "guideme-21.1.22.jar",
+    "url": "https://cdn.modrinth.com/data/Ck4E7v7R/versions/QeYKsstN/guideme-21.1.22.jar",
+    "sha512": "2a7b29143c1bef18375f221c337c6e744d04b79bc3cc10cadac46b7d6bb217ad78c51a3c33cd802b221cc7b38ff04a3f7064bd63d292e53bf9f3e09047eeda24"
   },
   "industrial-foregoing@1.21-3.6.39": {
     "name": "industrial-foregoing",
@@ -202,6 +202,13 @@
     "url": "https://cdn.modrinth.com/data/B1CBVXHX/versions/s7Uru4V0/ldlib2-neoforge-1.21.1-2.2.44-all.jar",
     "sha512": "232e7e5ffcadbcd660894c055d7f53443c7b9105658229875b936a8c5eb8587f3ed9ef51b2897084709d4cd2873172ee4e34101e1e8c88aade1d837c63c67883"
   },
+  "ldlib2@2.2.45": {
+    "name": "ldlib",
+    "version": "2.2.45",
+    "file": "ldlib2-neoforge-1.21.1-2.2.45-all.jar",
+    "url": "https://cdn.modrinth.com/data/B1CBVXHX/versions/VcWs9ATV/ldlib2-neoforge-1.21.1-2.2.45-all.jar",
+    "sha512": "896af9d53a8322fcc92737929b78b4a5b14231609842283b091cd97bdf9cfdbba595391f634a52ebdf7af87c3792913b4c738eddb270b453c8d10306b6fdd1d1"
+  },
   "megacells@4.11.0": {
     "name": "megacells",
     "version": "4.11.0",
@@ -237,12 +244,12 @@
     "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/26GPFo2j/neoecoae-21.2.9.jar",
     "sha512": "3527f1b0e15b3f5d50a1257072da72a8fd86fce3fb55572a679979f03b23c21d634099f31331c250a962a92d94e4c4b65d9191d16ef056c9e05c2e1205c80a7f"
   },
-  "neoecoae@21.2.11": {
+  "neoecoae@21.2.15": {
     "name": "neoecoae",
-    "version": "21.2.11",
-    "file": "neoecoae-21.2.11.jar",
-    "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/dpuG3DRu/neoecoae-21.2.11.jar",
-    "sha512": "056ebd8469b8763280c15d254d2038c0f75bde51585dbb01d8de7705a0413330af439884eea1b995622289bc519ce15788ae7c843029a9b28ef8ba218c548560"
+    "version": "21.2.15",
+    "file": "neoecoae-21.2.15.jar",
+    "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/c26NIHTF/neoecoae-21.2.15.jar",
+    "sha512": "c2b781e13fa4c788dfc633f8a4dc28433f4d7aeb69848966a00d370a874f1f6855bd0dfa7ab5e87bd4be110bd005c299bd59bef5fe23a39c3e2d8a4a7a3186ae"
   },
   "neoecoprototype@1.3.9": {
     "name": "neoecoprototype",
@@ -251,53 +258,53 @@
     "url": "https://github.com/reliqwq/NeoECOPrototype/releases/download/v1.3.9/neoecoprototype-1.3.9.jar",
     "sha512": "419c820d0d2ccb51eb2f70123a2a96a90e9770c41f63d813eb833231891c662ec234dbd1a43b1526ecf1f5d319085592bc5f8a265eb34eaf5ef41bf35da23109"
   },
-  "neoecoprototype@1.4.2": {
+  "neoecoprototype@1.4.6": {
     "name": "neoecoprototype",
-    "version": "1.4.2",
-    "file": "neoecoprototype-1.4.2.jar",
-    "url": "https://cdn.modrinth.com/data/3HO3APHb/versions/CphfMpaT/neoecoprototype-1.4.2.jar",
-    "sha512": "c7468f2557349e5bcca4b66bb0f766c2c82f46e0dc01ac4f0e03e26c83c88c3f647815d478a5f70622ec1b7190b03f355c4f38487e67f4358f79c75fed39ad38"
+    "version": "1.4.6",
+    "file": "neoecoprototype-1.4.6.jar",
+    "url": "https://cdn.modrinth.com/data/3HO3APHb/versions/Z3Vocdag/neoecoprototype-1.4.6.jar",
+    "sha512": "9f6eafd22c512ffe17a6f786146f127f17070dcb1ef4e7aa1918ccb82d353044abefd635b32d7ed0dc349aed7fde0e50c7cbc9512209401a09d851415e115256"
   },
-  "omnisequence@2.0.10": {
+  "omnisequence@2.0.13": {
     "name": "omnisequence",
-    "version": "2.0.10",
-    "file": "omnisequence-transfinite-2.0.10.jar",
-    "url": "https://mediafilez.forgecdn.net/files/9336/798/omnisequence-transfinite-2.0.10.jar",
-    "sha512": "b7062a9376471865e22d108e541103698949734b5ee498007fb55c30d71421ed444943e71bf8369bb87274eede188ead809b1a771c6736bb1861e3851607ff3f"
+    "version": "2.0.13",
+    "file": "omnisequence-transfinite-2.0.13.jar",
+    "url": "https://mediafilez.forgecdn.net/files/9484/758/omnisequence-transfinite-2.0.13.jar",
+    "sha512": "6d82612e508f1c7dcb3eedff10b3ee546969ec21288cb95e9d55fe2181e9e3203e8c8f7f9240008721762328862d015b16ee17335b49cd872e1106cad682a03a"
   },
-  "sophisticated-core@1.21.1-1.5.18.2431": {
+  "sophisticated-core@1.21.1-1.5.31.2460": {
     "name": "sophisticated-core",
-    "version": "1.21.1-1.5.18.2431",
-    "file": "sophisticatedcore-1.21.1-1.5.18.2431.jar",
-    "url": "https://cdn.modrinth.com/data/nmoqTijg/versions/DqcfpFN9/sophisticatedcore-1.21.1-1.5.18.2431.jar",
-    "sha512": "aea2799e7b9022074d43f1865b5960bf02f293cf1f6c97f4e88703efc540a123a861bc289b60871b689555fe6e8c8e87c94eeb82d6d70990ef4f0c6ac7c66f46"
+    "version": "1.21.1-1.5.31.2460",
+    "file": "sophisticatedcore-1.21.1-1.5.31.2460.jar",
+    "url": "https://cdn.modrinth.com/data/nmoqTijg/versions/jo2tOOfF/sophisticatedcore-1.21.1-1.5.31.2460.jar",
+    "sha512": "f4b5a00864b17c0b1ebb3de22cd4e759b015b79b1cc6f9644545aed0c1bef1471680711de59cac486eac4c1562b0c8eb4b688a26a5fd07b1dbc5983b25057d03"
   },
-  "sophisticated-storage@1.21.1-1.6.9.2199": {
+  "sophisticated-storage@1.21.1-1.6.16.2222": {
     "name": "sophisticated-storage",
-    "version": "1.21.1-1.6.9.2199",
-    "file": "sophisticatedstorage-1.21.1-1.6.9.2199.jar",
-    "url": "https://cdn.modrinth.com/data/hMlaZH8f/versions/wVZfDecJ/sophisticatedstorage-1.21.1-1.6.9.2199.jar",
-    "sha512": "1ee04acf103ed09df4e02517bb0124197e305b90128e6fc3fb953fec4a6bc787732ea78a8872cef4754c287f8e95b1598714aec5d78a6a798d61866f14f8b213"
+    "version": "1.21.1-1.6.16.2222",
+    "file": "sophisticatedstorage-1.21.1-1.6.16.2222.jar",
+    "url": "https://cdn.modrinth.com/data/hMlaZH8f/versions/hC4LaBhJ/sophisticatedstorage-1.21.1-1.6.16.2222.jar",
+    "sha512": "a3bf3141fd0853b45014a273db67f164af00f96d96a84acc84e34455286f5a7f539ae1408029eec06650d38e1c2f800d839830d4bd6d198250ec102da8feb01b"
   },
-  "thunderbolt-core@2.0.1": {
+  "thunderbolt-core@2.0.3": {
     "name": "thunderbolt-core",
-    "version": "2.0.1",
-    "file": "thunderbolt-2.0.1.jar",
-    "url": "https://cdn.modrinth.com/data/M5jhzZXH/versions/TVoZndZv/thunderbolt-2.0.1.jar",
-    "sha512": "a7c510765b53d5841f3f5b4e75b4e14cbaa2447afe88c3fa21286fee11c1d3bb5eca2db010d77f11c4eb689d1d6f4ab2c3ee4474e83857f3f9a15332b2a49a5b"
+    "version": "2.0.3",
+    "file": "thunderbolt-2.0.3.jar",
+    "url": "https://cdn.modrinth.com/data/M5jhzZXH/versions/i3H7uX2O/thunderbolt-2.0.3.jar",
+    "sha512": "94ccf79450ce5542403a76efb76ca9d914116afc617b5d3f7844e5807636a1904d9f7c5049b918baf446a1e7c7266f372e722865b4702872753c472dddddd3ba"
   },
-  "titanium@1.21-4.0.51": {
+  "titanium@1.21-4.0.52": {
     "name": "titanium",
-    "version": "1.21-4.0.51",
-    "file": "titanium-1.21-4.0.51.jar",
-    "url": "https://cdn.modrinth.com/data/1Ro7m06l/versions/vbCgpf68/titanium-1.21-4.0.51.jar",
-    "sha512": "59a1470b5b3e103f52fa9c0f2f334bb3b28cdbaba74c95234528a40a558596d598227968e5812502a41a9ee24993b00c748cee913abae8fbb4ab7df79d04ab29"
+    "version": "1.21-4.0.52",
+    "file": "titanium-1.21-4.0.52.jar",
+    "url": "https://cdn.modrinth.com/data/1Ro7m06l/versions/ZrffET42/titanium-1.21-4.0.52.jar",
+    "sha512": "8fbdc6840c7f670f952018563f2e24b0666de392df2e2753bbd17548f9ea77f3291ee5047c32342a4e7dd017ad5ccc7e66999fbb2cd3693ddc888de5825cb2e2"
   },
-  "useless-mod@2.4.6.2": {
+  "useless-mod@2.4.6.5": {
     "name": "useless-mod",
-    "version": "2.4.6.2",
-    "file": "useless_mod-1.21.1-2.4.6.2.jar",
-    "url": "https://github.com/SorrowMist/UselessMod/releases/download/1.21.1-2.4.6.2/useless_mod-1.21.1-2.4.6.2.jar",
-    "sha512": "99a3d86a2b3840abc8d8a18ee6e558cfbf9073712eaf6ea420e5966bbfc9f99287818dc57d2558d5a5d8f1c5d10681a5b830a8deaa27f65a55c43e2f42efd1f1"
+    "version": "2.4.6.5",
+    "file": "useless_mod-1.21.1-2.4.6.5.jar",
+    "url": "https://github.com/SorrowMist/UselessMod/releases/download/1.21.1-2.4.6.5/useless_mod-1.21.1-2.4.6.5.jar",
+    "sha512": "e0a47564244848c7259a0638d2ac7e8574eb5edba3f6846e1d615a0a1d89621ea34e93e66d5685c03c46527ec8beeb4ccf7837cf1f3221360b7bdb4867fef088"
   }
 }

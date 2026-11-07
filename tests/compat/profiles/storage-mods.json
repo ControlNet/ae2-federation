@@ -5,11 +5,11 @@
   "neoforge": "21.1.250",
   "mods": [
     "ae2@19.2.18",
-    "guideme@21.1.20",
-    "ldlib2@2.2.44",
-    "sophisticated-core@1.21.1-1.5.18.2431",
-    "sophisticated-storage@1.21.1-1.6.9.2199",
-    "titanium@1.21-4.0.51",
+    "guideme@21.1.22",
+    "ldlib2@2.2.45",
+    "sophisticated-core@1.21.1-1.5.31.2460",
+    "sophisticated-storage@1.21.1-1.6.16.2222",
+    "titanium@1.21-4.0.52",
     "functional-storage@1.21-1.5.7"
   ],
   "tests": [

@@ -10,10 +10,13 @@ import appeng.helpers.patternprovider.PatternContainer;
 import com.fish_dan_.data_energistics.api.crafting.dispatch.CountedCraftingAdmission;
 import com.fish_dan_.data_energistics.api.crafting.dispatch.CountedCraftingCapacity;
 import com.fish_dan_.data_energistics.api.crafting.dispatch.CountedCraftingProviderAdapter;
+import com.fish_dan_.data_energistics.api.crafting.dispatch.CountedCraftingRoutingMode;
+import com.fish_dan_.data_energistics.api.crafting.dispatch.CountedCraftingTarget;
 import com.fish_dan_.data_energistics.api.entrypoint.DataEnergisticsEntrypoint;
 import com.fish_dan_.data_energistics.api.entrypoint.DataEnergisticsPlugin;
 import com.fish_dan_.data_energistics.api.entrypoint.DataEnergisticsRegistry;
 import com.fish_dan_.data_energistics.api.registry.provider.definition.PatternProviderMetadata;
+import com.fish_dan_.data_energistics.api.registry.provider.definition.PatternProviderRegistration;
 import com.fish_dan_.data_energistics.api.registry.provider.definition.ProviderIdentityDescriptor;
 import com.fish_dan_.data_energistics.api.registry.provider.runtime.ExternalPatternProviderIdentity;
 import com.fish_dan_.data_energistics.api.registry.provider.runtime.PatternProviderIdentitySource;
@@ -21,8 +24,10 @@ import com.fish_dan_.data_energistics.api.registry.provider.runtime.PatternProvi
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
+import java.util.OptionalLong;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.crafting.projection.ProjectedProvider;
@@ -38,19 +43,37 @@ public final class DataEnergisticsCountedProjections implements DataEnergisticsP
             ResourceLocation.fromNamespaceAndPath("ae2federation", "pattern_projection");
     /** The identity's schema; a projection has no fields of its own. */
     private static final int SCHEMA = 1;
-    @SuppressWarnings("removal")
     private static final ExternalPatternProviderIdentity IDENTITY =
-            new ExternalPatternProviderIdentity(PROJECTION, SCHEMA, List.of());
-    /** A projection's capacity: one aggregate target, the real provider, which says how many crafts it admits. */
-    private static final CountedCraftingCapacity CAPACITY = CountedCraftingCapacity.aggregateUnknown();
+            record(ExternalPatternProviderIdentity.class, PROJECTION, SCHEMA, ObjectLists.emptyList());
+    /**
+     * A projection's capacity: one aggregate target, the real provider, which says how many crafts it admits. Built as
+     * 3.3's {@code aggregateUnknown()}, which 3.4 removed.
+     */
+    private static final CountedCraftingCapacity CAPACITY = new CountedCraftingCapacity(CountedCraftingTarget.provider(),
+            CountedCraftingRoutingMode.AGGREGATE, OptionalLong.empty(), OptionalLong.empty());
 
     /** Binds every projection that names itself {@link #IDENTITY} to itself as its counted adapter. */
     @Override
-    @SuppressWarnings("removal")
     public void register(DataEnergisticsRegistry registry) {
-        registry.patternProviders().registerFactory(new PatternProviderMetadata(PROJECTION,
-                        new ProviderIdentityDescriptor.External(PROJECTION, SCHEMA), List.of(), List.of()),
-                context -> (CountedCraftingProviderAdapter) context.provider());
+        registry.patternProviders().register(PatternProviderRegistration.counted(record(PatternProviderMetadata.class,
+                        PROJECTION, new ProviderIdentityDescriptor.External(PROJECTION, SCHEMA), ObjectLists.emptyList(),
+                        ObjectLists.emptyList()),
+                context -> (CountedCraftingProviderAdapter) context.provider()));
+    }
+
+    /**
+     * A new {@code type} through its canonical constructor. Data Energistics 3.4 changed the list components of these
+     * records from {@code List} to {@code ObjectList}, so no one constructor call links against both 3.3 and 3.4; an
+     * empty {@code ObjectList} fits either.
+     */
+    private static <T extends Record> T record(Class<T> type, Object... components) {
+        var types = Arrays.stream(type.getRecordComponents()).map(RecordComponent::getType).toArray(Class<?>[]::new);
+        try {
+            return type.getDeclaredConstructor(types).newInstance(components);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Data Energistics' " + type.getSimpleName() + " has an unknown shape",
+                    exception);
+        }
     }
 
     /** Answers a call on one of a projection's Data Energistics interfaces for the projection behind {@code proxy}. */
@@ -62,6 +85,11 @@ public final class DataEnergisticsCountedProjections implements DataEnergisticsP
             case "captureCapacityFast" -> projection.isLive() ? ObjectLists.singleton(CAPACITY) : ObjectLists.emptyList();
             case "prepareBatch" -> prepareBatch(projection, (IPatternDetails) arguments[0], (KeyCounter[]) arguments[1],
                     (long) arguments[2]);
+            // A default method in 3.3, abstract in 3.4: the projection's one target is the provider itself.
+            case "prepareBatchForTarget" -> ((CountedCraftingTarget) arguments[3]).providerScoped()
+                    ? prepareBatch(projection, (IPatternDetails) arguments[0], (KeyCounter[]) arguments[1],
+                            (long) arguments[2])
+                    : null;
             default -> {
                 if (method.isDefault()) yield InvocationHandler.invokeDefault(proxy, method, arguments);
                 throw new UnsupportedOperationException(method.toString());

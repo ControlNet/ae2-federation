@@ -574,8 +574,8 @@ dependencies {
     // Jade 15.10.6 for 1.21.1 NeoForge (Modrinth version eYz2YBGT); optional, only its plugin class refers to it.
     // Not compileOnly: test source sets run with the main compile classpath, and a loaded Jade breaks fake players.
     jadeApi('maven.modrinth:jade:eYz2YBGT')
-    // Data Energistics 3.3.5 (CurseForge project 1565514, file 9095664), the compat runs' pin; only its plugin class
-    // refers to it.
+    // Data Energistics 3.3.5 (CurseForge project 1565514, file 9095664); only its plugin class refers to it, and it also
+    // links against 3.4, the compat runs' pin.
     dataEnergisticsApi('curse.maven:data-energistics-1565514:9095664')
     testImplementation(platform('org.junit:junit-bom:5.10.1'))
     testImplementation('org.junit.jupiter:junit-jupiter')

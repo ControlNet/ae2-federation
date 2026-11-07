@@ -1,19 +1,19 @@
 {
   "name": "cus2",
   "group": "modpacks",
-  "description": "Create Ultimate Selection 2 12.9.0: Create-centred pack with AE2, ExtendedAE, Applied Mekanistics, Create addons, quests and KubeJS",
+  "description": "Create Ultimate Selection 2 13.1.0: Create-centred pack with AE2, ExtendedAE, Applied Mekanistics, Create addons, quests and KubeJS",
   "neoforge": "21.1.256",
   "curseforge": {
     "project": 1324409
   },
   "pack": {
-    "name": "Create Ultimate Selection 2 Serverpack MC 1.21.1-12.9.0",
-    "file": "Create Ultimate Selection 2 Serverpack MC 1.21.1-12.9.0.zip",
-    "url": "https://mediafilez.forgecdn.net/files/9299/724/Create%20Ultimate%20Selection%202%20Serverpack%20MC%201.21.1-12.9.0.zip",
-    "sha512": "155212c16f05d9fc98e43d59662c9118a96d990f9832cf3abb0af35412e075e7082fb5e1b487cdbd8b6a76d480ba429e3be619daf30dc61a58be44e8366fea2f"
+    "name": "Create-Ultimate-Selection-2-Serverpack-MC-1.21.1-13.1.0",
+    "file": "Create-Ultimate-Selection-2-Serverpack-MC-1.21.1-13.1.0.zip",
+    "url": "https://mediafilez.forgecdn.net/files/9397/680/Create-Ultimate-Selection-2-Serverpack-MC-1.21.1-13.1.0.zip",
+    "sha512": "d3aaefcacbbaa056a2de28febb937598874c2ebed6fc83b970b3032e4429549cce7d89d2bd24a0379fbc09b3a3291ea9c432b0554033558d1b29ff5ea28727d2"
   },
   "mods": [
-    "ldlib2@2.2.44"
+    "ldlib2@2.2.45"
   ],
   "memory": "6G",
   "timeout": 1800,
