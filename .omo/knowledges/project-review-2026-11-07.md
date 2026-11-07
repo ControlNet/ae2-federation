@@ -86,10 +86,16 @@ UI scenario `ui.review-fixes` (`runUiTestClient -PfederationUiSelection=ui.revie
 | Identity settlements / policy tombstones grow | 443f72a5 (settlements removed; tombstones dropped on load) | `NetworkIdentityRegistryTest`, `PolicyStoreTest` |
 | Statistics memory | 2cc608f2 (flat TopKeys arrays, lazy Timeline tiers, one tag per range; save format 4) | `StatisticsFootprintTest` (5-key ranking 187 KB -> 32 KB per route) |
 | Compat pins drifted | 8043f11b (newest releases as of 2026-11-07; DE plugin links against 3.3 and 3.4), df1bbf13 (owner: Data Energistics stays 3.3.5, with ExtendedAE-Plus 1.6.3 and UselessMod 2.4.6.2 in its profiles), cfa58d28 (notices) | every addon profile, atm10 93/93, cus2 61/61; DE 3.4.0 upgrade bug reported upstream as ModularMCLib/DataEnergistics#431 |
-| mmcr startup race (upstream) | patch in `build/upstream/mmcr/` for the owner to submit | compiles against mmcr 0.1.3 + KubeJS |
 
+| Cut lists did not say so | 5607b374 (topology caption "showing X of Y networks/Endpoints"; wires view ends its Endpoint column with "N more Endpoints not shown" and counts them in its summary) | `ui.review-fixes`, `build/review-2026-11-07-check/truncated-lists-before-after.png` |
+| `mountsInUse` read by reflection | 31963de3 (`NetworkStorageAccess` accessor) | `storage.bus-loop-counts-once`, `storage.chain-bus-loop-counts-once` |
+| Playthrough Data Reassembler adapter on DE 3.3 names only | df24d658 (3.4 names first, ObjectArrayList input; signatures checked with javap; CI's pack ships 3.3.5) | compiles; playthrough |
+| mmcr startup race (upstream) | reported with the patch: Nibelungorum/ModularMachinery-Community-Refoxed#14 | compiles against mmcr 0.1.3 + KubeJS |
+| DE 3.4.0 in-place upgrade throws (upstream) | reported: ModularMCLib/DataEnergistics#431 | read from its source |
+
+Owner decisions (2026-11-07): crafting debts get no expiry (they are bounded, a long job keeps its debt while it runs;
+operators clear the rest with `clear-debts`); a Storage Bus on another network's unconfigured Interface stays exported
+as a source (the network sees it natively; double counting is fixed); Data Energistics stays 3.3.5 in its profiles.
 Not changed, by judgement: `FederationStatistics.pollJobs` per tick (polling every N ticks would miss short jobs).
 Test-only mechanism: `observelargedomainbounded` builds its 300-member domain with a synthetic hub node.
 Also fixed: `domainmenusyncmanyendpoints` placed Endpoints outside its structure (unloaded chunks, flaky).
-Open for the owner: cut lists are not shown as "N more" in the screens (paging would be the full answer); a Storage
-Bus on another network's unconfigured Interface is still exported as a source.
