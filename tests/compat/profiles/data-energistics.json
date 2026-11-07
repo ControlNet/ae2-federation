@@ -7,8 +7,7 @@
     "ae2@19.2.18",
     "guideme@21.1.22",
     "ldlib2@2.2.45",
-    "ae2wtlib@19.5.1",
-    "data-energistics@3.4.0"
+    "data-energistics@3.3.5"
   ],
   "tests": [
     "core",

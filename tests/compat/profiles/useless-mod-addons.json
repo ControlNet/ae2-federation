@@ -16,13 +16,13 @@
     "thunderbolt-core@2.0.3",
     "ae2-lightning-tech@2.1.3",
     "neoecoae@21.2.15",
-    "data-energistics@3.4.0",
-    "extendedae-plus@1.6.4.1",
+    "data-energistics@3.3.5",
+    "extendedae-plus@1.6.3",
     "appliedenhancements@1.1.6",
     "omnisequence@2.0.13",
     "geckolib@4.9.3",
     "advancedae@1.6.12-1.21.1",
-    "useless-mod@2.4.6.5"
+    "useless-mod@2.4.6.2"
   ],
   "tests": [
     "core",

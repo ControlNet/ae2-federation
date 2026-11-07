@@ -575,7 +575,7 @@ dependencies {
     // Not compileOnly: test source sets run with the main compile classpath, and a loaded Jade breaks fake players.
     jadeApi('maven.modrinth:jade:eYz2YBGT')
     // Data Energistics 3.3.5 (CurseForge project 1565514, file 9095664); only its plugin class refers to it, and it also
-    // links against 3.4, the compat runs' pin.
+    // links against 3.4.0. The compat runs pin 3.3.5 (3.4.0's in-place upgrade throws).
     dataEnergisticsApi('curse.maven:data-energistics-1565514:9095664')
     testImplementation(platform('org.junit:junit-bom:5.10.1'))
     testImplementation('org.junit.jupiter:junit-jupiter')

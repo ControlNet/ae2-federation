@@ -57,3 +57,12 @@ AE2WTLib) or a raised range (Neo ECO Prototype 1.4.6 needs Neo ECO 21.2.15) brea
   keeps LDLib2 2.2.44.
 - `PlaythroughDataReassemblerAdapter` still names Data Energistics 3.3's `recipe.reassembler` classes; 3.4.0 moved them
   to `api.recipe.reassembler` and `common.recipe.reassembler`. NAST still ships 3.3.5, so nothing runs it on 3.4 yet.
+
+## Decision (owner, 2026-11-07): Data Energistics stays on 3.3.5
+Asked whether to pin 3.4.0 with red profiles, mark the failure, or roll back, the owner chose to roll back in the three
+profiles that carry Data Energistics (`data-energistics`, `addons-all`, `useless-mod-addons`). Knock-on pins, found by
+running them: Data Energistics 3.3.5's mixin `ae.extendedaeplus.EaepPatternEncodingTermMenuMixin` calls
+`IPatternEncodingShiftUploadSync`, which ExtendedAE-Plus 1.6.4.1 removed, so those profiles keep ExtendedAE-Plus 1.6.3;
+UselessMod 2.4.6.5 needs Data Energistics 3.4.0, so `useless-mod-addons` keeps UselessMod 2.4.6.2. Results: 29/29,
+130/130, 117/117. Profiles without Data Energistics stay on ExtendedAE-Plus 1.6.4.1 and UselessMod 2.4.6.5. Our plugin
+still works on both 3.3.5 and 3.4.0. Move these up once Data Energistics restores the connector-mode default.
