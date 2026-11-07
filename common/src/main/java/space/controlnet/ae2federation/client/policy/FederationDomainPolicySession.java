@@ -83,7 +83,6 @@ public final class FederationDomainPolicySession {
     private long keptAt = -1;
     private long pendingMergesTick = Long.MIN_VALUE / 2;
     private List<NetworkId> overviewMembers = List.of();
-    private boolean graphLimitLogged;
     private @org.jetbrains.annotations.Nullable space.controlnet.ae2federation.processing.provider.ProviderMappingController.ReleaseConfirmation pendingRelease;
 
     private FederationDomainPolicySession(ServerPlayer player, FederationDomainPolicyEntrance entrance, Optional<FederationDomainSnapshot> federationDomain,
@@ -1587,21 +1586,7 @@ public final class FederationDomainPolicySession {
 
     public String graphSnapshotText() {
         if (context == null) return space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot.empty().encode();
-        space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot snapshot;
-        try {
-            snapshot = FederationDomainGraphProjection.snapshot(level, context, selectedProvider());
-        } catch (IllegalArgumentException overLimit) {
-            // Stopgap: the domain's observation snapshot and the graph refuse more than 256 members or 512 entries by
-            // throwing, and a binding that throws stops the server thread. Nothing is sent; the screen keeps its last
-            // graph. The limits themselves belong to the observation snapshot.
-            if (!graphLimitLogged) {
-                graphLimitLogged = true;
-                org.slf4j.LoggerFactory.getLogger(FederationDomainPolicySession.class).warn(
-                        "Federation domain {} is too large for its screen's graph: {}", context.federationDomainId().value(),
-                        overLimit.getMessage());
-            }
-            return "";
-        }
+        var snapshot = FederationDomainGraphProjection.snapshot(level, context, selectedProvider());
         var text = snapshot.encode();
         return text.length() <= SyncBudget.MAX_CHARS ? text : fitGraph(snapshot);
     }

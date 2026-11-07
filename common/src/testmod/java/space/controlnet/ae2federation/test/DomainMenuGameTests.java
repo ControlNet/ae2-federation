@@ -63,6 +63,7 @@ public final class DomainMenuGameTests {
     private static final BlockPos SECOND_CABLE = new BlockPos(3, 1, 4);
     /** Endpoints on each side of a Federation Cable line east of the Switch. */
     private static final int ENDPOINT_PAIRS = 32;
+    private static final int ENDPOINT_COLUMN_HEIGHT = 4;
 
     private DomainMenuGameTests() {
     }
@@ -78,12 +79,18 @@ public final class DomainMenuGameTests {
         memberNetwork(helper, member);
         provider(helper, PROVIDER, Direction.EAST, member);
         helper.setBlock(PROVIDER_CABLE, RouterRegistration.FEDERATION_CABLE.get());
+        // Every block stays inside the 13x16x12 structure: chunks outside it are not kept loaded, and an Endpoint in
+        // one may never join. A cable line east of the Switch carries columns of cables with an Endpoint on each side.
         var endpoints = new java.util.ArrayList<BlockPos>();
-        for (int index = 0; index < ENDPOINT_PAIRS; index++) {
-            var cable = new BlockPos(4 + index, 1, 3);
-            helper.setBlock(cable, RouterRegistration.FEDERATION_CABLE.get());
-            endpoints.add(endpoint(helper, cable.north(), Direction.SOUTH));
-            endpoints.add(endpoint(helper, cable.south(), Direction.NORTH));
+        for (int column = 0; column < ENDPOINT_PAIRS / ENDPOINT_COLUMN_HEIGHT; column++) {
+            var base = new BlockPos(4 + column, 1, 3);
+            helper.setBlock(base, RouterRegistration.FEDERATION_CABLE.get());
+            for (int height = 1; height <= ENDPOINT_COLUMN_HEIGHT; height++) {
+                var cable = base.above(height);
+                helper.setBlock(cable, RouterRegistration.FEDERATION_CABLE.get());
+                endpoints.add(endpoint(helper, cable.north(), Direction.SOUTH));
+                endpoints.add(endpoint(helper, cable.south(), Direction.NORTH));
+            }
         }
         helper.succeedWhen(() -> {
             var registry = FederationDomainRegistryAccess.get(helper.getLevel());
@@ -141,6 +148,12 @@ public final class DomainMenuGameTests {
                     var choices = JsonParser.parseString(texts.get("choices")).getAsJsonObject();
                     helper.assertValueEqual(shown(choices, "networks") + omitted(choices, "networks"), scene.networks(),
                             "Shown and omitted networks must add up to every member");
+                    // A domain past the graph's bound still gets a graph, with its members first.
+                    var graph = space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot
+                            .decode(texts.get("graph"));
+                    helper.assertTrue(graph.nodes().stream().anyMatch(node -> node.kind()
+                            == space.controlnet.ae2federation.client.domain.FederationDomainGraphNodeKind.MEMBER),
+                            "The graph must show the domain's members");
                 } finally {
                     scene.close();
                 }
@@ -282,13 +295,7 @@ public final class DomainMenuGameTests {
         var texts = new LinkedHashMap<String, String>();
         texts.put("choices", session.workspaceChoices());
         texts.put("overview", session.networkOverviewText());
-        try {
-            texts.put("graph", session.graphSnapshotText());
-        } catch (RuntimeException failed) {
-            // Recorded, not hidden: the measurement still reports the other bindings.
-            LOGGER.warn("AE2F_SYNC graph snapshot failed: {}", failed.toString());
-            texts.put("graph", "");
-        }
+        texts.put("graph", session.graphSnapshotText());
         texts.put("flows", session.pairFlowText());
         return texts;
     }
