@@ -4,6 +4,7 @@ import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
 import com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.lowdraglib2.registry.RegistrationEnvironment;
 import com.lowdragmc.lowdraglib2.registry.annotation.LDLRegisterClient;
@@ -26,7 +27,8 @@ import space.controlnet.ae2federation.router.RouterRegistration;
 /**
  * In-game checks of the 2026-11-07 review fixes, in Chinese: a domain of one network is renamed from its screen, its
  * statistics page lists a 1.25 MiB crafting CPU and labels the chart's time axis; then a domain with 64 Endpoints opens
- * its screen. Test-world scenes only.
+ * its screen and mapping page, whose lists are cut to what the screen binding can send and say how many are left out.
+ * Test-world scenes only.
  */
 @LDLRegisterClient(name = "ui.review-fixes", group = "ae2federation", registry = UIScenario.REGISTRY,
         environment = RegistrationEnvironment.DEV_ONLY)
@@ -95,6 +97,13 @@ public final class ReviewFixesScenario implements UIScenario {
                 .awaitModularUI()
                 .frames(40)
                 .screenshot("review-many-endpoints")
+                .click("#tab_mapping").frames(5)
+                .waitUntil("the Endpoint column is drawn", context -> !context.all(".processing-note").isEmpty())
+                .frames(20)
+                .step("scroll the wires to the end of the Endpoint column", context -> context.el("#processing_scroll")
+                        .as(ScrollerView.class).verticalScroller.setValue(1f))
+                .frames(10)
+                .screenshot("review-mapping-many-endpoints")
                 .closeScreen();
     }
 
@@ -124,6 +133,11 @@ public final class ReviewFixesScenario implements UIScenario {
         set(context, placed, bigChest, AEBlocks.ME_CHEST.block().defaultBlockState());
         ((MEChestBlockEntity) context.level().getBlockEntity(bigChest)).setCell(AEItems.ITEM_CELL_1K.stack());
         set(context, placed, bigChest.below(), AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
+        // A Provider on the ME Chest, its Federation face east onto a cable on the Switch.
+        var provider = bigChest.above();
+        set(context, placed, provider, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.EAST));
+        set(context, placed, big.above(), RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
         for (int column = 0; column < ENDPOINT_COLUMNS; column++) {
             var base = big.east(1 + column);
             set(context, placed, base, RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
