@@ -543,6 +543,7 @@
   "ae2federation.ui.provider.returns_none": "No Endpoint is bound to this Provider yet.",
   "ae2federation.ui.provider.returns_empty": "Empty",
   "ae2federation.ui.provider.returns_waiting": "Waiting to enter the network: %s",
+  "ae2federation.ui.provider.returns_separator": ", ",
   "ae2federation.ui.provider.returns_sending": "Empty · a send is still in progress",
   "ae2federation.ui.provider.noface.title": "The Federation face joins no domain",
   "ae2federation.ui.provider.noface.text": "This Provider's front (its Federation face) is not on a Federation Cable, Switch or Router, so there are no Endpoints to map.",

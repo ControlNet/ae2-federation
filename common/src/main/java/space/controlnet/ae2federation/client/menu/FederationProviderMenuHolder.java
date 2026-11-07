@@ -498,9 +498,9 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
             var returns = patterns.resources(lane, "returns");
             boolean sending = lane.get("pendingSend").getAsBoolean();
             if (!returns.isEmpty()) {
-                var names = returns.stream().map(stack -> stack.what().getDisplayName().getString() + " × "
-                        + PatternChoices.amount(stack)).toList();
-                state.setText(tr("returns_waiting", String.join(", ", names))
+                var names = returns.stream().map(stack -> Component.empty().append(stack.what().getDisplayName())
+                        .append(" × " + PatternChoices.amount(stack))).toList();
+                state.setText(tr("returns_waiting", joined(names))
                         .withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
             } else {
                 state.setText(tr(sending ? "returns_sending" : "returns_empty").withStyle(Style.EMPTY.withColor(
@@ -624,6 +624,16 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         var values = new ArrayList<JsonObject>();
         root.getAsJsonArray(field).forEach(value -> values.add(value.getAsJsonObject()));
         return values;
+    }
+
+    /** {@code parts} joined with the language's list separator. */
+    static net.minecraft.network.chat.MutableComponent joined(List<? extends Component> parts) {
+        var joined = Component.empty();
+        for (int index = 0; index < parts.size(); index++) {
+            if (index > 0) joined.append(tr("returns_separator"));
+            joined.append(parts.get(index));
+        }
+        return joined;
     }
 
     static net.minecraft.network.chat.MutableComponent tr(String key, Object... arguments) {

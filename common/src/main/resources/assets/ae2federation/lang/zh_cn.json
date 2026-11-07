@@ -543,6 +543,7 @@
   "ae2federation.ui.provider.returns_none": "还没有端点绑定到此供应器。",
   "ae2federation.ui.provider.returns_empty": "空",
   "ae2federation.ui.provider.returns_waiting": "等待存入网络：%s",
+  "ae2federation.ui.provider.returns_separator": "、",
   "ae2federation.ui.provider.returns_sending": "空 · 仍有发送未完成",
   "ae2federation.ui.provider.noface.title": "联邦面未接入任何域",
   "ae2federation.ui.provider.noface.text": "此供应器的前面（联邦面）没有接到联邦线缆、交换机或路由器上，所以没有可以映射的端点。",
