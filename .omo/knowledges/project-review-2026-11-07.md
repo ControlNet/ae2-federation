@@ -63,3 +63,32 @@ Payload decoding and dispatch (caps, nonce/sequence, containerId, same-thread), 
 cleanup, SavedData dirty marking and codec symmetry, domain registry recompute and capacity counting, multiblock
 forming, AuthorityEpoch inputs, energy pools, P2P teardown, compat class loading, mixin styles, lang parity
 (653 keys), CI history.
+
+## Fixed (2026-11-07)
+
+Each code fix has a test that fails on 7b265a97. In game: `build/review-2026-11-07-check/*-before-after.png`, from the
+UI scenario `ui.review-fixes` (`runUiTestClient -PfederationUiSelection=ui.review-fixes`) run on 7b265a97 and on dev.
+
+| Finding | Commit | Test |
+| --- | --- | --- |
+| Observation snapshot throws past its limits; per-tick rebuilds | 914f963f (bounded canonical prefix + omitted counts + byte budget; data-only rebuilds every 20 ticks) | GameTests `observe.large-domain-bounded`, `observe.traffic-coalesced`; JUnit |
+| LDLib2 32767-char strings (choices, overview, graph, flows) | 9268c1ea (`SyncBudget`: unchanged when it fits, else first entries + selected + `omitted`), 3c322384 (graph bounded, members first) | `domain-menu.sync-many-endpoints`, `domain-menu.sync-many-networks`; manual `domainmenusyncthousandnetworks` (1000 networks: choices 14.6k, overview 32.5k, graph 29.2k chars) |
+| Rename refused on a one-network domain | 9268c1ea (`matchesNamingContext`) | `domain-menu.rename-one-network` |
+| Workspace mapping lands on another Provider | 9268c1ea (refuse, `rejected-no-provider`) | `domain-menu.mapping-provider-gone` |
+| Statistics pins/requests without session checks; request flood | 9268c1ea (valid + current; rebuild at most once per 5 reads) | `domain-menu.statistics-need-live-session`, `StatisticsRebuildTest` |
+| Lane byproducts never reach the consumer | a8c59044 (match the Lane logic's own action source) | `storelesslanebyproduct` |
+| Permanent crafting debt | e6153617 (ended jobs forgotten; unknown-CPU flag cleared; late output only while the consumer still projects the provider; operator `/ae2federation returns clear-debts <consumer>`, no expiry) | `endedjobforgottenwhileowed`, `lateoutputneedscraftingrule`, `clearconsumerdebtscommand` |
+| Storage Bus loop counts storage twice | a9bb2d65 (`NativeStorageReentry`: AE2 `mountsInUse` + thread-local entered set) | `storage.bus-loop-counts-once`, `storage.chain-bus-loop-counts-once` |
+| Source index keeps dead Grids | 5b0d6c54 (storage), 5e01514f (statistics' own index) | `storage.source-index-forgets-dismantled` |
+| Lane binding weak map pinned | 4523ccb8 (IdentityHashMap, explicit unbind) | provider GameTests |
+| Fluid statistics x81000 | edcb1264, 27a85777 (unit renamed FLUID_MILLIBUCKET; key keeps components) | `statistics.count-fluid-return-in-millibuckets` |
+| "1.3kk", "1000k", English time units, ", " joins | d86d759d, 9268c1ea | `StatisticsFormatTest`, `ProviderReturnsTextTest` |
+| Identity settlements / policy tombstones grow | 443f72a5 (settlements removed; tombstones dropped on load) | `NetworkIdentityRegistryTest`, `PolicyStoreTest` |
+| Statistics memory | 2cc608f2 (flat TopKeys arrays, lazy Timeline tiers, one tag per range; save format 4) | `StatisticsFootprintTest` (5-key ranking 187 KB -> 32 KB per route) |
+| mmcr startup race (upstream) | patch in `build/upstream/mmcr/` for the owner to submit | compiles against mmcr 0.1.3 + KubeJS |
+
+Not changed, by judgement: `FederationStatistics.pollJobs` per tick (polling every N ticks would miss short jobs).
+Test-only mechanism: `observelargedomainbounded` builds its 300-member domain with a synthetic hub node.
+Also fixed: `domainmenusyncmanyendpoints` placed Endpoints outside its structure (unloaded chunks, flaky).
+Open for the owner: cut lists are not shown as "N more" in the screens (paging would be the full answer); a Storage
+Bus on another network's unconfigured Interface is still exported as a source.
