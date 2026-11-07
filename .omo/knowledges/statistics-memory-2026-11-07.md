@@ -19,5 +19,6 @@ Steady state = every point of every range filled once (444 points per ranking).
 - `StatisticsSavedData` FORMAT 4: a ranking is one tag per range with flat buckets/sizes/keys/amounts arrays.
 - addAll timing (JUnit): 20 routes x 500 keys/s 8.3 -> 3.4 ms per game second; 2000 routes x 5 keys/s ~2.6-3 ms both.
 - Not changed: key timelines are still kept a day after the key leaves the tracked set (evicting earlier would change
-  the day range); `pollJobs` still polls every tick (STARTED counts jobs per tick; a slower poll misses short jobs).
+  the day range); `pollJobs` still polls every tick (STARTED counts jobs per tick; a slower poll misses short jobs); a0b069f6 already
+  limits it to member networks with a CPU, and the bus-farm benchmark puts all statistics at 0.22-0.35 ms per tick.
 - Pinned by `StatisticsFootprintTest` (heap bounds) and `persistence/StatisticsSavedDataTest` (tag count, round trip).

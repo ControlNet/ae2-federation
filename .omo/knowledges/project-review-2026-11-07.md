@@ -89,12 +89,14 @@ UI scenario `ui.review-fixes` (`runUiTestClient -PfederationUiSelection=ui.revie
 | Cut lists did not say so | 5607b374 (topology caption "showing X of Y networks/Endpoints"; wires view ends its Endpoint column with "N more Endpoints not shown" and counts them in its summary) | `ui.review-fixes`, `build/review-2026-11-07-check/truncated-lists-before-after.png` |
 | `mountsInUse` read by reflection | 31963de3 (`NetworkStorageAccess` accessor) | `storage.bus-loop-counts-once`, `storage.chain-bus-loop-counts-once` |
 | Playthrough Data Reassembler adapter on DE 3.3 names only | df24d658 (3.4 names first, ObjectArrayList input; signatures checked with javap; CI's pack ships 3.3.5) | compiles; playthrough |
-| mmcr startup race (upstream) | reported with the patch: Nibelungorum/ModularMachinery-Community-Refoxed#14 | compiles against mmcr 0.1.3 + KubeJS |
+| mmcr startup race (upstream) | reported with the patch: Nibelungorum/ModularMachinery-Community-Refoxed#14 | patch put into the 1.21.1 0.1.3 jar (bytecode identical outside the patched methods); NAST started 3 times, KubeJS 13/13 scripts, core 20/20 each; the race was intermittent, so this shows the patch is safe |
 | DE 3.4.0 in-place upgrade throws (upstream) | reported: ModularMCLib/DataEnergistics#431 | read from its source |
 
 Owner decisions (2026-11-07): crafting debts get no expiry (they are bounded, a long job keeps its debt while it runs;
 operators clear the rest with `clear-debts`); a Storage Bus on another network's unconfigured Interface stays exported
 as a source (the network sees it natively; double counting is fixed); Data Energistics stays 3.3.5 in its profiles.
-Not changed, by judgement: `FederationStatistics.pollJobs` per tick (polling every N ticks would miss short jobs).
+`FederationStatistics.pollJobs` was not a finding: a0b069f6 already limits it to member networks with a CPU (AE2's
+`GridCraftingCpuChange` adds one at once), and statistics cost 0.22-0.35 ms per tick on average at 1000x10
+(`bus-farm-benchmark-2026-10-24.md`). Polling less often would miss jobs shorter than the interval.
 Test-only mechanism: `observelargedomainbounded` builds its 300-member domain with a synthetic hub node.
 Also fixed: `domainmenusyncmanyendpoints` placed Endpoints outside its structure (unloaded chunks, flaky).
