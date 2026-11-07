@@ -270,6 +270,11 @@ public final class ProjectionReviewGameTests {
                 GameTestChecks.once(helper, () -> {
                     helper.assertTrue(ledger.hasUnknownJobs(fixture.consumerNetwork()), "A second CPU observation in the same tick must persist a newly started independent job");
                     helper.assertTrue(ledger.jobs(fixture.consumerNetwork()).isEmpty(), "No native CPU subclass supplied the lifecycle");
+                    var saved = ledger.save(new net.minecraft.nbt.CompoundTag(), level.registryAccess());
+                    var restored = CraftingReturnLedger.load(saved, level.registryAccess());
+                    helper.assertTrue(restored.hasUnknownJobs(fixture.consumerNetwork()), "Restart preserves unknown lifecycle");
+                    helper.assertValueEqual(restored.owed(fixture.providerNetwork(), fixture.consumerNetwork(),
+                            PatternProjectionFixture.stone()), 8L, "Restart preserves all undelivered responsibility");
                 });
                 // This view disappears while the real consumer Grid remains; no CPU job is observable on later sweeps.
                 cpu.cancelJob();
@@ -279,11 +284,9 @@ public final class ProjectionReviewGameTests {
             if (stage[0] == 1) {
                 helper.assertTrue(service.ledgerSweeps() >= sweeps[0] + 4, "Four sweeps without observable independent CPU");
                 helper.assertValueEqual(fixture.owed(PatternProjectionFixture.stone()), 8L, "Absence/cancel cannot erase debt");
-                var saved = ledger.save(new net.minecraft.nbt.CompoundTag(), level.registryAccess());
-                var restored = CraftingReturnLedger.load(saved, level.registryAccess());
-                helper.assertTrue(restored.hasUnknownJobs(fixture.consumerNetwork()), "Restart preserves unknown lifecycle");
-                helper.assertValueEqual(restored.owed(fixture.providerNetwork(), fixture.consumerNetwork(),
-                        PatternProjectionFixture.stone()), 8L, "Restart preserves all undelivered responsibility");
+                // The consumer's Grid lists no busy CPU without a lifecycle adapter any more, so nothing unknown runs.
+                helper.assertFalse(ledger.hasUnknownJobs(fixture.consumerNetwork()),
+                        "The unknown flag clears once no busy CPU without a lifecycle adapter remains");
                 space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectionindependentcpuunknown", 5,
                         java.util.Map.of("implementation", "independent ICraftingCPU test double", "unknownPersisted", "true"));
                 fixture.close();
@@ -474,8 +477,17 @@ public final class ProjectionReviewGameTests {
             required = true, timeoutTicks = 600)
     public static void projectionHeldSweepCost(GameTestHelper helper) {
         var fixture = new space.controlnet.ae2federation.test.crafting.ProjectionChainFixture(helper);
+        var rules = new boolean[1];
         helper.succeedWhen(() -> {
-            helper.assertTrue(fixture.ready(), "Waiting for three native Grids");
+            helper.assertTrue(rules[0] || fixture.ready(), "Waiting for three native Grids");
+            if (!rules[0]) {
+                // Held stock goes to a consumer's storage only while it still uses the executing network's crafting.
+                fixture.craftingOnly(0, 2, RuleMode.ENABLED);
+                fixture.craftingOnly(1, 2, RuleMode.ENABLED);
+                rules[0] = true;
+            }
+            helper.assertTrue(fixture.projections(0, 2) > 0 && fixture.projections(1, 2) > 0,
+                    "Waiting for both consumers to use the executing network's crafting");
             GameTestChecks.once(helper, () -> {
                 var level = helper.getLevel();
                 var service = space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.get(level);

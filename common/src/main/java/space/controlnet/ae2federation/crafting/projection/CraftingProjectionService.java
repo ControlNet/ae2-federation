@@ -115,6 +115,20 @@ public final class CraftingProjectionService implements AutoCloseable {
         return SERVICES.computeIfAbsent(level.getServer(), CraftingProjectionService::new);
     }
 
+    /**
+     * Drops every debt {@code consumer} is owed and its watched jobs, for an operator; returns how many debts. The
+     * routers that only stayed for those debts go.
+     */
+    public static synchronized int clearDebts(ServerLevel level, NetworkId consumer) {
+        var cleared = CraftingReturnLedger.get(level).clear(consumer);
+        var service = SERVICES.get(level.getServer());
+        if (service != null) {
+            cleared.getValue().forEach(service.jobLinks::remove);
+            service.syncRouters();
+        }
+        return cleared.getKey();
+    }
+
     public static synchronized void reconcileIfPresent(ServerLevel level) {
         var service = SERVICES.get(level.getServer());
         if (service != null) service.reconcileAll();
@@ -509,11 +523,20 @@ public final class CraftingProjectionService implements AutoCloseable {
             if (routers.containsKey(grid)) return;
             // An output returns only while the networks are linked; otherwise it is held where it arrived.
             var router = new CraftingReturnRouter(network, grid, ledger, consumer -> linked(network, consumer)
-                    ? federationDomains.grid(consumer).orElse(null) : null, consumer -> jobsEnded(ledger, consumer),
+                    ? federationDomains.grid(consumer).orElse(null) : null,
+                    consumer -> settles(consumer, network) && jobsEnded(ledger, consumer),
                     source -> pusher(grid, source), statistics());
             routers.put(grid, router);
             grid.getStorageService().addGlobalStorageProvider(router);
         });
+    }
+
+    /**
+     * Whether what {@code executing} owes {@code consumer} may still go into the consumer's storage once its jobs ended:
+     * only while the consumer still uses that network's crafting. A consumer that dropped its rule gets nothing from it.
+     */
+    private boolean settles(NetworkId consumer, NetworkId executing) {
+        return projected.containsKey(new Pair(consumer, executing));
     }
 
     /** Whether every job of {@code consumer} the ledger watches has ended, and none may still run out of sight. */
@@ -592,6 +615,12 @@ public final class CraftingProjectionService implements AutoCloseable {
     private void sweepReturns() {
         sweeps++;
         var ledger = CraftingReturnLedger.get(level);
+        for (var consumer : ledger.unknownJobConsumers()) {
+            // A CPU without a lifecycle adapter that runs no more ends the consumer's unknown jobs; an unloaded
+            // consumer keeps the flag until it is seen again.
+            var grid = federationDomains.grid(consumer).orElse(null);
+            if (grid != null && !observeJobs(grid).unknown()) ledger.resolveUnknown(consumer);
+        }
         for (var owed : ledger.entries()) {
             if (owed.held() <= 0 || !linked(owed.executing(), owed.consumer())) continue;
             var consumer = federationDomains.grid(owed.consumer()).orElse(null);
@@ -610,7 +639,7 @@ public final class CraftingProjectionService implements AutoCloseable {
             if (state.outOfSight() || !state.finished()) continue;
             var executing = federationDomains.grid(owed.executing()).orElse(null);
             if (owed.held() > 0 && executing != null && executing != consumer
-                    && linked(owed.executing(), owed.consumer())) {
+                    && linked(owed.executing(), owed.consumer()) && settles(owed.consumer(), owed.executing())) {
                 statistics().meter(owed.executing(), owed.consumer()).add(owed.key(), HeldReturnTransfer.handBack(
                         ledger, owed.executing(), executing, owed.consumer(), owed.key(), owed.held(),
                         consumer.getStorageService().getInventory()));
@@ -618,7 +647,7 @@ public final class CraftingProjectionService implements AutoCloseable {
             // Completion/cancellation says nothing about unreturned containers or late machine outputs. Only actual
             // delivery in ledger.take settles debt. Unknown provenance remains visible and recoverable indefinitely.
         }
-        ledger.forgetJobsOfSettledConsumers().forEach(jobLinks::remove);
+        ledger.forgetSettledJobs().forEach(jobLinks::remove);
         for (var network : ledger.transitNetworks()) {
             federationDomains.grid(network).ifPresent(grid -> HeldReturnTransfer.storeTransit(ledger, network, grid));
         }
@@ -629,7 +658,8 @@ public final class CraftingProjectionService implements AutoCloseable {
      * How a consumer's watched jobs stand: whether one is out of sight, and whether all observed jobs ended.
      *
      * @param outOfSight a watched job may still run on a CPU that is not loaded or not formed yet
-     * @param finished all observed jobs have ended, so held outputs can reach ordinary consumer storage
+     * @param finished a job was watched and all observed jobs have ended, so held outputs can reach ordinary consumer
+     *        storage
      */
     private record Jobs(boolean outOfSight, boolean finished) {
     }
@@ -641,7 +671,7 @@ public final class CraftingProjectionService implements AutoCloseable {
             var end = end(ledger, consumer, job);
             if (end == null || end == CraftingReturnLedger.JobEnd.RUNNING) unresolved = true;
         }
-        return new Jobs(unresolved, !unresolved && !watched.isEmpty());
+        return new Jobs(unresolved, !unresolved && (!watched.isEmpty() || ledger.endedJobs(consumer)));
     }
 
     /**

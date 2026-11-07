@@ -33,3 +33,21 @@ stone through the middle's provider; the middle has no CPU and no cell) checks t
 gravel goes to the source, then to the consumer after it orders again. Mutation check: picking the earliest pusher fails
 it. Chain fixture helpers: `placeMiddleMachine`, `middleMachineReady`, `takeMiddleCell`, `shareMiddle`,
 `ejectIntoMiddle`, `inMiddleReturns`, `inMiddleMachine`.
+
+## Follow-up 2026-11-07 (project review findings)
+- Lane byproducts: a Federation Pattern Provider Lane is a `PatternProviderLogic` on `CapturedManagedGridNode`, whose
+  `getNode()` is the Provider's physical node, which never publishes `ICraftingProvider` (by design). `pusher` now falls
+  back to matching the insert's source against each projected logic's own `actionSource` (accessor on
+  `PatternProviderLogicAccess`). Test `storelessLaneByproduct` (NetherProviderProjectionScene, provider cell taken out,
+  machine returns gravel with each diamond).
+- Ended jobs are forgotten each sweep even while the consumer is still owed; `endedJobs` (saved) stands in for them so
+  `finished` keeps meaning "a job was seen and all ended". Debts with no job ever seen (a direct push, no CPU) still
+  wait, as `projectionContainerPush` needs. Test `endedJobForgottenWhileOwed`.
+- `unknownJobs` clears on a sweep when the loaded consumer Grid lists no busy CPU without a lifecycle adapter (an
+  unloaded addon CPU is not listed: accepted risk, its late output then goes to storage).
+- After all jobs ended, owed output goes to the consumer's storage (router step 2 and the sweep's held hand-back) only
+  while the consumer still projects the executing network (`projected` has the pair, re-export included). Test
+  `lateOutputNeedsCraftingRule`; `projectionHeldSweepCost` now turns on crafting rules first.
+- No expiry for undeliverable debts (coordinator's decision): `/ae2federation returns clear-debts <consumer-uuid>`
+  (permission 2) drops the consumer's debts, jobs and flags; held stock stays as the executing network's own stock.
+  Test `clearConsumerDebtsCommand`.
