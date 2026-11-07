@@ -31,6 +31,7 @@ import space.controlnet.ae2federation.policy.PolicyRevision;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
+import space.controlnet.ae2federation.storage.provenance.OriginNetworkId;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 import space.controlnet.ae2federation.test.storage.GridEventProbe;
@@ -110,6 +111,52 @@ public final class StorageNativeStateGameTests {
                         "The main network cannot take more iron than it really holds");
                 PolicyEvidence.write("storagebusloopcountsonce", 7, Map.of("mainIron", "7", "mainGold", "3",
                         "outerGold", "3", "extractableIron", "7"));
+                fixtures.close();
+            });
+        });
+    }
+
+    /**
+     * Dismantling a network takes its entry, with the dead Grid and its storage handles, out of the source index at
+     * the next refresh instead of keeping it until the server stops.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void storageSourceIndexForgetsDismantledNetwork(GameTestHelper helper) {
+        var fixtures = new PolicyBridgeFixtures(helper, FIRST);
+        helper.setBlock(FIRST.south().below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        helper.setBlock(FIRST.north(2).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        var phase = new int[] {0};
+        var outerOrigin = new OriginNetworkId[1];
+        helper.succeedWhen(() -> {
+            var mounts = StorageMountService.get(helper.getLevel());
+            if (phase[0] == 0) {
+                helper.assertTrue(fixtures.networksSettled(), "Waiting for the networks");
+                fixtures.placeFirstBridge();
+                phase[0] = 1;
+                helper.assertTrue(false, "Waiting for the Federation Domain");
+            }
+            if (phase[0] == 1) {
+                helper.assertTrue(fixtures.firstBridgeReady(), "Waiting for the Federation Domain");
+                mounts.reconcileAll();
+                outerOrigin[0] = new OriginNetworkId(fixtures.outerNetwork());
+                helper.assertTrue(mounts.sourceOrigins().contains(outerOrigin[0]),
+                        "Waiting for the source index to hold the outer network");
+                for (var position : java.util.List.of(FIRST.north(), FIRST.east().north(), FIRST.north(2),
+                        FIRST.north(2).below())) {
+                    helper.setBlock(position, Blocks.AIR);
+                }
+                phase[0] = 2;
+                helper.assertTrue(false, "Waiting for the outer network to be dismantled");
+            }
+            GameTestChecks.once(helper, () -> {
+                mounts.reconcileAll();
+                helper.assertTrue(!mounts.sourceOrigins().contains(outerOrigin[0]),
+                        "The source index forgets a dismantled network, saw " + mounts.sourceOrigins());
+                helper.assertTrue(mounts.sourceOrigins().contains(new OriginNetworkId(fixtures.mainNetwork())),
+                        "The source index keeps the network that is still loaded");
+                PolicyEvidence.write("storagesourceindexforgetsdismantlednetwork", 2,
+                        Map.of("dismantledForgotten", "true", "loadedKept", "true"));
                 fixtures.close();
             });
         });

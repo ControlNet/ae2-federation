@@ -150,6 +150,11 @@ public final class StorageMountService implements AutoCloseable {
         return provenance.providerScans();
     }
 
+    /** Networks the source index holds a domain or cached discovery for. Diagnostic only. */
+    public Set<space.controlnet.ae2federation.storage.provenance.OriginNetworkId> sourceOrigins() {
+        return provenance.origins();
+    }
+
     /** Per-operation/per-enumeration source validity evaluations of held projections. Diagnostic counter only. */
     public long sourceValidationCount() {
         return sourceValidations;
