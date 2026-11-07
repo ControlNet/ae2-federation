@@ -169,6 +169,8 @@
     {"id":"observe.close-cleanup","backend":"gametest","testId":"observeclosecleanup","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"observe.reject-stale-delta","backend":"gametest","testId":"observerejectstaledelta","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"observe.reject-cross-domain-edit","backend":"gametest","testId":"observerejectcrossfederationdomainedit","structure":"ae2federation_test:harness_native_smoke","assertions":18},
+    {"id":"observe.large-domain-bounded","backend":"gametest","testId":"observelargedomainbounded","structure":"ae2federation_test:harness_native_smoke","assertions":9},
+    {"id":"observe.traffic-coalesced","backend":"gametest","testId":"observetrafficcoalesced","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"bridge.valid","backend":"gametest","testId":"bridgevalid","structure":"ae2federation_test:harness_native_smoke","assertions":4},
     {"id":"bridge.invalid","backend":"gametest","testId":"bridgeinvalid","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"bridge.same-grid","backend":"gametest","testId":"bridgesamegrid","structure":"ae2federation_test:harness_native_smoke","assertions":3},

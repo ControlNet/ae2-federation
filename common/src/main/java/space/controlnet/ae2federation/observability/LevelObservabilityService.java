@@ -32,7 +32,7 @@ public final class LevelObservabilityService implements AutoCloseable {
     public static final long PAIR_FLOW_WINDOW_TICKS = 100;
     private final java.util.Map<LaneKey, space.controlnet.ae2federation.observability.meter.PairFlowWindow> laneFlows =
             new java.util.HashMap<>();
-    /** Scopes that accepted a flow since the last sweep; only subscribed ones are projected, once per tick. */
+    /** Subscribed scopes that accepted a flow since the sweep last projected them; others are dropped each sweep. */
     private final java.util.Set<FederationDomainReference> flowedScopes = new java.util.HashSet<>();
     /**
      * The scope added to {@link #flowedScopes} last since the sweep, and the rule window recorded into last: one
@@ -112,11 +112,26 @@ public final class LevelObservabilityService implements AutoCloseable {
 
     public void sweep() {
         statistics().tick();
-        for (var scope : subscriptions.activeScopes()) {
-            subscriptions.synchronizeProjection(new FederationDomainStateProjector(level).snapshot(scope),
-                    flowedScopes.contains(scope) && transportMeter.window(scope).resnapshotRequired());
+        var active = subscriptions.activeScopes();
+        if (!active.isEmpty()) {
+            // Topology and rule revisions are read without copying; a projection scans the domain's rules, Providers
+            // and Endpoints, so data-only changes wait for the subscription service's refresh period.
+            var topologyRevision = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(level)
+                    .topologyRevision();
+            var policyRevision = space.controlnet.ae2federation.persistence.PolicySavedData.get(level).highWatermark()
+                    .value();
+            var now = level.getGameTime();
+            for (var scope : active) {
+                if (!subscriptions.projectionDue(scope, topologyRevision, policyRevision, now)) {
+                    continue;
+                }
+                // A flow stays noted until its scope is projected.
+                var flowed = flowedScopes.remove(scope);
+                subscriptions.synchronizeProjection(new FederationDomainStateProjector(level).snapshot(scope),
+                        flowed && transportMeter.window(scope).resnapshotRequired(), now);
+            }
         }
-        flowedScopes.clear();
+        flowedScopes.retainAll(active);
         lastFlowedScope = null;
         var recovered = subscriptions.recoverRequired(this::snapshot);
         recovered.forEach(transportMeter::acknowledgeSnapshot);
@@ -138,7 +153,8 @@ public final class LevelObservabilityService implements AutoCloseable {
     }
 
     public FederationDomainStateSnapshot snapshot(FederationDomainReference scope) {
-        return subscriptions.synchronizeProjection(new FederationDomainStateProjector(level).snapshot(scope), false);
+        return subscriptions.synchronizeProjection(new FederationDomainStateProjector(level).snapshot(scope), false,
+                level.getGameTime());
     }
 
     public void recordAccepted(Iterable<FederationDomainReference> scopes, OperationEventId eventId, String resource, long amount,

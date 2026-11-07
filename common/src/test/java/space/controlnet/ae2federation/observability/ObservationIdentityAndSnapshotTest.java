@@ -14,6 +14,10 @@ import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.observability.id.MemberId;
 import space.controlnet.ae2federation.observability.id.FlowId;
+import space.controlnet.ae2federation.observability.id.PolicyId;
+import space.controlnet.ae2federation.observability.state.PolicyState;
+import space.controlnet.ae2federation.policy.PolicyCapability;
+import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.observability.meter.OperationEventId;
 import space.controlnet.ae2federation.observability.state.FederationDomainStateSnapshot;
 import space.controlnet.ae2federation.observability.state.FlowState;
@@ -58,6 +62,29 @@ class ObservationIdentityAndSnapshotTest {
                 }).toList();
         assertThrows(IllegalArgumentException.class, () -> new FederationDomainStateSnapshot(FIRST, 9, 4, 7, oversized,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of()));
+    }
+
+    @Test
+    void boundedSnapshotKeepsTheCanonicalPrefixAndCountsTheRest() {
+        var members = java.util.stream.IntStream.range(0, ObservationLimits.MAX_MEMBERS + 44).mapToObj(index -> {
+            var network = new NetworkId(new UUID(1, index));
+            return new MemberState(FIRST, MemberId.forNetwork(FIRST.federationDomainId(), network), network, "online");
+        }).toList();
+        var policies = java.util.stream.IntStream.range(0, ObservationLimits.MAX_POLICIES + 76).mapToObj(index ->
+                new PolicyState(FIRST, PolicyId.forKey(FIRST.federationDomainId(), new PolicyKey(
+                        new NetworkId(new UUID(2, index)), new NetworkId(new UUID(3, index)), PolicyCapability.STORAGE)),
+                        "enabled")).toList();
+
+        var snapshot = FederationDomainStateSnapshot.bounded(FIRST, 9, 4, 7, members, List.of(), List.of(), policies,
+                List.of(), List.of(), List.of());
+
+        assertEquals(members.stream().sorted(java.util.Comparator.comparing(member -> member.id().value()))
+                .limit(ObservationLimits.MAX_MEMBERS).toList(), snapshot.members());
+        assertEquals(policies.stream().sorted(java.util.Comparator.comparing(policy -> policy.id().value()))
+                .limit(ObservationLimits.MAX_POLICIES).toList(), snapshot.policies());
+        assertEquals(new FederationDomainStateSnapshot.Omitted(44, 0, 0, 76, 0, 0, 0), snapshot.omitted());
+        assertEquals(FederationDomainStateSnapshot.Omitted.NONE, FederationDomainStateSnapshot.bounded(FIRST, 9, 4, 7,
+                members.subList(0, 3), List.of(), List.of(), List.of(), List.of(), List.of(), List.of()).omitted());
     }
 
     @Test

@@ -18,7 +18,16 @@ public final class ObservationSubscriptionService implements AutoCloseable {
     private final int playerLimit;
     private final int queueLimit;
     private final Map<SubscriptionKey, ObservationSubscription> subscriptions = new HashMap<>();
+    /**
+     * Ticks a data-only change waits for the sweep to rebuild a projection: every tick with storage traffic moves the
+     * data revision, and a rebuild scans the domain's rules, Providers and Endpoints. Lane and Provider states, which
+     * have no revision, refresh on the same period.
+     */
+    public static final long DATA_REFRESH_TICKS = 20;
+
     private final Map<FederationDomainReference, FederationDomainStateSnapshot> projections = new HashMap<>();
+    /** The game time each projection was last rebuilt by the sweep. */
+    private final Map<FederationDomainReference, Long> projectedAt = new HashMap<>();
     private long removalCount;
 
     public ObservationSubscriptionService(int playerLimit, int queueLimit) {
@@ -60,6 +69,24 @@ public final class ObservationSubscriptionService implements AutoCloseable {
                 .forEach(subscription -> subscription.publish(delta));
     }
 
+    /**
+     * Whether the tick sweep rebuilds {@code scope}'s projection at {@code gameTime}: at once after a topology or rule
+     * change, otherwise once {@link #DATA_REFRESH_TICKS} passed since the last rebuild.
+     */
+    public boolean projectionDue(FederationDomainReference scope, long topologyRevision, long policyRevision, long gameTime) {
+        var previous = projections.get(scope);
+        var at = projectedAt.get(scope);
+        return previous == null || at == null || previous.topologyRevision() != topologyRevision
+                || previous.policyRevision() != policyRevision || gameTime - at >= DATA_REFRESH_TICKS;
+    }
+
+    /** As {@link #synchronizeProjection(FederationDomainStateSnapshot, boolean)}, for a projection built at {@code gameTime}. */
+    public FederationDomainStateSnapshot synchronizeProjection(FederationDomainStateSnapshot observed, boolean resnapshotRequired,
+            long gameTime) {
+        projectedAt.put(observed.scope(), gameTime);
+        return synchronizeProjection(observed, resnapshotRequired);
+    }
+
     public FederationDomainStateSnapshot synchronizeProjection(FederationDomainStateSnapshot observed, boolean resnapshotRequired) {
         Objects.requireNonNull(observed);
         var previous = projections.get(observed.scope());
@@ -74,7 +101,7 @@ public final class ObservationSubscriptionService implements AutoCloseable {
         var revision = Math.max(Math.incrementExact(previous.dataRevision()), observed.dataRevision());
         var replacement = new FederationDomainStateSnapshot(observed.scope(), observed.topologyRevision(),
                 observed.policyRevision(), revision, observed.members(), observed.providers(), observed.endpoints(),
-                observed.policies(), observed.locks(), observed.tasks(), observed.flows());
+                observed.policies(), observed.locks(), observed.tasks(), observed.flows(), observed.omitted());
         projections.put(observed.scope(), replacement);
         publish(new FederationDomainStateDelta(replacement, previous.dataRevision(), resnapshotRequired));
         return replacement;
@@ -154,6 +181,7 @@ public final class ObservationSubscriptionService implements AutoCloseable {
             close(entry.getKey(), entry.getValue());
         }
         projections.clear();
+        projectedAt.clear();
     }
 
     private long subscriptionsFor(UUID playerId) {
@@ -169,6 +197,7 @@ public final class ObservationSubscriptionService implements AutoCloseable {
             removalCount = Math.incrementExact(removalCount);
             if (subscriptions.values().stream().noneMatch(value -> value.scope().equals(key.scope()))) {
                 projections.remove(key.scope());
+                projectedAt.remove(key.scope());
             }
         }
     }
@@ -183,7 +212,8 @@ public final class ObservationSubscriptionService implements AutoCloseable {
                 && first.policies().equals(second.policies())
                 && first.locks().equals(second.locks())
                 && first.tasks().equals(second.tasks())
-                && first.flows().equals(second.flows());
+                && first.flows().equals(second.flows())
+                && first.omitted().equals(second.omitted());
     }
 
     private record SubscriptionKey(UUID playerId, UUID sessionId, FederationDomainReference scope) {

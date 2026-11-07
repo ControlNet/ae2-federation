@@ -45,6 +45,11 @@ final class FederationDomainStateSnapshotCodec {
         writeList(buffer, snapshot.locks(), FederationDomainStateSnapshotCodec::writeLock);
         writeList(buffer, snapshot.tasks(), FederationDomainStateSnapshotCodec::writeTask);
         writeList(buffer, snapshot.flows(), FederationDomainStateSnapshotCodec::writeFlow);
+        var omitted = snapshot.omitted();
+        for (var count : new int[] {omitted.members(), omitted.providers(), omitted.endpoints(), omitted.policies(),
+                omitted.locks(), omitted.tasks(), omitted.flows()}) {
+            buffer.writeVarInt(count);
+        }
     }
 
     static FederationDomainStateSnapshot decode(RegistryFriendlyByteBuf buffer) {
@@ -52,14 +57,17 @@ final class FederationDomainStateSnapshotCodec {
         var topologyRevision = buffer.readVarLong();
         var policyRevision = buffer.readVarLong();
         var dataRevision = buffer.readVarLong();
-        return new FederationDomainStateSnapshot(scope, topologyRevision, policyRevision, dataRevision,
-                readList(buffer, ObservationLimits.MAX_MEMBERS, value -> readMember(value, scope)),
-                readList(buffer, ObservationLimits.MAX_PROVIDERS, value -> readProvider(value, scope)),
-                readList(buffer, ObservationLimits.MAX_ENDPOINTS, value -> readEndpoint(value, scope)),
-                readList(buffer, ObservationLimits.MAX_POLICIES, value -> readPolicy(value, scope)),
-                readList(buffer, ObservationLimits.MAX_LOCKS, value -> readLock(value, scope)),
-                readList(buffer, ObservationLimits.MAX_TASKS, value -> readTask(value, scope)),
-                readList(buffer, ObservationLimits.MAX_FLOWS, value -> readFlow(value, scope)));
+        var members = readList(buffer, ObservationLimits.MAX_MEMBERS, value -> readMember(value, scope));
+        var providers = readList(buffer, ObservationLimits.MAX_PROVIDERS, value -> readProvider(value, scope));
+        var endpoints = readList(buffer, ObservationLimits.MAX_ENDPOINTS, value -> readEndpoint(value, scope));
+        var policies = readList(buffer, ObservationLimits.MAX_POLICIES, value -> readPolicy(value, scope));
+        var locks = readList(buffer, ObservationLimits.MAX_LOCKS, value -> readLock(value, scope));
+        var tasks = readList(buffer, ObservationLimits.MAX_TASKS, value -> readTask(value, scope));
+        var flows = readList(buffer, ObservationLimits.MAX_FLOWS, value -> readFlow(value, scope));
+        var omitted = new FederationDomainStateSnapshot.Omitted(buffer.readVarInt(), buffer.readVarInt(),
+                buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt());
+        return new FederationDomainStateSnapshot(scope, topologyRevision, policyRevision, dataRevision, members, providers,
+                endpoints, policies, locks, tasks, flows, omitted);
     }
 
     static void encodeSession(RegistryFriendlyByteBuf buffer, ObservationSession session) {
