@@ -253,7 +253,7 @@ public final class LevelObservabilityService implements AutoCloseable {
         var key = operation.resource();
         var type = key.getType();
         if (type != lastKeyType) {
-            lastKeyUnit = type.getId().getPath().contains("fluid") ? ResourceUnit.FLUID_DROPLET : ResourceUnit.ITEM;
+            lastKeyUnit = type.getId().getPath().contains("fluid") ? ResourceUnit.FLUID_MILLIBUCKET : ResourceUnit.ITEM;
             lastKeyType = type;
         }
         var unit = lastKeyUnit;

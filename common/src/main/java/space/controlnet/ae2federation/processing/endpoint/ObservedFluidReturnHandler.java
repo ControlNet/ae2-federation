@@ -70,6 +70,6 @@ final class ObservedFluidReturnHandler implements IFluidHandler {
 
     private void record(FluidStack stack, int amount) {
         owner.lane().ifPresent(lane -> ProviderObservationRegistry.recordAggregateReturn(level, lane,
-                AEFluidKey.of(stack.getFluid()), amount));
+                AEFluidKey.of(stack), amount));
     }
 }
