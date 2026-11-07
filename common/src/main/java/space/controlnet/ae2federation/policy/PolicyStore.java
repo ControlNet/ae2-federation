@@ -20,8 +20,17 @@ public final class PolicyStore {
         this.entries = new HashMap<>(entries);
     }
 
+    /**
+     * Restores the saved rules without their tombstones, which would otherwise pile up with every deletion and merge.
+     * Dropping one is safe: every revision comes from the global watermark, which is kept, so a deleted rule's key reads
+     * {@link PolicyRevision#NONE} and a writer still holding the rule's or the tombstone's revision is rejected as
+     * stale; only a writer that sees no rule creates one. Tombstones stay for the session that deleted the rule, while
+     * open screens may still hold their revisions.
+     */
     public static PolicyStore restore(PolicyStoreSnapshot snapshot) {
-        return new PolicyStore(snapshot.highWatermark(), snapshot.entries());
+        var entries = new HashMap<>(snapshot.entries());
+        entries.values().removeIf(PolicyRecord.Deleted.class::isInstance);
+        return new PolicyStore(snapshot.highWatermark(), entries);
     }
 
     public PolicyMutationResult edit(PolicyEdit edit) {

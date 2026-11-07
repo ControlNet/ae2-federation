@@ -6,7 +6,10 @@ Policy configuration is sparse and directional. `PolicyKey` contains the consume
 `PolicyCapability`; reversing the endpoints selects a different rule. `PolicyStore` contains only configured records and
 deletion tombstones. Accepted edits and deletes advance a world-global high-water revision, while stale expected revisions
 are rejected without mutation. Tombstones retain the latest revision and prevent an older writer from resurrecting a
-deleted rule.
+deleted rule. Since 2026-11-07 `PolicyStore.restore` drops tombstones on load (they grew with every delete and merge):
+the kept high-water mark means no revision is handed out twice, so a pruned key reads NONE and any writer holding the
+old rule's or tombstone's revision still gets STALE_REVISION. Within a session tombstones stay, as open screens send
+their revisions.
 
 `PolicyRule` owns operations, filters, enablement, and reexport flags. Storage defaults to no reexport. There is no TTL or
 LRU behavior and no allocation for unconfigured network pairs.

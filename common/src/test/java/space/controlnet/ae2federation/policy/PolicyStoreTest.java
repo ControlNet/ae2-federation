@@ -105,6 +105,39 @@ final class PolicyStoreTest {
     }
 
     @Test
+    void restoringDropsTombstonesWithoutLettingAStaleWriterResurrectTheRule() {
+        // Given: a rule deleted, as merges and players delete them, then the store saved and loaded again.
+        var store = new PolicyStore();
+        var configured = accepted(store.edit(new PolicyEdit(A_USES_B, PolicyRevision.NONE, storageRule(true))));
+        var tombstone = assertInstanceOf(PolicyMutationResult.Accepted.class,
+                store.delete(new PolicyDelete(A_USES_B, configured.revision()))).record().revision();
+        var restored = PolicyStore.restore(store.snapshot());
+
+        // Then: the tombstone is gone, the watermark is not.
+        assertEquals(0, restored.tombstoneCount());
+        assertEquals(0, restored.storedEntryCount());
+        assertEquals(tombstone, restored.nextRevision());
+        assertEquals(PolicyRevision.NONE, restored.revision(A_USES_B));
+
+        // When: writers still holding the deleted rule's or the tombstone's revision edit or delete it.
+        for (var stale : java.util.List.of(configured.revision(), tombstone)) {
+            var edit = assertInstanceOf(PolicyMutationResult.Rejected.class,
+                    restored.edit(new PolicyEdit(A_USES_B, stale, storageRule(true))));
+            assertEquals(PolicyRejection.STALE_REVISION, edit.reason());
+            assertEquals(PolicyRevision.NONE, edit.currentRevision());
+            var deletion = assertInstanceOf(PolicyMutationResult.Rejected.class,
+                    restored.delete(new PolicyDelete(A_USES_B, stale)));
+            assertEquals(PolicyRejection.STALE_REVISION, deletion.reason());
+        }
+        assertTrue(restored.configured(A_USES_B).isEmpty());
+
+        // Then: only a writer that sees no rule creates one, under a revision never handed out before.
+        var created = accepted(restored.edit(new PolicyEdit(A_USES_B, PolicyRevision.NONE, storageRule(false))));
+        assertTrue(created.revision().value() > tombstone.value());
+        assertEquals(1, restored.storedEntryCount());
+    }
+
+    @Test
     void staleEditCannotReactivateDisabledRule() {
         // Given
         var store = new PolicyStore();
