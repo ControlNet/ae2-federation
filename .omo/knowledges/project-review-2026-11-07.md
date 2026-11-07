@@ -92,7 +92,7 @@ UI scenario `ui.review-fixes` (`runUiTestClient -PfederationUiSelection=ui.revie
 | mmcr startup race (upstream) | reported with the patch: Nibelungorum/ModularMachinery-Community-Refoxed#14 | patch put into the 1.21.1 0.1.3 jar (bytecode identical outside the patched methods); NAST started 3 times, KubeJS 13/13 scripts, core 20/20 each; the race was intermittent, so this shows the patch is safe |
 | DE 3.4.0 in-place upgrade throws (upstream) | reported: ModularMCLib/DataEnergistics#431 | read from its source |
 
-Owner decisions (2026-11-07): crafting debts get no expiry (they are bounded, a long job keeps its debt while it runs;
+Owner decisions (2026-11-07): the review is complete; mmcr waits for upstream to merge #14 and release (then move NAST's pin), nothing in our code; crafting debts get no expiry (they are bounded, a long job keeps its debt while it runs;
 operators clear the rest with `clear-debts`); a Storage Bus on another network's unconfigured Interface stays exported
 as a source (the network sees it natively; double counting is fixed); Data Energistics stays 3.3.5 in its profiles.
 `FederationStatistics.pollJobs` was not a finding: a0b069f6 already limits it to member networks with a CPU (AE2's
