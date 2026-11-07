@@ -320,6 +320,8 @@
     {"id":"p2p.frequency-and-input-changes","backend":"gametest","testId":"p2pfrequencyandinputchanges","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"p2p.channel-shortage","backend":"gametest","testId":"p2pchannelshortage","structure":"ae2federation_test:harness_native_smoke","assertions":5},
 {"id":"storage.held-native-state","backend":"gametest","testId":"storageheldnativestate","structure":"ae2federation_test:harness_native_smoke","assertions":31},
+    {"id":"storage.bus-loop-counts-once","backend":"gametest","testId":"storagebusloopcountsonce","structure":"ae2federation_test:harness_native_smoke","assertions":7},
+    {"id":"storage.chain-bus-loop-counts-once","backend":"gametest","testId":"chainstoragebusloopcountsonce","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"provenance.multi-entry","backend":"gametest","testId":"provenancemultientry","structure":"ae2federation_test:harness_native_smoke","assertions":10},
     {"id":"provenance.native-rebind","backend":"gametest","testId":"provenancenativerebind","structure":"ae2federation_test:harness_native_smoke","assertions":32},
     {"id":"provenance.exclude-import","backend":"gametest","testId":"provenanceexcludeimport","structure":"ae2federation_test:harness_native_smoke","assertions":8},

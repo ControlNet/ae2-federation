@@ -24,6 +24,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.ae2.storage.NativeMountLedger;
 import space.controlnet.ae2federation.identity.IdentityEpoch;
 import space.controlnet.ae2federation.policy.AuthorityEpoch;
+import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.policy.PolicyRevision;
@@ -59,6 +60,67 @@ public final class StorageNativeStateGameTests {
             timeoutTicks = 600, required = true, manualOnly = true)
     public static void storageHeldNativeState(GameTestHelper helper) {
         new Scene(helper).run();
+    }
+
+    /**
+     * The main network has an ME Storage Bus facing an unconfigured ME Interface of the outer network, so the Bus reads
+     * the outer network's whole storage, and the outer network consumes the main one by a storage rule. The main
+     * network's own drive must still count once: the Bus reaches the outer network's projection of that same drive.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void storageBusLoopCountsOnce(GameTestHelper helper) {
+        var fixtures = new PolicyBridgeFixtures(helper, FIRST);
+        fixtures.installStorageCells();
+        var phase = new int[] {0};
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertTrue(fixtures.networksSettled(), "Waiting for the loop networks");
+                helper.assertValueEqual(main(fixtures).insert(IRON, 7, Actionable.MODULATE, SOURCE), 7L,
+                        "The main network's drive takes its own iron before the Bus exists");
+                helper.assertValueEqual(outer(fixtures).insert(GOLD, 3, Actionable.MODULATE, SOURCE), 3L,
+                        "The outer network's drive takes its own gold");
+                fixtures.placeNativeStorageBusToInterface();
+                fixtures.placeSecondBridge();
+                phase[0] = 1;
+                helper.assertTrue(false, "Waiting for the Storage Bus and the Bridge");
+            }
+            helper.assertTrue(fixtures.secondBridgeReady(), "Waiting for the loop Federation Domain");
+            helper.assertValueEqual(main(fixtures).getAvailableStacks().get(GOLD), 3L,
+                    "Waiting for the Storage Bus to read the outer network");
+            var key = new PolicyKey(fixtures.outerNetwork(), fixtures.mainNetwork(), PolicyCapability.STORAGE);
+            var policies = PolicyService.get(helper.getLevel());
+            if (policies.revision(key).equals(PolicyRevision.NONE)) {
+                policies.edit(new PolicyEdit(key, PolicyRevision.NONE, PolicyRule.storageDefaults()));
+            }
+            helper.assertTrue(StorageMountService.get(helper.getLevel()).projection(key) != null,
+                    "Waiting for the outer network's projection of the main one");
+            helper.assertValueEqual(outer(fixtures).getAvailableStacks().get(IRON), 7L,
+                    "Waiting for the outer network to see the main network's iron");
+            GameTestChecks.once(helper, () -> {
+                var mainView = main(fixtures).getAvailableStacks();
+                var outerView = outer(fixtures).getAvailableStacks();
+                helper.assertValueEqual(mainView.get(IRON), 7L,
+                        "The main network counts its own drive once, not again through Bus, Interface and rule");
+                helper.assertValueEqual(mainView.get(GOLD), 3L, "The main network sees the outer gold once");
+                helper.assertValueEqual(outerView.get(GOLD), 3L, "The outer network counts its own drive once");
+                helper.assertValueEqual(main(fixtures).extract(IRON, 7, Actionable.SIMULATE, SOURCE), 7L,
+                        "The main network can take all of its real iron");
+                helper.assertValueEqual(main(fixtures).extract(IRON, 8, Actionable.SIMULATE, SOURCE), 7L,
+                        "The main network cannot take more iron than it really holds");
+                PolicyEvidence.write("storagebusloopcountsonce", 7, Map.of("mainIron", "7", "mainGold", "3",
+                        "outerGold", "3", "extractableIron", "7"));
+                fixtures.close();
+            });
+        });
+    }
+
+    private static MEStorage main(PolicyBridgeFixtures fixtures) {
+        return fixtures.mainGrid().getStorageService().getInventory();
+    }
+
+    private static MEStorage outer(PolicyBridgeFixtures fixtures) {
+        return fixtures.outerGrid().getStorageService().getInventory();
     }
 
     private static final class Scene {

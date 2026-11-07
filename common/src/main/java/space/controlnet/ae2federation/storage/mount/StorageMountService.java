@@ -341,7 +341,8 @@ public final class StorageMountService implements AutoCloseable {
         var statistics = observability.statistics();
         var toProvider = statistics.meter(key.consumerNetworkId(), key.providerNetworkId());
         var toConsumer = statistics.meter(key.providerNetworkId(), key.consumerNetworkId());
-        var projection = new AuthorizedStorageProjection(delegate, authority,
+        var projection = new AuthorizedStorageProjection(delegate,
+                domain.runtimeGrid().getStorageService().getInventory(), authority,
                 operation -> {
                     observability.recordAcceptedStorage(authority.scopes(), operation);
                     observability.recordPairFlow(key, operation.amount());
