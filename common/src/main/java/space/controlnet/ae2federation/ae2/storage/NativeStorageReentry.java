@@ -2,13 +2,10 @@ package space.controlnet.ae2federation.ae2.storage;
 
 import appeng.api.storage.MEStorage;
 import appeng.me.storage.NetworkStorage;
-import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
-import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import space.controlnet.ae2federation.mixin.compat.NetworkStorageAccess;
 
 /**
  * Stops a projection from reaching its source network's storage again while that storage is already in use on this
@@ -18,13 +15,11 @@ import org.slf4j.LoggerFactory;
  * against its own recursion only, so without this the source's drives are listed (and offered) twice.
  *
  * <p>The source network is in use when its {@link NetworkStorage} is inside one of its own operations (AE2's private
- * {@code mountsInUse} flag, read by reflection because AE2 exposes no API for it) or when a projection of it is
+ * {@code mountsInUse} flag, read through an accessor because AE2 exposes no API for it) or when a projection of it is
  * already executing higher on this thread's stack (a third network reading the source through the same loop). A
  * re-entered projection behaves as AE2's own recursion guard does: it lists nothing and accepts nothing.
  */
 public final class NativeStorageReentry {
-    private static final Logger LOGGER = LoggerFactory.getLogger(NativeStorageReentry.class);
-    private static final @Nullable Field IN_USE = inUseField();
     private static final ThreadLocal<Set<MEStorage>> ENTERED =
             ThreadLocal.withInitial(() -> Collections.newSetFromMap(new IdentityHashMap<>()));
 
@@ -47,28 +42,6 @@ public final class NativeStorageReentry {
     }
 
     private static boolean nativeInUse(MEStorage network) {
-        if (IN_USE == null || !(network instanceof NetworkStorage)) {
-            return false;
-        }
-        try {
-            return IN_USE.getBoolean(network);
-        } catch (IllegalAccessException | RuntimeException exception) {
-            return false;
-        }
-    }
-
-    private static @Nullable Field inUseField() {
-        try {
-            var field = NetworkStorage.class.getDeclaredField("mountsInUse");
-            if (field.getType() == boolean.class && field.trySetAccessible()) {
-                return field;
-            }
-        } catch (NoSuchFieldException | RuntimeException ignored) {
-            // Reported below.
-        }
-        // Projections still stop at each other; a loop through native AE2 parts may then count storage twice.
-        LOGGER.warn("AE2 NetworkStorage has no readable mountsInUse flag; storage loops through native parts are "
-                + "not detected");
-        return null;
+        return network instanceof NetworkStorageAccess access && access.ae2federation$mountsInUse();
     }
 }
