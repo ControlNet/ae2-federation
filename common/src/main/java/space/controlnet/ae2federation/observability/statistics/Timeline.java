@@ -15,30 +15,41 @@ import java.util.Arrays;
 public final class Timeline {
     private static final StatisticsRange[] RANGES = StatisticsRange.values();
 
+    /**
+     * Each range's points by {@link StatisticsRange#ordinal()}, {@code null} until written and again once
+     * {@link #prune} finds it holds nothing to show: a full timeline is about 9 KB, and a key gauge keeps one per key a
+     * network held in the last day, most of them no longer written.
+     */
     private final double[][] sums = new double[RANGES.length][];
     private final int[][] counts = new int[RANGES.length][];
     private final long[][] buckets = new long[RANGES.length][];
+    /** Each range's newest bucket written, so a range with nothing left to show is found without a scan. */
+    private final long[] newest = new long[RANGES.length];
 
     public Timeline() {
-        for (var range : RANGES) {
-            int tier = range.ordinal();
-            sums[tier] = new double[range.buckets()];
-            counts[tier] = new int[range.buckets()];
-            buckets[tier] = new long[range.buckets()];
-            Arrays.fill(buckets[tier], Long.MIN_VALUE);
-        }
+        Arrays.fill(newest, Long.MIN_VALUE);
+    }
+
+    private void allocate(int tier) {
+        int size = RANGES[tier].buckets();
+        sums[tier] = new double[size];
+        counts[tier] = new int[size];
+        buckets[tier] = new long[size];
+        Arrays.fill(buckets[tier], Long.MIN_VALUE);
     }
 
     /** Records the value of {@code second}; call it at most once per second. */
     public void add(long second, double value) {
         for (var range : RANGES) {
             int tier = range.ordinal();
+            if (buckets[tier] == null) allocate(tier);
             long bucket = Math.floorDiv(second, range.seconds());
             int slot = (int) Math.floorMod(bucket, (long) range.buckets());
             if (buckets[tier][slot] != bucket) {
                 buckets[tier][slot] = bucket;
                 sums[tier][slot] = 0;
                 counts[tier][slot] = 0;
+                newest[tier] = Math.max(newest[tier], bucket);
             }
             sums[tier][slot] += value;
             counts[tier][slot]++;
@@ -75,6 +86,7 @@ public final class Timeline {
     /** Calls {@code visitor} for each point of the range that holds a recorded second. */
     private void visit(StatisticsRange range, long nowSecond, SlotVisitor visitor) {
         int tier = range.ordinal();
+        if (buckets[tier] == null) return;
         int size = range.buckets();
         long last = Math.floorDiv(nowSecond, range.seconds());
         for (int index = 0; index < size; index++) {
@@ -91,12 +103,31 @@ public final class Timeline {
     public boolean idle(long nowSecond) {
         var range = StatisticsRange.LONGEST;
         int tier = range.ordinal();
+        if (buckets[tier] == null) return true;
         long last = Math.floorDiv(nowSecond, range.seconds());
         for (int slot = 0; slot < range.buckets(); slot++) {
             long bucket = buckets[tier][slot];
             if (counts[tier][slot] > 0 && bucket <= last && bucket > last - range.buckets()) return false;
         }
         return true;
+    }
+
+    /**
+     * Releases each range whose newest point is older than the range shows from {@code nowSecond} on; true once the
+     * longest range holds nothing, so the timeline can be forgotten.
+     */
+    public boolean prune(long nowSecond) {
+        for (var range : RANGES) {
+            int tier = range.ordinal();
+            if (buckets[tier] == null) continue;
+            if (newest[tier] <= Math.floorDiv(nowSecond, range.seconds()) - range.buckets()) {
+                sums[tier] = null;
+                counts[tier] = null;
+                buckets[tier] = null;
+                newest[tier] = Long.MIN_VALUE;
+            }
+        }
+        return idle(nowSecond);
     }
 
     /**
@@ -111,6 +142,7 @@ public final class Timeline {
         var out = new SavedTier[RANGES.length];
         for (var range : RANGES) {
             int tier = range.ordinal();
+            if (counts[tier] == null) continue;
             long newest = Long.MIN_VALUE;
             for (int slot = 0; slot < range.buckets(); slot++) {
                 if (counts[tier][slot] > 0) newest = Math.max(newest, buckets[tier][slot]);
@@ -141,7 +173,9 @@ public final class Timeline {
             int newestSlot = (int) Math.floorMod(savedTier.newestBucket(), (long) size);
             for (int slot = 0; slot < size; slot++) {
                 if (savedTier.counts()[slot] <= 0) continue;
+                if (timeline.buckets[tier] == null) timeline.allocate(tier);
                 timeline.buckets[tier][slot] = savedTier.newestBucket() - Math.floorMod(newestSlot - slot, size);
+                timeline.newest[tier] = Math.max(timeline.newest[tier], timeline.buckets[tier][slot]);
                 timeline.sums[tier][slot] = savedTier.sums()[slot];
                 timeline.counts[tier][slot] = savedTier.counts()[slot];
             }
