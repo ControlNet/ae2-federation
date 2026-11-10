@@ -14,7 +14,8 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
   edit the approved source/version selection or the generator, then regenerate. The Router, Pattern Provider, Processing
   Endpoint and Bridge models and textures are drawn by hand in Blockbench (artist update, 2026-10-07) and edited
   directly; the generator no longer writes them. Language files are independently maintained.
-- **ME Federation Beam Converter.** The open laser design from Blender is exported to `device_meshes/laser-{1,2,3}.json`
+- **ME Federation Beam Converter.** 1x1x2 and 2x2x3 use the artist's Blockbench models. The 3x3x6 body
+  keeps the open laser design from Blender, exported to `device_meshes/laser-3.json`
   and the shared pixel atlas in `textures/block/refined_devices/`. `RefinedDeviceBakedModel` clips its static geometry
   into individual chunk members. Standalone blocks and inventory items have dedicated 16px native cube textures;
   the creative variant uses purple accents and internal light. The rear face alone accepts FE. See [runtime integration](refined-device-runtime.md).

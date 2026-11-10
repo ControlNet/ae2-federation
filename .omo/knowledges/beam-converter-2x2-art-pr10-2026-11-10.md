@@ -38,4 +38,9 @@ build 2x2x3). In game: `build/converter-2x2-check/2x2x3-before-after.png` (south
 `other-sizes-before-after.png` (2x2x4 now unformed, 3x3x6 and 1x1x2 unchanged), shot with
 `build/converter-2x2-check/tools/shoot.sh <worktree> <label>` on Xvfb :95 in a copy of the guidetest save.
 
-The Blender `laser-2` mesh is still loaded by `RefinedDeviceAssets` but no longer drawn by any converter.
+## Unused Blender meshes removed
+
+`device_meshes/laser-1.json` (unused since the artist's 1x1x2 art) and `laser-2.json` (unused since this change) were
+deleted at the owner's request. `RefinedDeviceAssets` loads only `laser-3`, and `tools/blender/export_refined_devices.py`
+exports only the 3x3 laser, so a new Blender export does not bring them back. In game the three sizes look the same:
+`build/laser-mesh-cleanup-check/converters-before-after.png`.

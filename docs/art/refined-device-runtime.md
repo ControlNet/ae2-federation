@@ -43,7 +43,7 @@ lighting, not Blender studio lighting or a bloom shader.
 - `tools/visual/pack_device_atlas.py`: packs the reviewed diffuse textures and emission masks, with padded edges.
 - `tools/blender/export_refined_devices.py`: exports evaluated Blender geometry and explicit UVs, with a strict
   device-material allowlist. Studio floor, cameras and lights are excluded.
-- `assets/ae2federation/device_meshes/`: six static size meshes and three core-layer meshes, readable by resource packs.
+- `assets/ae2federation/device_meshes/`: the 3x3x6 Beam Converter mesh, three Quantum Cube size meshes and three core-layer meshes, readable by resource packs.
 - `RefinedDeviceMesh`: clips polygons with continuous UVs; coplanar boundaries have one owner.
 - `RefinedDeviceBakedModel`, `RefinedDeviceBody`: chunk mesh assembly from synchronized formation state.
 - `RefinedDeviceRenderer`: rotating core and cable-to-core carriers, with structure-sized frustum bounds.
