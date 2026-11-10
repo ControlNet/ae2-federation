@@ -70,7 +70,7 @@ class StatisticsPayloadTest {
             book.gauge(prefix + StatisticsNames.FEDPOWER_STOPPED, second, second < 105 ? 1 : 0);
             book.gauge(StatisticsNames.fedpower("physical:4") + StatisticsNames.FEDPOWER_INPUT, second, 99);
         }
-        var converter = new StatisticsPayload.Converter("minecraft:overworld", 12, 64, -30, "2x2x4", 1700, true);
+        var converter = new StatisticsPayload.Converter("minecraft:overworld", 12, 64, -30, "2x2x3", 1700, true);
         var power = new StatisticsPayload.Power("physical:3", true, List.of(converter));
         var extras = new StatisticsPayload.Extras<String>(List.of(), java.util.Map.of(), java.util.Set.of(), false, power);
 

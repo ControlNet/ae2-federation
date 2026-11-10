@@ -5,10 +5,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 
 /**
- * The size rule of a Beam Converter: M x N across its front, a cross-section players can build today, 2·max(M, N) long
- * toward it. At most one axis of a box can be
- * that long (were x and y both, x ≥ 2y and y ≥ 2x), so the size alone gives the axis; which end is the front is the
- * body's facing.
+ * The size rule of a Beam Converter: M x N across its front, a cross-section players can build today, and that section's
+ * {@link CableCrossSection#converterLength() converter length} toward it. Every converter is longer than either side of
+ * its front, so it runs along the box's one strictly longest axis and the size alone gives that axis; which end is the
+ * front is the body's facing.
  */
 public final class BeamConverterShape {
     private BeamConverterShape() {

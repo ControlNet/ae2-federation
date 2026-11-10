@@ -43,12 +43,12 @@ another mod's generator.
 ## Size
 
 A converter is a solid box of converter blocks, placed any way round. Its front must have the cross-section of the
-**largest cable in its domain**, and the box is twice as long, toward the front, as the front's longer side:
+**largest cable in its domain**, and its length toward the front depends on that size:
 
 | Largest cable | Converter |
 |---|---|
 | single cable | 1×1, 2 long |
-| 2×2 bundle | 2×2, 4 long |
+| 2×2 bundle | 2×2, 3 long |
 | 3×3 bundle | 3×3, 6 long |
 
 The front joins the domain like a Switch face; build a converter against a cable or any Federation block. A converter of

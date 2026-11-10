@@ -69,8 +69,10 @@ for path in (BASE / 'textures').rglob('*.png'):
     if ref.startswith(NS + 'misc/'):
         continue
     meta = path.with_suffix('.png.mcmeta')
-    # The artist's 2x2 and 3x3 Beam Formers are modelled over two and three blocks, on 64- and 128-pixel sheets.
+    # The artist's 2x2 and 3x3 Beam Formers and 2x2 Beam Converter are modelled over several blocks, on 64- and
+    # 128-pixel sheets.
     size = {NS + 'block/beam_emitter/large_light_emitter': 64, NS + 'block/beam_emitter/huge_light_emitter': 128,
+            NS + 'block/beam_converter/large_beam_converter': 64,
             NS + 'block/large_cable/large_cable': 32,
             NS + 'block/refined_devices/surface': 512, NS + 'block/refined_devices/emission': 512}.get(ref, 16)
     assert im.width == size, ref

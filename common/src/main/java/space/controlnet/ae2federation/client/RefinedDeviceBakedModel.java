@@ -32,6 +32,8 @@ import space.controlnet.ae2federation.router.RouterBlock;
 /** Static chassis in chunk meshes; each member owns clipped geometry with continuous source UVs. */
 public final class RefinedDeviceBakedModel extends BakedModelWrapper<BakedModel> {
     private static final ModelProperty<Key> MEMBER=new ModelProperty<>();
+    /** Set on a 2x2x3 converter member: its blockstate picks its slice of the artist's model. */
+    private static final ModelProperty<Boolean> PIXEL=new ModelProperty<>();
     private record Key(int section, Direction facing, double x, double y, double z) { }
     private final Shapes shapes;
     private RefinedDeviceBakedModel(BakedModel base,Shapes shapes) { super(base); this.shapes=shapes; }
@@ -64,6 +66,8 @@ public final class RefinedDeviceBakedModel extends BakedModelWrapper<BakedModel>
         if (pixelMember(state)) return super.getModelData(level,pos,state,data);
         var body=RefinedDeviceBody.find(level,pos,state);
         if (body==null) return ModelData.EMPTY;
+        // A 3x3x6 corner has the same connections as a 2x2x3 member, so only the body tells them apart.
+        if (shapes.pixelPair && body.section()==2) return ModelData.builder().with(PIXEL,true).build();
         return ModelData.builder().with(MEMBER,new Key(body.section(),body.facing(),
                 body.centre(Direction.Axis.X)-pos.getX(),body.centre(Direction.Axis.Y)-pos.getY(),
                 body.centre(Direction.Axis.Z)-pos.getZ())).build();
@@ -75,7 +79,7 @@ public final class RefinedDeviceBakedModel extends BakedModelWrapper<BakedModel>
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state,@Nullable Direction side,RandomSource random,
             ModelData data,@Nullable RenderType renderType) {
-        if (state==null || !RouterBlock.formed(state) || pixelMember(state)) {
+        if (state==null || !RouterBlock.formed(state) || pixelMember(state) || Boolean.TRUE.equals(data.get(PIXEL))) {
             return super.getQuads(state,side,random,data,renderType);
         }
         if (side!=null) return List.of();

@@ -9,11 +9,12 @@ Minecraft 1.21.1 / NeoForge runtime. This implements the selected direction from
 | Cable section | Converter: front width x height x length | Quantum Cube |
 | --- | --- | --- |
 | 1x1 | 1x1x2 | 3x3x3 |
-| 2x2 | 2x2x4 | 4x4x4 |
+| 2x2 | 2x2x3 | 4x4x4 |
 | 3x3 | 3x3x6 | 5x5x5 |
 
-- The converter's 1x1x2 body and its single blocks use the artist's models instead (2026-10-30, see
-  [operating power](../features/operating-power.md)); the larger converters use the open collimator design. Converters
+- The converter's 1x1x2 and 2x2x3 bodies and its single blocks use the artist's models instead (2026-10-30 and
+  2026-11-10, see [operating power](../features/operating-power.md)); only the 3x3x6 converter uses the open collimator
+  design. The 2x2 converter was 2x2x4 with this design until it was shortened to fit the artist's model. Converters
   and Quantum Cubes use Federation teal. All six facings rotate both the chassis
   and internal carrier. FE is exposed only by members on the rear exterior plane, on their outward rear side.
   Front, sides, internal faces and unsided queries expose no FE input. Cached old input objects reject insertion after
@@ -84,7 +85,7 @@ The development JAR is `neoforge-1.21.1/build/libs/ae2federation-0.0.10-dev.jar`
 This testmod-only run creates its own flat review world in `neoforge-1.21.1/run-refined-devices/`; it does not open a
 player world. It constructs all three sizes with real ordinary/2x2/3x3 cable connections, vertical converters and
 unformed blocks. It also captures native inventory icons and first-person held items for both blocks,
-plus a formed 2x2x4 converter (`converter-large`). The largest bodies straddle a chunk boundary. The review world
+plus a formed 2x2x3 converter (`converter-large`). The largest bodies straddle a chunk boundary. The review world
 switches operating power off, so its domains run without FE.
 The first run removes/replaces a Quantum member and reloads resources. Running the same command again reopens the
 saved world and captures it without rebuilding. Expect `REFINED_DEVICE_SCENE_OK`, automatic exit and screenshots in

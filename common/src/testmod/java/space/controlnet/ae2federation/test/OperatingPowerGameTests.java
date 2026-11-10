@@ -118,7 +118,7 @@ public final class OperatingPowerGameTests {
     }
 
     /**
-     * A 2x2x4 converter does not match a domain of plain cable and supplies nothing, however full; a 1x1x2 converter
+     * A 2x2x3 converter does not match a domain of plain cable and supplies nothing, however full; a 1x1x2 converter
      * added on the other cable matches, and its FE runs the domain.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
@@ -132,30 +132,30 @@ public final class OperatingPowerGameTests {
             var domain = scene.domain();
             switch (phase[0]) {
                 case 0 -> {
-                    for (var x = 3; x <= 6; x++) {
+                    for (var x = 3; x <= 5; x++) {
                         for (var y = 0; y <= 1; y++) {
                             for (var z = 0; z <= 1; z++) scene.converter(SWITCH.offset(x, y, z), Direction.WEST);
                         }
                     }
                     phase[0] = 1;
-                    throw new GameTestAssertException("Waiting for the 2x2x4 converter to form");
+                    throw new GameTestAssertException("Waiting for the 2x2x3 converter to form");
                 }
                 case 1 -> {
-                    helper.assertTrue(RouterBlock.formed(helper.getBlockState(SWITCH.east(6))), "Waiting for it to form");
-                    helper.assertValueEqual(scene.insert(SWITCH.east(6), Direction.EAST, 16000), 16000, "FE in");
+                    helper.assertTrue(RouterBlock.formed(helper.getBlockState(SWITCH.east(5))), "Waiting for it to form");
+                    helper.assertValueEqual(scene.insert(SWITCH.east(5), Direction.EAST, 16000), 16000, "FE in");
                     phase[0] = 2;
                     throw new GameTestAssertException("Waiting 40 ticks");
                 }
                 case 2 -> {
                     // Longer than a matching converter would take to run the domain.
                     if (++waited[0] < 40) throw new GameTestAssertException("Waiting 40 ticks");
-                    helper.assertTrue(scene.registry().unpowered(domain), "a 2x2x4 converter does not power plain cable");
+                    helper.assertTrue(scene.registry().unpowered(domain), "a 2x2x3 converter does not power plain cable");
                     var reading = scene.reading();
                     helper.assertTrue(!reading.converters().isEmpty()
                             && reading.converters().stream().noneMatch(converter -> converter.matches()),
                             "the converter is listed as not matching");
                     var stored = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK,
-                            helper.absolutePos(SWITCH.east(6)), Direction.EAST).getEnergyStored();
+                            helper.absolutePos(SWITCH.east(5)), Direction.EAST).getEnergyStored();
                     helper.assertValueEqual(stored, 16000, "a converter that does not match is not drawn on");
                     scene.converter(SWITCH.east(1).above(), Direction.DOWN);
                     scene.converter(SWITCH.east(1).above(2), Direction.DOWN);

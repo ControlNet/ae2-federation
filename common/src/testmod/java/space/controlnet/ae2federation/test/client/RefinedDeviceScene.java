@@ -221,19 +221,20 @@ public final class RefinedDeviceScene {
         for (int n=1;n<=3;n++) {
             int x=n==1 ? 0 : n==2 ? 8 : 14;
             var converter=space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get();
-            for (var p:BlockPos.betweenClosed(x,Y,0,x+n-1,Y+n-1,2*n-1)) level.setBlock(p,
+            int length=space.controlnet.ae2federation.power.CableCrossSection.of(n,n).orElseThrow().converterLength();
+            for (var p:BlockPos.betweenClosed(x,Y,0,x+n-1,Y+n-1,length-1)) level.setBlock(p,
                     converter.defaultBlockState().setValue(space.controlnet.ae2federation.power.BeamConverterBlock.FACING,
                     net.minecraft.core.Direction.NORTH),Block.UPDATE_ALL);
             box(level,space.controlnet.ae2federation.quantum.QuantumRegistration.QUANTUM_CUBE.get(),x,Y,20,n+2,n+2,n+2);
             cable(level,new BlockPos(x,Y,-3),new BlockPos(x+n-1,Y+n-1,-1),n);
             cable(level,new BlockPos(x+1,Y+1,17),new BlockPos(x+n,Y+n,19),n);
-            for (var p:BlockPos.betweenClosed(x+1,Y+1,17-2*n,x+n,Y+n,16)) level.setBlock(p,
+            for (var p:BlockPos.betweenClosed(x+1,Y+1,17-length,x+n,Y+n,16)) level.setBlock(p,
                     converter.defaultBlockState().setValue(space.controlnet.ae2federation.power.BeamConverterBlock.FACING,
                     net.minecraft.core.Direction.SOUTH),Block.UPDATE_ALL);
         }
         for (int i=0;i<2;i++) {
             var facing=i==0 ? net.minecraft.core.Direction.UP : net.minecraft.core.Direction.DOWN;
-            for (var p:BlockPos.betweenClosed(32+4*i,Y,0,33+4*i,Y+3,1)) level.setBlock(p,
+            for (var p:BlockPos.betweenClosed(32+4*i,Y,0,33+4*i,Y+2,1)) level.setBlock(p,
                     space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get().defaultBlockState()
                     .setValue(space.controlnet.ae2federation.power.BeamConverterBlock.FACING,facing),Block.UPDATE_ALL);
         }
@@ -250,7 +251,7 @@ public final class RefinedDeviceScene {
                 .defaultBlockState(),Block.UPDATE_ALL);
         level.setBlock(new BlockPos(36,Y,10),space.controlnet.ae2federation.quantum.QuantumRegistration.QUANTUM_CUBE.get()
                 .defaultBlockState(),Block.UPDATE_ALL);
-        for (var p:BlockPos.betweenClosed(39,Y,14,40,Y+1,17)) level.setBlock(p,
+        for (var p:BlockPos.betweenClosed(39,Y,14,40,Y+1,16)) level.setBlock(p,
                 space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get().defaultBlockState()
                 .setValue(space.controlnet.ae2federation.power.BeamConverterBlock.FACING,
                 net.minecraft.core.Direction.NORTH),Block.UPDATE_ALL);

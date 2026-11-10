@@ -57,7 +57,9 @@ public final class RefinedDeviceRenderer<T extends BlockEntity> implements Block
             stack.popPose();
         }
         if (body.laser()) {
-            var front=Vec3.atLowerCornerOf(body.facing().getNormal()).scale(body.section());
+            var axis=body.facing().getAxis();
+            double half=(body.max().get(axis)-body.min().get(axis)+1)/2.0;
+            var front=Vec3.atLowerCornerOf(body.facing().getNormal()).scale(half);
             beam(stack,buffers,front,front.scale(-.75),body.section(),level.getGameTime(),partialTick,CableBeamStyle.fromLoad(0,false));
         } else {
             // Each connected cable contributes one carrier; bundle non-owners contribute none. A thick bundle against a

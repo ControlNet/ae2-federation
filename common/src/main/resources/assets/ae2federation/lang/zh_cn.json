@@ -52,7 +52,7 @@
   "ae2federation.structure.invalid.not_solid": "该%s未成形，不连接任何网络：同类方块必须填满一个实心长方体。",
   "ae2federation.structure.invalid.touching": "该%s未成形，不连接任何网络：长方体外侧贴着同类方块。",
   "ae2federation.structure.invalid.too_large": "该%s未成形，不连接任何网络：每条边最多 %s 格。",
-  "ae2federation.structure.invalid.wrong_shape.beam_converter": "该%s未成形，不连接任何网络：正面必须是一种线缆截面，长度是截面长边的两倍。",
+  "ae2federation.structure.invalid.wrong_shape.beam_converter": "该%s未成形，不连接任何网络：正面必须是一种线缆截面，长度按截面而定：1×1长2，2×2长3，3×3长6。",
   "ae2federation.structure.invalid.wrong_shape.beam_former": "该%s未成形，不连接任何网络：必须是单个方块，或厚度为1的2×2或3×3正方形。",
   "ae2federation.structure.invalid.wrong_shape.quantum_cube": "该%s未成形，不连接任何网络：必须是边长为3、4或5格的立方体。",
   "block.ae2federation.cable": "ME联邦线缆",

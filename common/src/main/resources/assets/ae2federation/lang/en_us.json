@@ -52,7 +52,7 @@
   "ae2federation.structure.invalid.not_solid": "This %s is not formed and links nothing: its blocks must fill a solid box.",
   "ae2federation.structure.invalid.touching": "This %s is not formed and links nothing: a block of the same type touches its box.",
   "ae2federation.structure.invalid.too_large": "This %s is not formed and links nothing: each edge may be at most %s blocks.",
-  "ae2federation.structure.invalid.wrong_shape.beam_converter": "This %s is not formed and links nothing: it must be a cable cross-section across its front and twice its wider side long.",
+  "ae2federation.structure.invalid.wrong_shape.beam_converter": "This %s is not formed and links nothing: it must be a cable cross-section across its front, and 2 long for 1×1, 3 for 2×2 or 6 for 3×3.",
   "ae2federation.structure.invalid.wrong_shape.beam_former": "This %s is not formed and links nothing: it must be one block, or a square of 2×2 or 3×3 blocks one block thick.",
   "ae2federation.structure.invalid.wrong_shape.quantum_cube": "This %s is not formed and links nothing: it must be a cube with edges of 3, 4 or 5 blocks.",
   "block.ae2federation.cable": "ME Federation Cable",

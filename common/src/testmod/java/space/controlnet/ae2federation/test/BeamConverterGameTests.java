@@ -39,7 +39,7 @@ public final class BeamConverterGameTests {
 
     /**
      * Each of the three buildable sizes forms, facing east in a row of its own; the three sizes of the bundles players
-     * cannot build today (1x2x4, 1x3x6, 2x3x6) and a 2x2x3 body (a block short) do not. Blocks need not
+     * cannot build today (1x2x4, 1x3x6, 2x3x6) and a 2x2x4 body (a block too long) do not. Blocks need not
      * face alike: a body faces along its length the way most of its blocks do, else toward the one end with Federation
      * cable, else toward the axis's positive end.
      */
@@ -56,17 +56,17 @@ public final class BeamConverterGameTests {
             (section.buildable() ? formed : unbuildable).add(cells);
             z += section.narrow() + 1;
         }
-        var short2x2 = box(new BlockPos(20, 2, 2), 3, 2, 2);
-        short2x2.forEach(cell -> place(helper, cell, Direction.EAST));
+        var long2x2 = box(new BlockPos(20, 2, 2), 4, 2, 2);
+        long2x2.forEach(cell -> place(helper, cell, Direction.EAST));
         var mixed = List.of(new BlockPos(20, 2, 8), new BlockPos(21, 2, 8));
         place(helper, mixed.get(0), Direction.EAST);
         place(helper, mixed.get(1), Direction.WEST);
         var across = List.of(new BlockPos(20, 2, 11), new BlockPos(21, 2, 11));
         place(helper, across.get(0), Direction.UP);
         place(helper, across.get(1), Direction.NORTH);
-        var majority = box(new BlockPos(20, 2, 14), 4, 2, 2);
+        var majority = box(new BlockPos(20, 2, 14), 3, 2, 2);
         for (int index = 0; index < majority.size(); index++) {
-            place(helper, majority.get(index), index < 9 ? Direction.WEST : Direction.EAST);
+            place(helper, majority.get(index), index < 7 ? Direction.WEST : Direction.EAST);
         }
         var cabled = List.of(new BlockPos(20, 2, 17), new BlockPos(21, 2, 17));
         cabled.forEach(cell -> place(helper, cell, Direction.UP));
@@ -88,18 +88,18 @@ public final class BeamConverterGameTests {
                     helper.assertTrue(!RouterBlock.formed(helper.getBlockState(cell)), "not built today: " + cell);
                 }
             }
-            for (var cell : short2x2) {
+            for (var cell : long2x2) {
                 helper.assertTrue(helper.getBlockState(cell).is(block) && !RouterBlock.formed(helper.getBlockState(cell)),
-                        "a 2x2x3 body is not a converter: " + cell);
+                        "a 2x2x4 body is not a converter: " + cell);
             }
             assertFacing(helper, mixed, Direction.EAST, "blocks facing opposite ways, a tie: the positive end");
             assertFacing(helper, across, Direction.EAST, "blocks facing across the length: the positive end");
-            assertFacing(helper, majority, Direction.WEST, "nine of sixteen blocks face west");
+            assertFacing(helper, majority, Direction.WEST, "seven of twelve blocks face west");
             assertFacing(helper, cabled, Direction.WEST, "no vote: toward the Federation cable");
             RouterEvidence.write("beamconvertershapes", 11, Map.ofEntries(
                     Map.entry("1x1x2", "formed"), Map.entry("1x2x4", "unformed"), Map.entry("1x3x6", "unformed"),
-                    Map.entry("2x2x4", "formed"), Map.entry("2x3x6", "unformed"), Map.entry("3x3x6", "formed"),
-                    Map.entry("2x2x3", "unformed"), Map.entry("tie", "positive end"),
+                    Map.entry("2x2x3", "formed"), Map.entry("2x3x6", "unformed"), Map.entry("3x3x6", "formed"),
+                    Map.entry("2x2x4", "unformed"), Map.entry("tie", "positive end"),
                     Map.entry("across", "positive end"), Map.entry("majority", "west"),
                     Map.entry("noVote", "toward the cable")));
         });
@@ -234,7 +234,7 @@ public final class BeamConverterGameTests {
     }
 
     /**
-     * A 2x2x4 converter is one buffer of sixteen blocks: FE through one rear block fills the whole body, every block reads
+     * A 2x2x3 converter is one buffer of twelve blocks: FE through one rear block fills the whole body, every block reads
      * the body's total, and each block keeps an equal share, which a block broken out of the body takes with it.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
@@ -256,17 +256,17 @@ public final class BeamConverterGameTests {
             }
             var input = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(fed), Direction.WEST);
             var reader = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(cells.get(1)), Direction.WEST);
-            if (accepted[0] < 0) accepted[0] = input.receiveEnergy(100_000, false);
-            helper.assertValueEqual(accepted[0], 100_000, "one block takes in more than its own 16000 FE");
+            if (accepted[0] < 0) accepted[0] = input.receiveEnergy(120_000, false);
+            helper.assertValueEqual(accepted[0], 120_000, "one block takes in more than its own 16000 FE");
             if (accepted[1] < 0) {
-                helper.assertValueEqual(reader.getEnergyStored(), 100_000, "another block reads the body's total");
-                helper.assertValueEqual(reader.getMaxEnergyStored(), 16 * capacity, "the body holds 16000 FE per block");
+                helper.assertValueEqual(reader.getEnergyStored(), 120_000, "another block reads the body's total");
+                helper.assertValueEqual(reader.getMaxEnergyStored(), 12 * capacity, "the body holds 16000 FE per block");
                 for (var cell : cells) {
-                    helper.assertValueEqual(((BeamConverterBlockEntity) helper.getBlockEntity(cell)).stored(), 6_250.0,
+                    helper.assertValueEqual(((BeamConverterBlockEntity) helper.getBlockEntity(cell)).stored(), 10_000.0,
                             "each block keeps an equal share: " + cell);
                 }
                 accepted[1] = input.receiveEnergy(200_000, false);
-                GameTestChecks.once(helper, () -> helper.assertValueEqual(accepted[1], 16 * capacity - 100_000,
+                GameTestChecks.once(helper, () -> helper.assertValueEqual(accepted[1], 12 * capacity - 120_000,
                         "the body takes in up to its room"));
                 helper.setBlock(other, Blocks.AIR);
             }
@@ -291,8 +291,9 @@ public final class BeamConverterGameTests {
                 int i = facing.get3DDataValue();
                 var min = new BlockPos(2 + (i % 3) * 10, 2 + (n - 1) * 8, 2 + (i / 3) * 10);
                 var axis = facing.getAxis();
-                var cells = box(min, axis == Direction.Axis.X ? 2*n : n,
-                        axis == Direction.Axis.Y ? 2*n : n, axis == Direction.Axis.Z ? 2*n : n);
+                int length = CableCrossSection.of(n, n).orElseThrow().converterLength();
+                var cells = box(min, axis == Direction.Axis.X ? length : n,
+                        axis == Direction.Axis.Y ? length : n, axis == Direction.Axis.Z ? length : n);
                 cells.forEach(cell -> place(helper, cell, facing));
                 bodies.add(new Body(cells, facing));
             }

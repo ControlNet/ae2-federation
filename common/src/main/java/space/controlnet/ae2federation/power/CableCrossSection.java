@@ -7,15 +7,16 @@ import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 
 /**
  * A Federation cable's cross-section, narrow side first, in order of capacity: a plain cable and the five bundles. A Beam
- * Converter's front must be the largest cross-section of its domain, and the converter is twice its wider side long.
+ * Converter's front must be the largest cross-section of its domain, and the converter is {@link #converterLength()}
+ * long: 2 for a plain cable, 3 for a 2x2 bundle (the artist's model), 6 for a 3x3 one.
  */
 public enum CableCrossSection {
-    ONE_BY_ONE(1, 1, 1),
-    ONE_BY_TWO(1, 2, 3),
-    ONE_BY_THREE(1, 3, 4),
-    TWO_BY_TWO(2, 2, 6),
-    TWO_BY_THREE(2, 3, 9),
-    THREE_BY_THREE(3, 3, FederationDomainNodeEvidence.UNLIMITED);
+    ONE_BY_ONE(1, 1, 1, 2),
+    ONE_BY_TWO(1, 2, 3, 4),
+    ONE_BY_THREE(1, 3, 4, 6),
+    TWO_BY_TWO(2, 2, 6, 3),
+    TWO_BY_THREE(2, 3, 9, 6),
+    THREE_BY_THREE(3, 3, FederationDomainNodeEvidence.UNLIMITED, 6);
 
     /**
      * The cross-sections players can build today: a wrench forms bundles of these only, and only these converters form.
@@ -27,11 +28,13 @@ public enum CableCrossSection {
     private final int narrow;
     private final int wide;
     private final int capacityFactor;
+    private final int converterLength;
 
-    CableCrossSection(int narrow, int wide, int capacityFactor) {
+    CableCrossSection(int narrow, int wide, int capacityFactor, int converterLength) {
         this.narrow = narrow;
         this.wide = wide;
         this.capacityFactor = capacityFactor;
+        this.converterLength = converterLength;
     }
 
     /** The cross-section of two side lengths in either order, or empty when no cable has it. */
@@ -82,7 +85,7 @@ public enum CableCrossSection {
 
     /** The length of the Beam Converter whose front is this cross-section. */
     public int converterLength() {
-        return 2 * wide;
+        return converterLength;
     }
 
     public int converterBlocks() {
