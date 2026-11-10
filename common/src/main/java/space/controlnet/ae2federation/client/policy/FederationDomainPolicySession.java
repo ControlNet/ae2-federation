@@ -476,7 +476,60 @@ public final class FederationDomainPolicySession {
         }
         if (!endpoints.isEmpty()) selected.addProperty("endpoint", FederationDomainGraphProjection.endpointId(context,
                 endpoints.get(Math.floorMod(endpointIndex, endpoints.size()))));
-        return root.toString();
+        return fitChoices(root);
+    }
+
+    /**
+     * The choices within what the binding can send ({@link SyncBudget}): a large domain shows its first networks,
+     * Endpoints and Providers, the selected and opened ones always, and only the rules among the networks it shows.
+     */
+    private static String fitChoices(com.google.gson.JsonObject root) {
+        var selected = root.getAsJsonObject("selected");
+        var anchors = new java.util.HashSet<String>();
+        for (var key : new String[] {"consumer", "provider", "endpoint", "target", "mapping_provider"}) {
+            if (selected.has(key)) anchors.add(selected.get(key).getAsString());
+        }
+        for (var key : new String[] {"initialEndpoint", "initialGraphFocus"}) {
+            if (root.has(key)) anchors.add(root.get(key).getAsString());
+        }
+        java.util.function.Predicate<com.google.gson.JsonObject> anchored = entry -> entry.has("id")
+                && anchors.contains(entry.get("id").getAsString())
+                || entry.has("member") && anchors.contains(entry.get("member").getAsString());
+        return SyncBudget.fit(root, List.of(
+                new SyncBudget.Trimmed("networks", anchored, List.of("consumer", "provider", "rules", "revisions")),
+                new SyncBudget.Trimmed("relatedNetworks", entry -> false, List.of("relatedRules")),
+                new SyncBudget.Trimmed("endpoint", anchored, List.of()),
+                new SyncBudget.Trimmed("target", anchored, List.of()),
+                new SyncBudget.Trimmed("mapping_provider", anchored, List.of())), copy -> {
+                    var members = ids(copy, "networks");
+                    var shown = new java.util.HashSet<>(members);
+                    shown.addAll(ids(copy, "relatedNetworks"));
+                    keep(copy, "consumer", entry -> members.contains(entry.get("id").getAsString()));
+                    keep(copy, "provider", entry -> members.contains(entry.get("id").getAsString()));
+                    for (var rows : new String[] {"rules", "revisions"}) {
+                        keep(copy, rows, entry -> members.contains(entry.get("consumer").getAsString())
+                                && members.contains(entry.get("provider").getAsString()));
+                    }
+                    keep(copy, "relatedRules", entry -> shown.contains(entry.get("consumer").getAsString())
+                            && shown.contains(entry.get("provider").getAsString()));
+                });
+    }
+
+    private static java.util.Set<String> ids(com.google.gson.JsonObject root, String field) {
+        var ids = new java.util.HashSet<String>();
+        if (root.has(field)) root.getAsJsonArray(field).forEach(value -> ids.add(value.getAsJsonObject().get("id").getAsString()));
+        return ids;
+    }
+
+    /** Replaces {@code root}'s list {@code field} by the entries {@code kept} keeps. */
+    private static void keep(com.google.gson.JsonObject root, String field,
+            java.util.function.Predicate<com.google.gson.JsonObject> kept) {
+        if (!root.has(field)) return;
+        var values = new com.google.gson.JsonArray();
+        root.getAsJsonArray(field).forEach(value -> {
+            if (kept.test(value.getAsJsonObject())) values.add(value);
+        });
+        root.add(field, values);
     }
 
     /**
@@ -685,7 +738,7 @@ public final class FederationDomainPolicySession {
             targets.put(choice.get("id").getAsString(), choice);
         }
         addReturnBuffers(root, provider, targets);
-        if (endpoints.isEmpty()) return root.toString();
+        if (endpoints.isEmpty()) return fitProviderChoices(root);
         selected.addProperty("target", endpointChoiceId(selectedMappingEndpoint(endpoints)));
         if (pendingRelease != null) {
             var release = new com.google.gson.JsonObject();
@@ -696,7 +749,16 @@ public final class FederationDomainPolicySession {
                     .map(binding -> binding.runtime().position().toShortString()).findFirst().orElse(""));
             root.add("release", release);
         }
-        return root.toString();
+        return fitProviderChoices(root);
+    }
+
+    /** The Provider screen's choices within what the binding can send: its first Endpoints, the selected one always. */
+    private static String fitProviderChoices(com.google.gson.JsonObject root) {
+        var selected = root.getAsJsonObject("selected");
+        var target = selected.has("target") ? selected.get("target").getAsString() : "";
+        return SyncBudget.fit(root, List.of(new SyncBudget.Trimmed("target",
+                entry -> entry.get("id").getAsString().equals(target), List.of()), new SyncBudget.Trimmed("lanes")),
+                copy -> {});
     }
 
     /**
@@ -992,7 +1054,7 @@ public final class FederationDomainPolicySession {
                 || !described.equals(overviewMembers)) {
             overviewMembers = List.copyOf(described);
             overviewTick = now;
-            overviewText = NetworkOverview.describe(level, overviewMembers).toString();
+            overviewText = NetworkOverview.text(level, overviewMembers);
         }
         return overviewText;
     }
@@ -1142,7 +1204,7 @@ public final class FederationDomainPolicySession {
             row.addProperty("returnedEvents", totals[1].events());
             out.add(row);
         }
-        flowText = out.toString();
+        flowText = SyncBudget.fitArray(out);
         return flowText;
     }
 
@@ -1154,11 +1216,11 @@ public final class FederationDomainPolicySession {
 
     /**
      * The statistics page's figures for this domain's member networks as {@code request} asks, up to the last second
-     * the server finished; an empty tag without a domain.
+     * the server finished; an empty tag without a domain, or once the player is out of reach or the domain changed.
      */
     public net.minecraft.nbt.CompoundTag statistics(
             space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Request request) {
-        if (context == null) return new net.minecraft.nbt.CompoundTag();
+        if (context == null || !isStillValid(player) || !contextCurrent()) return new net.minecraft.nbt.CompoundTag();
         var members = statisticsMembers();
         var memberSet = java.util.Set.copyOf(members);
         var shared = java.util.EnumSet.noneOf(space.controlnet.ae2federation.policy.PolicyCapability.class);
@@ -1211,10 +1273,12 @@ public final class FederationDomainPolicySession {
     /**
      * Pins the keys {@code tag} lists on every member network, replacing what was pinned there: the statistics page
      * keeps their stock whether or not they are among the most held. Up to
-     * {@link space.controlnet.ae2federation.observability.statistics.StatisticsBook#PIN_CAP}; the last edit wins.
+     * {@link space.controlnet.ae2federation.observability.statistics.StatisticsBook#PIN_CAP}; the last edit wins. Only
+     * while the player is in reach and the domain is the one opened, as for every other edit.
      */
     public boolean pinStatistics(net.minecraft.nbt.Tag tag) {
-        if (context == null || !state.editingAllowed() || !(tag instanceof net.minecraft.nbt.ListTag list)) return false;
+        if (context == null || !state.editingAllowed() || !isStillValid(player) || !contextCurrent()
+                || !(tag instanceof net.minecraft.nbt.ListTag list)) return false;
         var registries = level.registryAccess();
         var keys = new java.util.LinkedHashSet<appeng.api.stacks.AEKey>();
         for (var value : list) {
@@ -1310,8 +1374,13 @@ public final class FederationDomainPolicySession {
 
     /** Session, distance and domain authority without the selected rule's revision; switches carry their own. */
     public boolean matchesContext(ServerPlayer candidate, FederationDomainReference requestedContext) {
+        return matchesNamingContext(candidate, requestedContext) && selection != null;
+    }
+
+    /** As {@link #matchesContext} without a selected pair: a domain of one network has none, but can rename it. */
+    public boolean matchesNamingContext(ServerPlayer candidate, FederationDomainReference requestedContext) {
         return isStillValid(candidate) && context != null && context.equals(requestedContext)
-                && contextCurrent() && state.editingAllowed() && selection != null;
+                && contextCurrent() && state.editingAllowed();
     }
 
     public void nextMappingProvider() {
@@ -1412,6 +1481,7 @@ public final class FederationDomainPolicySession {
         if (!authorizeMappingAction()) return false;
         var target = MappingWireTarget.parse(encoded).orElse(null);
         var entry = selectedProvider().orElse(null);
+        if (entry == null) mappingAcknowledgment = "rejected-no-provider";
         if (target == null || entry == null || entry.controller().isEmpty()) return false;
         var slot = target.slotIndex();
         if (slot >= entry.provider().patternInventory().size()) return false;
@@ -1515,8 +1585,39 @@ public final class FederationDomainPolicySession {
     }
 
     public String graphSnapshotText() {
-        return context == null ? space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot.empty().encode()
-                : FederationDomainGraphProjection.snapshot(level, context, selectedProvider()).encode();
+        if (context == null) return space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot.empty().encode();
+        var snapshot = FederationDomainGraphProjection.snapshot(level, context, selectedProvider());
+        var text = snapshot.encode();
+        return text.length() <= SyncBudget.MAX_CHARS ? text : fitGraph(snapshot);
+    }
+
+    /**
+     * A graph within what the binding can send. The screen reads only the member networks' states and which Providers
+     * each member has, so the Endpoints and patterns go first; then the tail of the members and Providers.
+     */
+    private static String fitGraph(space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot snapshot) {
+        var nodes = snapshot.nodes().stream().filter(node -> node.kind()
+                != space.controlnet.ae2federation.client.domain.FederationDomainGraphNodeKind.ENDPOINT).toList();
+        int low = 0;
+        int high = nodes.size();
+        var fitted = space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot.empty().encode();
+        while (low <= high) {
+            int count = (low + high) >>> 1;
+            var kept = nodes.subList(0, count);
+            var ids = kept.stream().map(space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot.Node::id)
+                    .collect(java.util.stream.Collectors.toSet());
+            var text = new space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot(
+                    snapshot.topologyRevision(), snapshot.dataRevision(), kept, snapshot.edges().stream()
+                            .filter(edge -> edge.layer() == space.controlnet.ae2federation.client.domain.FederationDomainGraphLayer.PHYSICAL
+                                    && ids.contains(edge.from()) && ids.contains(edge.to())).toList(), List.of()).encode();
+            if (text.length() <= SyncBudget.MAX_CHARS) {
+                fitted = text;
+                low = count + 1;
+            } else {
+                high = count - 1;
+            }
+        }
+        return fitted;
     }
 
     public Component mappingStatusText() {
@@ -1734,6 +1835,9 @@ public final class FederationDomainPolicySession {
                     return Optional.of(providers.get(index));
                 }
             }
+            // The edited Provider has gone: none is selected until the player picks one, so a wire sent for it is
+            // refused instead of landing on the Provider that took its place in the list.
+            return Optional.empty();
         }
         var entry = providers.get(Math.floorMod(mappingProviderIndex, providers.size()));
         mappingProviderIdentity = entry.identity();

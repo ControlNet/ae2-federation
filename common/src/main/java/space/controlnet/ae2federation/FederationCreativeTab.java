@@ -29,7 +29,6 @@ public final class FederationCreativeTab {
                         output.accept(ProcessingRegistration.PROVIDER_ITEM.get());
                         output.accept(ProcessingRegistration.ENDPOINT_ITEM.get());
                         output.accept(PowerRegistration.BEAM_CONVERTER_ITEM.get());
-                        output.accept(PowerRegistration.CREATIVE_BEAM_CONVERTER_ITEM.get());
                         output.accept(BeamRegistration.BEAM_FORMER_ITEM.get());
                         output.accept(space.controlnet.ae2federation.quantum.QuantumRegistration.QUANTUM_CUBE_ITEM.get());
                         output.accept(BridgeRegistration.BRIDGE.get());

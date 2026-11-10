@@ -74,41 +74,41 @@ its JAR's metadata.
 | Mod | Versions tested | Licence as published upstream |
 |---|---|---|
 | Advanced AE | 1.6.12 | LGPL-3.0-or-later |
-| AE All Pattern ¹ | 0.2.6 | MIT |
+| AE All Pattern ¹ | 0.2.8 | MIT |
 | AE2 JEI Integration ¹ | 1.2.1 | LGPL-3.0 |
-| AE2 Lightning Tech | 2.1.1 | LGPL-3.0-only |
-| AE2 Pattern Disk ¹ | 0.8.0 | LGPL-3.0 |
-| AE2 WCWT | 1.3.10 | MIT |
+| AE2 Lightning Tech | 2.1.3 | LGPL-3.0-only |
+| AE2 Pattern Disk ¹ | 0.9.11 | LGPL-3.0 |
+| AE2 WCWT | 1.3.11 | MIT |
 | AE2 Wireless Terminals (AE2WTLib) | 19.5.1 | MIT |
 | AE2Extras ¹ | 0 | CC0-1.0 |
 | Applied Energistics 2 | 19.2.17, 19.2.18 | see *Dependencies* |
-| Applied Enhancements ¹ | 1.1.0 | MIT |
+| Applied Enhancements ¹ | 1.1.6 | MIT |
 | Applied Flux | 1.21-2.1.5 | LGPL-3.0-only |
 | Applied Mekanistics | 1.6.3 | LGPL-3.0-only |
 | Create | 6.0.10 | Create Mod License (custom) |
 | Create Crafts & Additions | 1.7.2 | MIT |
-| Data Energistics ¹ | 3.3.3 | AGPL-3.0-or-later (code); All Rights Reserved (resources) |
+| Data Energistics ¹ | 3.3.5 | AGPL-3.0-or-later (code); All Rights Reserved (resources) |
 | Ender IO | 8.2.12-beta | Unlicense (its JAR's metadata says CC0) |
-| ExtendedAE ¹ | 2.2.39 | LGPL-3.0 |
-| ExtendedAE Plus | 1.6.3 | LGPL-3.0-or-later |
+| ExtendedAE ¹ | 2.2.43 | LGPL-3.0 |
+| ExtendedAE Plus | 1.6.3, 1.6.4.1 | LGPL-3.0-or-later |
 | Functional Storage | 1.21-1.5.7 | MIT |
 | GeckoLib | 4.9.3 | MIT |
 | Glodium | 1.21-2.2 | MIT |
-| GuideME | 21.1.19 | LGPL-3.0; some embedded libraries MIT and Apache-2.0 |
+| GuideME | 21.1.22 | LGPL-3.0; some embedded libraries MIT and Apache-2.0 |
 | Industrial Foregoing | 1.21-3.6.39 | MIT |
 | Jade | 15.10.6 | CC BY-NC-SA 4.0 |
-| Just Enough Items (JEI) | 19.57.0.449 | MIT |
-| LDLib2 | 2.2.34, 2.2.41 | LGPL-3.0-only |
+| Just Enough Items (JEI) | 19.64.0.455 | MIT |
+| LDLib2 | 2.2.34, 2.2.44, 2.2.45 | LGPL-3.0-only |
 | MEGA Cells | 4.11.0 | LGPL-3.0-only |
 | Mekanism | 10.7.19.85 | MIT |
-| Neo ECO AE Extension | 21.2.0, 21.2.1, 21.2.9, 21.2.10 | GPL-3.0-only |
-| Neo ECO Prototype | 1.3.3, 1.3.9, 1.4.0 | GPL-3.0-only |
-| OmniSequence: Transfinite ¹ | 2.0.7 | MIT |
-| Sophisticated Core | 1.21.1-1.5.5.2363 | All Rights Reserved |
-| Sophisticated Storage | 1.21.1-1.6.1.2147 | All Rights Reserved |
-| Thunderbolt Core | 2.0.1 | LGPL-3.0-only |
-| Titanium | 1.21-4.0.50 | LGPL-3.0 (its repository and JAR; Modrinth lists MIT) |
-| Useless Mod ¹ | 2.4.5.10 | MIT |
+| Neo ECO AE Extension | 21.2.0, 21.2.15 | GPL-3.0-only |
+| Neo ECO Prototype | 1.4.6 | GPL-3.0-only |
+| OmniSequence: Transfinite ¹ | 2.0.13 | MIT |
+| Sophisticated Core | 1.21.1-1.5.31.2460 | All Rights Reserved |
+| Sophisticated Storage | 1.21.1-1.6.16.2222 | All Rights Reserved |
+| Thunderbolt Core | 2.0.3 | LGPL-3.0-only |
+| Titanium | 1.21-4.0.52 | LGPL-3.0 (its repository and JAR; Modrinth lists MIT) |
+| Useless Mod ¹ | 2.4.6.2, 2.4.6.5 | MIT |
 
 The Gradle test source sets also compile against these mods, which only those tests use:
 
@@ -124,8 +124,8 @@ own licence:
 
 | Modpack | Version |
 |---|---|
-| All the Mods 10 | 8.3 (`ServerFiles-8.3`) |
-| Create Ultimate Selection 2 | 12.9.0 (server pack) |
+| All the Mods 10 | 8.5 (`ServerFiles-8.5`) |
+| Create Ultimate Selection 2 | 13.1.0 (server pack) |
 | New Age Science and Technology | 2.2.1 (`nast server 2.2.1`) |
 
 ## Adapted code

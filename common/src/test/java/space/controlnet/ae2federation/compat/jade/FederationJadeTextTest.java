@@ -94,9 +94,25 @@ final class FederationJadeTextTest {
             JsonObject lang = JsonParser.parseString(Files.readString(LANG.resolve(language + ".json"))).getAsJsonObject();
             keys.forEach(key -> assertTrue(lang.has("ae2federation.jade." + key), language + " lacks " + key));
             for (var uid : List.of("cable_capacity", "device", "endpoint", "pattern_provider",
-                    "beam_converter")) {
+                    "beam_converter", "beam_former", "quantum_cube")) {
                 assertTrue(lang.has("config.jade.plugin_ae2federation." + uid), language + " lacks Jade config " + uid);
             }
+        }
+    }
+
+    /**
+     * The device toggle turns off the body line of every block the plugin gives the device provider, so its label names
+     * either none of them or all of them, by the block's name without the mod's prefix: never only some.
+     */
+    @Test
+    void theDeviceToggleNamesNoneOrAllOfTheDevicesItCovers() throws IOException {
+        var blocks = List.of("router", "switch", "beam_converter", "beam_former", "quantum_cube");
+        for (var language : List.of("en_us", "zh_cn")) {
+            JsonObject lang = JsonParser.parseString(Files.readString(LANG.resolve(language + ".json"))).getAsJsonObject();
+            var label = lang.get("config.jade.plugin_ae2federation.device").getAsString();
+            long named = blocks.stream().map(block -> lang.get("block.ae2federation." + block).getAsString()
+                    .replace("ME Federation ", "").replace("ME联邦", "")).filter(label::contains).count();
+            assertTrue(named == 0 || named == blocks.size(), language + " device toggle names only some devices: " + label);
         }
     }
 }

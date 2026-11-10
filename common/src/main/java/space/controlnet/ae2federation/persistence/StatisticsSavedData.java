@@ -24,8 +24,8 @@ import space.controlnet.ae2federation.observability.statistics.TopKeys;
  */
 public final class StatisticsSavedData extends SavedData {
     private static final String DATA_NAME = "ae2federation_statistics";
-    /** Format 3 numbers game seconds; an older book numbered wall-clock seconds and is not loaded. */
-    private static final int FORMAT = 3;
+    /** Format 4 saves a ranking as one tag per range (3 had one per point); older books are not loaded. */
+    private static final int FORMAT = 4;
     private static final StatisticsRange[] RANGES = StatisticsRange.values();
 
     private final StatisticsBook<AEKey> book;
@@ -80,25 +80,7 @@ public final class StatisticsSavedData extends SavedData {
         saved.pins().forEach((name, pinned) -> pins.putIntArray(name,
                 pinned.stream().mapToInt(indexOf).toArray()));
         var rankings = new CompoundTag();
-        saved.rankings().forEach((name, points) -> {
-            var list = new ListTag();
-            for (var point : points) {
-                var keyIndices = new int[point.amounts().size()];
-                var amounts = new long[point.amounts().size()];
-                int at = 0;
-                for (var entry : point.amounts().entrySet()) {
-                    keyIndices[at] = indexOf.applyAsInt(entry.getKey());
-                    amounts[at++] = Double.doubleToRawLongBits(entry.getValue());
-                }
-                var pointTag = new CompoundTag();
-                pointTag.putByte("range", (byte) point.range().ordinal());
-                pointTag.putLong("bucket", point.bucket());
-                pointTag.putIntArray("keys", keyIndices);
-                pointTag.putLongArray("amounts", amounts);
-                list.add(pointTag);
-            }
-            rankings.put(name, list);
-        });
+        saved.rankings().forEach((name, points) -> rankings.put(name, ranking(points, indexOf)));
         tag.put("keys", keys);
         tag.put("rankings", rankings);
         tag.put("keyGauges", keyGauges);
@@ -122,22 +104,7 @@ public final class StatisticsSavedData extends SavedData {
         var rankings = new HashMap<String, List<TopKeys.SavedPoint<AEKey>>>();
         var rankingTags = tag.getCompound("rankings");
         for (var name : rankingTags.getAllKeys()) {
-            var points = new ArrayList<TopKeys.SavedPoint<AEKey>>();
-            var list = rankingTags.getList(name, Tag.TAG_COMPOUND);
-            for (int at = 0; at < list.size(); at++) {
-                var pointTag = list.getCompound(at);
-                int range = pointTag.getByte("range");
-                var keyIndices = pointTag.getIntArray("keys");
-                var amounts = pointTag.getLongArray("amounts");
-                if (range < 0 || range >= RANGES.length || keyIndices.length != amounts.length) continue;
-                var byKey = new HashMap<AEKey, Double>();
-                for (int entry = 0; entry < keyIndices.length; entry++) {
-                    int keyIndex = keyIndices[entry];
-                    var key = key(keys, keyIndex);
-                    if (key != null) byKey.merge(key, Double.longBitsToDouble(amounts[entry]), Double::sum);
-                }
-                if (!byKey.isEmpty()) points.add(new TopKeys.SavedPoint<>(RANGES[range], pointTag.getLong("bucket"), byKey));
-            }
+            var points = ranking(rankingTags.getList(name, Tag.TAG_COMPOUND), keyIndex -> key(keys, keyIndex));
             if (!points.isEmpty()) rankings.put(name, points);
         }
         var keyGauges = new HashMap<String, Map<AEKey, Timeline.SavedTier[]>>();
@@ -165,6 +132,70 @@ public final class StatisticsSavedData extends SavedData {
                 timelines(tag.getCompound("gauges")), keyGauges, timelines(tag.getCompound("counters")), rankings,
                 pins);
         return new StatisticsSavedData(StatisticsBook.restore(saved));
+    }
+
+    /**
+     * A ranking's saved points, naming each key by {@code indexOf}: one tag per range, its points' buckets, sizes, keys
+     * and amounts in flat arrays. A tag per point made 444 per route, and 2000 routes made 888 000 per autosave.
+     */
+    static <K> ListTag ranking(List<TopKeys.SavedPoint<K>> points, java.util.function.ToIntFunction<K> indexOf) {
+        var list = new ListTag();
+        for (var range : RANGES) {
+            var inRange = points.stream().filter(point -> point.range() == range).toList();
+            if (inRange.isEmpty()) continue;
+            int entries = inRange.stream().mapToInt(point -> point.amounts().size()).sum();
+            var buckets = new long[inRange.size()];
+            var sizes = new int[inRange.size()];
+            var keyIndices = new int[entries];
+            var amounts = new long[entries];
+            int at = 0;
+            for (int point = 0; point < inRange.size(); point++) {
+                buckets[point] = inRange.get(point).bucket();
+                sizes[point] = inRange.get(point).amounts().size();
+                for (var entry : inRange.get(point).amounts().entrySet()) {
+                    keyIndices[at] = indexOf.applyAsInt(entry.getKey());
+                    amounts[at++] = Double.doubleToRawLongBits(entry.getValue());
+                }
+            }
+            var rangeTag = new CompoundTag();
+            rangeTag.putByte("range", (byte) range.ordinal());
+            rangeTag.putLongArray("buckets", buckets);
+            rangeTag.putIntArray("sizes", sizes);
+            rangeTag.putIntArray("keys", keyIndices);
+            rangeTag.putLongArray("amounts", amounts);
+            list.add(rangeTag);
+        }
+        return list;
+    }
+
+    /**
+     * A ranking's points as {@link #ranking(List, java.util.function.ToIntFunction)} saved them; {@code keyAt} gives
+     * {@code null} for a key that no longer loads, which drops its amounts. A range whose arrays disagree is skipped.
+     */
+    static <K> List<TopKeys.SavedPoint<K>> ranking(ListTag list, java.util.function.IntFunction<K> keyAt) {
+        var points = new ArrayList<TopKeys.SavedPoint<K>>();
+        for (int tag = 0; tag < list.size(); tag++) {
+            var rangeTag = list.getCompound(tag);
+            int range = rangeTag.getByte("range");
+            var buckets = rangeTag.getLongArray("buckets");
+            var sizes = rangeTag.getIntArray("sizes");
+            var keyIndices = rangeTag.getIntArray("keys");
+            var amounts = rangeTag.getLongArray("amounts");
+            long entries = 0;
+            for (int size : sizes) entries += size < 0 ? Integer.MIN_VALUE : size;
+            if (range < 0 || range >= RANGES.length || buckets.length != sizes.length
+                    || keyIndices.length != amounts.length || entries != keyIndices.length) continue;
+            int at = 0;
+            for (int point = 0; point < buckets.length; point++) {
+                var byKey = new HashMap<K, Double>();
+                for (int end = at + sizes[point]; at < end; at++) {
+                    var key = keyAt.apply(keyIndices[at]);
+                    if (key != null) byKey.merge(key, Double.longBitsToDouble(amounts[at]), Double::sum);
+                }
+                if (!byKey.isEmpty()) points.add(new TopKeys.SavedPoint<>(RANGES[range], buckets[point], byKey));
+            }
+        }
+        return points;
     }
 
     private static AEKey key(List<AEKey> keys, int index) {

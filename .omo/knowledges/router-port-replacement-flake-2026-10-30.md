@@ -58,3 +58,14 @@ Rules for new tests:
 
 A probe test (action, then `once(() -> assertTrue(false, "inner"))`, behind an outer wait that the action breaks)
 failed within a second with "inner", not at the timeout with the outer wait.
+
+## Follow-up: the swept cache is refreshed before the node (2026-11-04)
+
+The stale-cache fix above read the port afresh in `resolveLink`, after `syncNode` had already judged the face's node
+with the old cache. A Switch face that still had a node beside a Federation port (a Provider front) linked in its
+sweep but kept the node for one more sweep: traced at 100 ticks with the node still there. `RouterFacePort.resolve()`
+now runs `refreshSweptCache()` first, so the same resolve links and drops the node. GameTest
+`switchfacedropsitsnodewhenitssweeplinks` (TEST-ONLY reflection: stale cache plus a leftover node made with
+`createNode`) fails without the reorder; its node check runs in `GameTestChecks.once`, since without it the test
+passed on the old code by retrying until the next sweep dropped the node. No visible change in game: the node joins
+nothing, as the Provider's front exposes no AE2 node.

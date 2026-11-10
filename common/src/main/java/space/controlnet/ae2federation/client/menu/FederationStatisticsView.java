@@ -1261,16 +1261,27 @@ public final class FederationStatisticsView {
         return (mantissa <= 1 ? 1 : mantissa <= 2 ? 2 : mantissa <= 2.5 ? 2.5 : mantissa <= 5 ? 5 : 10) * power;
     }
 
-    /** 1.2M, 69k, 1.5k, 2.4, 12. */
+    private static final String UNITS = "kMGTPE";
+
+    /**
+     * 1.2M, 69k, 1.5k, 2.4, 12. Rounded first, then the unit chosen, so 999,950 reads 1.0M, not 1000k. Below 10k one
+     * decimal, then whole thousands; from a million on always one decimal.
+     */
     static String fmt(double value) {
         if (Double.isNaN(value)) return "–";
-        double magnitude = Math.abs(value);
-        if (magnitude >= 1e9) return String.format(Locale.ROOT, "%.1fG", value / 1e9);
-        if (magnitude >= 1e6) return String.format(Locale.ROOT, "%.1fM", value / 1e6);
-        if (magnitude >= 1e4) return Math.round(value / 1e3) + "k";
-        if (magnitude >= 1e3) return String.format(Locale.ROOT, "%.1fk", value / 1e3);
-        if (magnitude > 0 && magnitude < 10 && Math.round(magnitude) != magnitude) return String.format(Locale.ROOT, "%.1f", value);
-        return Long.toString(Math.round(value));
+        double tenths = Math.round(value * 10) / 10d;
+        if (Math.abs(tenths) < 10 && tenths != Math.rint(tenths)) return String.format(Locale.ROOT, "%.1f", tenths);
+        if (Math.abs(Math.rint(value)) < 1e3) return Long.toString(Math.round(value));
+        double scaled = value;
+        for (int unit = 0; ; unit++) {
+            scaled /= 1e3;
+            boolean whole = unit == 0 && Math.abs(Math.round(scaled * 10) / 10d) >= 10;
+            double shown = whole ? Math.rint(scaled) : Math.round(scaled * 10) / 10d;
+            if (Math.abs(shown) < 1e3 || unit == UNITS.length() - 1) {
+                return (whole ? Long.toString((long) shown) : String.format(Locale.ROOT, "%.1f", shown))
+                        + UNITS.charAt(unit);
+            }
+        }
     }
 
     /** How long before the newest point {@code index} is: "-9m 55s", "-23h 50m", "now". */
@@ -1280,9 +1291,10 @@ public final class FederationStatisticsView {
         long hours = seconds / 3600;
         long minutes = seconds % 3600 / 60;
         long rest = seconds % 60;
-        if (hours > 0) return "-" + hours + "h" + (minutes > 0 ? " " + minutes + "m" : "");
-        if (minutes > 0) return "-" + minutes + "m" + (rest > 0 ? " " + rest + "s" : "");
-        return "-" + rest + "s";
+        var span = hours > 0 ? minutes > 0 ? tr("time.hours_minutes", hours, minutes) : tr("time.hours", hours)
+                : minutes > 0 ? rest > 0 ? tr("time.minutes_seconds", minutes, rest) : tr("time.minutes", minutes)
+                : tr("time.seconds", rest);
+        return tr("ago.before", span).getString();
     }
 
     private static appeng.api.stacks.@Nullable AEKeyType keyType(String id) {
@@ -2015,11 +2027,20 @@ public final class FederationStatisticsView {
         }
     }
 
-    /** A CPU's storage as AE2 names its sizes: 1k, 64k, 1M. */
+    /**
+     * A CPU's storage as AE2 names its sizes, in steps of 1024: 1k, 64k, 1M, and up to two decimals for sums of
+     * storage blocks, 1.25M.
+     */
     static String bytes(long storage) {
-        if (storage >= 1L << 20 && storage % (1L << 20) == 0) return (storage >> 20) + "M";
-        if (storage >= 1024) return fmt(storage / 1024d) + "k";
-        return Long.toString(storage);
+        if (storage < 1024) return Long.toString(storage);
+        double scaled = storage;
+        for (int unit = 0; ; unit++) {
+            scaled /= 1024;
+            double shown = Math.round(scaled * 100) / 100d;
+            if (shown < 1024 || unit == UNITS.length() - 1) {
+                return java.math.BigDecimal.valueOf(shown).stripTrailingZeros().toPlainString() + UNITS.charAt(unit);
+            }
+        }
     }
 
     /** "1m 44s", "38s": how long a job has run. */
@@ -2027,9 +2048,9 @@ public final class FederationStatisticsView {
         long seconds = nanos / 1_000_000_000L;
         long hours = seconds / 3600;
         long minutes = seconds % 3600 / 60;
-        if (hours > 0) return hours + "h " + minutes + "m";
-        if (minutes > 0) return minutes + "m " + seconds % 60 + "s";
-        return seconds % 60 + "s";
+        if (hours > 0) return tr("time.hours_minutes", hours, minutes).getString();
+        if (minutes > 0) return tr("time.minutes_seconds", minutes, seconds % 60).getString();
+        return tr("time.seconds", seconds % 60).getString();
     }
 
     static MutableComponent tr(String key, Object... arguments) {

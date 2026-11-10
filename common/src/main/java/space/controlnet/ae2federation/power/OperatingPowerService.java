@@ -121,7 +121,6 @@ public final class OperatingPowerService {
         var matchingBodies = new ArrayList<BodySite>();
         var converters = new ArrayList<ConverterReading>();
         var input = 0.0;
-        var creative = false;
         var gathered = this.gathered.computeIfAbsent(id, ignored -> new Gathered());
         for (var site : plan.converters()) {
             if (!site.level().isLoaded(site.position())
@@ -136,16 +135,11 @@ public final class OperatingPowerService {
             matching.add(converter);
             matchingBodies.add(site.body());
             input += taken;
-            creative |= converter.creative();
         }
-        // A creative converter supplies whatever the domain uses.
-        if (creative) input = Math.max(input, plan.use().total());
         var stored = new double[matching.size()];
         for (var index = 0; index < stored.length; index++) stored[index] = matching.get(index).stored();
         var ledger = ledgers.computeIfAbsent(id, ignored -> new PowerLedger());
-        // A creative converter never runs out: the domain pays its use without drawing on the others.
-        var running = creative ? ledger.settle(new double[] {plan.use().total()}, plan.use().total())
-                : ledger.settle(stored, plan.use().total());
+        var running = ledger.settle(stored, plan.use().total());
         gathered.input += input;
         gathered.ticks++;
         // A body is one buffer: its blocks keep equal shares of what it holds.
@@ -161,7 +155,7 @@ public final class OperatingPowerService {
         }
         var left = 0.0;
         for (var index = 0; index < stored.length; index++) {
-            if (!creative) matching.get(index).setStored(stored[index]);
+            matching.get(index).setStored(stored[index]);
             left += matching.get(index).stored();
         }
         registry.setUnpowered(id, !running);

@@ -195,7 +195,7 @@ class NativeTransportMeterTest {
         var meter = new NativeTransportMeter(4);
 
         assertThrows(IllegalArgumentException.class, () -> meter.recordAccepted(SCOPE, OperationEventId.create(),
-                "minecraft:water", ObservationLimits.MAX_RESOURCE_AMOUNT + 1, ResourceUnit.FLUID_DROPLET,
+                "minecraft:water", ObservationLimits.MAX_RESOURCE_AMOUNT + 1, ResourceUnit.FLUID_MILLIBUCKET,
                 FlowState.Attribution.EXACT_OPERATION));
     }
 }

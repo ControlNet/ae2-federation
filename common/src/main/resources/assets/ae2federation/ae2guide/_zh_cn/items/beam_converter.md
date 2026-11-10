@@ -8,15 +8,11 @@ categories:
 - network infrastructure
 item_ids:
 - ae2federation:beam_converter
-- ae2federation:creative_beam_converter
 ---
 
 # ME联邦光束转换器
 
-<Row>
-  <BlockImage id="ae2federation:beam_converter" scale="6" />
-  <BlockImage id="ae2federation:creative_beam_converter" scale="6" />
-</Row>
+<BlockImage id="ae2federation:beam_converter" scale="6" />
 
 [联邦域](../mechanics/index.md)靠FE运行。 它的交换机、路由器、线缆、样板供应器和处理端点每tick都消耗一点能量， 联邦域从它的光束转换器里取用。 转换器付不起时， 联邦域**停止**， 和超出[容量](../mechanics/capacity.md)时一样： 各个网络照常独立工作， 但在重新获得FE之前， 不共享存储、合成、处理和能量。
 
@@ -59,7 +55,5 @@ item_ids:
 缓存耗尽时联邦域停止， 并继续取用输入的能量。 连续超过30 tick能量充足后， 它重新运行， 就像AE2网络断电后重新启动一样。 新的联邦域只要转换器付得起， 就立即运行。
 
 联邦域停止时， 它的线缆发出细细的红光， 拓扑界面变成暗红色。 拓扑界面的角落显示转换器的充满程度： 运行时为绿色， 消耗多于输入时为黄色， 停止后为红色。 用Jade查看转换器， 可以看到它的缓存和输入的FE； 与联邦域匹配时为绿色， 不匹配时为红色。
-
-**创造ME联邦光束转换器**遵循相同的尺寸规则， 而且永远不会耗尽。
 
 <RecipeFor id="ae2federation:beam_converter" />

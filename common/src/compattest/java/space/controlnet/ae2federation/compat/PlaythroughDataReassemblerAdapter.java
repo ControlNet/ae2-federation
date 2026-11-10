@@ -23,9 +23,16 @@ import net.minecraft.world.item.crafting.RecipeHolder;
  * resource have no pack-justified supply here, and frequency-assigning outputs are not fixed stacks.
  */
 final class PlaythroughDataReassemblerAdapter implements PlaythroughMachineAdapter {
-    private static final String RECIPE = "com.fish_dan_.data_energistics.recipe.reassembler.DataRipperReassemblerRecipe";
-    private static final String INPUT = "com.fish_dan_.data_energistics.recipe.reassembler.DataRipperReassemblerRecipeInput";
-    private static final String RESOLVER = "com.fish_dan_.data_energistics.recipe.reassembler.DataReassemblerRecipeResolver";
+    /** Data Energistics 3.4 moved these classes out of {@code recipe.reassembler}; 3.3 names come second. */
+    private static final String[] RECIPE = {
+            "com.fish_dan_.data_energistics.api.recipe.reassembler.DataRipperReassemblerRecipe",
+            "com.fish_dan_.data_energistics.recipe.reassembler.DataRipperReassemblerRecipe"};
+    private static final String[] INPUT = {
+            "com.fish_dan_.data_energistics.api.recipe.reassembler.DataRipperReassemblerRecipeInput",
+            "com.fish_dan_.data_energistics.recipe.reassembler.DataRipperReassemblerRecipeInput"};
+    private static final String[] RESOLVER = {
+            "com.fish_dan_.data_energistics.common.recipe.reassembler.DataReassemblerRecipeResolver",
+            "com.fish_dan_.data_energistics.recipe.reassembler.DataReassemblerRecipeResolver"};
     /** DataRipperReassemblerBlockEntity: nine 512-item input slots; each acceleration card saves 40 of the recipe's ticks. */
     private static final int INPUT_SLOTS = 9, SLOT_CAPACITY = 512, SPEED_CARDS = 4;
 
@@ -35,7 +42,7 @@ final class PlaythroughDataReassemblerAdapter implements PlaythroughMachineAdapt
     public Recipe read(GameTestHelper helper, RecipeHolder<?> holder, Function<Ingredient, ItemStack> choose,
                        Function<Ingredient, ItemStack> equipment) {
         var recipe = holder.value();
-        if (!recipe.getClass().getName().equals(RECIPE)) throw new IllegalArgumentException("Not a Data Reassembler recipe");
+        if (!type(RECIPE).isInstance(recipe)) throw new IllegalArgumentException("Not a Data Reassembler recipe");
         if (!((List<?>) call(recipe, "getFluidInputs")).isEmpty() || !((List<?>) call(recipe, "getFluidOutputs")).isEmpty())
             throw new IllegalArgumentException("Data Reassembler fluid inputs or outputs have no pack-justified supply in this adapter");
         if (call(recipe, "getKeyInput") != null || call(recipe, "getKeyOutput") != null)
@@ -69,10 +76,15 @@ final class PlaythroughDataReassemblerAdapter implements PlaythroughMachineAdapt
         int slot = 0;
         for (var entry : amounts.entrySet()) items.set(slot++, entry.getKey().toStack(Math.toIntExact(entry.getValue() * runs)));
         try {
-            var input = Class.forName(INPUT).getConstructor(List.class, List.class, List.class)
-                    .newInstance(items, List.of(), Collections.singletonList(null));
-            var resolver = Class.forName(RESOLVER).getField("INSTANCE").get(null);
-            var find = resolver.getClass().getMethod("find", net.minecraft.world.level.Level.class, Class.forName(INPUT),
+            // 3.3 takes Lists and 3.4 ObjectLists; an ObjectArrayList is both.
+            var keys = new it.unimi.dsi.fastutil.objects.ObjectArrayList<Object>();
+            keys.add(null);
+            var input = java.util.Arrays.stream(type(INPUT).getConstructors())
+                    .filter(constructor -> constructor.getParameterCount() == 3).findFirst().orElseThrow().newInstance(
+                    new it.unimi.dsi.fastutil.objects.ObjectArrayList<>(items),
+                    new it.unimi.dsi.fastutil.objects.ObjectArrayList<>(), keys);
+            var resolver = type(RESOLVER).getField("INSTANCE").get(null);
+            var find = resolver.getClass().getMethod("find", net.minecraft.world.level.Level.class, type(INPUT),
                     it.unimi.dsi.fastutil.objects.ObjectSet.class);
             var found = (RecipeHolder<?>) find.invoke(resolver, helper.getLevel(), input, it.unimi.dsi.fastutil.objects.ObjectSets.emptySet());
             return found == null ? null : found.id();
@@ -93,6 +105,17 @@ final class PlaythroughDataReassemblerAdapter implements PlaythroughMachineAdapt
         var storage = (appeng.api.inventories.InternalInventory) call(machine, "getStorageInventory");
         if (!storage.isEmpty()) return "Data Reassembler holds items";
         return (Boolean) call(machine, "isWorking") ? "Data Reassembler in progress" : "";
+    }
+
+    private static Class<?> type(String[] names) {
+        for (var name : names) {
+            try {
+                return Class.forName(name);
+            } catch (ClassNotFoundException ignored) {
+                // Try the older name.
+            }
+        }
+        throw new IllegalStateException("Data Energistics class unavailable: " + names[names.length - 1]);
     }
 
     private static Object call(Object target, String method) {

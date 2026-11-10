@@ -214,8 +214,12 @@ public final class BundleSelectionClient {
         BundleSegment segment = result instanceof BundleSelection.Box box ? box.segment()
                 : new BundleSegment(((BundleSelection.Section) result).min(), ((BundleSelection.Section) result).max(),
                         Direction.Axis.X);
-        return BundledCables.check(level, segment)
-                .map(refusal -> BundleText.cells(refusal.problem(), refusal.count(), refusal.total())).orElse(null);
+        var refusal = BundledCables.check(level, segment)
+                .map(found -> BundleText.cells(found.problem(), found.count(), found.total())).orElse(null);
+        if (refusal == null && result instanceof BundleSelection.Box && BundleView.overlapsBranch(level, segment)) {
+            return BundleText.refused(BundleSet.Problem.OVERLAPS_BRANCH, 0);
+        }
+        return refusal;
     }
 
     private static BundleOverlay.Box selection(AABB area, int color) {

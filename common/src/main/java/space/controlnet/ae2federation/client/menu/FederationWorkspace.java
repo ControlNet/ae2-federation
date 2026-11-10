@@ -176,7 +176,7 @@ final class FederationWorkspace {
             processing.setNetworkBlocks((index, dimension) -> topology == null || index < 0 || index >= networkIds.size()
                     ? List.of() : topology.networkBlocks(networkIds.get(index), dimension));
             processing.accept(choices.getOrDefault("slot", List.of()), choices.getOrDefault("target", List.of()),
-                    confirmedSelections.get("target"), providerAt, objects(root, "processingProviders"), names);
+                    FederationProviderMenuHolder.omitted(root, "target"), confirmedSelections.get("target"), providerAt, objects(root, "processingProviders"), names);
             element("processing_summary", Label.class).setText(processing.summary());
         }
     }

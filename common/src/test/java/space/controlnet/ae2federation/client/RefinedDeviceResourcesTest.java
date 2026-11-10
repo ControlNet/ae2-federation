@@ -32,7 +32,7 @@ final class RefinedDeviceResourcesTest {
         }
     }
     @Test void standaloneBlocksHaveNativeCubeFacesAndOpaqueDedicatedTextures() throws Exception {
-        for (var name : new String[]{"beam_converter", "creative_beam_converter", "quantum_cube"}) {
+        for (var name : new String[]{"quantum_cube"}) {
             try (var input = getClass().getResourceAsStream("/assets/ae2federation/models/block/"+name+".json")) {
                 assertNotNull(input);
                 var model = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject();
@@ -53,26 +53,55 @@ final class RefinedDeviceResourcesTest {
         }
     }
 
-    @Test void creativeAtlasIsPurpleAndKeepsTheOrdinaryAtlasLayout() throws Exception {
-        var root = "/assets/ae2federation/textures/block/refined_devices/";
-        try (var a=getClass().getResourceAsStream(root+"surface.png");
-                var b=getClass().getResourceAsStream(root+"creative_surface.png")) {
-            assertNotNull(b, "creative multiblocks need their own atlas");
-            var ordinary=javax.imageio.ImageIO.read(a);
-            var creative=javax.imageio.ImageIO.read(b);
-            assertEquals(ordinary.getWidth(),creative.getWidth());
-            assertEquals(ordinary.getHeight(),creative.getHeight());
-            int changed=0;
-            for (int y=0;y<ordinary.getHeight();y++) for (int x=0;x<ordinary.getWidth();x++) {
-                int original=ordinary.getRGB(x,y), purple=creative.getRGB(x,y);
-                assertEquals(original>>>24,purple>>>24,"atlas alpha/layout must be preserved");
-                if (original!=purple && (purple>>>24)!=0) {
-                    changed++;
-                    assertTrue((purple&255)>((purple>>8)&255),"purple blue > green");
-                    assertTrue(((purple>>16)&255)>((purple>>8)&255),"purple red > green");
+    /**
+     * The ordinary converter's blockstate picks exactly one model for every state: the artist's converter when unformed
+     * and as a 1x1x2 rear member, the artist's head as the front member, and the converter (only its particle) for a
+     * member of a larger body, whose look is the Blender mesh.
+     */
+    @Test void ordinaryConverterStatesPickTheArtistsConverterOrHead() throws Exception {
+        com.google.gson.JsonArray parts;
+        try (var input = getClass().getResourceAsStream("/assets/ae2federation/blockstates/beam_converter.json")) {
+            assertNotNull(input);
+            parts = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject()
+                    .getAsJsonArray("multipart");
+        }
+        var sides = new String[]{"down", "up", "north", "south", "west", "east"};
+        var opposite = java.util.Map.of("down", "up", "up", "down", "north", "south", "south", "north", "west", "east",
+                "east", "west");
+        int heads = 0;
+        for (var facing : sides) for (var formed : new String[]{"false", "true"}) for (int bits = 0; bits < 64; bits++) {
+            var state = new java.util.HashMap<String, String>();
+            state.put("facing", facing);
+            state.put("formed", formed);
+            for (int i = 0; i < 6; i++) state.put(sides[i], (bits >> i & 1) == 1 ? "true" : "false");
+            var selected = new java.util.ArrayList<String>();
+            for (var part : parts) {
+                if (matches(part.getAsJsonObject().get("when"), state)) {
+                    selected.add(part.getAsJsonObject().getAsJsonObject("apply").get("model").getAsString());
                 }
             }
-            assertTrue(changed>1000,"the creative palette must be visibly distinct");
+            assertEquals(1, selected.size(), state.toString());
+            boolean head = formed.equals("true") && bits == 1 << java.util.List.of(sides).indexOf(opposite.get(facing));
+            if (head) heads++;
+            assertEquals(head ? "ae2federation:block/beam_converter_head" : "ae2federation:block/beam_converter",
+                    selected.get(0), state.toString());
         }
+        assertEquals(6, heads);
+    }
+
+    private static boolean matches(com.google.gson.JsonElement condition, java.util.Map<String, String> state) {
+        var object = condition.getAsJsonObject();
+        if (object.has("AND")) {
+            for (var child : object.getAsJsonArray("AND")) if (!matches(child, state)) return false;
+            return true;
+        }
+        if (object.has("OR")) {
+            for (var child : object.getAsJsonArray("OR")) if (matches(child, state)) return true;
+            return false;
+        }
+        for (var entry : object.entrySet()) {
+            if (!state.get(entry.getKey()).equals(entry.getValue().getAsString())) return false;
+        }
+        return true;
     }
 }

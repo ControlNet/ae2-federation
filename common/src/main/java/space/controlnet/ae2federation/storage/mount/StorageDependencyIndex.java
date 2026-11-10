@@ -93,6 +93,9 @@ final class StorageDependencyIndex {
                         .forEach(relationship -> nextDiagnostics.put(relationship.key(), exception.diagnostic()));
             }
         }
+        // Networks that unloaded or were dismantled leave the source index with their dead Grids.
+        provenance.retain(loaded.keySet().stream().map(OriginNetworkId::new)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet()));
         domains = Map.copyOf(nextDomains);
         diagnostics = Map.copyOf(nextDiagnostics);
         skippedSources = Map.copyOf(nextSkipped);

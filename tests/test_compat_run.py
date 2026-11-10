@@ -9,7 +9,8 @@ from tools.compat_run import (PROFILES, ROOT, curseforge_file_id, load_profiles,
                               resolve_latest, server_pack)
 
 GROUPS_SOURCE = ROOT / "common/src/compattest/java/space/controlnet/ae2federation/compat/CompatTestClasses.java"
-# Responses recorded from https://www.curseforge.com/api/v1/mods on 2026-10-24, trimmed to the fields the runner reads.
+# Responses recorded from https://www.curseforge.com/api/v1/mods, trimmed to the fields the runner reads: All the Mods
+# 10 and Create Ultimate Selection 2 on 2026-11-07, the others on 2026-10-24.
 CURSEFORGE = PROFILES.parent / "curseforge"
 
 
@@ -95,11 +96,11 @@ class LatestModpackTest(unittest.TestCase):
     def test_resolves_the_newest_release_and_its_server_pack(self):
         latest = resolve_latest(925200, recorded(925200, "atm10"))
         self.assertEqual(latest, {
-            "project": 925200, "release": 9190157, "version": "All the Mods 10-8.3", "id": 9190182,
-            "file": "ServerFiles-8.3.zip", "url": "https://mediafilez.forgecdn.net/files/9190/182/ServerFiles-8.3.zip"})
+            "project": 925200, "release": 9431424, "version": "All the Mods 10-8.5", "id": 9431427,
+            "file": "ServerFiles-8.5.zip", "url": "https://mediafilez.forgecdn.net/files/9431/427/ServerFiles-8.5.zip"})
         cus2 = resolve_latest(1324409, recorded(1324409, "cus2"))
-        self.assertEqual(cus2["url"], "https://mediafilez.forgecdn.net/files/9299/724/Create%20Ultimate%20Selection"
-                                      "%202%20Serverpack%20MC%201.21.1-12.9.0.zip")
+        self.assertEqual(cus2["url"], "https://mediafilez.forgecdn.net/files/9397/680/Create-Ultimate-Selection-2-"
+                                      "Serverpack-MC-1.21.1-13.1.0.zip")
 
     def test_the_pinned_cdn_url_names_the_same_file_id(self):
         profile = load_profiles()["nast"]

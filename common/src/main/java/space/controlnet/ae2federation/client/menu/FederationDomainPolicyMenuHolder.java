@@ -41,6 +41,9 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     private net.minecraft.nbt.CompoundTag statisticsPayload = new net.minecraft.nbt.CompoundTag();
     private @Nullable space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Request statisticsBuiltRequest;
     private long statisticsBuiltAt;
+    /** Reads of the figures a changed request waits for after a build, and the reads since the last build. */
+    static final int STATISTICS_REQUEST_READS = 5;
+    private int statisticsReads = STATISTICS_REQUEST_READS;
     /** The pins the page last sent; server side. */
     private net.minecraft.nbt.Tag statisticsPinned = new net.minecraft.nbt.ListTag();
     /** The largest size this screen grows to; it fills the screen up to it. */
@@ -245,7 +248,10 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         if (request.action() == FederationDomainPolicyAction.SET_POLICY
                 || request.action() == FederationDomainPolicyAction.RENAME_NETWORK) {
             // Switches carry the revision of their own rule and names are not rules: the selected rule does not gate them.
-            if (!session.matchesContext(player, request.context())) {
+            // A rename needs no selected pair either: a domain of one network has none.
+            if (request.action() == FederationDomainPolicyAction.SET_POLICY
+                    ? !session.matchesContext(player, request.context())
+                    : !session.matchesNamingContext(player, request.context())) {
                 return session.rejectStaleContext(player) ? FederationDomainPolicyActionResult.STALE_CONTEXT
                         : FederationDomainPolicyActionResult.WRONG_MENU;
             }
@@ -433,11 +439,13 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     }
 
     /**
-     * The open page's figures, rebuilt when its request changes and otherwise every game second for the two-minute
-     * range and every five for the longer ones, whose points change more slowly; the same tag in between, so nothing
-     * is resent.
+     * The open page's figures, rebuilt when its request changes (at most every five ticks) and otherwise every game
+     * second for the two-minute range and every five for the longer ones, whose points change more slowly; the same tag
+     * in between, so nothing is resent.
      */
     private net.minecraft.nbt.Tag statisticsPayload() {
+        // Read once a tick by the binding.
+        if (statisticsReads < STATISTICS_REQUEST_READS) statisticsReads++;
         var request = statisticsRequest;
         if (session == null || request == null) {
             if (!statisticsPayload.isEmpty()) statisticsPayload = new net.minecraft.nbt.CompoundTag();
@@ -446,12 +454,23 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         }
         long now = session.statisticsSecond();
         long period = Math.min(request.range().seconds(), 5);
-        if (!request.equals(statisticsBuiltRequest) || now >= statisticsBuiltAt + period || now < statisticsBuiltAt) {
+        if (statisticsDue(!request.equals(statisticsBuiltRequest), statisticsReads, now, statisticsBuiltAt, period)) {
             statisticsPayload = session.statistics(request);
             statisticsBuiltRequest = request;
             statisticsBuiltAt = now;
+            statisticsReads = 0;
         }
         return statisticsPayload;
+    }
+
+    /**
+     * Whether the page's figures are built now: on their period, after the clock went back, or for a changed request
+     * (or pins) once {@link #STATISTICS_REQUEST_READS} reads have passed since the last build. The client chooses the
+     * request, so changing it every tick must not rebuild every tick; the latest one is built when its turn comes.
+     */
+    static boolean statisticsDue(boolean requestChanged, int readsSinceBuild, long second, long builtSecond, long period) {
+        return second < builtSecond || second >= builtSecond + period
+                || requestChanged && readsSinceBuild >= STATISTICS_REQUEST_READS;
     }
 
     private String statusCode() {

@@ -18,6 +18,7 @@ import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
+import space.controlnet.ae2federation.observability.state.FlowState;
 import space.controlnet.ae2federation.observability.statistics.FederationStatistics;
 import space.controlnet.ae2federation.observability.statistics.StatisticsBook;
 import space.controlnet.ae2federation.observability.statistics.StatisticsNames;
@@ -111,15 +112,18 @@ public final class StatisticsGameTests {
                     "One finished job");
             helper.assertValueEqual(book.total(StatisticsNames.network(StatisticsNames.STARTED, consumer), range, now), 1d,
                     "The consumer's CPU started one job");
-            // Each network's own stock, read every ten seconds from its native storage only.
+            // Each network's own stock, read every ten seconds from its native storage only. A point of the minute
+            // range is the mean of that minute's readings, some from before the job ended: the newest second holds
+            // the newest reading.
+            var newest = StatisticsRange.SECONDS;
             double consumerOwn = fixture.held(fixture.consumerChest(), sticks()) + fixture.held(fixture.consumerChest(), planks());
             double providerOwn = fixture.held(fixture.providerChest(), cobblestone()) + sticksStoredOnProvider;
-            helper.assertValueEqual(book.latest(StatisticsNames.stored(consumer, ITEMS), range, now), consumerOwn,
+            helper.assertValueEqual(book.latest(StatisticsNames.stored(consumer, ITEMS), newest, now), consumerOwn,
                     "The consumer's stock is its own chest, not what the storage rule shows of the provider");
-            helper.assertValueEqual(book.latest(StatisticsNames.stored(provider, ITEMS), range, now), providerOwn,
+            helper.assertValueEqual(book.latest(StatisticsNames.stored(provider, ITEMS), newest, now), providerOwn,
                     "The provider's stock is its own chest");
             var providerStock = StatisticsNames.network(StatisticsNames.STOCK, provider);
-            helper.assertValueEqual(latest(book.keyGauge(providerStock, cobblestone(), range, now)),
+            helper.assertValueEqual(latest(book.keyGauge(providerStock, cobblestone(), newest, now)),
                     (double) fixture.held(fixture.providerChest(), cobblestone()), "The provider's cobblestone is kept by item");
             helper.assertTrue(!book.keys(StatisticsNames.network(StatisticsNames.STOCK, consumer)).contains(cobblestone()),
                     "The consumer holds no cobblestone of its own, whatever its storage rule shows");
@@ -279,6 +283,31 @@ public final class StatisticsGameTests {
         helper.assertValueEqual(loaded.pins(stock), book.pins(stock), "Pins survive");
         PolicyEvidence.write("statisticssurviveasave", 16, Map.of("ranges", "4", "pins", "2"));
         helper.succeed();
+    }
+
+    /**
+     * A bucket of water a machine fills back into a Federated Lane's return inventory counts as 1000: on NeoForge one
+     * millibucket is one AE2 fluid unit, as the storage flows count it.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 400)
+    public static void statisticsCountFluidReturnInMillibuckets(GameTestHelper helper) {
+        var scene = new RealObservationScene(helper, true);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(scene.ready(), "Waiting for the Provider and Endpoint: " + scene.status());
+            GameTestChecks.once(helper, () -> {
+                helper.assertValueEqual(scene.returnWater(1000), 1000, "The return inventory takes a bucket of water");
+                var returns = LevelObservabilityService.get(helper.getLevel()).transportMeter()
+                        .window(scene.firstScope()).events().stream()
+                        .filter(flow -> flow.attribution() == FlowState.Attribution.AGGREGATE_LANE_RETURN
+                                && flow.resource().equals("minecraft:water")).toList();
+                helper.assertValueEqual(returns.size(), 1, "One fill is one returned flow");
+                helper.assertValueEqual(returns.getFirst().amount(), 1000L, "A bucket counts as 1000 AE2 fluid units");
+                PolicyEvidence.write("statisticscountfluidreturninmillibuckets", 4, Map.of("filled", "1000",
+                        "recorded", String.valueOf(returns.getFirst().amount())));
+            });
+            scene.close();
+        });
     }
 
     private static double latest(double[] points) {

@@ -82,3 +82,10 @@
 - The restart aggregation unit test uses synthetic reports, not Minecraft: it verifies that a passing isolated
   confirmation retains the original failure, reports flaky in both summaries and Markdown, and presents the
   confirmation as the final federated result. It must not be counted as gameplay coverage.
+
+## Upstream flake: NAST fails to load in mmcr (2026-10-30)
+Run 41066819371 (docs-only commit 152bd7e4) ended `NO-REPORT nast-topology` after 24 s: mmcr 0.1.3 crashed in
+parallel mod construction (`ExceptionInInitializerError` from `ModItems`, caused by a `ConcurrentModificationException`
+on `modloading-worker-0`, while its KubeJS startup machines registered). Not our code; the next run on the same tree
+passed. First such failure in the last 60 playthrough runs; if it recurs, it is mmcr's static registration racing
+another mod's construction, a candidate upstream fix.

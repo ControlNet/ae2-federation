@@ -59,22 +59,18 @@ public final class BeamConverterBlockEntity extends RouterBlockEntity {
                 && (RouterBlock.connections(state) & 1 << side.get3DDataValue()) == 0;
     }
 
-    public boolean creative() {
-        return getBlockState().getBlock() instanceof BeamConverterBlock block && block.creative();
-    }
-
     public Direction facing() {
         return getBlockState().getValue(BeamConverterBlock.FACING);
     }
 
-    /** The FE this block holds; a creative converter is always full. */
+    /** The FE this block holds. */
     public double stored() {
-        return creative() ? CAPACITY : stored;
+        return stored;
     }
 
-    /** What remains after the domain drew its use; a creative converter keeps its own. */
+    /** What remains after the domain drew its use. */
     public void setStored(double value) {
-        if (creative() || value == stored) return;
+        if (value == stored) return;
         stored = Math.max(0, Math.min(CAPACITY, value));
         setChanged();
     }
@@ -183,7 +179,7 @@ public final class BeamConverterBlockEntity extends RouterBlockEntity {
 
         @Override
         public boolean canReceive() {
-            return !isRemoved() && !creative() && acceptsEnergy(side);
+            return !isRemoved() && acceptsEnergy(side);
         }
     }
 }

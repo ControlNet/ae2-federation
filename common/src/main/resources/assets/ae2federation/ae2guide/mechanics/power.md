@@ -51,8 +51,8 @@ restarts after a power loss.
 
 Vanilla Minecraft and AE2 produce no FE. A domain of Switches, Routers or Federation Cable therefore needs one of:
 
-* **Another mod's generator**, piped into a Beam Converter. Any mod's FE cables or generators work.
-* A **Creative ME Federation Beam Converter**, which never runs out. It is a creative-mode block.
+* **Another mod's generator**, piped into a Beam Converter. Any mod's FE cables or generators work, creative energy
+  sources too.
 * The server option `requireOperatingPower = false`, in the `[power]` section of `config/ae2federation-server.toml`
   (or of a file of that name in a world's `serverconfig` folder, for that world alone). Every domain then runs
   without converters. `operatingCostMultiplier` in the same section scales every cost in the table above.

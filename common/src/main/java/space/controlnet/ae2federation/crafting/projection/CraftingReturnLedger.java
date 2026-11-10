@@ -75,6 +75,8 @@ public final class CraftingReturnLedger extends SavedData {
     /** By executing network, the stock taken out to hand back that nothing took yet. */
     private final Map<NetworkId, KeyCounter> transit = new LinkedHashMap<>();
     private final java.util.Set<NetworkId> unknownJobs = new java.util.HashSet<>();
+    /** Consumers still owed something that had a watched job end and be forgotten. */
+    private final java.util.Set<NetworkId> endedJobs = new java.util.HashSet<>();
 
     void watchUnknown(NetworkId consumer) {
         if (unknownJobs.add(consumer)) setDirty();
@@ -82,6 +84,24 @@ public final class CraftingReturnLedger extends SavedData {
 
     public boolean hasUnknownJobs(NetworkId consumer) {
         return unknownJobs.contains(consumer);
+    }
+
+    /** The consumers that pushed while a CPU without a lifecycle adapter ran. */
+    java.util.Set<NetworkId> unknownJobConsumers() {
+        return java.util.Set.copyOf(unknownJobs);
+    }
+
+    /**
+     * Whether a job of {@code consumer} was watched and ended since the consumer was last owed nothing. Ended jobs are
+     * forgotten, so this stands in for them: debts with no job ever seen (a push from no CPU) wait for one.
+     */
+    boolean endedJobs(NetworkId consumer) {
+        return endedJobs.contains(consumer);
+    }
+
+    /** No CPU without a lifecycle adapter runs on {@code consumer} any more. */
+    void resolveUnknown(NetworkId consumer) {
+        if (unknownJobs.remove(consumer)) setDirty();
     }
 
     public static CraftingReturnLedger get(ServerLevel level) {
@@ -137,7 +157,8 @@ public final class CraftingReturnLedger extends SavedData {
     /** Whether anything here is kept under {@code network}: debts either way, watched jobs or transit stock. */
     public boolean references(NetworkId network) {
         return owed.containsKey(network) || jobs.containsKey(network) || transit.containsKey(network)
-                || unknownJobs.contains(network) || owed.values().stream().anyMatch(keys -> keys.values().stream()
+                || unknownJobs.contains(network) || endedJobs.contains(network)
+                || owed.values().stream().anyMatch(keys -> keys.values().stream()
                         .anyMatch(consumers -> consumers.containsKey(network)));
     }
 
@@ -238,21 +259,51 @@ public final class CraftingReturnLedger extends SavedData {
         setDirty();
     }
 
-    /** Forgets the jobs of every consumer that is owed nothing any more; returns their crafting ids. */
-    List<UUID> forgetJobsOfSettledConsumers() {
+    /**
+     * Forgets every job that ended, and every job of a consumer that is owed nothing any more; returns their crafting
+     * ids. An ended job tells nothing more, so a consumer that is always owed something does not keep every job it ran.
+     */
+    List<UUID> forgetSettledJobs() {
         var owedConsumers = new java.util.HashSet<NetworkId>();
         owed.values().forEach(keys -> keys.values().forEach(consumers -> owedConsumers.addAll(consumers.keySet())));
         if (unknownJobs.removeIf(consumer -> !owedConsumers.contains(consumer))) setDirty();
+        if (endedJobs.removeIf(consumer -> !owedConsumers.contains(consumer))) setDirty();
         var forgotten = new java.util.ArrayList<UUID>();
         var iterator = jobs.entrySet().iterator();
         while (iterator.hasNext()) {
             var entry = iterator.next();
-            if (owedConsumers.contains(entry.getKey())) continue;
-            forgotten.addAll(entry.getValue().keySet());
-            iterator.remove();
+            boolean settled = !owedConsumers.contains(entry.getKey());
+            var watched = entry.getValue().values().iterator();
+            while (watched.hasNext()) {
+                var job = watched.next();
+                if (!settled && job.end() == JobEnd.RUNNING) continue;
+                forgotten.add(job.craftingId());
+                watched.remove();
+                if (!settled && endedJobs.add(entry.getKey())) setDirty();
+            }
+            if (entry.getValue().isEmpty()) iterator.remove();
         }
         if (!forgotten.isEmpty()) setDirty();
         return forgotten;
+    }
+
+    /**
+     * Drops everything {@code consumer} is owed, its watched jobs and its unknown flag, for an operator clearing debts
+     * that can never be delivered. What was held for it stays in the executing networks' storage as their own stock.
+     *
+     * @return how many debts were dropped, and the crafting ids of the jobs forgotten
+     */
+    Map.Entry<Integer, List<UUID>> clear(NetworkId consumer) {
+        int dropped = 0;
+        for (var debt : entries()) {
+            if (!debt.consumer().equals(consumer)) continue;
+            drop(debt.executing(), consumer, debt.key());
+            dropped++;
+        }
+        var watched = jobs.remove(consumer);
+        var forgotten = watched == null ? List.<UUID>of() : List.copyOf(watched.keySet());
+        if (unknownJobs.remove(consumer) | endedJobs.remove(consumer) || watched != null) setDirty();
+        return Map.entry(dropped, forgotten);
     }
 
     /** Adds stock taken out of {@code executing}'s storage that nothing took back. */
@@ -329,6 +380,9 @@ public final class CraftingReturnLedger extends SavedData {
         var unknown = new ListTag();
         unknownJobs.forEach(consumer -> unknown.add(NbtUtils.createUUID(consumer.value())));
         tag.put("unknownJobs", unknown);
+        var ended = new ListTag();
+        endedJobs.forEach(consumer -> ended.add(NbtUtils.createUUID(consumer.value())));
+        tag.put("endedJobs", ended);
         var transitList = new ListTag();
         transit.forEach((executing, stock) -> {
             for (var entry : stock) {
@@ -373,6 +427,9 @@ public final class CraftingReturnLedger extends SavedData {
         }
         for (var entry : tag.getList("unknownJobs", Tag.TAG_INT_ARRAY)) {
             ledger.unknownJobs.add(new NetworkId(NbtUtils.loadUUID(entry)));
+        }
+        for (var entry : tag.getList("endedJobs", Tag.TAG_INT_ARRAY)) {
+            ledger.endedJobs.add(new NetworkId(NbtUtils.loadUUID(entry)));
         }
         ledger.setDirty(false);
         return ledger;

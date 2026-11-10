@@ -43,11 +43,26 @@ public final class BundleView {
      * the segments touching it, so a whole bundle comes in with its branches.
      */
     public static BundleSet around(Level level, BlockPos pos) {
-        var found = new LinkedHashSet<BundleSegment>();
-        var queue = new ArrayDeque<BundleSegment>();
         var starts = new java.util.ArrayList<BlockPos>();
         starts.add(pos);
         for (var face : Direction.values()) starts.add(pos.relative(face));
+        return around(level, starts);
+    }
+
+    /**
+     * Whether bundling {@code segment}, whose cells are free, would leave two branches of one run sharing only some
+     * of their layers: the server asks its registry, a client the bundles around the segment.
+     */
+    public static boolean overlapsBranch(Level level, BundleSegment segment) {
+        if (level instanceof ServerLevel serverLevel) return BundledCables.get(serverLevel).overlapsBranch(segment);
+        var starts = new java.util.ArrayList<BlockPos>();
+        for (var face : Direction.values()) starts.addAll(outside(segment, face).cells());
+        return around(level, starts).overlapsBranch(segment);
+    }
+
+    private static BundleSet around(Level level, java.util.List<BlockPos> starts) {
+        var found = new LinkedHashSet<BundleSegment>();
+        var queue = new ArrayDeque<BundleSegment>();
         for (var start : starts) {
             segmentAt(level, start).filter(found::add).ifPresent(queue::add);
         }

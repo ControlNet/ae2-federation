@@ -8,15 +8,11 @@ categories:
 - network infrastructure
 item_ids:
 - ae2federation:beam_converter
-- ae2federation:creative_beam_converter
 ---
 
 # ME Federation Beam Converter
 
-<Row>
-  <BlockImage id="ae2federation:beam_converter" scale="6" />
-  <BlockImage id="ae2federation:creative_beam_converter" scale="6" />
-</Row>
+<BlockImage id="ae2federation:beam_converter" scale="6" />
 
 A [Federation domain](../mechanics/index.md) runs on FE. Its Switches, Routers, cables, Pattern Providers and Endpoints use a
 little every tick, and the domain draws it from its Beam Converters. A domain whose converters cannot pay **stops**,
@@ -78,7 +74,5 @@ While a domain is stopped, its cables glow red and thin, and its topology screen
 topology screen shows how full the converters are: green while the domain runs, yellow while it uses more than comes in,
 and red once it has stopped. Look at a converter with Jade to see its buffer and the FE it takes in, green when it
 matches its domain and red when it does not.
-
-The **Creative ME Federation Beam Converter** follows the same size rules and never runs out.
 
 <RecipeFor id="ae2federation:beam_converter" />

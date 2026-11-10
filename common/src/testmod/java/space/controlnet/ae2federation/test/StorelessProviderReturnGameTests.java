@@ -10,13 +10,17 @@ import appeng.api.config.Actionable;
 import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
 import java.util.concurrent.Future;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger;
+import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.RuleMode;
+import space.controlnet.ae2federation.test.crafting.NetherProviderProjectionScene;
 import space.controlnet.ae2federation.test.crafting.PatternProjectionFixture;
 import space.controlnet.ae2federation.test.crafting.ProjectionChainFixture;
 
@@ -261,6 +265,178 @@ public final class StorelessProviderReturnGameTests {
             helper.assertValueEqual(fixture.amount(CONSUMER, stone()), 2L, "The consumer stores its second stone");
             fixture.close();
         });
+    }
+
+    /**
+     * The same through a Federation Pattern Provider: its Lane drives an Endpoint whose machine returns a gravel with
+     * each diamond. The provider network has no storage and no CPU. The diamonds reach the consumer's job and the gravel
+     * its chest; the Lane keeps nothing. A Lane hands its returns to the network as itself, but its node is the
+     * Provider's physical node, which publishes no crafting provider, so the pusher is found by the Lane's own source.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void storelessLaneByproduct(GameTestHelper helper) {
+        var scene = new NetherProviderProjectionScene(helper);
+        var stage = new int[1];
+        helper.succeedWhen(() -> {
+            scene.runMachine();
+            if (stage[0] == 0) {
+                helper.assertTrue(scene.ready(), "Waiting for the nether Provider's lane to its Endpoint");
+                scene.takeProviderCell();
+                scene.machineByproduct(gravel());
+                scene.enableCraftingRule();
+                stage[0] = 1;
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(scene.consumerCrafts(), "Waiting for the Lane's pattern on the consumer");
+                scene.putInConsumer(NetherProviderProjectionScene.INPUT, 2);
+                scene.begin(2);
+                stage[0] = 2;
+            }
+            if (stage[0] == 2) {
+                helper.assertTrue(scene.submitWhenPlanned(), "Waiting for the consumer's plan");
+                stage[0] = 3;
+            }
+            helper.assertValueEqual(scene.returned(), 2L, "Waiting for the machine to make both diamonds");
+            helper.assertFalse(scene.consumerBusy(), "Waiting for the consumer's job to finish");
+            helper.assertValueEqual(scene.owed(), 0L, "Both diamonds reach the job");
+            helper.assertValueEqual(scene.inConsumerChest(NetherProviderProjectionScene.OUTPUT), 2L,
+                    "The consumer stores its diamonds");
+            helper.assertValueEqual(scene.inLaneReturns(gravel()), 0L, "The Lane keeps no gravel");
+            helper.assertValueEqual(scene.inConsumerChest(gravel()), 2L, "The gravel goes to the consumer's chest");
+            scene.close();
+        });
+    }
+
+    /**
+     * The consumer is owed a gravel that never comes. Its stone job through the provider still ends and is forgotten:
+     * a consumer that is always owed something must not keep every job it ever ran. Once all its jobs are forgotten
+     * the gravel, when it does come, still goes to the consumer's chest.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void endedJobForgottenWhileOwed(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper);
+        var stage = new int[1];
+        var sweeps = new long[1];
+        helper.succeedWhen(() -> {
+            pushedOneStone(helper, fixture, stage);
+            var ledger = CraftingReturnLedger.get(helper.getLevel());
+            if (stage[0] == 4) {
+                owe(ledger, fixture.providerNetwork(), fixture.consumerNetwork(), gravel(), 1);
+                fixture.ejectIntoProvider(stone(), 1);
+                stage[0] = 5;
+            }
+            if (stage[0] == 5) {
+                helper.assertValueEqual(fixture.owed(stone()), 0L, "Waiting for the stone to reach the job");
+                helper.assertValueEqual(fixture.busyConsumerCpus(), 0L, "Waiting for the consumer's job to finish");
+                sweeps[0] = fixture.ledgerSweeps();
+                stage[0] = 6;
+            }
+            if (stage[0] == 6) {
+                helper.assertTrue(fixture.ledgerSweeps() > sweeps[0] + 1, "Waiting for two ledger sweeps");
+                helper.assertValueEqual(ledger.owed(fixture.providerNetwork(), fixture.consumerNetwork(), gravel()),
+                        1L, "The gravel stays owed");
+                helper.assertValueEqual(ledger.jobs(fixture.consumerNetwork()).size(), 0,
+                        "The ended job is forgotten although the consumer is still owed a gravel");
+                fixture.ejectIntoProvider(gravel(), 1);
+                stage[0] = 7;
+            }
+            helper.assertValueEqual(fixture.inProviderReturns(gravel()), 0L, "Waiting for the gravel to come back");
+            helper.assertValueEqual(fixture.held(fixture.consumerChest(), gravel()), 1L,
+                    "The gravel goes to the consumer's chest");
+            helper.assertValueEqual(ledger.owed(fixture.providerNetwork(), fixture.consumerNetwork(), gravel()), 0L,
+                    "Delivering the gravel settles the debt");
+        });
+    }
+
+    /**
+     * The consumer cancels its job and then turns its crafting rule on the provider network off. The stone the machine
+     * gives back later is still owed but no longer moves to the consumer: without the rule the provider network hands
+     * nothing to it. Once the rule is on again, the stone goes to the consumer's chest.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void lateOutputNeedsCraftingRule(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper);
+        var stage = new int[1];
+        var sweeps = new long[1];
+        helper.succeedWhen(() -> {
+            pushedOneStone(helper, fixture, stage);
+            if (stage[0] == 4) {
+                fixture.cancelConsumerJob();
+                stage[0] = 5;
+            }
+            if (stage[0] == 5) {
+                helper.assertValueEqual(fixture.busyConsumerCpus(), 0L, "Waiting for the cancel");
+                fixture.setRule(fixture.crafting(), RuleMode.DISABLED);
+                stage[0] = 6;
+            }
+            if (stage[0] == 6) {
+                helper.assertFalse(fixture.consumerService().isCraftable(stone()), "Waiting for the rule to go");
+                fixture.ejectIntoProvider(stone(), 1);
+                sweeps[0] = fixture.ledgerSweeps();
+                stage[0] = 7;
+            }
+            if (stage[0] == 7) {
+                helper.assertTrue(fixture.ledgerSweeps() > sweeps[0] + 1, "Waiting for two ledger sweeps");
+                helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone()), 0L,
+                        "Without its crafting rule the consumer gets nothing from the provider network");
+                helper.assertValueEqual(fixture.inProviderReturns(stone()), 1L, "The stone waits in the provider");
+                helper.assertValueEqual(fixture.owed(stone()), 1L, "The stone stays owed");
+                fixture.setRule(fixture.crafting(), RuleMode.ENABLED);
+                stage[0] = 8;
+            }
+            helper.assertValueEqual(fixture.inProviderReturns(stone()), 0L, "Waiting for the stone to come back");
+            helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone()), 1L,
+                    "With the rule on again the stone goes to the consumer's chest");
+            helper.assertValueEqual(fixture.owed(stone()), 0L, "Delivering the stone settles the debt");
+        });
+    }
+
+    /**
+     * A debt that can never be delivered stays until an operator clears it: the consumer cancels its job and the
+     * machine never gives the stone back. {@code /ae2federation returns clear-debts <consumer>} drops everything the
+     * consumer is owed and its watched jobs.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 800)
+    public static void clearConsumerDebtsCommand(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper);
+        var stage = new int[1];
+        helper.succeedWhen(() -> {
+            pushedOneStone(helper, fixture, stage);
+            var ledger = CraftingReturnLedger.get(helper.getLevel());
+            if (stage[0] == 4) {
+                fixture.cancelConsumerJob();
+                stage[0] = 5;
+            }
+            if (stage[0] == 5) {
+                helper.assertValueEqual(fixture.busyConsumerCpus(), 0L, "Waiting for the cancel");
+                helper.assertValueEqual(fixture.owed(stone()), 1L, "Cancelling keeps the stone owed");
+                var server = helper.getLevel().getServer();
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(),
+                        "ae2federation returns clear-debts " + fixture.consumerNetwork().value());
+                stage[0] = 6;
+            }
+            helper.assertValueEqual(fixture.owed(stone()), 0L, "The command clears the consumer's debt");
+            helper.assertValueEqual(ledger.jobs(fixture.consumerNetwork()).size(), 0,
+                    "The command forgets the consumer's jobs");
+            helper.assertFalse(ledger.references(fixture.consumerNetwork()), "Nothing is kept for the consumer");
+        });
+    }
+
+    /** Adds a debt to the ledger as an accepted push does; the method is the ledger's own, not public. */
+    private static void owe(CraftingReturnLedger ledger, NetworkId executing, NetworkId consumer, AEKey key,
+            long amount) {
+        try {
+            var add = CraftingReturnLedger.class.getDeclaredMethod("add", NetworkId.class, NetworkId.class,
+                    AEKey.class, long.class);
+            add.setAccessible(true);
+            add.invoke(ledger, executing, consumer, key, amount);
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException(failure);
+        }
     }
 
     /** Waits until the middle's provider gave everything back and both ordering networks' jobs finished. */

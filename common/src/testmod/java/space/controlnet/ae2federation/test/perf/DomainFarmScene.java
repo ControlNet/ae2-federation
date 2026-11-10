@@ -251,6 +251,11 @@ public final class DomainFarmScene implements BusScene {
         return risers.size();
     }
 
+    /** The Switch on the main network's riser, in level coordinates: an entrance to the domain's screen. */
+    public BlockPos mainSwitch() {
+        return helper.absolutePos(risers.getFirst().above());
+    }
+
     /** Breaks the plain cable joining the last subdomain to its Router, as a player does. */
     public void breakLastSubdomainCable() {
         helper.setBlock(subdomainCables.getLast(), Blocks.AIR);

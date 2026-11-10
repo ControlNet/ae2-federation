@@ -1,9 +1,9 @@
 {
  "data": [
   {
-   "id": 9190182,
-   "fileName": "ServerFiles-8.3.zip",
-   "displayName": "ServerFiles-8.3.zip",
+   "id": 9431427,
+   "fileName": "ServerFiles-8.5.zip",
+   "displayName": "ServerFiles-8.5.zip",
    "releaseType": 1,
    "gameVersions": [
     "1.21.1",
@@ -13,9 +13,9 @@
    "hasServerPack": false,
    "additionalFilesCount": 0,
    "additionalServerPackFilesCount": 0,
-   "parentProjectFileId": 9190157,
-   "fileLength": 1239095516,
-   "dateCreated": "2026-10-15T11:36:41.197Z"
+   "parentProjectFileId": 9431424,
+   "fileLength": 1255508363,
+   "dateCreated": "2026-11-04T07:17:46.8Z"
   }
  ]
 }

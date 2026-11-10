@@ -35,6 +35,24 @@ public final class ReturnRecoveryCommands {
                             }
                             return ledger.entries().size() + ledger.transitNetworks().size();
                         }))
+                        // A debt that can never be delivered (its output was lost or will never be made) stays until
+                        // an operator clears it; nothing expires on its own.
+                        .then(Commands.literal("clear-debts")
+                                .then(Commands.argument("consumer", StringArgumentType.word()).executes(context -> {
+                                    var source = context.getSource();
+                                    NetworkId consumer;
+                                    try {
+                                        consumer = new NetworkId(UUID.fromString(
+                                                StringArgumentType.getString(context, "consumer")));
+                                    } catch (IllegalArgumentException invalid) {
+                                        source.sendFailure(Component.literal("Invalid consumer network UUID"));
+                                        return 0;
+                                    }
+                                    int cleared = CraftingProjectionService.clearDebts(source.getLevel(), consumer);
+                                    source.sendSuccess(() -> Component.literal("Cleared " + cleared + " debts owed to "
+                                            + consumer.value() + "; held stock stays with the executing networks"), true);
+                                    return cleared;
+                                })))
                         .then(Commands.literal("recover-transit")
                                 .then(Commands.argument("network", StringArgumentType.word())
                                         .then(Commands.argument("destination", BlockPosArgument.blockPos())
