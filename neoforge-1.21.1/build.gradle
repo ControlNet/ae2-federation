@@ -95,6 +95,7 @@ repositories {
             includeModule('maven.modrinth', 'XExdLWCQ')
             includeModule('maven.modrinth', 'rZwE3agR')
             includeModule('maven.modrinth', 'jade')
+            includeModule('maven.modrinth', 'udZtKfzP')
         }
     }
     maven {
@@ -536,6 +537,11 @@ configurations {
         canBeResolved = true
         description = 'Data Energistics, compiled against by its optional plugin and its unit test only; on no run classpath.'
     }
+    neoEcoApi {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Neo ECO, compiled against by its optional adapters only; on no run or test classpath.'
+    }
     appliedFluxCompatibility {
         canBeConsumed = false
         canBeResolved = true
@@ -562,7 +568,7 @@ configurations {
     gtceuTestImplementation.extendsFrom(gtceuCompatibility)
 }
 
-sourceSets.main.compileClasspath += configurations.jadeApi + configurations.dataEnergisticsApi
+sourceSets.main.compileClasspath += configurations.jadeApi + configurations.dataEnergisticsApi + configurations.neoEcoApi
 sourceSets.test.compileClasspath += configurations.dataEnergisticsApi
 sourceSets.test.runtimeClasspath += configurations.dataEnergisticsApi
 
@@ -577,6 +583,9 @@ dependencies {
     // Data Energistics 3.3.5 (CurseForge project 1565514, file 9095664); only its plugin class refers to it, and it also
     // links against 3.4.0. The compat runs pin 3.3.5 (3.4.0's in-place upgrade throws).
     dataEnergisticsApi('curse.maven:data-energistics-1565514:9095664')
+    // Neo ECO 21.2.15 (Modrinth project udZtKfzP, version c26NIHTF); only the classes its gates load after recognising
+    // one of its classes refer to it. Its batch and CPU API is the same in 21.2.0, 21.2.1, 21.2.9 and 21.2.15.
+    neoEcoApi('maven.modrinth:udZtKfzP:c26NIHTF') { transitive = false }
     testImplementation(platform('org.junit:junit-bom:5.10.1'))
     testImplementation('org.junit.jupiter:junit-jupiter')
     testRuntimeOnly('org.junit.platform:junit-platform-launcher')

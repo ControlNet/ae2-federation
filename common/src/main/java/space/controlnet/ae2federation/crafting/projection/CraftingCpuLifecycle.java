@@ -58,7 +58,7 @@ final class CraftingCpuLifecycle {
             var link = access.lastLink(cpu);
             return new Observation(link instanceof ICraftingLink nativeLink ? nativeLink : null,
                     level, block.getBlockPos(), false);
-        } catch (ReflectiveOperationException | RuntimeException unavailable) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
             return null;
         }
     }
@@ -69,7 +69,7 @@ final class CraftingCpuLifecycle {
         if (access == null) return -1;
         try {
             return access.waitingFor(cpu, key);
-        } catch (ReflectiveOperationException | RuntimeException unavailable) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
             return -1;
         }
     }
@@ -80,7 +80,7 @@ final class CraftingCpuLifecycle {
         if (access == null) return false;
         try {
             return access.terminated(anchor, craftingId);
-        } catch (ReflectiveOperationException | RuntimeException unavailable) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
             return false;
         }
     }
