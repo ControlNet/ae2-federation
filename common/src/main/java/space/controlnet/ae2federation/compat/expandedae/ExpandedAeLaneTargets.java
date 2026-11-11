@@ -3,52 +3,39 @@ package space.controlnet.ae2federation.compat.expandedae;
 import appeng.api.networking.security.IActionSource;
 import appeng.helpers.patternprovider.PatternProviderTarget;
 import appeng.util.ConfigManager;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.neoforged.fml.ModList;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.ae2.processing.AddonLaneTargets;
 
 /**
  * ExpandedAE replaces the targets of every AE2 provider logic with its own {@code PatternProviderTargetCache}, which
- * carries its blocking modes. Absent without it.
+ * carries its blocking modes. From 2.1.2 on that cache takes the provider's config manager and gives AE2's target type;
+ * an older ExpandedAE, or none, leaves Lanes to AE2's own targets. This class only checks for ExpandedAE;
+ * {@link ExpandedAeLaneTargetsDirect}, which calls it, is loaded only when ExpandedAE is there.
  */
 public final class ExpandedAeLaneTargets implements AddonLaneTargets {
-    private static final @Nullable Constructor<?> TARGETS = targets();
-    private static final @Nullable Method FIND = TARGETS == null ? null : method(TARGETS.getDeclaringClass(), "find");
+    private static final String MOD_ID = "expandedae";
+    private static final DefaultArtifactVersion FIRST_SUPPORTED = new DefaultArtifactVersion("2.1.2");
 
     @Override
     public boolean available() {
-        return FIND != null;
+        var mods = ModList.get();
+        return mods != null && mods.getModContainerById(MOD_ID)
+                .map(mod -> mod.getModInfo().getVersion().compareTo(FIRST_SUPPORTED) >= 0).orElse(false);
     }
 
     @Override
     public Object create(ServerLevel level, BlockPos position, Direction side, IActionSource source,
-            ConfigManager config) throws ReflectiveOperationException {
-        return TARGETS.newInstance(level, position, side, source, config);
+            ConfigManager config) {
+        return ExpandedAeLaneTargetsDirect.create(level, position, side, source, config);
     }
 
     @Override
-    public @Nullable PatternProviderTarget find(Object targets) throws ReflectiveOperationException {
-        return (PatternProviderTarget) FIND.invoke(targets);
-    }
-
-    private static @Nullable Constructor<?> targets() {
-        try {
-            return Class.forName("lu.kolja.expandedae.helper.pattern.PatternProviderTargetCache").getConstructor(
-                    ServerLevel.class, BlockPos.class, Direction.class, IActionSource.class, ConfigManager.class);
-        } catch (ReflectiveOperationException | LinkageError absent) {
-            return null;
-        }
-    }
-
-    private static @Nullable Method method(Class<?> type, String name) {
-        try {
-            return type.getMethod(name);
-        } catch (NoSuchMethodException absent) {
-            return null;
-        }
+    public @Nullable PatternProviderTarget find(Object targets) {
+        return ExpandedAeLaneTargetsDirect.find(targets);
     }
 }

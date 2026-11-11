@@ -1,8 +1,5 @@
 package space.controlnet.ae2federation.compat.jech;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.util.function.BiPredicate;
 import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.Nullable;
@@ -10,12 +7,11 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Pinyin search through JustEnoughCharacters, when it is installed. JECh only rewrites the searches on its own list of
  * other mods' methods, so our searches ask its matcher directly: {@code Match.contains(text, query)}, the call JECh puts
- * in place of {@code text.contains(query)}. It is found at run time, so nothing is compiled against JECh, and its
- * PinIn library, nested in the JECh jar, need not be on the build path.
+ * in place of {@code text.contains(query)}. This class only checks for JECh; {@link JechPinyinDirect}, which calls it,
+ * is loaded only when JECh is installed.
  */
 public final class JechPinyin {
     private static final String MOD_ID = "jecharacters";
-    private static final String MATCH = "me.towdium.jecharacters.utils.Match";
 
     private JechPinyin() {
     }
@@ -24,20 +20,10 @@ public final class JechPinyin {
     public static @Nullable BiPredicate<String, String> find() {
         var mods = ModList.get();
         if (mods == null || !mods.isLoaded(MOD_ID)) return null;
-        MethodHandle contains;
         try {
-            var match = Class.forName(MATCH, true, JechPinyin.class.getClassLoader());
-            contains = MethodHandles.publicLookup().findStatic(match, "contains",
-                    MethodType.methodType(boolean.class, String.class, CharSequence.class));
-        } catch (ReflectiveOperationException | LinkageError e) {
+            return JechPinyinDirect.matcher();
+        } catch (LinkageError otherApi) {
             return null;
         }
-        return (text, query) -> {
-            try {
-                return (boolean) contains.invokeExact(text, (CharSequence) query);
-            } catch (Throwable e) {
-                return false;
-            }
-        };
     }
 }

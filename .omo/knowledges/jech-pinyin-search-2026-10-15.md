@@ -8,11 +8,11 @@
 - Players can add methods in `config/jecharacters-extra.json` (`additional` lists), with the same lambda-name
   fragility.
 - Our hook: `client/policy/SearchText.contains(text, query)` tries the plain lower-case substring first, then
-  `compat/jech/JechPinyin`. That class binds `Match.contains(String, CharSequence)` with a public `MethodHandle` once
-  `ModList` reports `jecharacters`. Receiver order follows JECh's rewrite of `text.contains(query)`. Pass the
-  lower-cased text.
-- PinIn is jar-in-jar inside the JECh jar (`META-INF/jarjar/PinIn-1.6.0.jar`), so compiling against JECh would also
-  need PinIn. The run-time lookup avoids both, and there is no change to `build.gradle`.
+  `compat/jech/JechPinyin`. Once `ModList` reports `jecharacters`, that class loads `JechPinyinDirect`, which calls
+  `Match.contains(String, CharSequence)` directly (since 2026-11-11; before, a public `MethodHandle`). Receiver order
+  follows JECh's rewrite of `text.contains(query)`. Pass the lower-cased text.
+- PinIn is jar-in-jar inside the JECh jar (`META-INF/jarjar/PinIn-1.6.0.jar`), but `Match.contains`'s overloads use
+  only JDK types, so compiling against JECh 4.5.30 (`addonApi`, compile classpath only) needs no PinIn.
 - In-game check: copy the jar into `neoforge-1.21.1/run-uitest/mods/` (gitignored), run `ui.chinese-scales`, then
   delete it. The dev client loads mods from that folder, including JECh's nested coremod. The scenario's check
   expects "wangluo" to match 网络 exactly when JECh is loaded, so it also passes without the jar.
