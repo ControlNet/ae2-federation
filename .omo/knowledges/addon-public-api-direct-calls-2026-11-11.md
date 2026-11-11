@@ -23,7 +23,7 @@ Owner rule: an add-on's public API is called directly; reflection only for priva
 | Neo ECO | 21.2.15 (Modrinth udZtKfzP/c26NIHTF) | batch API and CPU accessors identical in 21.2.0, 21.2.1, 21.2.9 |
 | Advanced AE | 1.6.12 (Modrinth rxYaglEe/ablTMAjP) | |
 | AE2 Lightning Tech | 2.1.3 (Modrinth ArHeh5Fz/GGx4RqQt) | needs Thunderbolt Core 2.0.3 (M5jhzZXH/i3H7uX2O): its CPU pool implements Thunderbolt interfaces |
-| ExpandedAE | 2.1.4 (CurseForge 1213351/9021958) | Modrinth stops at 2.1.1. The 5-argument target cache exists from 2.1.2; `available()` checks the mod version (FML), so 2.0.0/2.1.1 keep AE2's targets |
+| ExpandedAE | 2.1.4 (CurseForge 1213351/9021958) | Modrinth stops at 2.1.1. The 5-argument target cache exists from 2.1.2; `neoforge.mods.toml` declares ExpandedAE optional `[2.1.2,)` (2.1.1 overwrites `pushPattern`), so the gate only checks that it is loaded |
 | JustEnoughCharacters | 4.5.30 (Modrinth I7k4B65h/iNnJuUnx) | `Match.contains` overloads use JDK types only; no PinIn needed |
 
 ## Still reflection
