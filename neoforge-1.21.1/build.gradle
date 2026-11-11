@@ -96,6 +96,9 @@ repositories {
             includeModule('maven.modrinth', 'rZwE3agR')
             includeModule('maven.modrinth', 'jade')
             includeModule('maven.modrinth', 'udZtKfzP')
+            includeModule('maven.modrinth', 'rxYaglEe')
+            includeModule('maven.modrinth', 'ArHeh5Fz')
+            includeModule('maven.modrinth', 'M5jhzZXH')
         }
     }
     maven {
@@ -537,10 +540,10 @@ configurations {
         canBeResolved = true
         description = 'Data Energistics, compiled against by its optional plugin and its unit test only; on no run classpath.'
     }
-    neoEcoApi {
+    addonApi {
         canBeConsumed = false
         canBeResolved = true
-        description = 'Neo ECO, compiled against by its optional adapters only; on no run or test classpath.'
+        description = 'Add-ons whose public API the optional adapters under compat/ call; on no run or test classpath.'
     }
     appliedFluxCompatibility {
         canBeConsumed = false
@@ -568,7 +571,7 @@ configurations {
     gtceuTestImplementation.extendsFrom(gtceuCompatibility)
 }
 
-sourceSets.main.compileClasspath += configurations.jadeApi + configurations.dataEnergisticsApi + configurations.neoEcoApi
+sourceSets.main.compileClasspath += configurations.jadeApi + configurations.dataEnergisticsApi + configurations.addonApi
 sourceSets.test.compileClasspath += configurations.dataEnergisticsApi
 sourceSets.test.runtimeClasspath += configurations.dataEnergisticsApi
 
@@ -583,9 +586,16 @@ dependencies {
     // Data Energistics 3.3.5 (CurseForge project 1565514, file 9095664); only its plugin class refers to it, and it also
     // links against 3.4.0. The compat runs pin 3.3.5 (3.4.0's in-place upgrade throws).
     dataEnergisticsApi('curse.maven:data-energistics-1565514:9095664')
-    // Neo ECO 21.2.15 (Modrinth project udZtKfzP, version c26NIHTF); only the classes its gates load after recognising
-    // one of its classes refer to it. Its batch and CPU API is the same in 21.2.0, 21.2.1, 21.2.9 and 21.2.15.
-    neoEcoApi('maven.modrinth:udZtKfzP:c26NIHTF') { transitive = false }
+    // Add-ons whose public API compat/<mod id>/*Direct classes call; each gate loads its Direct class only after it
+    // recognised one of the add-on's classes. The versions are the ones the compat profiles run.
+    // Neo ECO 21.2.15 (Modrinth udZtKfzP/c26NIHTF): its batch and CPU API is the same in 21.2.0, 21.2.1 and 21.2.9.
+    addonApi('maven.modrinth:udZtKfzP:c26NIHTF') { transitive = false }
+    // Advanced AE 1.6.12 (Modrinth rxYaglEe/ablTMAjP).
+    addonApi('maven.modrinth:rxYaglEe:ablTMAjP') { transitive = false }
+    // AE2 Lightning Tech 2.1.3 (Modrinth ArHeh5Fz/GGx4RqQt), whose types extend Thunderbolt Core 2.0.3's
+    // (Modrinth M5jhzZXH/i3H7uX2O).
+    addonApi('maven.modrinth:ArHeh5Fz:GGx4RqQt') { transitive = false }
+    addonApi('maven.modrinth:M5jhzZXH:i3H7uX2O') { transitive = false }
     testImplementation(platform('org.junit:junit-bom:5.10.1'))
     testImplementation('org.junit.jupiter:junit-jupiter')
     testRuntimeOnly('org.junit.platform:junit-platform-launcher')
