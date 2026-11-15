@@ -50,11 +50,13 @@ import space.controlnet.ae2federation.automation.BucketedRecipes;
 import space.controlnet.ae2federation.automation.ProgramDryRun;
 import space.controlnet.ae2federation.automation.ProgramHost;
 import space.controlnet.ae2federation.automation.ProgramRun;
+import space.controlnet.ae2federation.automation.ProgramScheduler;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.automation.RecipeBuckets;
 import space.controlnet.ae2federation.automation.ViewerRecipes;
 import space.controlnet.ae2federation.automation.ViewerScans;
+import space.controlnet.ae2federation.automation.ViewerUploadRule;
 import space.controlnet.ae2federation.automation.ViewerSyncStatus;
 import space.controlnet.ae2federation.domain.CableCapacityLimit;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
@@ -497,6 +499,37 @@ public final class ProgramHostGameTests {
                 """, "True minecraft:stick 1 True 4 0",
                 "The program's job planned, started on the CPU and put four sticks in storage from the two planks",
                 crafting::close);
+    }
+
+    /**
+     * A job AE2 plans but cannot start for missing materials: the program sees only that no job runs, so the reason
+     * goes to the log of the installation that asked (review of 2026-11-15).
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void programCraftingMissingMaterialsIsLogged(GameTestHelper helper) {
+        var crafting = new NativeCraftingFixtures(helper, true);
+        var switchAt = new BlockPos(1, 3, 1);
+        var interfaceAt = switchAt.above(2);
+        new RouterFixtures(helper).placeSwitch(switchAt);
+        helper.setBlock(switchAt.above(), RouterRegistration.FEDERATION_CABLE.get());
+        helper.setBlock(interfaceAt, AutomationRegistration.INTERFACE.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.UP));
+        var scheduler = ProgramScheduler.get(helper.getLevel().getServer());
+        run(helper, interfaceAt, 1, () -> helper.assertTrue(crafting.ready(), "Waiting for the pattern"),
+                "host_crafting_missing", """
+                def run() -> str:
+                    started = ae2.craft("minecraft:stick", 4)
+                    mc.wait(40)
+                    return " ".join([str(started), str(ae2.crafting("minecraft:stick")),
+                                     str(ae2.amount("minecraft:stick"))])
+                """, "True 0 0", "The job was asked for, and never ran without planks", () -> {
+                    var log = scheduler.log("gametest:host_crafting_missing").stream()
+                            .map(ProgramScheduler.LogEntry::text).toList();
+                    helper.assertTrue(log.contains("crafting 4 minecraft:stick not started: missing "
+                            + "minecraft:oak_planks x2"), "The log says what is missing: " + log);
+                    crafting.close();
+                });
     }
 
     /**
@@ -1242,6 +1275,104 @@ public final class ProgramHostGameTests {
             helper.assertTrue(ViewerScans.progress(server).done(), "The round is done");
             second.leave();
             third.leave();
+        } finally {
+            forgetViewerRecipes(server, previous);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Rescanning a category no ready viewer lists does nothing: no viewer could take it, and the round stayed open
+     * until a full rescan (review of 2026-11-15). A listed category is read again.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 100, required = true, manualOnly = true)
+    public static void aRescanOfACategoryNoViewerListsLeavesTheRoundDone(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var previous = StandInViewer.install();
+        try {
+            ViewerScans.reloaded(server);
+            var viewer = new StandInViewer(helper, Map.of("testviewer:sorting", List.of("minecraft:hopper")),
+                    sortingRecipes(3));
+            viewer.hello();
+            StandInViewer.pumpAll(List.of(viewer));
+            helper.assertTrue(ViewerScans.progress(server).done(), "The first round is done");
+            ViewerScans.rescan(server, "testviewer:packing");
+            StandInViewer.pumpAll(List.of(viewer));
+            helper.assertTrue(ViewerScans.progress(server).done(), "The round stays done");
+            helper.assertValueEqual(viewer.tasks, 1, "No task for the unlisted category");
+            ViewerScans.rescan(server, "testviewer:sorting");
+            StandInViewer.pumpAll(List.of(viewer));
+            helper.assertValueEqual(viewer.tasks, 2, "The listed category is read again");
+            helper.assertTrue(ViewerScans.progress(server).done(), "The rescan is done");
+            viewer.leave();
+        } finally {
+            forgetViewerRecipes(server, previous);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * With recipe viewer uploads for operators only, a player who is not one is no viewer: its hello is dropped and it
+     * gets no task. With uploads for everyone, the same hello makes it a viewer.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 100, required = true, manualOnly = true)
+    public static void viewerUploadsForOperatorsLeaveOtherPlayersOut(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var previous = StandInViewer.install();
+        try {
+            ViewerScans.reloaded(server);
+            ViewerUploadRule.set(ViewerUploadRule.Who.OPERATORS);
+            var viewer = new StandInViewer(helper, Map.of("testviewer:sorting", List.of("minecraft:hopper")),
+                    sortingRecipes(3));
+            helper.assertFalse(viewer.player.hasPermissions(2), "The mock player is no operator");
+            viewer.hello();
+            StandInViewer.pumpAll(List.of(viewer));
+            helper.assertValueEqual(List.of(viewer.tasks, ViewerScans.progress(server).viewers()), List.of(0, 0),
+                    "Not an operator: no viewer, no task");
+            helper.assertValueEqual(ViewerRecipes.get(server).size(), 0, "Nothing saved");
+            ViewerUploadRule.set(ViewerUploadRule.Who.EVERYONE);
+            viewer.hello();
+            StandInViewer.pumpAll(List.of(viewer));
+            helper.assertValueEqual(viewer.tasks, 1, "Uploads for everyone: it reads its task");
+            helper.assertValueEqual(ViewerRecipes.get(server).size(), 3, "Its recipes are saved");
+            viewer.leave();
+        } finally {
+            ViewerUploadRule.set(ViewerUploadRule.Who.EVERYONE);
+            forgetViewerRecipes(server, previous);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A saved category that grew far past its saved size (a pack update) is read in buckets made for what the viewer
+     * lists. Its saved buckets alone would put 40,000 recipes in one task, past what a viewer may send for a task, and
+     * every viewer would be refused it (review of 2026-11-15).
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void aCategoryThatGrewFarPastItsSavedSizeStillSyncs(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var previous = StandInViewer.install();
+        try {
+            ViewerScans.reloaded(server);
+            var categories = Map.of("testviewer:sorting", List.of("minecraft:hopper"));
+            var first = new StandInViewer(helper, categories, sortingRecipes(3));
+            first.hello();
+            StandInViewer.pumpAll(List.of(first));
+            helper.assertValueEqual(ViewerRecipes.get(server).size(), 3, "The small category is saved");
+            first.leave();
+
+            ViewerScans.reloaded(server);
+            var grown = new StandInViewer(helper, categories, sortingRecipes(40_000));
+            grown.hello();
+            StandInViewer.pumpAll(List.of(grown));
+            helper.assertValueEqual(ViewerRecipes.get(server).size(), 40_000, "The grown category is saved");
+            helper.assertTrue(ViewerScans.progress(server).done(), "The round is done");
+            helper.assertTrue(ViewerRecipes.get(server).category("testviewer:sorting").recipes().bits()
+                    == RecipeBuckets.bitsFor(40_000), "Its buckets are made for 40,000 recipes");
+            grown.leave();
         } finally {
             forgetViewerRecipes(server, previous);
         }
@@ -2107,7 +2238,7 @@ public final class ProgramHostGameTests {
                         // An outside answer comes in real time; a batch of tests runs ticks back to back.
                         WallClock.await("the answer " + file + " waits for", runner::answerArrived);
                     }
-                    var status = holder[0].tick(1000);
+                    var status = holder[0].runner().tick(1000);
                     if (status == Runner.Status.FAILED) {
                         var failure = holder[0].runner().failure();
                         var error = failure.error().type() + ": " + failure.error().getMessage();

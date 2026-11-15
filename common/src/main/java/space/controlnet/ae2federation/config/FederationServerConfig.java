@@ -6,6 +6,7 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import space.controlnet.ae2federation.automation.AutomationRule;
+import space.controlnet.ae2federation.automation.ViewerUploadRule;
 import space.controlnet.ae2federation.beam.BeamLinkRule;
 import space.controlnet.ae2federation.domain.CableCapacityLimit;
 import space.controlnet.ae2federation.power.OperatingPowerRule;
@@ -27,6 +28,7 @@ public final class FederationServerConfig {
     private static final ModConfigSpec.BooleanValue ALLOW_WEBSOCKETS;
     private static final ModConfigSpec.IntValue NETWORK_TIMEOUT;
     private static final ModConfigSpec.IntValue WORKSPACE_SIZE;
+    private static final ModConfigSpec.EnumValue<ViewerUploadRule.Who> RECIPE_VIEWER_UPLOADS;
 
     static {
         var builder = new ModConfigSpec.Builder();
@@ -86,6 +88,11 @@ public final class FederationServerConfig {
                         "OSError.")
                 .defineInRange("workspaceSizeMb", AutomationRule.DEFAULT_WORKSPACE_MB, 1,
                         AutomationRule.MAX_WORKSPACE_MB);
+        RECIPE_VIEWER_UPLOADS = builder.comment(
+                        "Who may send the recipes their recipe viewer (JEI) shows, which programs then find with",
+                        "mc.recipes_for: EVERYONE, or OPERATORS (permission level 2). The owner of a singleplayer or",
+                        "LAN world always may.")
+                .defineEnum("recipeViewerUploads", ViewerUploadRule.Who.EVERYONE);
         builder.pop();
         SPEC = builder.build();
     }
@@ -104,6 +111,7 @@ public final class FederationServerConfig {
             OperatingPowerRule.set(true, OperatingPowerRule.DEFAULT_MULTIPLIER);
             BeamLinkRule.set(BeamLinkRule.DEFAULT_RANGE);
             AutomationRule.reset();
+            ViewerUploadRule.set(ViewerUploadRule.Who.EVERYONE);
         });
     }
 
@@ -114,5 +122,6 @@ public final class FederationServerConfig {
         BeamLinkRule.set(BEAM_RANGE.get());
         AutomationRule.set(ALLOW_FILE_ACCESS.get(), ALLOW_HTTP.get(), ALLOW_WEBSOCKETS.get(), NETWORK_TIMEOUT.get(),
                 WORKSPACE_SIZE.get());
+        ViewerUploadRule.set(RECIPE_VIEWER_UPLOADS.get());
     }
 }

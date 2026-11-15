@@ -19,7 +19,8 @@ The game works out the cost from the program itself; you cannot set it.
 
 An installation costs one CU for each card in the graph of the installed function and of every function it calls, each
 counted once. A condition trigger's function counts too. A card inside a loop counts once, however often the loop runs.
-Compute only decides whether an installation fits; every run still takes at most 10,000 steps a tick.
+Compute only decides whether an installation fits; every run still gets the same share of work a tick, at most 10,000
+steps.
 
 ## Bandwidth
 

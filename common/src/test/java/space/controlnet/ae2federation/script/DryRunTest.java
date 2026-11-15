@@ -192,6 +192,23 @@ final class DryRunTest {
     }
 
     @Test
+    void theWorkBudgetStopsAHeavyLoop() {
+        var started = System.nanoTime();
+        var run = dryRun("""
+                def copy() -> int:
+                    xs = [0] * 100000
+                    n = 0
+                    while True:
+                        ys = xs[:]
+                        n = n + 1
+                """, "copy", List.of(), DryRun.BUDGET);
+        assertFalse(run.result().finished());
+        // Unmetered, the node budget alone allowed about 1,300 copies of 100,000 items.
+        assertTrue(Long.parseLong(run.value("line 6")) <= DryRun.WORK / 100_000, run.value("line 6"));
+        assertTrue(System.nanoTime() - started < 1_000_000_000L);
+    }
+
+    @Test
     void waitsAreSkipped() {
         var run = dryRun("""
                 def slow() -> int:

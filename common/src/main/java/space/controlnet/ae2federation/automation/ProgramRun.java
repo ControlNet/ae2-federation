@@ -12,6 +12,7 @@ import space.controlnet.ae2federation.script.Evaluator;
 import space.controlnet.ae2federation.script.Graph;
 import space.controlnet.ae2federation.script.Library;
 import space.controlnet.ae2federation.script.ParseResult;
+import space.controlnet.ae2federation.script.RecordedCatalog;
 import space.controlnet.ae2federation.script.Program;
 import space.controlnet.ae2federation.script.Runner;
 import space.controlnet.ae2federation.script.ScriptParser;
@@ -29,6 +30,8 @@ public final class ProgramRun {
         private final Map<String, ParseResult> parsed;
         private final Map<String, Program> files;
         private final Map<String, Map<String, Graph>> graphs = new HashMap<>();
+        /** Each file's last check, with the catalog's answers it relied on. */
+        private final Map<String, Checked> checks = new java.util.concurrent.ConcurrentHashMap<>();
 
         private Prepared(Map<String, ParseResult> parsed, Catalog catalog) {
             this.parsed = parsed;
@@ -42,6 +45,10 @@ public final class ProgramRun {
             var workspace = new Workspace(files, catalog);
             files.keySet().forEach(name -> graphs.put(name, Compiler.compile(name, workspace)));
         }
+    }
+
+    /** A file's check and the catalog questions it asked, reused while a catalog answers them alike. */
+    private record Checked(RecordedCatalog catalog, Checker.Result result) {
     }
 
     private final Prepared prepared;
@@ -154,7 +161,7 @@ public final class ProgramRun {
     }
 
     /** Throws {@link IllegalArgumentException} unless the file checks clean and has {@code function}. */
-    private static Checker.Result check(Prepared prepared, Catalog catalog, String file, String function) {
+    static Checker.Result check(Prepared prepared, Catalog catalog, String file, String function) {
         var parsed = prepared.parsed.get(file);
         if (parsed == null) {
             throw new IllegalArgumentException("there is no program " + file);
@@ -164,9 +171,19 @@ public final class ProgramRun {
                     + " syntax error(s), first: line " + parsed.errors().get(0).line() + ": "
                     + parsed.errors().get(0).message());
         }
-        var others = new LinkedHashMap<>(prepared.files);
-        others.remove(file);
-        var checked = Checker.check(parsed.program(), new Workspace(others, catalog));
+        // A condition is checked at every start, and names in the world change: the check is reused while the
+        // catalog answers its questions as before (review of 2026-11-15: 15 ms a start for a 62,000-character file).
+        var last = prepared.checks.get(file);
+        Checker.Result checked;
+        if (last != null && last.catalog().answersAlike(catalog)) {
+            checked = last.result();
+        } else {
+            var others = new LinkedHashMap<>(prepared.files);
+            others.remove(file);
+            var recorded = new RecordedCatalog(catalog);
+            checked = Checker.check(parsed.program(), new Workspace(others, recorded));
+            prepared.checks.put(file, new Checked(recorded, checked));
+        }
         var problems = checked.problems();
         if (!problems.isEmpty()) {
             var first = problems.get(0);
@@ -180,8 +197,9 @@ public final class ProgramRun {
         return checked;
     }
 
-    public Runner.Status tick(int budget) {
-        return runner.tick(budget);
+    /** Ticks the run with {@code work} for this tick (see {@link Runner#tick(int, long)}). */
+    public Runner.Status tick(long work) {
+        return runner.tick(Integer.MAX_VALUE, work);
     }
 
     public Runner runner() {

@@ -33,10 +33,11 @@ import space.controlnet.ae2federation.script.Workspace;
  */
 public final class ProgramScheduler {
     /**
-     * Steps one run may take per tick on the Creative Computing Device. Its compute is unlimited (user, 2026-10-18);
-     * the cap only keeps a loop without effects from stalling the tick (assistant proposal).
+     * The program work each run, and all runs together, may take per tick. Compute is not a speed (user,
+     * 2026-10-18); the work caps only keep programs from stalling the tick, whatever they compute (see
+     * {@link WorkShare}).
      */
-    public static final int CREATIVE_STEPS = 10_000;
+    private final WorkShare share = new WorkShare(WorkShare.PER_RUN, WorkShare.PER_TICK);
     static final int LOG_SIZE = 20;
     private static final Map<MinecraftServer, ProgramScheduler> SERVICES = new HashMap<>();
 
@@ -505,6 +506,14 @@ public final class ProgramScheduler {
         }
     }
 
+    /**
+     * Adds a line to an installation's log from outside its runs: a crafting job it asked for that AE2 did not start
+     * comes back to the program only as a missing job, so the reason is written here.
+     */
+    public void note(String id, String text) {
+        log(id, text);
+    }
+
     private void log(String id, String text) {
         var log = logs.computeIfAbsent(id, ignored -> new ArrayDeque<>());
         log.addLast(new LogEntry(server.overworld().getGameTime(), text));
@@ -520,7 +529,8 @@ public final class ProgramScheduler {
         var pausedNow = new HashSet<String>();
         var gridListeners = false;
         var blockListeners = false;
-        for (var installation : devices().installations()) {
+        share.begin();
+        for (var installation : share.order(devices().installations(), Installation::id)) {
             if (installation.trigger() instanceof Installation.Trigger.Event event
                     && ProgramEvents.EVENTS.get(event.name()) instanceof ProgramEvents.Spec spec) {
                 gridListeners |= spec.kind() == ProgramEvents.Kind.NETWORK;
@@ -580,6 +590,7 @@ public final class ProgramScheduler {
             }
             state.runs.removeIf(run -> finished(installation.id(), run));
         }
+        share.end();
         states.entrySet().removeIf(entry -> {
             if (seen.contains(entry.getKey())) {
                 return false;
@@ -725,7 +736,8 @@ public final class ProgramScheduler {
         if (state.condition == null) {
             return;
         }
-        var status = state.condition.tick(CREATIVE_STEPS);
+        var status = state.condition.tick(share.grant(id));
+        share.spend(state.condition.runner().spent());
         if (status == Runner.Status.DONE) {
             var answer = Boolean.TRUE.equals(state.condition.runner().result());
             if (answer && !state.conditionWas) {
@@ -767,7 +779,9 @@ public final class ProgramScheduler {
 
     /** Ticks a run; true when it has ended, which is logged. */
     private boolean finished(String id, ProgramRun run) {
-        return switch (run.tick(CREATIVE_STEPS)) {
+        var status = run.tick(share.grant(id));
+        share.spend(run.runner().spent());
+        return switch (status) {
             case DONE -> {
                 log(id, "done: " + Ops.shown(run.runner().result()));
                 yield true;

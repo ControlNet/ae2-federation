@@ -9,14 +9,22 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Runs compiled graphs, one game tick at a time. Each node costs one step of the tick's budget; library actions run
- * one per tick. A long action ({@code mc.wait(n)}, or a call whose answer is a {@link Pending}) starts as the tick's
- * action and then pauses the run, which takes no actions. Player function calls keep their own frames here, never on the
+ * Runs compiled graphs, one game tick at a time. A tick runs nodes until its step budget or its work budget is spent:
+ * each node costs {@link #STEP_COST}, plus the values it walks, makes or scans ({@link Meter}). A node that passes the
+ * work budget is finished, and what it took over the budget is owed: later ticks pay it before the run goes on, so a
+ * run's work per tick stays within its budget on average. Library actions run one per tick. A long action
+ * ({@code mc.wait(n)}, or a call whose answer is a {@link Pending}) starts as the tick's action and then pauses the
+ * run, which takes no actions. Player function calls keep their own frames here, never on the
  * Java stack, so deep recursion stops with Python's error instead of overflowing the server's stack.
  */
 public final class Runner {
     /** Python's default recursion limit. */
     static final int MAX_DEPTH = 1000;
+    /**
+     * What one node costs in a tick's work budget, besides the values it walks or makes: a plain node takes about as
+     * long as walking 20 values (measured 2026-11-15 in the test JVM: 40-100 ns a node, about 2 ns a value).
+     */
+    public static final int STEP_COST = 20;
 
     public enum Status {
         /** The budget ran out, or the tick's action was used; call {@link #tick} again next tick. */
@@ -57,6 +65,10 @@ public final class Runner {
     private Frame pendingFrame;
     /** The work of the step being run and what the run holds, metered while it ticks. */
     private final Meter meter = new Meter();
+    /** Work taken past earlier ticks' budgets, paid from the next ticks' budgets first. */
+    private long owed;
+    /** The work the last tick took. */
+    private long spent;
 
     private static final class Frame {
         final Graph graph;
@@ -162,20 +174,46 @@ public final class Runner {
         }
     }
 
-    /** Runs up to {@code budget} nodes in this tick. */
+    /** Runs up to {@code budget} nodes in this tick, whatever work they take. */
     public Status tick(int budget) {
+        return tick(budget, Long.MAX_VALUE);
+    }
+
+    /**
+     * Runs up to {@code steps} nodes in this tick while their work stays under {@code work}, less what earlier ticks
+     * owe. A tick whose budget goes to the debt runs no node, but its {@code mc.wait} still counts down and an answer
+     * that came is still taken.
+     */
+    public Status tick(int steps, long work) {
+        spent = 0;
         if (status == Status.DONE || status == Status.FAILED) {
             return status;
         }
+        long allowance = work == Long.MAX_VALUE ? work : work - owed;
+        owed = allowance < 0 ? -allowance : 0;
+        allowance = Math.max(0, allowance);
         var previous = Meter.enter(meter);
         try {
-            return metered(budget);
+            return metered(steps, allowance);
         } finally {
             Meter.leave(previous);
+            if (spent > allowance) {
+                owed += spent - allowance;
+            }
         }
     }
 
-    private Status metered(int budget) {
+    /** The work the last tick took, past its budget included. */
+    public long spent() {
+        return spent;
+    }
+
+    /** Work still owed from earlier ticks. */
+    public long owed() {
+        return owed;
+    }
+
+    private Status metered(int budget, long allowance) {
         if (sleeping > 0 && --sleeping > 0) {
             return status = Status.WAITING;
         }
@@ -206,7 +244,7 @@ public final class Runner {
             }
         }
         boolean acted = false;
-        for (int steps = 0; steps < budget; steps++) {
+        for (int steps = 0; steps < budget && spent < allowance; steps++) {
             var frame = frames.peek();
             var node = frame.graph.nodes().get(frame.at);
             if (node instanceof Node.Action && acted) {
@@ -224,6 +262,7 @@ public final class Runner {
                 if (meter.due()) {
                     meter.walk(held());
                 }
+                spent += STEP_COST + meter.taken();
                 if (next != null) {
                     return status = next;
                 }

@@ -1146,8 +1146,9 @@ Assistant choices, to review:
   change; a start that fails is logged, not retried.
 - **Runs live in memory.** A server restart, an unloaded device or a broken device stops its runs; triggers start new
   ones later. Breaking the device frees its ID and removes its installations.
-- **Compute.** The creative device is unlimited, but a run takes at most 10,000 steps per tick so a loop without
-  effects cannot stall the server. The device uses no power.
+- **Compute.** The creative device is unlimited, but a run takes at most 200,000 units of work per tick (a step is
+  20, each value copied, compared or searched 1, a step past the budget is paid by later ticks) and all runs 2,000,000
+  a tick, shared in turn, so no program can stall the server (2026-11-15). The device uses no power.
 - **Triggers.** A manual start goes through the rate limit and the overlap mode like any trigger. Redstone means a
   signal arriving at the device itself (a rising edge); a signal at an interface could be added. A schedule asks for
   a start every N ticks from installation; the rate limit still applies. A condition is a `bool` function of the same

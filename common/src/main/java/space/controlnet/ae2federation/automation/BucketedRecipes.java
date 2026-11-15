@@ -148,6 +148,16 @@ public final class BucketedRecipes<R> {
         return RecipeBuckets.splits(size, bits) ? of(RecipeBuckets.bitsFor(size), entries()) : this;
     }
 
+    /**
+     * As {@link #split()}, and split for {@code listed} recipes as well: a viewer listing far more than was saved (a
+     * pack update) reads them in buckets made for what it lists. Without it a task's buckets could hold more than a
+     * viewer may send for one task, and every viewer would be refused that category.
+     */
+    public BucketedRecipes<R> split(int listed) {
+        var split = split();
+        return RecipeBuckets.splits(listed, split.bits) ? of(RecipeBuckets.bitsFor(listed), split.entries()) : split;
+    }
+
     private static <R> int indexOf(List<Entry<R>> entries, Fingerprint fingerprint) {
         for (var index = 0; index < entries.size(); index++) {
             if (entries.get(index).fingerprint().equals(fingerprint)) {

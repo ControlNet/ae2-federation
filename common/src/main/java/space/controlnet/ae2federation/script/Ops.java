@@ -114,10 +114,15 @@ public final class Ops {
             }
             Meter.work(1);
         }
+        if (a instanceof String x && b instanceof String y) {
+            Meter.work(Math.min(x.length(), y.length()));
+            return x.equals(y);
+        }
         if (a instanceof ListValue x && b instanceof ListValue y) {
             if (x.items.size() != y.items.size()) {
                 return false;
             }
+            Meter.work(x.items.size());
             for (int i = 0; i < x.items.size(); i++) {
                 if (!eq(x.items.get(i), y.items.get(i), depth + 1)) {
                     return false;
@@ -129,6 +134,7 @@ public final class Ops {
             if (x.size() != y.size()) {
                 return false;
             }
+            Meter.work(x.size());
             for (var entry : x.entries.entrySet()) {
                 var other = y.entries.get(entry.getKey());
                 if (other == null || !eq(entry.getValue().value, other.value, depth + 1)) {
@@ -138,12 +144,14 @@ public final class Ops {
             return true;
         }
         if (a instanceof SetValue x && b instanceof SetValue y) {
+            Meter.work(x.size());
             return x.size() == y.size() && y.items.keySet().containsAll(x.items.keySet());
         }
         if (a instanceof RecordValue x && b instanceof RecordValue y) {
             if (!x.type.equals(y.type)) {
                 return false;
             }
+            Meter.work(x.fields.size());
             for (var field : x.fields.keySet()) {
                 if (!eq(x.fields.get(field), y.fields.get(field), depth + 1)) {
                     return false;
@@ -206,8 +214,8 @@ public final class Ops {
             if (depth >= Runner.MAX_DEPTH) {
                 throw new RunError("RecursionError", "maximum recursion depth exceeded in comparison");
             }
-            Meter.work(1);
             int n = Math.min(x.items.size(), y.items.size());
+            Meter.work(1L + n);
             for (int i = 0; i < n; i++) {
                 if (!eq(x.items.get(i), y.items.get(i), depth + 1)) {
                     return order(op, x.items.get(i), y.items.get(i), depth + 1);
@@ -229,6 +237,7 @@ public final class Ops {
     /** By code point, as Python orders strings. */
     private static int compareText(String a, String b) {
         int n = Math.min(a.length(), b.length());
+        Meter.work(n);
         for (int i = 0; i < n; i++) {
             char x = a.charAt(i);
             char y = b.charAt(i);
@@ -438,6 +447,7 @@ public final class Ops {
                 return s.contains(item);
             }
             case ListValue l -> {
+                Meter.work(l.items.size());
                 for (var element : l.items) {
                     if (eq(element, item)) {
                         return true;
@@ -449,7 +459,7 @@ public final class Ops {
                 if (!(item instanceof String text)) {
                     throw typeError("'in <string>' requires string as left operand, not " + typeName(item));
                 }
-                return s.contains(text);
+                return find(s, text, 0) >= 0;
             }
             case RangeValue r -> {
                 if (!isNumber(item) || item instanceof Double d && (d != Math.rint(d) || Double.isInfinite(d))) {
@@ -513,6 +523,7 @@ public final class Ops {
         if (last != null && last.text() == s) {
             return last;
         }
+        Meter.work(s.length());
         int count = s.codePointCount(0, s.length());
         int[] starts = null;
         if (count != s.length()) {
@@ -567,9 +578,11 @@ public final class Ops {
 
     private static List<Object> items(Object iterable) {
         if (iterable instanceof DictValue d) {
+            Meter.work(d.size());
             return d.keys();
         }
         if (iterable instanceof SetValue s) {
+            Meter.work(s.size());
             return s.items();
         }
         if (iterable instanceof String s) {
@@ -710,6 +723,7 @@ public final class Ops {
             }
         }
         if (target instanceof String s) {
+            Meter.work(s.length());
             var out = new StringBuilder();
             int[] points = s.codePoints().toArray();
             for (long i = 0, at = b.start; i < b.count; i++, at += b.step) {
@@ -734,6 +748,8 @@ public final class Ops {
         if (b.step == 1) {
             long stop = Math.max(b.start, b.stop);
             grow(list.items.size() - (stop - b.start) + values.size());
+            // The items after the slice move.
+            Meter.work(list.items.size() - stop);
             made(values.size());
             list.items.subList((int) b.start, (int) stop).clear();
             list.items.addAll((int) b.start, values);
@@ -743,6 +759,7 @@ public final class Ops {
             throw valueError("attempt to assign sequence of size " + values.size() + " to extended slice of size "
                     + b.count);
         }
+        Meter.work(b.count);
         for (long i = 0, at = b.start; i < b.count; i++, at += b.step) {
             list.items.set((int) at, values.get((int) i));
         }
@@ -1057,6 +1074,7 @@ public final class Ops {
                     if (!(args.get(0) instanceof DictValue source)) {
                         throw typeError("dict() argument must be a dict, not '" + typeName(args.get(0)) + "'");
                     }
+                    Meter.work(source.size());
                     source.entries.values().forEach(entry -> dict.put(entry.key, entry.value));
                 }
                 yield dict;
@@ -1131,6 +1149,7 @@ public final class Ops {
             return (long) (double) d;
         }
         if (v instanceof String s) {
+            Meter.work(s.length());
             var text = s.strip();
             if (!INT.matcher(text).matches()) {
                 throw valueError("invalid literal for int() with base 10: " + repr(s));
@@ -1150,6 +1169,7 @@ public final class Ops {
             return asDouble(v);
         }
         if (v instanceof String s) {
+            Meter.work(s.length());
             var text = s.strip();
             if (!FLOAT.matcher(text).matches()) {
                 throw valueError("could not convert string to float: " + repr(s));
@@ -1360,6 +1380,7 @@ public final class Ops {
                 if (!(a.get(0) instanceof DictValue other)) {
                     throw typeError("'" + typeName(a.get(0)) + "' object is not a dict");
                 }
+                Meter.work(other.size());
                 for (var entry : new ArrayList<>(other.entries.values())) {
                     dict.put(entry.key, entry.value);
                 }
@@ -1399,18 +1420,21 @@ public final class Ops {
             case "intersection" -> {
                 var other = (SetValue) builtIn("set", List.of(a.get(0)));
                 var out = new SetValue();
+                Meter.work(set.size());
                 set.items.values().stream().filter(other::contains).forEach(out::add);
                 return out;
             }
             case "difference" -> {
                 var other = (SetValue) builtIn("set", List.of(a.get(0)));
                 var out = new SetValue();
+                Meter.work(set.size());
                 set.items.values().stream().filter(item -> !other.contains(item)).forEach(out::add);
                 return out;
             }
             case "symmetric_difference" -> {
                 var other = (SetValue) builtIn("set", List.of(a.get(0)));
                 var out = new SetValue();
+                Meter.work((long) set.size() + other.size());
                 set.items.values().stream().filter(item -> !other.contains(item)).forEach(out::add);
                 other.items.values().stream().filter(item -> !set.contains(item)).forEach(out::add);
                 return out;
@@ -1418,6 +1442,7 @@ public final class Ops {
             case "update" -> items(a.get(0)).forEach(set::add);
             case "issubset" -> {
                 var other = (SetValue) builtIn("set", List.of(a.get(0)));
+                Meter.work(set.size());
                 return set.items.values().stream().allMatch(other::contains);
             }
             case "issuperset" -> {
@@ -1489,6 +1514,8 @@ public final class Ops {
                 if (i < 0) {
                     i = Math.max(0, i + n);
                 }
+                // The items after it move.
+                Meter.work(n - Math.min(i, n));
                 items.add((int) Math.min(i, n), a[1]);
             }
             case "pop" -> {
@@ -1503,9 +1530,11 @@ public final class Ops {
                 if (i < 0 || i >= n) {
                     throw new RunError("IndexError", "pop index out of range");
                 }
+                Meter.work(n - i);
                 return items.remove((int) i);
             }
             case "remove" -> {
+                Meter.work(items.size());
                 for (int i = 0; i < items.size(); i++) {
                     if (eq(items.get(i), a[0])) {
                         items.remove(i);
@@ -1515,6 +1544,7 @@ public final class Ops {
                 throw valueError("list.remove(x): x not in list");
             }
             case "index" -> {
+                Meter.work(items.size());
                 for (int i = 0; i < items.size(); i++) {
                     if (eq(items.get(i), a[0])) {
                         return (long) i;
@@ -1523,11 +1553,18 @@ public final class Ops {
                 throw valueError(repr(a[0]) + " is not in list");
             }
             case "count" -> {
+                Meter.work(items.size());
                 return items.stream().filter(item -> eq(item, a[0])).count();
             }
-            case "reverse" -> Collections.reverse(items);
+            case "reverse" -> {
+                Meter.work(items.size());
+                Collections.reverse(items);
+            }
             case "sort" -> {
                 boolean reverse = truthy(a[0]);
+                // About n log n comparisons; comparing strings or lists also counts what each comparison walks.
+                long n = items.size();
+                Meter.work(n * (64 - Long.numberOfLeadingZeros(Math.max(1, n))));
                 // Reversing around a stable sort keeps equal items in their order, as Python's reverse=True does.
                 var sorted = new ArrayList<>(items);
                 if (reverse) {
@@ -1562,8 +1599,10 @@ public final class Ops {
         if (items.stream().allMatch(String.class::isInstance)) {
             // Without surrogates UTF-16 order is code point order, and Java's own comparison is much faster.
             boolean plain = items.stream().noneMatch(v -> ((String) v).chars().anyMatch(c -> Character.isSurrogate((char) c)));
-            items.sort(plain ? (x, y) -> ((String) x).compareTo((String) y)
-                    : (x, y) -> compareText((String) x, (String) y));
+            items.sort(plain ? (x, y) -> {
+                Meter.work(Math.min(((String) x).length(), ((String) y).length()));
+                return ((String) x).compareTo((String) y);
+            } : (x, y) -> compareText((String) x, (String) y));
             return items;
         }
         return mergeSort(items);
@@ -1605,12 +1644,16 @@ public final class Ops {
                 if (!(a[0] instanceof String affix)) {
                     throw typeError(name + " first arg must be str or a tuple of str, not " + typeName(a[0]));
                 }
+                Meter.work(affix.length());
                 yield name.equals("startswith") ? s.startsWith(affix) : s.endsWith(affix);
             }
             // Case changes can lengthen the text ('ß' becomes 'SS'), so the result is checked against the cap.
             case "lower" -> sized(s.toLowerCase(Locale.ROOT));
             case "upper" -> sized(s.toUpperCase(Locale.ROOT));
-            case "strip" -> s.strip();
+            case "strip" -> {
+                Meter.work(s.length());
+                yield s.strip();
+            }
             case "split" -> split(s, a[0]);
             case "join" -> {
                 if (!(a[0] instanceof ListValue || a[0] instanceof String || a[0] instanceof RangeValue
@@ -1640,16 +1683,30 @@ public final class Ops {
                 }
                 var old = (String) a[0];
                 var replacement = (String) a[1];
-                long matches = old.isEmpty() ? s.length() + 1L : 0;
-                for (int at = old.isEmpty() ? -1 : s.indexOf(old); at >= 0; at = s.indexOf(old, at + old.length())) {
+                if (old.isEmpty()) {
+                    long size = s.length() + (s.length() + 1L) * replacement.length();
+                    grow(size);
+                    made(size);
+                    yield s.replace(old, replacement);
+                }
+                var search = new Search(old);
+                long matches = 0;
+                for (int at = search.in(s, 0); at >= 0; at = search.in(s, at + old.length())) {
                     matches++;
                 }
-                grow(s.length() + matches * (replacement.length() - old.length()));
-                made(s.length() + matches * (replacement.length() - old.length()));
-                yield s.replace(old, replacement);
+                long size = s.length() + matches * (replacement.length() - old.length());
+                grow(size);
+                made(size);
+                var out = new StringBuilder((int) size);
+                int from = 0;
+                for (int at = search.in(s, 0); at >= 0; at = search.in(s, from)) {
+                    out.append(s, from, at).append(replacement);
+                    from = at + old.length();
+                }
+                yield out.append(s, from, s.length()).toString();
             }
             case "find" -> {
-                int at = s.indexOf(text(a[0]));
+                int at = find(s, text(a[0]), 0);
                 yield at < 0 ? -1L : (long) s.codePointCount(0, at);
             }
             case "count" -> {
@@ -1657,8 +1714,9 @@ public final class Ops {
                 if (sub.isEmpty()) {
                     yield (long) s.codePointCount(0, s.length()) + 1;
                 }
+                var search = new Search(sub);
                 long count = 0;
-                for (int at = s.indexOf(sub); at >= 0; at = s.indexOf(sub, at + sub.length())) {
+                for (int at = search.in(s, 0); at >= 0; at = search.in(s, at + sub.length())) {
                     count++;
                 }
                 yield count;
@@ -1683,6 +1741,7 @@ public final class Ops {
     private static ListValue split(String s, Object separator) {
         var parts = new ArrayList<Object>();
         if (separator == null) {
+            Meter.work(s.length());
             for (var part : s.strip().split("\\s+")) {
                 if (!part.isEmpty()) {
                     parts.add(part);
@@ -1698,8 +1757,9 @@ public final class Ops {
         if (sep.isEmpty()) {
             throw valueError("empty separator");
         }
+        var search = new Search(sep);
         int from = 0;
-        for (int at = s.indexOf(sep); at >= 0; at = s.indexOf(sep, from)) {
+        for (int at = search.in(s, 0); at >= 0; at = search.in(s, from)) {
             grow(parts.size() + 2L);
             parts.add(s.substring(from, at));
             from = at + sep.length();
@@ -1707,5 +1767,65 @@ public final class Ops {
         parts.add(s.substring(from));
         made(parts.size() + s.length());
         return new ListValue(parts);
+    }
+    /** Where {@code sub} first starts in {@code s} at or after {@code from}, or -1; in linear time. */
+    static int find(String s, String sub, int from) {
+        return new Search(sub).in(s, from);
+    }
+
+    /**
+     * A substring search whose time is linear in the text, metered as the text it scans. Java's own search compares
+     * the needle at every position, which for a long needle that almost matches everywhere is quadratic: seconds in
+     * one step. A short needle keeps Java's search, at most {@link #SHORT_NEEDLE} times the text.
+     */
+    static final class Search {
+        static final int SHORT_NEEDLE = 16;
+        private final String sub;
+        /** Knuth-Morris-Pratt: the longest proper border of each prefix; {@code null} for a short needle. */
+        private final int[] border;
+
+        Search(String sub) {
+            this.sub = sub;
+            if (sub.length() <= SHORT_NEEDLE) {
+                border = null;
+                return;
+            }
+            Meter.work(sub.length());
+            border = new int[sub.length()];
+            for (int i = 1, k = 0; i < sub.length(); i++) {
+                while (k > 0 && sub.charAt(i) != sub.charAt(k)) {
+                    k = border[k - 1];
+                }
+                if (sub.charAt(i) == sub.charAt(k)) {
+                    k++;
+                }
+                border[i] = k;
+            }
+        }
+
+        int in(String s, int from) {
+            if (from > s.length()) {
+                return -1;
+            }
+            if (border == null) {
+                int at = s.indexOf(sub, from);
+                Meter.work((at < 0 ? s.length() : at + sub.length()) - from);
+                return at;
+            }
+            for (int i = from, k = 0; i < s.length(); i++) {
+                while (k > 0 && s.charAt(i) != sub.charAt(k)) {
+                    k = border[k - 1];
+                }
+                if (s.charAt(i) == sub.charAt(k)) {
+                    k++;
+                }
+                if (k == sub.length()) {
+                    Meter.work(i + 1L - from);
+                    return i - k + 1;
+                }
+            }
+            Meter.work(s.length() - from);
+            return -1;
+        }
     }
 }

@@ -11,7 +11,8 @@ import java.util.Set;
  * (a chain of records, each holding a long string). So a step stops past {@link #MAX_WORK} values walked, and a run
  * stops with {@code MemoryError} once what it holds passes {@link #MAX_HELD} items, measured by walking its values
  * each time it has made {@link #CHECK_EVERY} new ones: the walk costs at most what was made since the last one.
- * Outside a run (the checker's constants, the editor) nothing is metered.
+ * Everything a step walks, makes or scans is also its {@link #taken cost} in the tick's budget (see
+ * {@link Runner#tick(int, long)}). Outside a run (the checker's constants, the editor) nothing is metered.
  */
 final class Meter {
     /** Values one step may compare or write out; about 50 ms of work in the test JVM. */
@@ -24,6 +25,8 @@ final class Meter {
 
     private long work;
     private long made;
+    /** What the step being run walked, made or scanned, for the tick's budget. */
+    private long taken;
 
     /** Meters this thread until {@link #leave}; gives the meter it replaced, to restore. */
     static Meter enter(Meter meter) {
@@ -40,9 +43,15 @@ final class Meter {
         }
     }
 
-    /** A new step: its work starts from zero. */
+    /** A new step: its work and cost start from zero. */
     void step() {
         work = 0;
+        taken = 0;
+    }
+
+    /** What the current step walked, made or scanned so far. */
+    long taken() {
+        return taken;
     }
 
     /** Whether enough was made since the last walk that the run's values should be walked again. */
@@ -100,10 +109,12 @@ final class Meter {
                 default -> 1;
             };
             if (held > MAX_HELD) {
+                taken += held;
                 throw new RunError("MemoryError", "a run holds at most " + MAX_HELD
                         + " items (characters, list items, fields) at once");
             }
         }
+        taken += held;
     }
 
     /** A runner's own value that holds program values, such as a loop's cursor. */
@@ -111,10 +122,14 @@ final class Meter {
         Iterable<?> parts();
     }
 
-    /** {@code n} values were walked in this step. */
+    /** {@code n} values were walked (compared, copied, scanned) in this step. */
     static void work(long n) {
         var meter = CURRENT.get();
-        if (meter != null && (meter.work += n) > MAX_WORK) {
+        if (meter == null) {
+            return;
+        }
+        meter.taken += n;
+        if ((meter.work += n) > MAX_WORK) {
             throw new RunError("RuntimeError", "one step may compare or write out at most " + MAX_WORK + " values");
         }
     }
@@ -124,6 +139,7 @@ final class Meter {
         var meter = CURRENT.get();
         if (meter != null) {
             meter.made += n;
+            meter.taken += n;
         }
     }
 }

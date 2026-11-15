@@ -200,13 +200,16 @@ public final class ViewerRecipes extends SavedData {
         }
     }
 
-    /** A category's buckets split once it outgrew them ({@link BucketedRecipes#split}); its bits after. */
-    public int split(String category) {
+    /**
+     * A category's buckets split once it outgrew them, or once a viewer lists {@code listed} recipes that would
+     * outgrow them ({@link BucketedRecipes#split(int)}); its bits after.
+     */
+    public int split(String category, int listed) {
         var file = files.get(category);
         if (file == null) {
             throw new IllegalArgumentException("No saved viewer category " + category);
         }
-        var split = file.recipes().split();
+        var split = file.recipes().split(listed);
         if (split != file.recipes()) {
             file.set(split);
         }

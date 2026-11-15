@@ -28,6 +28,24 @@ final class BucketedRecipesTest {
     }
 
     @Test
+    void aViewerListingFarMoreThanWasSavedGetsBucketsMadeForWhatItLists() {
+        var entries = new ArrayList<Entry<String>>();
+        var random = new Random(7);
+        for (var i = 0; i < 1000; i++) {
+            entries.add(recipe(random.nextLong(), i));
+        }
+        var saved = BucketedRecipes.of(RecipeBuckets.bitsFor(1000), entries);
+        assertEquals(1, saved.bits());
+        assertSame(saved, saved.split(1000), "a viewer listing what was saved keeps the buckets");
+        assertSame(saved, saved.split(4000), "nor does a modest growth split them");
+        // 40,000 listed in 2 buckets would be 20,000 a bucket: more than a task of 8 buckets may send in all.
+        var grown = saved.split(40_000);
+        assertEquals(RecipeBuckets.bitsFor(40_000), grown.bits());
+        assertEquals(1000, grown.size());
+        assertEquals(new java.util.HashSet<>(entries), new java.util.HashSet<>(grown.entries()));
+    }
+
+    @Test
     void eachRecipeSitsInTheBucketOfItsPartitionAndEachBucketHasTheDigestOfWhatItHolds() {
         var entries = List.of(recipe(0b00, 1), recipe(0b01, 2), recipe(0b101, 3), skipped(0b11, 4));
         var shelf = BucketedRecipes.of(2, entries);

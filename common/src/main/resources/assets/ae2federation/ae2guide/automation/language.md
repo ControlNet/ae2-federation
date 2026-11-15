@@ -68,7 +68,10 @@ A file holds any number of functions. A function calls another of its file by na
   so the run may act again on the tick it ends.
 * A function of yours that calls a long action, directly or through another of your functions, is marked as a long
   action too.
-* A run takes at most 10,000 steps a tick and goes on in the next one, so `while True:` cannot freeze the server.
+* A run does a share of work each tick and goes on in the next one, so `while True:` cannot freeze the server: at most
+  10,000 steps, fewer when steps copy, compare or search long lists and strings, as each value they go through counts
+  as a twentieth of a step. A step that takes more than the tick's share is paid for by waiting the next ticks. All
+  runs on the server together get 10 runs' work a tick, shared in turn.
 * Integers are 64-bit, a list, string, dict or set holds at most 100,000 items, and calls nest at most 1,000 deep. The text
   `str` makes of a list, dict or set is a string too. A program file holds at most 64,000 characters, and the server
   keeps at most 256 programs of 4,000,000 characters in all.

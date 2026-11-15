@@ -549,6 +549,8 @@ public final class FederationRecipeSyncView {
 
         private float rowHeight(CategoryRow row) {
             if (!row.id().equals(expanded)) return ROW;
+            // A row no ready viewer lists has no Rescan: nothing could read it again.
+            if (row.listed() < 0) return ROW + 4 + ROW * (row.failedIds().size() + (row.failed() > 0 ? 1 : 0));
             return ROW + 4 + ROW * (row.failedIds().size() + 1) + 18;
         }
 
@@ -615,6 +617,14 @@ public final class FederationRecipeSyncView {
             for (var id : row.failedIds()) {
                 category(context, id, left + 20, lineY, right - left - 30);
                 lineY += ROW;
+            }
+            if (row.listed() < 0) {
+                // No ready viewer lists it: nothing could read it again, so no Rescan.
+                if (row.failed() > 0) {
+                    text(context, clip(tr("row.failed_note"), right - left - 30), left + 20, lineY,
+                            FederationTheme.DARK_MUTED);
+                }
+                return;
             }
             text(context, clip(tr(row.failed() > 0 ? "row.failed_note" : "row.rescan_note"), right - left - 30),
                     left + 20, lineY, FederationTheme.DARK_MUTED);

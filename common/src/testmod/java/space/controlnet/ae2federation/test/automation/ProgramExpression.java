@@ -24,7 +24,7 @@ public final class ProgramExpression {
         long ticks = 0;
         Runner.Status status;
         do {
-            status = run.tick(1_000_000);
+            status = run.runner().tick(1_000_000);
             ticks++;
         } while (status != Runner.Status.DONE && status != Runner.Status.FAILED && ticks < 1000);
         var nanos = System.nanoTime() - started;

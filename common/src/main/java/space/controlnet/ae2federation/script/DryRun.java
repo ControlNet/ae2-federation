@@ -9,7 +9,8 @@ import java.util.Set;
 
 /**
  * A run of a function for the editor, which shows each node's value while the player edits. It runs at once rather
- * than tick by tick: waits are skipped, and it stops after a budget of nodes. Whether actions act is the host's
+ * than tick by tick: waits are skipped, and it stops after a budget of nodes or of {@link #WORK work}, whichever
+ * runs out first. Whether actions act is the host's
  * business; the game's dry-run host only simulates them.
  *
  * <p>Assistant choices: a node run more than once shows its last value; a value is formatted when the run ends, so a
@@ -18,6 +19,11 @@ import java.util.Set;
 public final class DryRun {
     /** Nodes a dry run may run before it stops. */
     public static final int BUDGET = 4096;
+    /**
+     * Work a dry run may take before it stops, in the runner's units ({@link Runner#tick(int, long)}): five ticks of a
+     * run's budget, a few milliseconds. The editor asks for a dry run at most every ten ticks.
+     */
+    public static final long WORK = 1_000_000;
     /** The longest value text; a longer one is cut and ends with {@code ...}. */
     public static final int MAX_TEXT = 48;
 
@@ -55,8 +61,10 @@ public final class DryRun {
         };
         var runner = new Runner(workspace, graphs, host, trace, file, function, args);
         var status = Runner.Status.RUNNING;
-        while (steps[0] < budget) {
-            status = runner.tick(budget - steps[0]);
+        long work = 0;
+        while (steps[0] < budget && work < WORK) {
+            status = runner.tick(budget - steps[0], WORK - work);
+            work += runner.spent();
             if (status == Runner.Status.DONE || status == Runner.Status.FAILED) {
                 break;
             }

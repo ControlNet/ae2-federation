@@ -318,6 +318,15 @@ public final class ViewerScans {
     public static synchronized void hello(ServerPlayer player, Hello hello) {
         var state = state(player.server);
         state.revision++;
+        if (!allowed(player)) {
+            // The server takes viewer recipes from operators only (ViewerUploadRule): this player is no viewer.
+            var was = state.viewers.remove(player.getUUID());
+            if (was != null) {
+                end(state, was);
+                assign(player.server, state);
+            }
+            return;
+        }
         var viewer = state.viewers.computeIfAbsent(player.getUUID(), id -> new Viewer());
         if (hello.generation() != viewer.generation) {
             // The viewer reloaded its recipes: what it was sending may be from before.
@@ -464,10 +473,15 @@ public final class ViewerScans {
 
     /**
      * Checks again: every category, a new round with the ready viewers' listings, each bucket compared by its digest;
-     * or one category, every recipe in it read again whatever its digest.
+     * or one category, every recipe in it read again whatever its digest. A category no ready viewer lists is left
+     * alone: no viewer could take it, and the round would stay open.
      */
     public static synchronized void rescan(MinecraftServer server, @Nullable String category) {
         var state = state(server);
+        if (category != null && state.viewers.values().stream()
+                .noneMatch(viewer -> viewer.ready && viewer.listed.containsKey(category))) {
+            return;
+        }
         state.revision++;
         if (category == null) {
             newRound(state);
@@ -583,11 +597,21 @@ public final class ViewerScans {
                 continue;
             }
             var player = server.getPlayerList().getPlayer(each.getKey());
-            if (player != null) {
+            if (player != null && !allowed(player)) {
+                // The rule changed since it said hello: it gets no more tasks, and its listing no longer counts.
+                state.viewers.remove(each.getKey());
+                end(state, viewer);
+            } else if (player != null) {
                 next(server, state, each.getKey(), viewer, player);
             }
         }
         finish(server, state);
+    }
+
+    /** Whether the server takes this player's viewer recipes ({@link ViewerUploadRule}). */
+    private static boolean allowed(ServerPlayer player) {
+        return ViewerUploadRule.allows(player.hasPermissions(2), player.server.isSingleplayerOwner(
+                player.getGameProfile()));
     }
 
     private static void next(MinecraftServer server, State state, UUID id, Viewer viewer, ServerPlayer player) {
@@ -605,7 +629,7 @@ public final class ViewerScans {
                     }
                     recipes.create(work.category, RecipeBuckets.bitsFor(listed.count()));
                 }
-                work.bits = recipes.split(work.category);
+                work.bits = recipes.split(work.category, listed.count());
                 work.buckets = new byte[1 << work.bits];
             }
             int first;

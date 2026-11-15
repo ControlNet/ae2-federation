@@ -37,8 +37,9 @@ storage, whatever the rules share.
 
 AE2 plans a job over the next ticks, then picks a free CPU for it as for any automation request: CPUs set to player
 requests only, and CPUs too small for the job, are left out. A plan that misses ingredients, or finds no such CPU by
-then, starts nothing, and `ae2.crafting` drops back. The job's final output counts in `ae2.crafting` from the
-request until it reaches storage.
+then, starts nothing, and `ae2.crafting` drops back; the installation's log says why, as "crafting 4 minecraft:stick
+not started: missing minecraft:oak_planks x2". The job's final output counts in `ae2.crafting` from the request until
+it reaches storage.
 
 With `cpu`, the job runs on a free CPU of that name, the smallest one it fits, never on one set to player requests
 only. A crafting unit renamed in an anvil names its CPU. A name no CPU has stops the run with a `ValueError`.
@@ -137,8 +138,9 @@ server does not read itself, and the world keeps them: the server asks the first
 each `/reload`, and the scan takes a few seconds while they play. Until then the saved recipes are listed. JEI also
 names each category's machines, the items it shows beside the category; they are the recipes' `machines`, and for the
 furnace types they add to the furnace's own. Any player's JEI may send the recipes, and what it sends replaces them for
-every program of the world, as any player can encode any processing pattern in AE2's terminal. EMI on its own sends
-none.
+every program of the world, as any player can encode any processing pattern in AE2's terminal. A server can take them
+from operators only with `recipeViewerUploads = "OPERATORS"` in the `[automation]` section of
+`config/ae2federation-server.toml`; the owner of a singleplayer or LAN world always may. EMI on its own sends none.
 
 A JEI recipe's `type` is its JEI category, as `mekanism:enriching`, and its `id` the recipe's ID, or `None` when JEI
 gives none. An input slot JEI shows as an item tag reads as the tag's items. JEI does not say which outputs come only

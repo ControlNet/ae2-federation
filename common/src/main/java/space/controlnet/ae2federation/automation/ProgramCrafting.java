@@ -44,11 +44,16 @@ public final class ProgramCrafting {
     private record Started(String owner, ICraftingCPU cpu, AEKey key, appeng.api.networking.crafting.ICraftingLink link) {
     }
 
+    private final MinecraftServer server;
     private final List<Pending> pending = new ArrayList<>();
     private final List<Started> started = new ArrayList<>();
 
+    private ProgramCrafting(MinecraftServer server) {
+        this.server = server;
+    }
+
     public static ProgramCrafting get(MinecraftServer server) {
-        return SERVICES.computeIfAbsent(server, ignored -> new ProgramCrafting());
+        return SERVICES.computeIfAbsent(server, ProgramCrafting::new);
     }
 
     public static void tickAll(MinecraftServer server) {
@@ -224,10 +229,11 @@ public final class ProgramCrafting {
                 plan = request.plan().get();
             } catch (InterruptedException | ExecutionException e) {
                 LOGGER.debug("A program's crafting plan for {} failed", request.key(), e);
+                notStarted(request, "AE2 could not plan it");
                 continue;
             }
             if (plan.simulation()) {
-                LOGGER.debug("A program's crafting plan for {} misses {}", request.key(), plan.missingItems());
+                notStarted(request, "missing " + missing(plan.missingItems()));
                 continue;
             }
             var crafting = request.grid().getCraftingService();
@@ -239,15 +245,37 @@ public final class ProgramCrafting {
                 target = usable(request.grid(), request.cpu()).filter(cpu -> cpu.getAvailableStorage() >= plan.bytes())
                         .min(java.util.Comparator.comparingLong(ICraftingCPU::getAvailableStorage)).orElse(null);
                 if (target == null) {
-                    LOGGER.debug("No CPU named {} is free for a program's job for {}", request.cpu(), request.key());
+                    notStarted(request, "no free CPU named " + request.cpu() + " holds " + plan.bytes() + " bytes");
                     continue;
                 }
             }
             // The job's CPU is the one that was idle and is busy now.
-            if (crafting.submitJob(plan, null, target, false, IActionSource.empty()).successful()) {
+            var submitted = crafting.submitJob(plan, null, target, false, IActionSource.empty());
+            if (submitted.successful()) {
                 idle.stream().filter(ICraftingCPU::isBusy).findFirst().ifPresent(cpu -> started.add(
                         new Started(request.owner(), cpu, request.key(), CraftingCpuLifecycle.jobLink(cpu))));
+            } else {
+                notStarted(request, "AE2 refused it (" + submitted.errorCode() + ")");
             }
         }
+    }
+
+    /** Writes why a job was not started to the log of the installation that asked for it. */
+    private void notStarted(Pending request, String why) {
+        LOGGER.debug("A program's crafting job for {} was not started: {}", request.key(), why);
+        ProgramScheduler.get(server).note(request.owner(), "crafting " + request.amount() + " "
+                + request.key().getId() + " not started: " + why);
+    }
+
+    /** The first few missing resources and amounts, as {@code minecraft:oak_planks x2}. */
+    private static String missing(appeng.api.stacks.KeyCounter missing) {
+        var shown = new ArrayList<String>();
+        int count = 0;
+        for (var entry : missing) {
+            if (count++ < 3) {
+                shown.add(entry.getKey().getId() + " x" + entry.getLongValue());
+            }
+        }
+        return String.join(", ", shown) + (count > 3 ? " and " + (count - 3) + " more" : "");
     }
 }

@@ -8,6 +8,8 @@ public final class ListValue {
     final List<Object> items;
 
     public ListValue(List<Object> items) {
+        // A copy: in a run it counts as work for the tick's budget.
+        Meter.work(items.size());
         this.items = new ArrayList<>(items);
     }
 

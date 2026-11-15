@@ -51,3 +51,41 @@ changed; two throwaway timing tests were run and deleted.
 - Library call ranges (`ae2f.select` reach 1-4, priority, config slot, redstone level) are checked in
   `Evaluator.checkLibrary` from `StandardLibrary` signatures.
 - Lease handling (leave, expire, refuse, give back) and the client keep-alive parts agree with each other.
+
+## Fixes (2026-11-15, owner: "以上内容都要进行修复")
+
+The owner chose to count a run's work by values processed (over wall time), and a server switch for recipe uploads
+defaulting to everyone. Everything else below is an assistant choice.
+
+1. **Work budget per tick.** `Runner.tick(steps, work)`: a node costs `Runner.STEP_COST` (20) plus what `Meter`
+   counts for it: values walked (`Meter.work`) and items made (`Meter.made`), now both in `Meter.taken()`. A node that
+   passes the budget finishes; the excess is `owed` and later ticks pay it first (`mc.wait` still counts down, an
+   answer that came is still taken). `Ops` now charges what it scans or copies: equality and order by items and
+   characters, `in`, `count`/`index`/`remove`, `insert`/`pop(i)` by the items that move, `sort` n log n plus string
+   comparisons, slices, `strip`, `int`/`float` of a string, dict/set copies, and every `ListValue` copy.
+   Substring search (`in`, `find`, `count`, `replace`, `split`) uses `Ops.Search`: Java's `indexOf` for needles up to
+   16 characters, Knuth-Morris-Pratt above, because `indexOf` is quadratic for a long needle that almost matches.
+   `ProgramScheduler` gives each run and condition `WorkShare.PER_RUN` (200,000 = the old 10,000 plain steps) and all
+   of them `PER_TICK` (2,000,000) a tick; once spent, the rest get nothing and the next tick starts with the first
+   installation left out. Dry runs stop at `DryRun.WORK` (1,000,000) as well as 4,096 nodes.
+   Measured (test JVM, ms per tick of one run): copy a 100k list 1750 -> 1.5, compare two 2150 -> 1.7,
+   `s.count` on 100k chars 1441 -> 1.2, `1 in xs` 1507 -> 1.3, plain steps 0.45 -> 0.45.
+   Tests: `TickWorkTest` (6), `WorkShareTest` (5), `DryRunTest.theWorkBudgetStopsAHeavyLoop`.
+2. **Grown categories.** `BucketedRecipes.split(listed)` / `ViewerRecipes.split(category, listed)`: before leasing,
+   a saved category also splits for the count the viewer lists. GameTest
+   `aCategoryThatGrewFarPastItsSavedSizeStillSyncs` (3 saved, 40,000 listed) fails on the old code (stuck at 3).
+3. **Check reuse.** `ProgramRun.check` keeps each file's `Checker.Result` with a `RecordedCatalog` of the catalog
+   questions it asked; a start reuses it while the catalog gives the same answers (`ProgramRunCheckTest`).
+4. **Unlisted rescans.** `ViewerScans.rescan(category)` does nothing when no ready viewer lists it; the Recipe sync
+   page shows no Rescan (nor its note) on such a row, failed IDs and the failed note stay. GameTest
+   `aRescanOfACategoryNoViewerListsLeavesTheRoundDone`; UI scenario `ui.viewer-recipe-sync-unlisted`, before/after in
+   `build/recipe-sync-unlisted-check/unlisted-row-before-after.png`.
+5. a. **Crafting not started** is logged to the installation: `ProgramScheduler.note`, from `ProgramCrafting`
+   ("crafting 4 minecraft:stick not started: missing minecraft:oak_planks x2", plan failure, no free CPU of the name,
+   submit refused). GameTest `programCraftingMissingMaterialsIsLogged`.
+   b. **`recipeViewerUploads`** (`[automation]`, `EVERYONE` | `OPERATORS`, `ViewerUploadRule`): with `OPERATORS`, a
+   non-operator's hello is dropped and a ready viewer that lost the right gets no more tasks; the singleplayer/LAN
+   owner always may. GameTest `viewerUploadsForOperatorsLeaveOtherPlayersOut`, unit `ViewerUploadRuleTest`.
+
+Guide pages updated (EN and ZH): `language.md` (work per tick), `compute.md`, `library.md` (upload switch, crafting
+log line).
