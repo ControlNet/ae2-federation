@@ -144,6 +144,7 @@ public final class NeoForgeEntrypoint {
         EnergySharingService.closeServer(server);
         OperatingPowerService.closeServer(server);
         space.controlnet.ae2federation.quantum.QuantumLinkService.closeServer(server);
+        space.controlnet.ae2federation.p2p.FederationP2PTunnelPart.closeServer(server);
         LevelObservabilityService.closeServer(server);
         space.controlnet.ae2federation.router.FederationCableTicks.closeServer(server);
         space.controlnet.ae2federation.router.RouterTicks.closeServer(server);
