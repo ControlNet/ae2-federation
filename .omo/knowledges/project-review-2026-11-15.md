@@ -5,7 +5,7 @@ what changed since `project-review-2026-11-07.md` (2x2x3 converter 10c50ee5, add
 30a455ed / d1c88c89, ExpandedAE metadata ec5054cd), plus static state and lifecycle, Quantum Cube, Beam link service,
 operating power and the converter FE buffer, Endpoint return handlers and the Provider FE relay, the CPU receipt mixin,
 and every GuideME mixin target compared across GuideME 21.1.1 (what the dev clients run), 21.1.19, 21.1.20 and 21.1.22
-(what the compat profiles pin). Findings only; nothing fixed yet.
+(what the compat profiles pin). Findings first; fixes are listed under Fixed.
 
 ## GuideME 21.1.22 (client)
 
@@ -48,6 +48,9 @@ and every GuideME mixin target compared across GuideME 21.1.1 (what the dev clie
 | --- | --- |
 | Guide crash on GuideME 21.1.22 (`hasChildren` final) | `GuideNavBarMixin` stands down when `GuideNavBar$Row` declares `levelsBelow` (GuideME nests natively); the shadow is `@Final @Mutable` as a backstop; both guide `index.md` set `navigation.max_depth: 2`, which 21.1.1 ignores. In game on 21.1.22 the sidebar shows three levels with GuideME's own indent; 21.1.1 is unchanged (`build/guideme-21.1.22-check/before-after.png`). |
 | Portal hooks miss GuideME 21.1.20+ | `@WrapMethod` pinned to the two-argument `renderContent`; the TAIL inject covers `lambda$renderContent$0` (21.1.1-21.1.19) and `$1` (21.1.20+ export); the screen pass `lambda$renderContent$2` gets HEAD (`BeamPortalRenderer.beginScene`) and TAIL (draw, `endScene`) hooks. Checked with `-Dmixin.debug.export=true`: every hook lands on both 21.1.1 and 21.1.22. No shipped guide scene has a 2x2 or 3x3 former (the only portal sizes), so a throwaway scene with a linked 2x2 pair (not committed) showed it: no portal on 21.1.20 before, a portal on 21.1.1, 21.1.20 and 21.1.22 after (`portal-before-after-21.1.20.png`, `portal-after.png`). The portal draws after the translucent pass on every version, as it did on 21.1.1. |
+| `FederationP2PTunnelPart.PENDING` kept on server stop | `FederationP2PTunnelPart.closeServer`, called from `onServerStopped` (6edb1251). |
+| Quantum Cube copies and stale partners | `QuantumPairIndex.Cube` carries `boundTo`; with more than two cubes the mutually bound two still link; `stale()` marks a cube whose bound place holds another pair id, or a third cube beside a bound pair; `QuantumLinkService.tick` clears its pair id (eef11d4c). GameTest `quantumcubecopyleavesthepairlinked` copies a cube's block data as `/clone` does. Left as is: while the original is unloaded, a copy and the partner are exactly two and link; once the original loads, the copy is cleared. |
+| Dev runtime on GuideME 21.1.1 | `runtimeOnly guideme:21.1.22` (c4a061b6); compile stays on 21.1.1, the oldest AE2 19.2.x accepts. Jar/POM sha256 entries checked against Maven Central's sha1 files. |
 
 GuideME 21.1.15, 21.1.19 and 21.1.20 (the versions compat packs pin) checked with javap: the navigation frontmatter parser reads known keys only, so `max_depth` is ignored; `Row(GuideNavBar, NavigationNode, Row)` and a non-final `hasChildren` match 21.1.1; 21.1.15/21.1.19 name the lambda `$0`.
 
