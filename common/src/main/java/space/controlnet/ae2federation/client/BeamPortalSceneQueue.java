@@ -13,14 +13,23 @@ final class BeamPortalSceneQueue {
     private boolean active;
 
     void inScene(Runnable render) {
-        entries.clear();
-        active = true;
+        begin();
         try {
             render.run();
         } finally {
-            active = false;
-            entries.clear();
+            end();
         }
+    }
+
+    /** Opens a scene for a renderer that cannot be wrapped; {@link #end} must follow on the same thread. */
+    void begin() {
+        entries.clear();
+        active = true;
+    }
+
+    void end() {
+        active = false;
+        entries.clear();
     }
 
     void record(Matrix4f pose, Direction facing, int side, long tick, float partialTick, CableBeamStyle style) {

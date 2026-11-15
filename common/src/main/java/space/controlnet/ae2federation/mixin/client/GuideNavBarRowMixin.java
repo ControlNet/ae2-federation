@@ -7,6 +7,7 @@ import guideme.navigation.NavigationNode;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -27,7 +28,11 @@ public abstract class GuideNavBarRowMixin implements NestedGuideNavRow {
     @Final
     private LytParagraph paragraph;
 
+    // Final from GuideME 21.1.22, which nests rows itself; the nav bar mixin then never calls nest, and @Mutable keeps
+    // the write legal should it ever run.
     @Shadow
+    @Final
+    @Mutable
     private boolean hasChildren;
 
     @Unique

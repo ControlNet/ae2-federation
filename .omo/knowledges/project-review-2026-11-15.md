@@ -42,6 +42,17 @@ and every GuideME mixin target compared across GuideME 21.1.1 (what the dev clie
   the same id, and the real pair goes to `MORE_THAN_TWO` and unlinks. Rebinding a cube whose old partner is unloaded
   leaves that partner with the old id; once loaded it reports "partner not loaded" for a pair that no longer exists.
 
+## Fixed
+
+| Finding | Fix |
+| --- | --- |
+| Guide crash on GuideME 21.1.22 (`hasChildren` final) | `GuideNavBarMixin` stands down when `GuideNavBar$Row` declares `levelsBelow` (GuideME nests natively); the shadow is `@Final @Mutable` as a backstop; both guide `index.md` set `navigation.max_depth: 2`, which 21.1.1 ignores. In game on 21.1.22 the sidebar shows three levels with GuideME's own indent; 21.1.1 is unchanged (`build/guideme-21.1.22-check/before-after.png`). |
+| Portal hooks miss GuideME 21.1.20+ | `@WrapMethod` pinned to the two-argument `renderContent`; the TAIL inject covers `lambda$renderContent$0` (21.1.1-21.1.19) and `$1` (21.1.20+ export); the screen pass `lambda$renderContent$2` gets HEAD (`BeamPortalRenderer.beginScene`) and TAIL (draw, `endScene`) hooks. Checked with `-Dmixin.debug.export=true`: every hook lands on both 21.1.1 and 21.1.22. No guide scene has a 2x2 or 3x3 former today (the only portal sizes), so the portal itself was not seen in a guide page. |
+
+How to run the guide client on another GuideME without touching build files: a Gradle init script that forces
+`org.appliedenergistics:guideme:<version>` on configurations whose names contain `run`/`runtime`, passed with `-I`,
+plus `--dependency-verification=lenient --no-configuration-cache`. The run directory is `neoforge-1.21.1/run-guide`.
+
 ## Not read this pass
 
 Storage projections, domain/identity/policy and their payloads, client GUI other than the guide, observability and

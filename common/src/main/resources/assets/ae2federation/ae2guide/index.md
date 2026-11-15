@@ -3,6 +3,7 @@ navigation:
   title: AE2 Federation
   icon: ae2federation:router
   position: 900
+  max_depth: 2
 ---
 
 # AE2 Federation
