@@ -1,0 +1,13 @@
+// Runs the dev clients and GameTest servers on another GuideME, without changing the build files. The build runs
+// GuideME 21.1.22, what player modpacks run; 21.1.1 (the oldest AE2 19.2.x accepts) still takes our own sidebar
+// nesting, so check guide changes there too:
+//   ./gradlew -I tools/guideme-version.init.gradle -PguideMeVersion=21.1.1 :neoforge-1.21.1:runGuideClient
+// A version without an entry in gradle/verification-metadata.xml also needs --dependency-verification=lenient.
+def guideMeVersion = gradle.startParameter.projectProperties['guideMeVersion']
+if (guideMeVersion) {
+    allprojects {
+        configurations.matching { it.name.toLowerCase().contains('run') }.configureEach {
+            resolutionStrategy.force "org.appliedenergistics:guideme:${guideMeVersion}"
+        }
+    }
+}
