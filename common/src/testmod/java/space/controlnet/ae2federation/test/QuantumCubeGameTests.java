@@ -294,6 +294,48 @@ public final class QuantumCubeGameTests {
     }
 
     /**
+     * A fresh bind whose first cube has not reported its new pair id yet (its chunk loaded but not ticking) keeps both
+     * cubes bound: the cube at the partner's place still holds the id, so the other end is not cleared as stale.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void quantumCubeBindSurvivesALateReport(GameTestHelper helper) {
+        var a = new BlockPos(2, 2, 2);
+        var b = new BlockPos(10, 2, 2);
+        cube(helper, a, 3);
+        cube(helper, b, 3);
+        var level = helper.getLevel();
+        var service = QuantumLinkService.get(level.getServer());
+        var dimension = FederationDomainRegistryAccess.dimension(level);
+        var from = helper.absolutePos(a);
+        var to = helper.absolutePos(b);
+        var phase = new int[1];
+        var kept = new boolean[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertValueEqual(status(helper, a), QuantumPairIndex.Status.Kind.NOT_BOUND,
+                        "Waiting for the first cube to be reported");
+                helper.assertValueEqual(status(helper, b), QuantumPairIndex.Status.Kind.NOT_BOUND,
+                        "Waiting for the second cube to be reported");
+                helper.assertValueEqual(service.bind(GlobalPos.of(level.dimension(), from),
+                        GlobalPos.of(level.dimension(), to)), QuantumLinkService.Bind.BOUND, "the card binds");
+                var id = ((QuantumCubeBlockEntity) level.getBlockEntity(to)).pairId();
+                // Only the second cube reports before the service judges the pair; the first is still indexed unbound.
+                service.track(new QuantumPairIndex.Cube(dimension, to, CableCrossSection.ONE_BY_ONE, id,
+                        new QuantumPairIndex.Key(dimension, from)));
+                QuantumLinkService.tickAll(level.getServer());
+                kept[0] = ((QuantumCubeBlockEntity) level.getBlockEntity(to)).pairId() == id;
+                phase[0] = 1;
+                throw new GameTestAssertException("Waiting for the pair to link");
+            }
+            helper.assertTrue(kept[0], "the second cube kept its new pair id");
+            helper.assertValueEqual(status(helper, a), QuantumPairIndex.Status.Kind.LINKED, "Waiting for the pair to link");
+            helper.assertValueEqual(status(helper, b), QuantumPairIndex.Status.Kind.LINKED, "Waiting for the pair to link");
+            RouterEvidence.write("quantumcubebindsurvivesalatereport", 2, Map.of("kept", "true", "pair", "linked"));
+        });
+    }
+
+    /**
      * Sneak-use in the air clears a Memory Card, as AE2 clears its own copied settings: the cube it held goes too, so the
      * card no longer binds another cube to it.
      */

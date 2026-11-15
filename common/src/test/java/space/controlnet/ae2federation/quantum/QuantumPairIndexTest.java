@@ -36,6 +36,8 @@ final class QuantumPairIndexTest {
         assertEquals(new Status(Status.Kind.LINKED, first), index.status(second));
         assertEquals(new Status(Status.Kind.MORE_THAN_TWO, null), index.status(copy));
         assertTrue(index.stale(copy), "the copy is no end of the bound pair");
+        assertTrue(index.copy(copy));
+        assertFalse(index.partnerRebound(copy), "its partner's place holds its pair id");
         assertFalse(index.stale(first));
         assertFalse(index.stale(second));
     }
@@ -51,6 +53,8 @@ final class QuantumPairIndexTest {
         var rebound = bound(10, 2, 30);
         assertEquals(Set.of(2L, 1L), index.put(rebound), "the cube naming it is judged again");
         assertTrue(index.stale(left));
+        assertTrue(index.partnerRebound(left));
+        assertFalse(index.copy(left));
         assertFalse(index.stale(rebound));
         var cleared = new Cube("minecraft:overworld", new BlockPos(10, 64, 0), CableCrossSection.ONE_BY_ONE, 0);
         index.put(cleared);

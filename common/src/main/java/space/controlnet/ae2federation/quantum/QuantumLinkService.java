@@ -77,7 +77,7 @@ public final class QuantumLinkService {
         dirty.clear();
         for (var pairId : pairs) {
             for (var cube : index.members(pairId)) {
-                if (index.stale(cube)) {
+                if (index.copy(cube) || index.partnerRebound(cube) && !partnerHolds(cube)) {
                     // Its blocks lose the pair id; the cube then reports itself unbound.
                     unbind(cube);
                     publish(cube, null);
@@ -96,6 +96,18 @@ public final class QuantumLinkService {
                 && level.getBlockEntity(cube.min()) instanceof QuantumCubeBlockEntity anchor) {
             anchor.setQuantumPartner(partner);
         }
+    }
+
+    /**
+     * Whether the block at the cube's bound partner place already holds the cube's pair id: a fresh bind whose other
+     * end has not reported again yet (its chunk may be loaded but not ticking).
+     */
+    private boolean partnerHolds(Cube cube) {
+        var to = cube.boundTo();
+        var level = level(to.dimension());
+        return level != null && level.isLoaded(to.min())
+                && level.getBlockEntity(to.min()) instanceof QuantumCubeBlockEntity there
+                && there.pairId() == cube.pairId();
     }
 
     private void unbind(Cube cube) {

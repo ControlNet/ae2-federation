@@ -127,16 +127,27 @@ public final class QuantumPairIndex {
     }
 
     /**
-     * Whether the cube holds a pair that no longer exists, so its pair id should be cleared: the cube where its partner
-     * was bound is loaded and holds another pair id (it was bound elsewhere or cleared while this one was unloaded), or
-     * it is one of more than two cubes of its pair while two others are bound to each other (it is a copy).
+     * Whether the cube holds a pair that no longer exists, so its pair id should be cleared: it is
+     * {@linkplain #partnerRebound partnerRebound} or a {@linkplain #copy copy}.
      */
     public boolean stale(Cube cube) {
+        return partnerRebound(cube) || copy(cube);
+    }
+
+    /**
+     * Whether the cube at the place its partner was bound is loaded and holds another pair id: it was bound elsewhere
+     * or cleared while this one was unloaded. The index may lag a fresh bind until that cube reports again, so the
+     * caller confirms with the block itself.
+     */
+    public boolean partnerRebound(Cube cube) {
+        if (cube.pairId() == 0 || cube.boundTo() == null) return false;
+        var there = cubes.get(cube.boundTo());
+        return there != null && there.pairId() != cube.pairId();
+    }
+
+    /** Whether the cube is one of more than two cubes of its pair while two others are bound to each other. */
+    public boolean copy(Cube cube) {
         if (cube.pairId() == 0) return false;
-        if (cube.boundTo() != null) {
-            var there = cubes.get(cube.boundTo());
-            if (there != null && there.pairId() != cube.pairId()) return true;
-        }
         var members = pairs.getOrDefault(cube.pairId(), List.of());
         if (members.size() <= 2 || mutualPartner(cube, members) != null) return false;
         for (var member : members) {
