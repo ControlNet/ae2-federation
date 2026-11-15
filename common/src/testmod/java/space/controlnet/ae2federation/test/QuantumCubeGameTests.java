@@ -234,6 +234,66 @@ public final class QuantumCubeGameTests {
     }
 
     /**
+     * A cube copied with its data (creative pick-block, {@code /clone}) holds the pair id of the cube it copies. The
+     * pair it copies stays linked, and the copy loses the id.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void quantumCubeCopyLeavesThePairLinked(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var a = new BlockPos(2, 2, 2);
+        var b = new BlockPos(10, 2, 2);
+        var copy = new BlockPos(2, 2, 10);
+        var cellsA = cube(helper, a, 3);
+        cube(helper, b, 3);
+        var cableA = new BlockPos(1, 3, 3);
+        var cableB = new BlockPos(13, 3, 3);
+        for (var cable : List.of(cableA, cableB)) fixtures.placeFederationCable(cable);
+        var nodeB = node(helper, cableB);
+        var player = MockServerPlayers.inLevel(helper);
+        player.setItemInHand(InteractionHand.MAIN_HAND, AEItems.MEMORY_CARD.stack());
+        var level = helper.getLevel();
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                for (var cube : List.of(a, b)) {
+                    helper.assertTrue(RouterBlock.formed(helper.getBlockState(cube)), "Waiting for " + cube + " to form");
+                }
+                bind(helper, player, a, b);
+                phase[0] = 1;
+                throw new GameTestAssertException("Waiting for the pair to link");
+            }
+            if (phase[0] == 1) {
+                helper.assertTrue(linked(helper, cableA, nodeB), "Waiting for the pair to link");
+                // As /clone does: each block of the copy gets the data of the matching block of the first cube.
+                for (var cell : cellsA) {
+                    var target = copy.offset(cell.subtract(a));
+                    place(helper, target);
+                    var data = level.getBlockEntity(helper.absolutePos(cell)).saveCustomOnly(level.registryAccess());
+                    level.getBlockEntity(helper.absolutePos(target)).loadCustomOnly(data, level.registryAccess());
+                }
+                var copied = (QuantumCubeBlockEntity) level.getBlockEntity(helper.absolutePos(copy));
+                helper.assertTrue(copied.pairId() != 0, "the copy holds the pair id");
+                phase[0] = 2;
+                throw new GameTestAssertException("Waiting for the copy to form");
+            }
+            helper.assertTrue(RouterBlock.formed(helper.getBlockState(copy)), "Waiting for the copy to form");
+            helper.assertValueEqual(status(helper, copy), QuantumPairIndex.Status.Kind.NOT_BOUND,
+                    "Waiting for the copy to lose its pair id");
+            for (var cell : cellsA) {
+                var copied = (QuantumCubeBlockEntity) level.getBlockEntity(helper.absolutePos(copy.offset(cell.subtract(a))));
+                helper.assertValueEqual(copied.pairId(), 0L, "every block of the copy is cleared");
+            }
+            helper.assertValueEqual(status(helper, a), QuantumPairIndex.Status.Kind.LINKED, "the pair stays linked");
+            helper.assertValueEqual(status(helper, b), QuantumPairIndex.Status.Kind.LINKED, "the pair stays linked");
+            helper.assertTrue(linked(helper, cableA, nodeB), "the cables stay in one domain");
+            RouterEvidence.write("quantumcubecopyleavesthepairlinked", 3, Map.of("pair", "linked", "copy",
+                    "not bound", "domain", "joined"));
+            fixtures.close();
+        });
+    }
+
+    /**
      * Sneak-use in the air clears a Memory Card, as AE2 clears its own copied settings: the cube it held goes too, so the
      * card no longer binds another cube to it.
      */

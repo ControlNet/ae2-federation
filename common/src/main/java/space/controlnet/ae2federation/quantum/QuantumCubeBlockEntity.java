@@ -63,8 +63,10 @@ public final class QuantumCubeBlockEntity extends RouterBlockEntity {
             var max = bodyMax();
             var section = QuantumCubeShape.of(worldPosition, max);
             if (section.isPresent()) {
-                service.track(new QuantumPairIndex.Cube(dimension, worldPosition, section.get(),
-                        settle(serverLevel, worldPosition, max)));
+                long id = settle(serverLevel, worldPosition, max);
+                var to = id == 0 || boundTo == null ? null
+                        : new QuantumPairIndex.Key(boundTo.dimension().location().toString(), boundTo.pos());
+                service.track(new QuantumPairIndex.Cube(dimension, worldPosition, section.get(), id, to));
                 tracked = true;
                 return;
             }
