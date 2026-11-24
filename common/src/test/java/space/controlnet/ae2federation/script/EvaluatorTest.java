@@ -382,6 +382,16 @@ final class EvaluatorTest {
                 Arguments.of("'  a\\tb\\n'.split()", "['a', 'b']"),
                 Arguments.of("' x '.strip()", "'x'"),
                 Arguments.of("'\\t x\\n'.strip()", "'x'"),
+                // CPython's whitespace and repr beyond ASCII (review of 2026-11-24): the full-width space of Chinese
+                // text, no-break spaces and separators are whitespace; non-printable characters are escaped.
+                Arguments.of("'a b　c\u001cd\u0085e'.split()", "['a', 'b', 'c', 'd', 'e']"),
+                Arguments.of("'　 pad '.strip()", "'pad'"),
+                Arguments.of("int('　 42 ')", "42"),
+                Arguments.of("float('  1.5　')", "1.5"),
+                Arguments.of("'x😀y'.replace('', '-')", "'-x-😀-y-'"),
+                Arguments.of("'a b　c\u0085d​e'", "'a\\xa0b\\u3000c\\x85d\\u200be'"),
+                Arguments.of("'\u007f\u0080 😀󠀁'",
+                        "'\\x7f\\x80\\u2028\\ue000😀\\U000e0001'"),
                 Arguments.of("'a' in ['a', 'b']", "True"),
                 Arguments.of("['a'] in [['a']]", "True"),
                 Arguments.of("None in [1, None]", "True"),

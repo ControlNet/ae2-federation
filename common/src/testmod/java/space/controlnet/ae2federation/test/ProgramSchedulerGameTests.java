@@ -40,6 +40,7 @@ import space.controlnet.ae2federation.automation.ProgramScheduler;
 import space.controlnet.ae2federation.automation.ProgramStore;
 import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.automation.WebSockets;
+import space.controlnet.ae2federation.domain.CableCapacityLimit;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.automation.TestEnd;
@@ -698,6 +699,50 @@ public final class ProgramSchedulerGameTests {
             helper.assertValueEqual(scene.running(0), 1, "The run goes on after the cut");
         }).then(40, () -> helper.assertValueEqual(scene.log(0), List.of("started", "done: 10"),
                 "One network before the cut, none in the device's new domain")).finish(fixtures::close);
+    }
+
+    /**
+     * A domain stopped over cable capacity shares nothing, programs included: its device's installations pause, as for
+     * a device that holds less than they reserve, and resume once the domain runs again (review of 2026-11-24).
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void aStoppedDomainPausesItsPrograms(GameTestHelper helper) {
+        var scene = Scene.build(helper, "sched_domain_stopped", """
+                def tick() -> int:
+                    return mc.time()
+                """);
+        var level = helper.getLevel();
+        var domain = new space.controlnet.ae2federation.domain.FederationDomainId[1];
+        var startsBefore = new long[1];
+        scene.whenReady(() -> {
+            var installation = scene.scheduler().install(scene.device(), "sched_domain_stopped", "tick", List.of());
+            scene.installed(installation);
+            scene.scheduler().setTrigger(installation.id(), new Installation.Trigger.Schedule(1));
+            scene.scheduler().setInterval(installation.id(), 5);
+            domain[0] = ComputingDevices.get(level).domainOf(level, scene.device()).orElseThrow();
+        }).then(12, () -> {
+            helper.assertTrue(scene.log(0).contains("started"), "It runs while the domain runs");
+            // The device and the interface on one cable: two, over a capacity of one.
+            CableCapacityLimit.set(true, 1);
+        }).until(() -> helper.assertTrue(FederationDomainRegistryAccess.get(level).stopped(domain[0]),
+                "Waiting for the domain to stop over capacity")).then(2, () -> {
+            helper.assertValueEqual(scene.log(0).getLast(), "paused: the domain stopped: a cable is over its capacity",
+                    "The log says why it waits");
+            startsBefore[0] = starts(scene);
+        }).then(20, () -> {
+            helper.assertValueEqual(starts(scene), startsBefore[0], "Nothing starts while the domain is stopped");
+            CableCapacityLimit.set(true, CableCapacityLimit.DEFAULT_CAPACITY);
+        }).then(12, () -> {
+            var log = scene.log(0);
+            var resumed = log.lastIndexOf("resumed");
+            helper.assertTrue(resumed > 0 && log.subList(resumed, log.size()).contains("started"),
+                    "It resumes and starts again once the domain runs: " + log);
+        }).finish(() -> CableCapacityLimit.set(true, CableCapacityLimit.DEFAULT_CAPACITY));
+    }
+
+    private static long starts(Scene scene) {
+        return scene.log(0).stream().filter(line -> line.equals("started")).count();
     }
 
     /**

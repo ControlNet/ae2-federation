@@ -75,6 +75,8 @@ public final class ProgramScheduler {
     private final Map<String, Priced> costs = new HashMap<>();
     /** The devices that started nothing last tick because they hold less than their installations reserve. */
     private final java.util.Set<String> paused = new HashSet<>();
+    /** Devices whose domain was stopped last tick, over capacity or unpowered: their installations wait. */
+    private final java.util.Set<String> domainStopped = new HashSet<>();
 
     private record Priced(Installation installation, Map<String, String> texts, InstallationCost cost) {
     }
@@ -527,6 +529,8 @@ public final class ProgramScheduler {
         var seen = new HashSet<String>();
         var budgets = new HashMap<String, Optional<DeviceBudget>>();
         var pausedNow = new HashSet<String>();
+        var stoppedNow = new HashSet<String>();
+        var stops = new HashMap<FederationDomainId, Optional<String>>();
         var gridListeners = false;
         var blockListeners = false;
         share.begin();
@@ -542,6 +546,16 @@ public final class ProgramScheduler {
             if (domain.isEmpty()) {
                 if (!state.runs.isEmpty() || state.condition != null) {
                     stop(installation.id(), "the device is not loaded");
+                }
+                continue;
+            }
+            // A stopped domain shares nothing, programs included: runs and triggers wait, as on a paused device, and
+            // events are not read, since reading them reaches across the domain (review of 2026-11-24).
+            var stop = stops.computeIfAbsent(domain.get(), this::stopReason);
+            if (stop.isPresent()) {
+                if (stoppedNow.add(installation.device()) && !domainStopped.contains(installation.device())) {
+                    devices().installations().stream().filter(i -> i.device().equals(installation.device()))
+                            .forEach(i -> log(i.id(), "paused: " + stop.get()));
                 }
                 continue;
             }
@@ -561,7 +575,7 @@ public final class ProgramScheduler {
                 }
                 continue;
             }
-            if (paused.contains(installation.device())) {
+            if (paused.contains(installation.device()) || domainStopped.contains(installation.device())) {
                 log(installation.id(), "resumed");
             }
             if (installation.trigger() instanceof Installation.Trigger.Schedule schedule && now >= state.nextSchedule) {
@@ -604,11 +618,25 @@ public final class ProgramScheduler {
         costs.keySet().retainAll(seen);
         paused.clear();
         paused.addAll(pausedNow);
+        domainStopped.clear();
+        domainStopped.addAll(stoppedNow);
         ProgramEvents.listen(gridListeners, blockListeners);
         if (!AutomationRule.websockets()) {
             // Turned off on this server: no connection stays open, whoever opened it.
             WebSockets.ifPresent(server, WebSockets::disconnectAll);
         }
+    }
+
+    /** Why the domain has stopped as a whole, or empty while it runs. */
+    private Optional<String> stopReason(FederationDomainId domain) {
+        var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(server.overworld());
+        if (registry.overCapacity(domain)) {
+            return Optional.of("the domain stopped: a cable is over its capacity");
+        }
+        if (registry.unpowered(domain)) {
+            return Optional.of("the domain stopped: its Beam Converters cannot pay its use");
+        }
+        return Optional.empty();
     }
 
     private void checkEvent(State state, Installation.Trigger.Event event, FederationDomainId domain, long now) {

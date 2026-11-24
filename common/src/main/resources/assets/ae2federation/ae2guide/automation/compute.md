@@ -61,3 +61,10 @@ Taking a part or a cell out of a device keeps every installation. While the devi
 than the fixed reservations, or fewer processes than installations, the whole device pauses: runs wait where they are,
 and triggers, events included, start their runs once it resumes. Each installation's log says "paused", then
 "resumed" once the device holds enough again.
+
+## When the domain stops
+
+A domain over [capacity](../mechanics/capacity.md), or one whose [Beam Converters](../items/beam_converter.md) cannot
+pay, shares nothing, and its programs share nothing either: every device in it pauses as a shrunk device does. Runs
+wait where they are and start nothing new; events are not watched until the domain runs again. Each installation's log
+says why, such as "paused: the domain stopped: a cable is over its capacity", then "resumed".

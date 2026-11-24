@@ -72,3 +72,31 @@ Nothing was changed. Two throwaway probes were run and then removed: a CPython d
 - The editor and graph client code, and the checker beyond its run limits (also left out on 2026-11-15).
 - The ECO - N package beyond the 21.2.15 screen change (screen tests added in 4b967c95).
 - Dev-only code: PatternProjection, Lanes, statistics. That belongs to a dev review.
+
+## Fixes (owner, 2026-11-24: "1和3吧")
+
+Finding 2 (rescan permission) was not chosen and stays open.
+
+1. **Stopped domains pause their programs.**
+   - The owner was offered "pause" or "calls fail"; they answered "1和3" without choosing, so the assistant's
+     recommendation, pause, was applied.
+   - `ProgramScheduler.tick` checks `stopReason(domain)`, once per domain per tick, before the device budget. While the
+     domain is over capacity or unpowered, the device's installations neither tick nor start, and events are not read,
+     since reading them reaches across the domain.
+   - Each installation logs "paused: the domain stopped: a cable is over its capacity" (or "...: its Beam Converters
+     cannot pay its use") once, then "resumed".
+   - GameTest `aStoppedDomainPausesItsPrograms` (manifest `programs.domain-stopped`) fails before the fix.
+   - Guide: `automation/compute.md`, section "When the domain stops" (EN and ZH).
+   - UI scenario `ui.automation-domain-stopped`; before/after image
+     `build/domain-stopped-check/domain-stopped-before-after.png`.
+2. **CPython strings.** In `Ops`:
+   - `isSpace` holds `str.isspace`'s exact set, measured on CPython 3.12.2. It is used by `split()`, `strip()`, `int()`
+     and `float()`.
+   - `replace("", x)` works by code points.
+   - `stringRepr` escapes what `str.isprintable` rejects (`\xhh`, `\uhhhh`, `\Uhhhhhhhh`), using Java's
+     `Character.getType` (Unicode 15 in both).
+   - Seven new `EvaluatorTest.cpython` cases; six failed before the fix (`float` already passed, as Java's `strip`
+     takes U+2003 and U+3000).
+   - UI scenario `ui.automation-strings`; before/after image `build/strings-check/strings-before-after.png`.
+   - The language still reads no `\x`/`\u` escapes in literals, so a repr with them cannot be pasted back. That was
+     already true of control characters.

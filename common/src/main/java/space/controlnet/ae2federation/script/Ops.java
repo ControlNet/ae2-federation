@@ -1005,6 +1005,21 @@ public final class Ops {
         return best;
     }
 
+    /**
+     * Whether CPython's repr writes the character as it is ({@code str.isprintable}): not a control, format, surrogate,
+     * private-use, unassigned or separator character, except the space.
+     */
+    private static boolean printable(int c) {
+        if (c == ' ') {
+            return true;
+        }
+        return switch (Character.getType(c)) {
+            case Character.CONTROL, Character.FORMAT, Character.SURROGATE, Character.PRIVATE_USE, Character.UNASSIGNED,
+                    Character.LINE_SEPARATOR, Character.PARAGRAPH_SEPARATOR, Character.SPACE_SEPARATOR -> false;
+            default -> true;
+        };
+    }
+
     private static String stringRepr(String s) {
         char quote = s.indexOf('\'') >= 0 && s.indexOf('"') < 0 ? '"' : '\'';
         var out = new StringBuilder().append(quote);
@@ -1017,10 +1032,14 @@ public final class Ops {
                 default -> {
                     if (c == quote) {
                         out.append('\\').append((char) c);
-                    } else if (c < 0x20 || c == 0x7f) {
-                        out.append(String.format("\\x%02x", c));
-                    } else {
+                    } else if (printable(c)) {
                         out.appendCodePoint(c);
+                    } else if (c < 0x100) {
+                        out.append(String.format("\\x%02x", c));
+                    } else if (c < 0x10000) {
+                        out.append(String.format("\\u%04x", c));
+                    } else {
+                        out.append(String.format("\\U%08x", c));
                     }
                 }
             }
@@ -1150,7 +1169,7 @@ public final class Ops {
         }
         if (v instanceof String s) {
             Meter.work(s.length());
-            var text = s.strip();
+            var text = strip(s);
             if (!INT.matcher(text).matches()) {
                 throw valueError("invalid literal for int() with base 10: " + repr(s));
             }
@@ -1170,7 +1189,7 @@ public final class Ops {
         }
         if (v instanceof String s) {
             Meter.work(s.length());
-            var text = s.strip();
+            var text = strip(s);
             if (!FLOAT.matcher(text).matches()) {
                 throw valueError("could not convert string to float: " + repr(s));
             }
@@ -1652,7 +1671,7 @@ public final class Ops {
             case "upper" -> sized(s.toUpperCase(Locale.ROOT));
             case "strip" -> {
                 Meter.work(s.length());
-                yield s.strip();
+                yield strip(s);
             }
             case "split" -> split(s, a[0]);
             case "join" -> {
@@ -1684,10 +1703,13 @@ public final class Ops {
                 var old = (String) a[0];
                 var replacement = (String) a[1];
                 if (old.isEmpty()) {
-                    long size = s.length() + (s.length() + 1L) * replacement.length();
+                    // Between code points, as CPython: Java's replace would split a character outside the BMP.
+                    long size = s.length() + (s.codePointCount(0, s.length()) + 1L) * replacement.length();
                     grow(size);
                     made(size);
-                    yield s.replace(old, replacement);
+                    var out = new StringBuilder((int) size).append(replacement);
+                    s.codePoints().forEach(c -> out.appendCodePoint(c).append(replacement));
+                    yield out.toString();
                 }
                 var search = new Search(old);
                 long matches = 0;
@@ -1738,13 +1760,43 @@ public final class Ops {
         return s;
     }
 
+    /**
+     * CPython's whitespace ({@code str.isspace}), which {@code split()}, {@code strip()}, {@code int()} and
+     * {@code float()} take away: Java's own leaves out the no-break spaces and U+001C-U+001F, U+0085. Every one of
+     * them is in the BMP, so a {@code char} is tested.
+     */
+    static boolean isSpace(int c) {
+        return c >= 0x09 && c <= 0x0d || c >= 0x1c && c <= 0x20 || c == 0x85 || c == 0xa0 || c == 0x1680
+                || c >= 0x2000 && c <= 0x200a || c == 0x2028 || c == 0x2029 || c == 0x202f || c == 0x205f
+                || c == 0x3000;
+    }
+
+    private static String strip(String s) {
+        int start = 0;
+        int end = s.length();
+        while (start < end && isSpace(s.charAt(start))) {
+            start++;
+        }
+        while (end > start && isSpace(s.charAt(end - 1))) {
+            end--;
+        }
+        return s.substring(start, end);
+    }
+
     private static ListValue split(String s, Object separator) {
         var parts = new ArrayList<Object>();
         if (separator == null) {
             Meter.work(s.length());
-            for (var part : s.strip().split("\\s+")) {
-                if (!part.isEmpty()) {
-                    parts.add(part);
+            for (int i = 0; i < s.length(); ) {
+                while (i < s.length() && isSpace(s.charAt(i))) {
+                    i++;
+                }
+                int start = i;
+                while (i < s.length() && !isSpace(s.charAt(i))) {
+                    i++;
+                }
+                if (i > start) {
+                    parts.add(s.substring(start, i));
                 }
             }
             grow(parts.size());
