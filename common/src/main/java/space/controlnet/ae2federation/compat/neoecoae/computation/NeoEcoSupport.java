@@ -6,15 +6,18 @@ import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 
 /**
  * The one entry into this package that refers to no Neo ECO class: registers the Federation computation system when
- * Neo ECO AE Extension 21.2.1 or later is loaded, and its N1 controller on Neo ECO Prototype's C1 structure when Neo
- * ECO Prototype 1.4.0 or later is loaded too. Earlier versions lack the calculator factory or the interface-face hook
- * they build on, and a pack with one still loads, without them.
+ * Neo ECO AE Extension 21.2.15 or later is loaded, and its N1 controller on Neo ECO Prototype's C1 structure when Neo
+ * ECO Prototype 1.4.6 or later is loaded too. These are the versions the package is compiled against: the controller
+ * screen calls Neo ECO's public GUI API directly, and 21.2.15 changed it (MultiblockBuilderUI.Config gained the
+ * multiblock definition), so an older Neo ECO would crash the server when the controller is opened (owner, 2026-11-24:
+ * drop older versions rather than call both APIs). A pack with an older version still loads, without these blocks.
  */
 public final class NeoEcoSupport {
     public static final String MOD_ID = "neoecoae";
     public static final String PROTOTYPE_MOD_ID = "neoecoprototype";
-    private static final DefaultArtifactVersion MINIMUM = new DefaultArtifactVersion("21.2.1");
-    private static final DefaultArtifactVersion PROTOTYPE_MINIMUM = new DefaultArtifactVersion("1.4.0");
+    /** The versions {@code addonApi} compiles against; the guide's example packs require the same. */
+    public static final String MINIMUM = "21.2.15";
+    public static final String PROTOTYPE_MINIMUM = "1.4.6";
 
     private NeoEcoSupport() {
     }
@@ -23,15 +26,19 @@ public final class NeoEcoSupport {
         return loaded(MOD_ID, MINIMUM);
     }
 
-    /** Whether N1 registers: Neo ECO Prototype's C1 has the interface-face hook N1 builds on since 1.4.0. */
+    /** Whether N1 registers: on Neo ECO Prototype's C1, beside a Neo ECO this package supports. */
     public static boolean prototypeAvailable() {
         return available() && loaded(PROTOTYPE_MOD_ID, PROTOTYPE_MINIMUM);
     }
 
-    private static boolean loaded(String modId, DefaultArtifactVersion minimum) {
+    /** Whether {@code version} is {@code minimum} or later, as NeoForge compares mod versions. */
+    static boolean atLeast(String version, String minimum) {
+        return new DefaultArtifactVersion(version).compareTo(new DefaultArtifactVersion(minimum)) >= 0;
+    }
+
+    private static boolean loaded(String modId, String minimum) {
         return ModList.get().getModContainerById(modId)
-                .map(container -> new DefaultArtifactVersion(container.getModInfo().getVersion().toString())
-                        .compareTo(minimum) >= 0)
+                .map(container -> atLeast(container.getModInfo().getVersion().toString(), minimum))
                 .orElse(false);
     }
 

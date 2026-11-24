@@ -8,6 +8,7 @@ import appeng.api.parts.PartHelper;
 import appeng.api.util.AEColor;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
 import appeng.core.definitions.AEParts;
+import com.lowdragmc.lowdraglib2.gui.factory.BlockUIMenuType;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -26,6 +27,7 @@ import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.automation.AutomationInterfaceBlockEntity;
 import space.controlnet.ae2federation.automation.ComputingDevices;
@@ -39,7 +41,7 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
 
 /**
  * The Federation computation system on Neo ECO's computation structure. Its own group, since it registers only with
- * Neo ECO 21.2.1 or later, and the profiles on older versions run the {@code neoecoae} group.
+ * Neo ECO 21.2.15 or later (NeoEcoSupport), and the profiles on older versions run the {@code neoecoae} group.
  */
 @PrefixGameTestTemplate(false)
 public final class NeoEcoComputingCompatGameTests {
@@ -640,6 +642,47 @@ public final class NeoEcoComputingCompatGameTests {
         var domain = registry.federationDomainOf(FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(b)));
         return domain.isPresent() && domain.get().nodes().contains(
                 FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(a)));
+    }
+
+    /**
+     * Its screen builds on the server as a right-click builds it: Neo ECO opens it through the controller's createUI,
+     * which calls Neo ECO's GUI API directly, so a change there fails here instead of crashing a server (Neo ECO 21.2.15
+     * changed the Structure Builder's Config; the old call threw NoSuchMethodError and stopped the server, 2026-11-24).
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 300)
+    public static void federationComputationSystemScreenOpens(GameTestHelper helper) {
+        var controller = placeLinkedFederationComputationSystem(helper, "eco_computation_system_l4");
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(formed(helper.getBlockState(controller)), "it forms"))
+                .thenExecute(() -> assertScreenOpens(helper, controller))
+                .thenSucceed();
+    }
+
+    /**
+     * Builds {@code controller}'s menu as LDLib2's BlockUIMenuType does when Neo ECO's block is right-clicked (holder,
+     * then createMenu, which calls the block entity's createUI); it must build. A NeoForge FakePlayer stands in for the
+     * player: a logged-in mock player would get Neo ECO's login payloads, which its connection refuses, and a
+     * FakePlayer's own openMenu opens nothing.
+     */
+    static void assertScreenOpens(GameTestHelper helper, BlockPos controller) {
+        var state = helper.getBlockState(controller);
+        if (!(state.getBlock() instanceof BlockUIMenuType.BlockUI screen)) {
+            helper.fail("the controller is not an LDLib2 block screen: " + state);
+            return;
+        }
+        var player = FakePlayerFactory.getMinecraft(helper.getLevel());
+        // Neo ECO builds the screen only for a player within reach of the block.
+        var front = helper.absolutePos(controller.north());
+        player.moveTo(front.getX() + 0.5, front.getY(), front.getZ() + 0.5, 0, 0);
+        try {
+            var menu = new BlockUIMenuType.BlockUIHolder(screen, player, helper.absolutePos(controller), state)
+                    .createMenu(1, player.getInventory(), player);
+            helper.assertTrue(menu != null, "the controller's screen builds");
+            menu.removed(player);
+        } catch (LinkageError changedApi) {
+            // An Error would stop the test server and the tests after this one; fail this test alone.
+            helper.fail("building the controller's screen threw " + changedApi);
+        }
     }
 
     static List<String> log(ProgramScheduler scheduler, String installation) {

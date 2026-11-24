@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.compat;
 
 import static space.controlnet.ae2federation.compat.NeoEcoComputingCompatGameTests.CABLE;
 import static space.controlnet.ae2federation.compat.NeoEcoComputingCompatGameTests.INTERFACE;
+import static space.controlnet.ae2federation.compat.NeoEcoComputingCompatGameTests.assertScreenOpens;
 import static space.controlnet.ae2federation.compat.NeoEcoComputingCompatGameTests.communicationInterface;
 import static space.controlnet.ae2federation.compat.NeoEcoComputingCompatGameTests.deleteProgram;
 import static space.controlnet.ae2federation.compat.NeoEcoComputingCompatGameTests.formed;
@@ -25,7 +26,7 @@ import space.controlnet.ae2federation.automation.ProgramScheduler;
 
 /**
  * ECO - N1: the Federation computation system on Neo ECO Prototype's C1 structure, which registers only beside Neo ECO
- * Prototype 1.4.0 or later. Its own group, since the {@code neoecoprototype} group also runs where N1 does not exist.
+ * Prototype 1.4.6 or later (NeoEcoSupport). Its own group, since the {@code neoecoprototype} group also runs where N1 does not exist.
  */
 @PrefixGameTestTemplate(false)
 public final class NeoEcoPrototypeComputingCompatGameTests {
@@ -70,6 +71,16 @@ public final class NeoEcoPrototypeComputingCompatGameTests {
                     scheduler.uninstall(installation[0]);
                     deleteProgram(helper, file);
                 })
+                .thenSucceed();
+    }
+
+    /** N1's screen opens on a right-click, as N4's: see {@link NeoEcoComputingCompatGameTests#assertScreenOpens}. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 300)
+    public static void n1ScreenOpens(GameTestHelper helper) {
+        var controller = placeLinkedFederationComputationSystem(helper, L1, N1);
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(formed(helper.getBlockState(controller)), "N1 forms"))
+                .thenExecute(() -> assertScreenOpens(helper, controller))
                 .thenSucceed();
     }
 

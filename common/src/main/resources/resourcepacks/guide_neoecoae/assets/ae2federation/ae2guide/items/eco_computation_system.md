@@ -25,7 +25,7 @@ item_ids:
 The survival computing device. It is Neo ECO's
 [computation subsystem](neoecoae:neoecoae_intro/computation_system.md) with an ECO - N4, N6 or N9 Federation
 Computation Subsystem Controller in place of Neo ECO's controller, and it runs Federation programs instead of crafting
-jobs. It needs Neo ECO 21.2.1 or later.
+jobs. It needs Neo ECO 21.2.15 or later.
 
 * **Building:** as Neo ECO's structure, with two differences: our controller, and Computation Casing where Neo ECO
   puts its ME interface. A network switch module is refused. The controller's tier must be at least that of the

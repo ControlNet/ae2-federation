@@ -21,8 +21,8 @@ The smallest Federation Computation System, a tier below
 <ItemLink id="ae2federation:eco_computation_system_l4" />. It is Neo ECO Prototype's
 [L1 computation system](neoecoprototype:neoecoprototype_intro/computation_system.md) with an ECO - N1 Federation
 Computation Subsystem Controller in place of the <ItemLink id="neoecoprototype:simplify_computation_system" />, and it
-runs Federation programs instead of crafting jobs. This page appears because Neo ECO Prototype 1.4.0 or later is
-installed.
+runs Federation programs instead of crafting jobs. This page appears because Neo ECO Prototype 1.4.6 or later is
+installed, beside Neo ECO 21.2.15 or later.
 
 * **Building:** as the L1 structure, with our controller, and one to four
   <ItemLink id="ae2federation:eco_computation_interface" />s anywhere in the side face, the 2x3 end where the L1

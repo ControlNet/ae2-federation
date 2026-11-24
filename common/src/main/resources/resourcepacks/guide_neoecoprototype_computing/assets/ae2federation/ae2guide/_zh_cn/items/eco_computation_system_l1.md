@@ -17,7 +17,7 @@ item_ids:
   <ItemImage id="ae2federation:eco_computation_interface" scale="3" />
 </Row>
 
-最小的联邦计算系统， 比<ItemLink id="ae2federation:eco_computation_system_l4" />低一级。 它就是Neo ECO Prototype的[L1计算子系统](neoecoprototype:neoecoprototype_intro/computation_system.md)， 只是把<ItemLink id="neoecoprototype:simplify_computation_system" />换成ECO - N1联邦计算子系统主机； 它运行联邦程序， 而不是合成任务。 装了Neo ECO Prototype 1.4.0或更高版本才会出现这一页。
+最小的联邦计算系统， 比<ItemLink id="ae2federation:eco_computation_system_l4" />低一级。 它就是Neo ECO Prototype的[L1计算子系统](neoecoprototype:neoecoprototype_intro/computation_system.md)， 只是把<ItemLink id="neoecoprototype:simplify_computation_system" />换成ECO - N1联邦计算子系统主机； 它运行联邦程序， 而不是合成任务。 装了Neo ECO Prototype 1.4.6或更高版本、 Neo ECO 21.2.15或更高版本才会出现这一页。
 
 * **搭建**： 和L1结构相同， 只是主机换成我们的， 侧面（L1结构放接口的那个2x3端面）的任意位置放1到4个<ItemLink id="ae2federation:eco_computation_interface" />， 其余位置放外壳。 那里不能放Neo ECO Prototype自己的接口。 主机的结构搭建器会搭出带一个通讯接口的结构。
 * **连接、能量、容量和ID**： 和其他联邦计算系统主机相同。 结构成型后， 每个接口接一根<ItemLink id="ae2federation:cable" />； ME网络接不进这个结构， 它也不是合成CPU。

@@ -35,10 +35,11 @@ public final class GuideExamplePacks {
             new Pack("guide_extendedae_plus", List.of("extendedae_plus", "extendedae")),
             new Pack("guide_ae2lt", List.of("ae2lt")),
             new Pack("guide_data_energistics", List.of("data_energistics")),
-            new Pack("guide_neoecoae", List.of("neoecoae")),
+            // The ECO - N blocks these name register only beside the versions NeoEcoSupport names.
+            new Pack("guide_neoecoae", List.of("neoecoae", "neoecoae@21.2.15")),
             new Pack("guide_neoecoprototype", List.of("neoecoprototype", "neoecoae")),
-            // N1 registers only beside Neo ECO Prototype 1.4.0 or later.
-            new Pack("guide_neoecoprototype_computing", List.of("neoecoprototype", "neoecoae", "neoecoprototype@1.4.0")),
+            new Pack("guide_neoecoprototype_computing", List.of("neoecoprototype", "neoecoae", "neoecoae@21.2.15",
+                    "neoecoprototype@1.4.6")),
             new Pack("guide_omnisequence", List.of("molecularmanipulator")),
             new Pack("guide_useless_mod", List.of("useless_mod")));
 

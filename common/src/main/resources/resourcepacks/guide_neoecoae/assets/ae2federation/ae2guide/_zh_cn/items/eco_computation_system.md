@@ -22,7 +22,7 @@ item_ids:
   <ItemImage id="ae2federation:eco_computation_interface" scale="3" />
 </Row>
 
-生存模式的计算设备。 它就是Neo ECO的[计算子系统](neoecoae:neoecoae_intro/computation_system.md)， 只是把Neo ECO的主机换成ECO - N4、N6或N9联邦计算子系统主机； 它运行联邦程序， 而不是合成任务。 需要Neo ECO 21.2.1或更高版本。
+生存模式的计算设备。 它就是Neo ECO的[计算子系统](neoecoae:neoecoae_intro/computation_system.md)， 只是把Neo ECO的主机换成ECO - N4、N6或N9联邦计算子系统主机； 它运行联邦程序， 而不是合成任务。 需要Neo ECO 21.2.15或更高版本。
 
 * **搭建**： 和Neo ECO的结构相同， 只有两处不同： 主机换成我们的， 以及Neo ECO放ME接口的位置改为计算子系统结构外壳。 不能使用网络交换模块。 主机的等级不能低于核心的等级。 主机的结构搭建器会搭出带一个通讯接口的结构。
 * **连接**： 主机本身不接线缆。 侧面（Neo ECO放ME接口的那个2x3端面）的任意位置要放1到4个<ItemLink id="ae2federation:eco_computation_interface" />。 结构成型后， 每个接口的外侧接一根<ItemLink id="ae2federation:cable" />， 由此加入联邦域。 只有四个接口拼成2x2时， 才能接2x2粗线缆。 没有接口、放了第五个接口或接口放在其他面上时， 结构都无法成型。 ME网络接不进这个结构， 它也不是合成CPU。
