@@ -244,6 +244,10 @@ The matched control uses ExtendedAE 2.2.32, which still has that method: it
 Mixin. This isolates the real Federation conflict from that separate upstream
 ABI error. OmniSequence also declares ExpandedAE 2.1.1 incompatible.
 
+Since 2026-11-11 Federation's metadata declares ExpandedAE as an optional
+dependency with range `[2.1.2,)`. The loader now refuses 2.0.0 and 2.1.1 with a
+dependency message that names the required version, instead of the Mixin crash.
+
 For timeouts, `compat_run.failure_hint` prints the **first** recognized error,
 not the terminal server state. The harmless early world-property message in its
 output is not the timeout cause. The complete terminal logs attribute both ECO

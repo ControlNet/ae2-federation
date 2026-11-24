@@ -426,7 +426,7 @@ public final class ReturnCoverageGameTests {
             }
             if (stage[0] == 8) {
                 helper.assertValueEqual(fixture.inMachine(Items.COBBLESTONE), 3L, "All three jobs actually dispatched");
-                helper.assertValueEqual(fixture.watchedJobs(), 3, "Three distinct real crafting UUIDs remain watched");
+                helper.assertTrue(ledgerHasRunning(helper, fixture), "The third job is watched while it runs");
                 fixture.runMachine(0); // Hand-operated processor consumes the three dispatched ingredients.
                 insert(helper, fixture, bottle, 1);
                 insert(helper, fixture, emerald, 1);
@@ -437,10 +437,9 @@ public final class ReturnCoverageGameTests {
             if (stage[0] == 9) {
                 helper.assertTrue(fixture.ledgerSweeps() >= sweep[0] + 4, "Observe mixed jobs across four cleanup sweeps");
                 var jobs = ledger.jobs(fixture.consumerNetwork());
-                helper.assertValueEqual(jobs.stream().filter(job -> job.end() == CraftingReturnLedger.JobEnd.DONE).count(), 1L,
-                        "One completed job is recorded independently");
-                helper.assertValueEqual(jobs.stream().filter(job -> job.end() == CraftingReturnLedger.JobEnd.CANCELLED).count(), 1L,
-                        "One cancelled job is recorded independently");
+                // An ended job tells nothing more and is forgotten; its debts stay, and the running job holds them.
+                helper.assertValueEqual(jobs.stream().filter(job -> job.end() != CraftingReturnLedger.JobEnd.RUNNING).count(), 0L,
+                        "The completed and the cancelled job are forgotten");
                 helper.assertValueEqual(jobs.stream().filter(job -> job.end() == CraftingReturnLedger.JobEnd.RUNNING).count(), 1L,
                         "The third job remains running");
                 helper.assertValueEqual(fixture.owed(bottle), 3L, "Completed debt is not dropped by mixed summary");
@@ -462,7 +461,7 @@ public final class ReturnCoverageGameTests {
                 helper.assertValueEqual(fixture.transit(output.what()), 0L, "No transit remains");
             }
             helper.assertTrue(PolicyService.get(helper.getLevel()).configured(fixture.storage()).isEmpty(), "Storage was never configured");
-            helper.assertValueEqual(fixture.watchedJobs(), 0, "All three jobs retire only after actual return");
+            helper.assertValueEqual(fixture.watchedJobs(), 0, "All three jobs retire");
             helper.assertTrue(fixture.consumerCpuEmpty(), "The actual native CPU retains no output or task inventory");
             PolicyEvidence.write("projectionmixedjobresponsibilities", 42,
                     Map.of("nativeJobs", "completed,cancelled,running", "storageEverEnabled", "false", "mixedSweeps", "4"));
@@ -615,5 +614,10 @@ public final class ReturnCoverageGameTests {
     private static void insert(GameTestHelper helper, PatternProjectionFixture fixture, AEItemKey key, long amount) {
         helper.assertValueEqual(fixture.providerGrid().getStorageService().getInventory().insert(key, amount,
                 Actionable.MODULATE, IActionSource.empty()), amount, "Hand-operated processor emits actual output");
+    }
+
+    private static boolean ledgerHasRunning(GameTestHelper helper, PatternProjectionFixture fixture) {
+        return CraftingReturnLedger.get(helper.getLevel()).jobs(fixture.consumerNetwork()).stream()
+                .anyMatch(job -> job.end() == CraftingReturnLedger.JobEnd.RUNNING);
     }
 }

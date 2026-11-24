@@ -170,6 +170,28 @@ public final class NativeSourceDomainRegistry {
         cache.clear();
     }
 
+    /**
+     * Forgets the domains and cached discoveries of networks outside {@code loaded} (unloaded or dismantled), which
+     * would otherwise keep their dead Grid, its services and storage handles until the server stops. Generations are
+     * kept (one number per network), so a network that comes back starts past any generation still remembered.
+     */
+    public void retain(Set<OriginNetworkId> loaded) {
+        if (loaded.containsAll(current.keySet()) && loaded.containsAll(cache.keySet())) {
+            return;
+        }
+        mutations++;
+        AuthorityEpoch.advance();
+        current.keySet().retainAll(loaded);
+        cache.keySet().retainAll(loaded);
+    }
+
+    /** Networks with a current domain or a cached discovery. Diagnostic only. */
+    public Set<OriginNetworkId> origins() {
+        var origins = new java.util.HashSet<>(current.keySet());
+        origins.addAll(cache.keySet());
+        return Set.copyOf(origins);
+    }
+
     /** Number of full domain rebuilds (mount-table snapshots). Diagnostic counter only. */
     public long discoveryRebuilds() {
         return discoveryRebuilds;

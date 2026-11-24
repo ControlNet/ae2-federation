@@ -52,6 +52,8 @@ public final class TaskThirtyFivePacketGameTests {
             var receiptBefore = FederationDomainPolicyMenu.currentReceipt(player);
             var policy = PolicyService.get(helper.getLevel());
             var configuredBefore = policy.configuredCount();
+            // Revisions come from the level's one counter, which earlier tests in the same level have advanced.
+            var watermarkBefore = policy.highWatermark();
             var meter = LevelObservabilityService.get(helper.getLevel()).transportMeter();
             var meterBefore = meter.window(requestB.context());
             var inventoryBefore = player.getInventory().getItem(0).copy();
@@ -87,7 +89,7 @@ public final class TaskThirtyFivePacketGameTests {
                 helper.assertValueEqual(policy.configuredCount(), configuredBefore + 1,
                         "Valid menu B action must configure exactly one Policy");
                 helper.assertValueEqual(FederationDomainPolicyMenu.currentRequest(player, FederationDomainPolicyAction.TOGGLE_POLICY)
-                        .orElseThrow().expectedRevision().value(), requestB.expectedRevision().value() + 1,
+                        .orElseThrow().expectedRevision().value(), watermarkBefore + 1,
                         "Valid menu B action must advance its selected Policy revision exactly once");
                 helper.assertValueEqual(dispatch(player, requestB),
                         FederationDomainPolicyActionResult.STALE_SEQUENCE, "Replayed menu B action must not execute twice");

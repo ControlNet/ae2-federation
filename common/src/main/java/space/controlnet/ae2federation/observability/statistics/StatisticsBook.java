@@ -193,13 +193,17 @@ public final class StatisticsBook<K> {
         return rankings.keySet();
     }
 
-    /** Forgets every series and ranking with nothing left in the last day. */
+    /**
+     * Forgets every series and ranking with nothing left in the last day, and releases the shorter ranges of those
+     * no longer written: a key a network stopped holding keeps only its day of points.
+     */
     public void prune(long nowSecond) {
-        gauges.values().removeIf(timeline -> timeline.idle(nowSecond));
-        keyGauges.values().forEach(keys -> keys.values().removeIf(timeline -> timeline.idle(nowSecond)));
+        observed.prune(nowSecond);
+        gauges.values().removeIf(timeline -> timeline.prune(nowSecond));
+        keyGauges.values().forEach(keys -> keys.values().removeIf(timeline -> timeline.prune(nowSecond)));
         keyGauges.values().removeIf(Map::isEmpty);
-        counters.values().removeIf(timeline -> timeline.idle(nowSecond));
-        rankings.values().removeIf(top -> top.idle(nowSecond));
+        counters.values().removeIf(timeline -> timeline.prune(nowSecond));
+        rankings.values().removeIf(top -> top.prune(nowSecond));
     }
 
     /** The book as saved: each timeline's tiers, each ranking's points still inside their range, and the pins. */

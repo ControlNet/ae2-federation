@@ -84,7 +84,7 @@ public record BundleSegment(BlockPos min, BlockPos max, Direction.Axis axis) {
         throw new IllegalArgumentException("Same axis twice: " + first);
     }
 
-    static BlockPos with(BlockPos pos, Direction.Axis axis, int value) {
+    public static BlockPos with(BlockPos pos, Direction.Axis axis, int value) {
         return switch (axis) {
             case X -> new BlockPos(value, pos.getY(), pos.getZ());
             case Y -> new BlockPos(pos.getX(), value, pos.getZ());

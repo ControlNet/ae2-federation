@@ -1,6 +1,8 @@
 package space.controlnet.ae2federation.quantum;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
 import net.minecraft.core.BlockPos;
@@ -13,6 +15,50 @@ import space.controlnet.ae2federation.quantum.QuantumPairIndex.Status;
 final class QuantumPairIndexTest {
     private static Cube cube(String dimension, int x, CableCrossSection section, long pairId) {
         return new Cube(dimension, new BlockPos(x, 64, 0), section, pairId);
+    }
+
+    private static Cube bound(int x, long pairId, int partnerX) {
+        return new Cube("minecraft:overworld", new BlockPos(x, 64, 0), CableCrossSection.ONE_BY_ONE, pairId,
+                new QuantumPairIndex.Key("minecraft:overworld", new BlockPos(partnerX, 64, 0)));
+    }
+
+    @Test
+    void aCopiedCubeLeavesThePairLinkedAndIsStale() {
+        var index = new QuantumPairIndex();
+        var first = bound(0, 5, 10);
+        var second = bound(10, 5, 0);
+        // A creative pick-block or /clone copies the first cube's data, partner included.
+        var copy = bound(20, 5, 10);
+        index.put(first);
+        index.put(second);
+        index.put(copy);
+        assertEquals(new Status(Status.Kind.LINKED, second), index.status(first));
+        assertEquals(new Status(Status.Kind.LINKED, first), index.status(second));
+        assertEquals(new Status(Status.Kind.MORE_THAN_TWO, null), index.status(copy));
+        assertTrue(index.stale(copy), "the copy is no end of the bound pair");
+        assertTrue(index.copy(copy));
+        assertFalse(index.partnerRebound(copy), "its partner's place holds its pair id");
+        assertFalse(index.stale(first));
+        assertFalse(index.stale(second));
+    }
+
+    @Test
+    void aCubeWhosePartnerWasReboundIsStale() {
+        var index = new QuantumPairIndex();
+        var left = bound(0, 1, 10);
+        index.put(left);
+        assertEquals(new Status(Status.Kind.PARTNER_NOT_LOADED, null), index.status(left));
+        assertFalse(index.stale(left), "its partner is not loaded: nothing says the pair is gone");
+        // The partner was bound to another cube while this one was unloaded.
+        var rebound = bound(10, 2, 30);
+        assertEquals(Set.of(2L, 1L), index.put(rebound), "the cube naming it is judged again");
+        assertTrue(index.stale(left));
+        assertTrue(index.partnerRebound(left));
+        assertFalse(index.copy(left));
+        assertFalse(index.stale(rebound));
+        var cleared = new Cube("minecraft:overworld", new BlockPos(10, 64, 0), CableCrossSection.ONE_BY_ONE, 0);
+        index.put(cleared);
+        assertTrue(index.stale(left), "a partner that lost its pair id leaves this one stale too");
     }
 
     @Test

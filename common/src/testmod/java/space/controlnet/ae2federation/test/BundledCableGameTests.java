@@ -1,7 +1,9 @@
 package space.controlnet.ae2federation.test;
 
+import com.mojang.authlib.GameProfile;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -15,6 +17,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import appeng.core.definitions.AEItems;
 import space.controlnet.ae2federation.bundle.BundleContacts;
@@ -228,6 +231,129 @@ public final class BundledCableGameTests {
                 "branchUsesFour", "true", "tooFewRefused", "true", "wrenchDismantles", "true",
                 "dismantleRevertsLayer", "true", "lineRefused", "true", "missingCableRefuses", "true",
                 "threeClicksForm", "true"));
+        clear(helper);
+        fixtures.close();
+        helper.succeed();
+    }
+
+    /**
+     * The server forms a bundle from three clicks only for a player AE2 would let use a wrench there: one who is no
+     * spectator, holds a wrench, and may change every cell. Cables right-clicked onto a bundle extend it only where
+     * the player may change the new cells. A world border that leaves the cells outside stands for any refusal of
+     * {@code mayInteract}, such as spawn protection or a claim.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void bundleChangesNeedAWrenchAndPermission(GameTestHelper helper) {
+        clear(helper);
+        var fixtures = new RouterFixtures(helper);
+        var start = CENTER.offset(-2, 0, -1);
+        for (var pos : BlockPos.betweenClosed(start, start.offset(1, 1, 1))) fixtures.placeFederationCable(pos.immutable());
+        var player = MockServerPlayers.inLevel(helper);
+        player.setPos(Vec3.atCenterOf(helper.absolutePos(CENTER.above(3))));
+        player.setGameMode(GameType.SURVIVAL);
+        Runnable form = () -> BundleInteraction.form(player, helper.absolutePos(start),
+                helper.absolutePos(start.offset(0, 1, 1)), helper.absolutePos(start.east()), Direction.UP);
+
+        player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        form.run();
+        helper.assertFalse(bundled(helper, start), "no bundle without a wrench");
+        player.setItemInHand(InteractionHand.MAIN_HAND, AEItems.CERTUS_QUARTZ_WRENCH.stack());
+        // The mock player is never a spectator, whatever its game mode; a fake player follows its game mode.
+        var spectator = FakePlayerFactory.get(helper.getLevel(),
+                new GameProfile(UUID.nameUUIDFromBytes("bundle-spectator".getBytes()), "bundle-spectator"));
+        spectator.setPos(player.position());
+        spectator.setItemInHand(InteractionHand.MAIN_HAND, AEItems.CERTUS_QUARTZ_WRENCH.stack());
+        spectator.gameMode.changeGameModeForPlayer(GameType.SPECTATOR);
+        BundleInteraction.form(spectator, helper.absolutePos(start), helper.absolutePos(start.offset(0, 1, 1)),
+                helper.absolutePos(start.east()), Direction.UP);
+        spectator.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
+        helper.assertFalse(bundled(helper, start), "no bundle for a spectator");
+        var border = helper.getLevel().getWorldBorder();
+        double centreX = border.getCenterX();
+        double centreZ = border.getCenterZ();
+        double size = border.getSize();
+        var far = helper.absolutePos(start).offset(10_000, 0, 10_000);
+        Runnable shut = () -> {
+            border.setCenter(far.getX(), far.getZ());
+            border.setSize(16);
+        };
+        Runnable reopen = () -> {
+            border.setCenter(centreX, centreZ);
+            border.setSize(size);
+        };
+        shut.run();
+        try {
+            form.run();
+            helper.assertFalse(bundled(helper, start), "no bundle where the player may not change the cells");
+        } finally {
+            reopen.run();
+        }
+        form.run();
+        helper.assertTrue(bundled(helper, start), "a wrench and permission form it");
+
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(RouterRegistration.FEDERATION_CABLE_ITEM.get(), 8));
+        shut.run();
+        try {
+            use(helper, player, start.east(), Direction.EAST);
+            helper.assertTrue(helper.getBlockState(start.east(2)).isAir(), "no extension where the player may not build");
+        } finally {
+            reopen.run();
+        }
+        use(helper, player, start.east(), Direction.EAST);
+        helper.assertTrue(bundled(helper, start.east(2)), "the extension needs only permission");
+        RouterEvidence.write("bundlechangesneedawrenchandpermission", 5, Map.of("noWrench", "refused",
+                "spectator", "refused", "noPermission", "refused", "permitted", "formed", "extendNoPermission",
+                "refused"));
+        clear(helper);
+        fixtures.close();
+        helper.succeed();
+    }
+
+    /**
+     * The server refuses a branch that would share only some layers with a branch on another side of the run, whether
+     * a player branches with cables or forms a box against the run with the wrench, and takes nothing for it; a branch
+     * over the same layers is placed.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void bundleBranchesShareAllTheirLayersOrNone(GameTestHelper helper) {
+        clear(helper);
+        var fixtures = new RouterFixtures(helper);
+        var run = CENTER.west(3);
+        for (var pos : BlockPos.betweenClosed(run, CENTER.offset(2, 1, 1))) fixtures.placeFederationCable(pos.immutable());
+        var level = helper.getLevel();
+        var bundles = BundledCables.get(level);
+        bundles.form(level, new BundleSegment(helper.absolutePos(run), helper.absolutePos(CENTER.offset(2, 1, 1)),
+                Direction.Axis.X));
+        var player = MockServerPlayers.inLevel(helper);
+        player.setPos(Vec3.atCenterOf(helper.absolutePos(CENTER.above(3))));
+        player.setGameMode(GameType.SURVIVAL);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(RouterRegistration.FEDERATION_CABLE_ITEM.get(), 12));
+
+        // A click in the middle of a cell centres the branch on that cell's far boundary: these take the west and
+        // centre layers.
+        use(helper, player, CENTER.west().south(), Direction.SOUTH);
+        helper.assertTrue(bundled(helper, CENTER.south(2)) && bundled(helper, CENTER.west().south(2)),
+                "the south branch takes the west and centre layers");
+        use(helper, player, CENTER, Direction.NORTH);
+        helper.assertTrue(helper.getBlockState(CENTER.east().north()).isAir(),
+                "a north branch over the centre and east layers is refused");
+        helper.assertValueEqual(player.getMainHandItem().getCount(), 8, "the refused branch used nothing");
+        use(helper, player, CENTER.west(), Direction.NORTH);
+        helper.assertTrue(bundled(helper, CENTER.north()) && bundled(helper, CENTER.west().north()),
+                "a north branch over the same layers is placed");
+
+        // A 2x2 standing on the run's top over the centre and east layers.
+        var box = CENTER.above(2);
+        for (var pos : BlockPos.betweenClosed(box, box.offset(1, 1, 1))) fixtures.placeFederationCable(pos.immutable());
+        player.setItemInHand(InteractionHand.MAIN_HAND, AEItems.CERTUS_QUARTZ_WRENCH.stack());
+        BundleInteraction.form(player, helper.absolutePos(box), helper.absolutePos(box.offset(1, 0, 1)),
+                helper.absolutePos(box.above()), Direction.UP);
+        helper.assertFalse(bundled(helper, box), "a wrench box that would be such a branch is refused");
+        RouterEvidence.write("bundlebranchessharealltheirlayersornone", 5, Map.of("southBranch", "placed",
+                "overlappingBranch", "refused", "refusedUsesNothing", "true", "alignedBranch", "placed",
+                "overlappingWrenchBox", "refused"));
         clear(helper);
         fixtures.close();
         helper.succeed();

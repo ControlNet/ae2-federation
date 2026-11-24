@@ -72,6 +72,37 @@ class TopKeysTest {
     }
 
     @Test
+    void pruningChangesNothingAnyRangeShowsFromThenOn() {
+        var pruned = new TopKeys<String>(4);
+        var kept = new TopKeys<String>(4);
+        var random = new java.util.Random(11);
+        var keys = java.util.List.of("iron", "gold", "copper", "tin", "lead", "zinc", "coal", "dirt", "sand", "clay");
+        // A busy hour of many keys, nothing for longer than the shorter ranges show, then a few keys again.
+        for (long second = 0; second < 30_000; second++) {
+            int count = second < 3600 ? 10 : second > 12_000 ? 2 : 0;
+            for (int at = 0; at < count; at++) {
+                var key = keys.get(random.nextInt(count));
+                double amount = 1 + random.nextInt(50);
+                pruned.add(second, key, amount);
+                kept.add(second, key, amount);
+            }
+            if (second % 60 == 0) pruned.prune(second);
+            if (second % 997 == 0) {
+                for (var range : StatisticsRange.values()) {
+                    assertEquals(kept.read(range, second, 100), pruned.read(range, second, 100), range + " at " + second);
+                    var expected = kept.series(range, second, keys);
+                    var actual = pruned.series(range, second, keys);
+                    for (var key : keys) {
+                        assertEquals(java.util.Arrays.toString(expected.get(key)),
+                                java.util.Arrays.toString(actual.get(key)), key + " " + range + " at " + second);
+                    }
+                }
+            }
+        }
+        assertTrue(pruned.prune(30_000 + 86_400 + 600), "nothing left a day later");
+    }
+
+    @Test
     void aKeysSeriesHoldsWhatItMovedInEachPoint() {
         var top = new TopKeys<String>(4);
         top.add(100, "iron", 3);

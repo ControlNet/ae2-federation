@@ -99,6 +99,16 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         buffers.endBatch(CORE);
     }
 
+    /** How {@code cable}'s beam looks this frame; a device carrier that leaves through the cable looks the same. */
+    static CableBeamStyle style(FederationCableBlockEntity cable) {
+        // The beam shows the cable's capacity count against its limit, as the server counted it; not traffic.
+        // The count changes only with the domain, so the alarm follows it directly and needs no hysteresis.
+        double target = cable.capacityLoad();
+        // An unpowered domain's beams alarm at the width of no load.
+        return cable.unpowered() ? CableBeamStyle.fromLoad(0, true)
+                : CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
+    }
+
     @Override
     public void render(FederationCableBlockEntity cable, float partialTick, PoseStack stack,
             MultiBufferSource buffers, int packedLight, int packedOverlay) {
@@ -107,12 +117,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         var pos = cable.getBlockPos();
         double distance = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition()
                 .distanceToSqr(pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5);
-        // The beam shows the cable's capacity count against its limit, as the server counted it; not traffic.
-        // The count changes only with the domain, so the alarm follows it directly and needs no hysteresis.
-        double target = cable.capacityLoad();
-        // An unpowered domain's beams alarm at the width of no load.
-        var style = cable.unpowered() ? CableBeamStyle.fromLoad(0, true)
-                : CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
+        var style = style(cable);
         int detail = CableBeamMesh.detail(distance);
         long tick = level.getGameTime();
         // A 2x2 or 3x3 bundle draws one beam down its middle, over the box its corner cell names.

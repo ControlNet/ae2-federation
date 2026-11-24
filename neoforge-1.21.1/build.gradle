@@ -108,6 +108,10 @@ repositories {
             includeModule('maven.modrinth', 'Ce6I4WUE')
             includeModule('maven.modrinth', 'IiATswDj')
             includeModule('maven.modrinth', 'LNytGWDc')
+            includeModule('maven.modrinth', 'rxYaglEe')
+            includeModule('maven.modrinth', 'ArHeh5Fz')
+            includeModule('maven.modrinth', 'M5jhzZXH')
+            includeModule('maven.modrinth', 'I7k4B65h')
         }
     }
     maven {
@@ -591,12 +595,6 @@ configurations {
         canBeResolved = true
         description = 'Jade, compiled against by the optional Jade plugin only; on no run or test classpath.'
     }
-    neoEcoApi {
-        canBeConsumed = false
-        canBeResolved = true
-        transitive = false
-        description = 'Neo ECO AE Extension and Neo ECO Prototype, compiled against by the optional compat.neoecoae.computation package only; on no run or test classpath.'
-    }
     jeiApi {
         canBeConsumed = false
         canBeResolved = true
@@ -606,7 +604,12 @@ configurations {
     dataEnergisticsApi {
         canBeConsumed = false
         canBeResolved = true
-        description = 'Data Energistics, compiled against by its optional plugin only; on no run or test classpath.'
+        description = 'Data Energistics, compiled against by its optional plugin and its unit test only; on no run classpath.'
+    }
+    addonApi {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Add-ons whose public API the optional adapters under compat/ call; on no run or test classpath.'
     }
     appliedFluxCompatibility {
         canBeConsumed = false
@@ -641,8 +644,9 @@ configurations {
     gtceuTestImplementation.extendsFrom(gtceuCompatibility)
 }
 
-sourceSets.main.compileClasspath += configurations.jadeApi + configurations.dataEnergisticsApi
-sourceSets.main.compileClasspath += configurations.neoEcoApi
+sourceSets.main.compileClasspath += configurations.jadeApi + configurations.dataEnergisticsApi + configurations.addonApi
+sourceSets.test.compileClasspath += configurations.dataEnergisticsApi
+sourceSets.test.runtimeClasspath += configurations.dataEnergisticsApi
 sourceSets.main.compileClasspath += configurations.jeiApi
 
 dependencies {
@@ -650,17 +654,33 @@ dependencies {
     implementation("com.lowdragmc.ldlib2:ldlib2-neoforge-${minecraft_version}:${ldlib2_version}:all")
     // AE2's guide; our topology tag compiles against the oldest GuideME that AE2 19.2.x accepts.
     compileOnly('org.appliedenergistics:guideme:21.1.1')
+    // Dev clients and GameTest servers run the GuideME that player modpacks run (the compat profiles' pin), so our guide
+    // mixins are exercised there. tools/guideme-version.init.gradle runs them on another version, such as 21.1.1.
+    runtimeOnly('org.appliedenergistics:guideme:21.1.22')
     // Jade 15.10.6 for 1.21.1 NeoForge (Modrinth version eYz2YBGT); optional, only its plugin class refers to it.
     // Not compileOnly: test source sets run with the main compile classpath, and a loaded Jade breaks fake players.
     jadeApi('maven.modrinth:jade:eYz2YBGT')
-    // Neo ECO AE Extension 21.2.11 (Modrinth project udZtKfzP, version dpuG3DRu) and Neo ECO Prototype 1.4.2 (project
-    // 3HO3APHb, version CphfMpaT), the versions the compat profiles run. Optional: only compat.neoecoae.computation refers to
-    // them, and each of its parts is reached only when its mod is loaded.
-    neoEcoApi('maven.modrinth:udZtKfzP:dpuG3DRu')
-    neoEcoApi('maven.modrinth:3HO3APHb:CphfMpaT')
-    // Data Energistics 3.3.5 (CurseForge project 1565514, file 9095664), the compat runs' pin; only its plugin class
-    // refers to it.
+    // Data Energistics 3.3.5 (CurseForge project 1565514, file 9095664); only its plugin class refers to it, and it also
+    // links against 3.4.0. The compat runs pin 3.3.5 (3.4.0's in-place upgrade throws).
     dataEnergisticsApi('curse.maven:data-energistics-1565514:9095664')
+    // Add-ons whose public API compat/<mod id>/*Direct classes call; each gate loads its Direct class only after it
+    // recognised one of the add-on's classes. The versions are the ones the compat profiles run.
+    // Neo ECO 21.2.15 (Modrinth udZtKfzP/c26NIHTF): its batch and CPU API is the same in 21.2.0, 21.2.1 and 21.2.9.
+    addonApi('maven.modrinth:udZtKfzP:c26NIHTF') { transitive = false }
+    // Advanced AE 1.6.12 (Modrinth rxYaglEe/ablTMAjP).
+    addonApi('maven.modrinth:rxYaglEe:ablTMAjP') { transitive = false }
+    // AE2 Lightning Tech 2.1.3 (Modrinth ArHeh5Fz/GGx4RqQt), whose types extend Thunderbolt Core 2.0.3's
+    // (Modrinth M5jhzZXH/i3H7uX2O).
+    addonApi('maven.modrinth:ArHeh5Fz:GGx4RqQt') { transitive = false }
+    addonApi('maven.modrinth:M5jhzZXH:i3H7uX2O') { transitive = false }
+    // ExpandedAE 2.1.4 (CurseForge project 1213351, file 9021958; Modrinth stops at 2.1.1). Its Lane targets take the
+    // provider's config manager from 2.1.2 on; older versions are left to AE2's own targets.
+    addonApi('curse.maven:expanded-ae-1213351:9021958') { transitive = false }
+    // JustEnoughCharacters 4.5.30 (Modrinth I7k4B65h/iNnJuUnx): Match.contains is the same in 4.5.14.
+    addonApi('maven.modrinth:I7k4B65h:iNnJuUnx') { transitive = false }
+    // Neo ECO Prototype 1.4.6 (Modrinth 3HO3APHb/Z3Vocdag), on Neo ECO above: only compat.neoecoae.computation's
+    // Prototype parts refer to it, reached only when the mod is loaded.
+    addonApi('maven.modrinth:3HO3APHb:Z3Vocdag') { transitive = false }
     // JEI 19.64.0.455 for 1.21.1 NeoForge (Modrinth project u6dRKJwZ, version iv3KiVkE) and AE2 JEI Integration 1.2.1
     // (CurseForge project 1074338, file 7727898), the recipe-viewers profile's pins; only compat.jei and
     // compat.ae2jeiintegration refer to them, the latter reached only when its mod is loaded.

@@ -65,6 +65,34 @@ class TimelineTest {
     }
 
     @Test
+    void pruningChangesNothingAnyRangeShowsFromThenOn() {
+        var pruned = new Timeline();
+        var kept = new Timeline();
+        // Written for an hour, idle past every range but the day, then written again.
+        for (long second = 0; second < 20_000; second++) {
+            if (second < 3600 || second > 9000) {
+                pruned.add(second, second % 17);
+                kept.add(second, second % 17);
+            }
+            if (second % 60 == 0) assertFalse(pruned.prune(second));
+            if (second % 499 == 0) {
+                for (var range : StatisticsRange.values()) {
+                    assertArrayEquals(kept.read(range, second), pruned.read(range, second), range + " at " + second);
+                    assertArrayEquals(kept.readCounts(range, second), pruned.readCounts(range, second));
+                }
+                var expected = kept.save();
+                var actual = pruned.save();
+                for (int tier = 0; tier < expected.length; tier++) {
+                    // A released range saved nothing that any range still shows.
+                    if (actual[tier] == null) continue;
+                    assertArrayEquals(expected[tier].sums(), actual[tier].sums());
+                }
+            }
+        }
+        assertTrue(pruned.prune(20_000 + 86_400 + 600));
+    }
+
+    @Test
     void theDayRangeHoldsTenMinutePoints() {
         var timeline = new Timeline();
         timeline.add(6000, 3);

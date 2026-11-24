@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.mixin;
 
 import appeng.api.crafting.IPatternDetails;
+import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.helpers.patternprovider.PatternProviderLogic;
@@ -19,4 +20,8 @@ public interface PatternProviderLogicAccess {
 
     @Accessor("sendList")
     List<GenericStack> ae2federation$getSendList();
+
+    /** The source the logic hands its returns to its network with. */
+    @Accessor("actionSource")
+    IActionSource ae2federation$getActionSource();
 }

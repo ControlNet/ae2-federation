@@ -64,8 +64,9 @@ public final class FederationDomainGraphProjection {
             }
         });
         var patterns = selectedProvider.map(entry -> patterns(level, entry)).orElse(List.of());
-        return new FederationDomainGraphSnapshot(state.topologyRevision(), Math.max(state.policyRevision(), state.dataRevision()),
-                nodes, edges, patterns);
+        // Members first, then Providers, then Endpoints: a domain past the graph's bound keeps its members.
+        return FederationDomainGraphSnapshot.bounded(state.topologyRevision(),
+                Math.max(state.policyRevision(), state.dataRevision()), nodes, edges, patterns);
     }
 
     static List<ProviderObservationRegistry.Entry> providerEntries(ServerLevel level,

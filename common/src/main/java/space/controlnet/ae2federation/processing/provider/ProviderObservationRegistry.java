@@ -140,7 +140,7 @@ public final class ProviderObservationRegistry {
     }
 
     private static ResourceUnit unit(AEKey resource) {
-        return resource.getType().getId().getPath().contains("fluid") ? ResourceUnit.FLUID_DROPLET : ResourceUnit.ITEM;
+        return resource.getType().getId().getPath().contains("fluid") ? ResourceUnit.FLUID_MILLIBUCKET : ResourceUnit.ITEM;
     }
 
     public record Entry(MappedPatternProvider provider, ProviderIdentity identity, ProviderRuntime runtime,

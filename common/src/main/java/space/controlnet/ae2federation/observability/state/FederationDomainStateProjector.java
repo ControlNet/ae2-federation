@@ -80,7 +80,7 @@ public final class FederationDomainStateProjector {
                         binding.runtime().configuredMode().name().toLowerCase(java.util.Locale.ROOT)))
                 .toList();
         var flowWindow = LevelObservabilityService.get(level).transportMeter().window(scope);
-        return new FederationDomainStateSnapshot(scope, registry.topologyRevision(),
+        return FederationDomainStateSnapshot.bounded(scope, registry.topologyRevision(),
                 policyStore.highWatermark().value(), flowWindow.dataRevision(), members, providers, endpoints, policies,
                 locks, tasks, flowWindow.events());
     }

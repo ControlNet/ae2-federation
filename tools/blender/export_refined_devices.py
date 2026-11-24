@@ -52,11 +52,11 @@ def main():
                 evaluated.to_mesh_clear()
         (OUT / (name+'.json')).write_text(json.dumps({'quads':quads},separators=(',',':'))+'\n')
         print(name, len(quads))
-    for n in (1,2,3):
-        for device in ('laser','quantum'):
-            scene=bpy.data.scenes[f'Connected / {device} / {n}']
-            center=(0,0,n/2 if device=='laser' else (n+2)/2)
-            export(f'{device}-{n}',scene,[o for o in scene.objects if o.get('mechanical_texture')],center)
+    # 1x1x2 and 2x2x3 Beam Converters use the artist's Blockbench models; only the 3x3x6 laser is exported.
+    for device, n in [('laser',3)]+[('quantum',n) for n in (1,2,3)]:
+        scene=bpy.data.scenes[f'Connected / {device} / {n}']
+        center=(0,0,n/2 if device=='laser' else (n+2)/2)
+        export(f'{device}-{n}',scene,[o for o in scene.objects if o.get('mechanical_texture')],center)
     scene=bpy.data.scenes['Refined Quantum / core detail']
     for layer in ('outer','inner'):
         root=next(o for o in scene.objects if o.name.startswith('Core / '+layer+' rotation'))

@@ -5,8 +5,8 @@ import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderTarget;
 import appeng.me.helpers.MachineSource;
 import appeng.util.ConfigManager;
+import java.util.IdentityHashMap;
 import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.function.Supplier;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.compat.adapters.CompatAdapters;
@@ -16,7 +16,12 @@ import space.controlnet.ae2federation.processing.provider.ProviderTargetResoluti
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
 
 public final class FederationPatternProviderTargetCache {
-    private static final Map<PatternProviderLogic, Binding> BINDINGS = new WeakHashMap<>();
+    /**
+     * Bound Lanes, by identity. Entries live until {@link #unbind}, which {@code NativeProviderLaneComposition.close()}
+     * calls for every Lane when its Provider unloads or is removed. Weak keys would not help: each binding's provenance,
+     * target resolver and source-node supplier all reach the Lane itself, so a weak key could never be cleared.
+     */
+    private static final Map<PatternProviderLogic, Binding> BINDINGS = new IdentityHashMap<>();
     /** The add-on whose targets a Lane builds as every AE2 provider logic does with it; absent without one. */
     private static final @Nullable AddonLaneTargets ADDON_TARGETS = addonTargets();
 

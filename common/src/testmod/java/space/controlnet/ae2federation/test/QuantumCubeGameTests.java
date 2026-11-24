@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.bundle.BundleLook;
 import space.controlnet.ae2federation.bundle.BundleSegment;
 import space.controlnet.ae2federation.bundle.BundledCables;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
@@ -125,6 +126,43 @@ public final class QuantumCubeGameTests {
     }
 
     /**
+     * A 2x2 bundle running along a 4³ face meets the face's 2x2 centre over two layers: the beam turns into the cube
+     * once for those two, and stops short of the border rows on either side, which belong to the same body but link no
+     * cable.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void quantumCubeBorderRowsTakeNoBundleTurn(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        cube(helper, new BlockPos(4, 1, 4), 4);
+        var run = box(new BlockPos(2, 2, 2), 8, 2, 2);
+        run.forEach(fixtures::placeFederationCable);
+        var level = helper.getLevel();
+        int south = 1 << Direction.SOUTH.get3DDataValue();
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                BundledCables.get(level).form(level, new BundleSegment(helper.absolutePos(run.get(0)),
+                        helper.absolutePos(run.get(run.size() - 1)), Direction.Axis.X));
+                phase[0] = 1;
+                throw new GameTestAssertException("Waiting for the bundle to settle");
+            }
+            var low = BundleLook.of(level, helper.absolutePos(new BlockPos(5, 2, 3))).orElseThrow();
+            var high = BundleLook.of(level, helper.absolutePos(new BlockPos(6, 2, 3))).orElseThrow();
+            helper.assertTrue(low.contact(Direction.SOUTH) && high.contact(Direction.SOUTH),
+                    "the face's centre takes both layers' rows");
+            helper.assertTrue((low.contactsAfter() & south) != 0 && (high.contactsBefore() & south) != 0,
+                    "the two centre layers turn once together");
+            helper.assertTrue((low.contactsBefore() & south) == 0, "no turn runs onto the low border row");
+            helper.assertTrue((high.contactsAfter() & south) == 0, "no turn runs onto the high border row");
+            helper.assertTrue(((low.armsBefore() | high.armsAfter()) & south) == 0, "no arm runs onto a border row");
+            RouterEvidence.write("quantumcubeborderrowstakenobundleturn", 5, Map.of("centreContacts", "true",
+                    "centrePaired", "true", "lowBorder", "none", "highBorder", "none", "arms", "none"));
+            fixtures.close();
+        });
+    }
+
+    /**
      * Sneak-use copies a cube to a Memory Card and use binds it to another: the cables on both join one domain. A cube
      * bound to one of another size does not link. A broken block unlinks the pair and the block put back relinks it.
      * Binding a cube again drops both old partners.
@@ -193,6 +231,129 @@ public final class QuantumCubeGameTests {
                     "rebound", "linked", "oldPartner", "dropped", "oldPartners", "not bound"));
             fixtures.close();
         });
+    }
+
+    /**
+     * A cube copied with its data (creative pick-block, {@code /clone}) holds the pair id of the cube it copies. The
+     * pair it copies stays linked, and the copy loses the id.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void quantumCubeCopyLeavesThePairLinked(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var a = new BlockPos(2, 2, 2);
+        var b = new BlockPos(10, 2, 2);
+        var copy = new BlockPos(2, 2, 10);
+        var cellsA = cube(helper, a, 3);
+        cube(helper, b, 3);
+        var cableA = new BlockPos(1, 3, 3);
+        var cableB = new BlockPos(13, 3, 3);
+        for (var cable : List.of(cableA, cableB)) fixtures.placeFederationCable(cable);
+        var nodeB = node(helper, cableB);
+        var player = MockServerPlayers.inLevel(helper);
+        player.setItemInHand(InteractionHand.MAIN_HAND, AEItems.MEMORY_CARD.stack());
+        var level = helper.getLevel();
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                for (var cube : List.of(a, b)) {
+                    helper.assertTrue(RouterBlock.formed(helper.getBlockState(cube)), "Waiting for " + cube + " to form");
+                }
+                bind(helper, player, a, b);
+                phase[0] = 1;
+                throw new GameTestAssertException("Waiting for the pair to link");
+            }
+            if (phase[0] == 1) {
+                helper.assertTrue(linked(helper, cableA, nodeB), "Waiting for the pair to link");
+                // As /clone does: each block of the copy gets the data of the matching block of the first cube.
+                for (var cell : cellsA) {
+                    var target = copy.offset(cell.subtract(a));
+                    place(helper, target);
+                    var data = level.getBlockEntity(helper.absolutePos(cell)).saveCustomOnly(level.registryAccess());
+                    level.getBlockEntity(helper.absolutePos(target)).loadCustomOnly(data, level.registryAccess());
+                }
+                var copied = (QuantumCubeBlockEntity) level.getBlockEntity(helper.absolutePos(copy));
+                helper.assertTrue(copied.pairId() != 0, "the copy holds the pair id");
+                phase[0] = 2;
+                throw new GameTestAssertException("Waiting for the copy to form");
+            }
+            helper.assertTrue(RouterBlock.formed(helper.getBlockState(copy)), "Waiting for the copy to form");
+            helper.assertValueEqual(status(helper, copy), QuantumPairIndex.Status.Kind.NOT_BOUND,
+                    "Waiting for the copy to lose its pair id");
+            for (var cell : cellsA) {
+                var copied = (QuantumCubeBlockEntity) level.getBlockEntity(helper.absolutePos(copy.offset(cell.subtract(a))));
+                helper.assertValueEqual(copied.pairId(), 0L, "every block of the copy is cleared");
+            }
+            helper.assertValueEqual(status(helper, a), QuantumPairIndex.Status.Kind.LINKED, "the pair stays linked");
+            helper.assertValueEqual(status(helper, b), QuantumPairIndex.Status.Kind.LINKED, "the pair stays linked");
+            helper.assertTrue(linked(helper, cableA, nodeB), "the cables stay in one domain");
+            RouterEvidence.write("quantumcubecopyleavesthepairlinked", 3, Map.of("pair", "linked", "copy",
+                    "not bound", "domain", "joined"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A fresh bind whose first cube has not reported its new pair id yet (its chunk loaded but not ticking) keeps both
+     * cubes bound: the cube at the partner's place still holds the id, so the other end is not cleared as stale.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void quantumCubeBindSurvivesALateReport(GameTestHelper helper) {
+        var a = new BlockPos(2, 2, 2);
+        var b = new BlockPos(10, 2, 2);
+        cube(helper, a, 3);
+        cube(helper, b, 3);
+        var level = helper.getLevel();
+        var service = QuantumLinkService.get(level.getServer());
+        var dimension = FederationDomainRegistryAccess.dimension(level);
+        var from = helper.absolutePos(a);
+        var to = helper.absolutePos(b);
+        var phase = new int[1];
+        var kept = new boolean[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertValueEqual(status(helper, a), QuantumPairIndex.Status.Kind.NOT_BOUND,
+                        "Waiting for the first cube to be reported");
+                helper.assertValueEqual(status(helper, b), QuantumPairIndex.Status.Kind.NOT_BOUND,
+                        "Waiting for the second cube to be reported");
+                helper.assertValueEqual(service.bind(GlobalPos.of(level.dimension(), from),
+                        GlobalPos.of(level.dimension(), to)), QuantumLinkService.Bind.BOUND, "the card binds");
+                var id = ((QuantumCubeBlockEntity) level.getBlockEntity(to)).pairId();
+                // Only the second cube reports before the service judges the pair; the first is still indexed unbound.
+                service.track(new QuantumPairIndex.Cube(dimension, to, CableCrossSection.ONE_BY_ONE, id,
+                        new QuantumPairIndex.Key(dimension, from)));
+                QuantumLinkService.tickAll(level.getServer());
+                kept[0] = ((QuantumCubeBlockEntity) level.getBlockEntity(to)).pairId() == id;
+                phase[0] = 1;
+                throw new GameTestAssertException("Waiting for the pair to link");
+            }
+            helper.assertTrue(kept[0], "the second cube kept its new pair id");
+            helper.assertValueEqual(status(helper, a), QuantumPairIndex.Status.Kind.LINKED, "Waiting for the pair to link");
+            helper.assertValueEqual(status(helper, b), QuantumPairIndex.Status.Kind.LINKED, "Waiting for the pair to link");
+            RouterEvidence.write("quantumcubebindsurvivesalatereport", 2, Map.of("kept", "true", "pair", "linked"));
+        });
+    }
+
+    /**
+     * Sneak-use in the air clears a Memory Card, as AE2 clears its own copied settings: the cube it held goes too, so the
+     * card no longer binds another cube to it.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 100, required = true, manualOnly = true)
+    public static void quantumCubeCardClearsWithTheMemoryCard(GameTestHelper helper) {
+        var player = MockServerPlayers.inLevel(helper);
+        var card = AEItems.MEMORY_CARD.stack();
+        card.set(QuantumRegistration.CARD_CUBE.get(),
+                GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(2, 2, 2))));
+        player.setItemInHand(InteractionHand.MAIN_HAND, card);
+        player.setShiftKeyDown(true);
+        card.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+        player.setShiftKeyDown(false);
+        helper.assertTrue(player.getMainHandItem().get(QuantumRegistration.CARD_CUBE.get()) == null,
+                "clearing the Memory Card drops the cube it held");
+        RouterEvidence.write("quantumcubecardclearswiththememorycard", 1, Map.of("cleared", "true"));
+        helper.succeed();
     }
 
     /**

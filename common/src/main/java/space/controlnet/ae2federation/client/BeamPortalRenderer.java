@@ -65,6 +65,15 @@ public final class BeamPortalRenderer {
         SCENE.inScene(render);
     }
 
+    /** Scene start for a render pass that can only be hooked at its head and tail; pair with {@link #endScene}. */
+    public static void beginScene() {
+        SCENE.begin();
+    }
+
+    public static void endScene() {
+        SCENE.end();
+    }
+
     static void recordScene(PoseStack stack, Direction facing, int side, long tick, float partialTick,
             CableBeamStyle style) {
         SCENE.record(stack.last().pose(), facing, side, tick, partialTick, style);

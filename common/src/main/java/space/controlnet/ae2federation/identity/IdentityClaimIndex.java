@@ -70,7 +70,7 @@ public final class IdentityClaimIndex<G> {
 
     /**
      * Returns the cached settlement, computing it only after a relevant claim change. {@code onComputed} observes
-     * fresh results so the caller can persist a changed status; cached reads never invoke it.
+     * fresh results only (tests count recomputations with it); cached reads never invoke it.
      */
     public IdentitySettlement settle(G grid, Consumer<IdentitySettlement> onComputed) {
         var claims = liveClaims.get(grid);

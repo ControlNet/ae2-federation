@@ -13,15 +13,24 @@ import space.controlnet.ae2federation.power.CableCrossSection;
 
 /**
  * The formed, loaded Quantum Cubes of a server by pair id. A pair links when exactly two cubes of one id are loaded and
- * they are the same size; a pair id of 0 is no pair.
+ * they are the same size; a pair id of 0 is no pair. Each bound cube also names where its partner was bound, so a
+ * copied cube (creative pick-block, {@code /clone}) cannot break the pair it copies, and a cube whose partner was
+ * bound elsewhere while it was unloaded is found out once both are loaded: both are {@link #stale}.
  */
 public final class QuantumPairIndex {
-    /** A formed cube: its dimension, lowest block, the square it takes, and its pair id. */
-    public record Cube(String dimension, BlockPos min, CableCrossSection section, long pairId) {
+    /**
+     * A formed cube: its dimension, lowest block, the square it takes, its pair id, and where its partner's lowest
+     * block was when the pair was bound (null when unknown or not bound).
+     */
+    public record Cube(String dimension, BlockPos min, CableCrossSection section, long pairId, @Nullable Key boundTo) {
         public Cube {
             Objects.requireNonNull(dimension);
             min = min.immutable();
             Objects.requireNonNull(section);
+        }
+
+        public Cube(String dimension, BlockPos min, CableCrossSection section, long pairId) {
+            this(dimension, min, section, pairId, null);
         }
 
         Key key() {
@@ -31,6 +40,10 @@ public final class QuantumPairIndex {
 
     /** Where a cube is: its dimension and lowest block. */
     public record Key(String dimension, BlockPos min) {
+        public Key {
+            Objects.requireNonNull(dimension);
+            min = min.immutable();
+        }
     }
 
     /** What a cube's link is doing; {@code partner} is set while linked. */
@@ -50,6 +63,10 @@ public final class QuantumPairIndex {
         if (cube.pairId() != 0) {
             pairs.computeIfAbsent(cube.pairId(), ignored -> new ArrayList<>()).add(cube);
             changed.add(cube.pairId());
+        }
+        // A cube bound to this place may have just lost its pair here.
+        for (var other : cubes.values()) {
+            if (other.pairId() != 0 && cube.key().equals(other.boundTo())) changed.add(other.pairId());
         }
         return changed;
     }
@@ -94,14 +111,61 @@ public final class QuantumPairIndex {
     public Status status(Cube cube) {
         if (cube.pairId() == 0) return new Status(Status.Kind.NOT_BOUND, null);
         var members = pairs.getOrDefault(cube.pairId(), List.of());
-        if (members.size() > 2) return new Status(Status.Kind.MORE_THAN_TWO, null);
         Cube partner = null;
-        for (var member : members) {
-            if (!member.key().equals(cube.key())) partner = member;
+        if (members.size() > 2) {
+            // A copy joined the pair; the two cubes bound to each other still link.
+            partner = mutualPartner(cube, members);
+            if (partner == null) return new Status(Status.Kind.MORE_THAN_TWO, null);
+        } else {
+            for (var member : members) {
+                if (!member.key().equals(cube.key())) partner = member;
+            }
         }
         if (partner == null) return new Status(Status.Kind.PARTNER_NOT_LOADED, null);
         if (partner.section() != cube.section()) return new Status(Status.Kind.WRONG_SIZE, null);
         return new Status(Status.Kind.LINKED, partner);
+    }
+
+    /**
+     * Whether the cube holds a pair that no longer exists, so its pair id should be cleared: it is
+     * {@linkplain #partnerRebound partnerRebound} or a {@linkplain #copy copy}.
+     */
+    public boolean stale(Cube cube) {
+        return partnerRebound(cube) || copy(cube);
+    }
+
+    /**
+     * Whether the cube at the place its partner was bound is loaded and holds another pair id: it was bound elsewhere
+     * or cleared while this one was unloaded. The index may lag a fresh bind until that cube reports again, so the
+     * caller confirms with the block itself.
+     */
+    public boolean partnerRebound(Cube cube) {
+        if (cube.pairId() == 0 || cube.boundTo() == null) return false;
+        var there = cubes.get(cube.boundTo());
+        return there != null && there.pairId() != cube.pairId();
+    }
+
+    /** Whether the cube is one of more than two cubes of its pair while two others are bound to each other. */
+    public boolean copy(Cube cube) {
+        if (cube.pairId() == 0) return false;
+        var members = pairs.getOrDefault(cube.pairId(), List.of());
+        if (members.size() <= 2 || mutualPartner(cube, members) != null) return false;
+        for (var member : members) {
+            var partner = member.key().equals(cube.key()) ? null : mutualPartner(member, members);
+            if (partner != null && !partner.key().equals(cube.key())) return true;
+        }
+        return false;
+    }
+
+    /** The member bound to {@code cube} where {@code cube} is bound to it, or null. */
+    private static @Nullable Cube mutualPartner(Cube cube, List<Cube> members) {
+        for (var member : members) {
+            if (!member.key().equals(cube.key()) && member.key().equals(cube.boundTo())
+                    && cube.key().equals(member.boundTo())) {
+                return member;
+            }
+        }
+        return null;
     }
 
     public void clear() {

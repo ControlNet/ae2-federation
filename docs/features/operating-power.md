@@ -6,7 +6,10 @@ decisions: [operating power idea](../archive/ideas/federation-operating-power.md
 The converter's single block and its 1x1x2 body use the artist's models (2026-10-30, PR #8): the rear block
 is the converter with its rear FE port, the front block the spiked emitter head that faces the cable. They are
 exported by `tools/blockbench/export_beam_converter_models.py` into a multipart blockstate that tells the two apart by
-their connections. The 2x2x4 and 3x3x6 bodies keep the textured open laser design exported from Blender.
+their connections. The 2x2 body is the artist's 2x2x3 model (2026-11-10, PR #10): a converter layer at the rear and a
+two-layer head; the exporter cuts it into twelve one-block slices that the blockstate picks by connections, and
+`RefinedDeviceBakedModel` lets a member draw its slice only when its body is 2x2 (a 3x3x6 corner has the same
+connections). The 3x3x6 body keeps the textured open laser design exported from Blender.
 There is no creative converter (removed 2026-10-31): other mods' creative FE sources feed an ordinary one.
 FE input is restricted to the formed body's rear exterior plane; side, front, interior and unsided queries expose no FE input.
 
@@ -20,9 +23,10 @@ FE input is restricted to the formed body's rear exterior plane; side, front, in
   ([Beam Former](beam-former.md)). A formed Quantum Cube block costs 44 FE/t (22 AE/t, as AE2's bridge), linked or
   not; an unformed one costs 0 ([Quantum Cube](quantum-cube.md)).
 - **Converter.** `beam_converter`: solid-cuboid devices like Router and Switch
-  (`FormableDevice`), its members facing any way. The front's M x N must be a cable cross-section and the body
-  2·max(M, N) long toward it (`BeamConverterShape`), of a cross-section players can build today
-  (`CableCrossSection.BUILDABLE`): 1x1x2, 2x2x4, 3x3x6. The 1x2x4, 1x3x6 and 2x3x6 sizes stay in the code but do
+  (`FormableDevice`), its members facing any way. The front's M x N must be a cable cross-section and the body its
+  `CableCrossSection.converterLength()` long toward it (`BeamConverterShape`), of a cross-section players can build today
+  (`CableCrossSection.BUILDABLE`): 1x1x2, 2x2x3, 3x3x6. The 2x2 converter was 2x2x4 until 2026-11-10, when the owner
+  shortened it to fit the artist's model. The 1x2x4, 1x3x6 and 2x3x6 sizes stay in the code but do
   not form until their bundles are buildable again (2026-10-17). The size alone gives the axis. Other shapes do not form (`WRONG_SHAPE`). Forming turns every member toward one end of the axis
   (`FormableDevice.forming`): the end most members face, else the one end touching Federation cable, else the positive
   end. A wrench (`c:tools/wrench`) on a formed body turns all members end for end with neighbour updates; they then

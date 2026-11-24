@@ -121,6 +121,14 @@ final class RealObservationScene implements AutoCloseable {
                 "Native aggregate return must be accepted");
     }
 
+    /** One native Processing send, then {@code millibuckets} of water back through the Endpoint's fluid return face. */
+    int returnWater(int millibuckets) {
+        helper.assertTrue(processing.pushOnce(), "Native Processing send must accept");
+        var handler = processing.endpointBinding().runtime().fluidReturn(Direction.NORTH).orElseThrow();
+        return handler.fill(new net.neoforged.neoforge.fluids.FluidStack(net.minecraft.world.level.material.Fluids.WATER,
+                millibuckets), net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
+    }
+
     boolean removePolicy() {
         return editObservedPolicy(true);
     }

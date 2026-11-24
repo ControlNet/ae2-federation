@@ -11,7 +11,14 @@ public final class ObservationLimits {
     public static final int MAX_TASKS = 512;
     public static final int MAX_FLOWS = 128;
     public static final int MAX_DELTA_EVENTS = 64;
+    /** The vanilla ceiling of one clientbound custom payload. */
     public static final int MAX_PAYLOAD_BYTES = 1_048_576;
+    /**
+     * Room a payload keeps for what surrounds the listed states: the session (two UUIDs, three ids of at most
+     * {@link #MAX_ID_LENGTH} chars, a generation and a nonce), a delta's base revision, the snapshot's revisions, list
+     * sizes and omitted counts.
+     */
+    public static final int PAYLOAD_HEADER_RESERVE = 4_096;
     public static final long MAX_RESOURCE_AMOUNT = 9_000_000_000_000_000L;
     public static final long MAX_NANO_AE_AMOUNT = 9_000_000_000_000_000_000L;
     public static final int MAX_SUBSCRIPTIONS_PER_PLAYER = 4;

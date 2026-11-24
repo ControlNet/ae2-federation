@@ -47,6 +47,12 @@ final class DeviceOcclusionContractTest {
         }
     }
 
+    @Test
+    void anUnformedBeamConverterHidesOnlyBehindItsBack() throws IOException {
+        // Unformed, a converter block draws the single-block model; formed, it hides nothing.
+        assertEquals(closedFaces("beam_converter"), fullFaces(DeviceOcclusion.front(Direction.SOUTH)));
+    }
+
     /** Sides of the unit cube the model covers completely, from the elements lying on each side with a face there. */
     private static Set<Direction> closedFaces(String model) throws IOException {
         var json = JsonParser.parseString(Files.readString(MODELS.resolve(model + ".json"))).getAsJsonObject();

@@ -22,6 +22,25 @@ public record FederationDomainGraphSnapshot(long topologyRevision, long dataRevi
         patterns = canonicalPatterns(patterns);
     }
 
+    /**
+     * A graph of a live domain, which has no size limit: the first {@value #MAX_ENTRIES} nodes in the order given (so
+     * callers list what matters most first), the distinct edges between kept nodes up to the same bound, and the first
+     * Pattern rows. The constructor still rejects oversized lists, as a decoded graph must.
+     */
+    public static FederationDomainGraphSnapshot bounded(long topologyRevision, long dataRevision, List<Node> nodes,
+            List<Edge> edges, List<String> patterns) {
+        var kept = new ArrayList<Node>();
+        var ids = new HashSet<String>();
+        for (var node : nodes) {
+            if (kept.size() == MAX_ENTRIES) break;
+            if (ids.add(node.id())) kept.add(node);
+        }
+        var keptEdges = edges.stream().distinct().filter(edge -> ids.contains(edge.from()) && ids.contains(edge.to()))
+                .limit(MAX_ENTRIES).toList();
+        return new FederationDomainGraphSnapshot(topologyRevision, dataRevision, kept, keptEdges,
+                patterns.stream().limit(MAX_ENTRIES).toList());
+    }
+
     public static FederationDomainGraphSnapshot empty() {
         return new FederationDomainGraphSnapshot(0, 0, List.of(), List.of(), List.of());
     }

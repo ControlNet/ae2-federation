@@ -7,50 +7,86 @@ import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.MEStorage;
 import java.util.Objects;
 import net.minecraft.network.chat.Component;
+import space.controlnet.ae2federation.ae2.storage.NativeStorageReentry;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import java.util.function.Consumer;
 
 final class AuthorizedStorageProjection implements
         space.controlnet.ae2federation.storage.provenance.FederationManagedStorage {
     private final MEStorage delegate;
+    /** The source network's own storage; while it is in use on this thread, this projection is a loop back into it. */
+    private final MEStorage sourceNetwork;
     private final StorageProjectionAuthorization authorization;
     private final Consumer<AcceptedStorageOperation> acceptedObserver;
 
-    AuthorizedStorageProjection(MEStorage delegate, StorageProjectionAuthorization authorization,
-            Consumer<AcceptedStorageOperation> acceptedObserver) {
+    AuthorizedStorageProjection(MEStorage delegate, MEStorage sourceNetwork,
+            StorageProjectionAuthorization authorization, Consumer<AcceptedStorageOperation> acceptedObserver) {
         this.delegate = Objects.requireNonNull(delegate);
+        this.sourceNetwork = Objects.requireNonNull(sourceNetwork);
         this.authorization = Objects.requireNonNull(authorization);
         this.acceptedObserver = Objects.requireNonNull(acceptedObserver);
     }
 
     @Override
     public boolean isPreferredStorageFor(AEKey what, IActionSource source) {
-        // The native preference is checked first: most sources prefer nothing, and the insert itself validates again.
-        return delegate.isPreferredStorageFor(what, source) && authorization.permits(PolicyOperation.INSERT, what);
+        if (!NativeStorageReentry.enter(sourceNetwork)) {
+            return false;
+        }
+        try {
+            // The native preference is checked first: most sources prefer nothing, and the insert validates again.
+            return delegate.isPreferredStorageFor(what, source) && authorization.permits(PolicyOperation.INSERT, what);
+        } finally {
+            NativeStorageReentry.exit(sourceNetwork);
+        }
     }
 
     @Override
     public long insert(AEKey what, long amount, Actionable mode, IActionSource source) {
         MEStorage.checkPreconditions(what, amount, mode, source);
-        var accepted = authorization.permits(PolicyOperation.INSERT, what)
-                ? delegate.insert(what, amount, mode, source)
-                : 0;
-        observe(what, accepted, mode, true);
-        return accepted;
+        if (!NativeStorageReentry.enter(sourceNetwork)) {
+            return 0;
+        }
+        try {
+            var accepted = authorization.permits(PolicyOperation.INSERT, what)
+                    ? delegate.insert(what, amount, mode, source)
+                    : 0;
+            observe(what, accepted, mode, true);
+            return accepted;
+        } finally {
+            NativeStorageReentry.exit(sourceNetwork);
+        }
     }
 
     @Override
     public long extract(AEKey what, long amount, Actionable mode, IActionSource source) {
         MEStorage.checkPreconditions(what, amount, mode, source);
-        var accepted = authorization.permits(PolicyOperation.EXTRACT, what)
-                ? delegate.extract(what, amount, mode, source)
-                : 0;
-        observe(what, accepted, mode, false);
-        return accepted;
+        if (!NativeStorageReentry.enter(sourceNetwork)) {
+            return 0;
+        }
+        try {
+            var accepted = authorization.permits(PolicyOperation.EXTRACT, what)
+                    ? delegate.extract(what, amount, mode, source)
+                    : 0;
+            observe(what, accepted, mode, false);
+            return accepted;
+        } finally {
+            NativeStorageReentry.exit(sourceNetwork);
+        }
     }
 
     @Override
     public void getAvailableStacks(KeyCounter output) {
+        if (!NativeStorageReentry.enter(sourceNetwork)) {
+            return;
+        }
+        try {
+            listAvailable(output);
+        } finally {
+            NativeStorageReentry.exit(sourceNetwork);
+        }
+    }
+
+    private void listAvailable(KeyCounter output) {
         // Source validity and relationship currency are evaluated once per enumeration; only the Policy resource
         // filter runs per key, and not at all when it allows every key. Quantities come straight from the native
         // delegate.

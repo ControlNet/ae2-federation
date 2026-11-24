@@ -41,6 +41,186 @@
     },
     {
       "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "up": "true",
+        "down": "false",
+        "south": "true",
+        "north": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_000"
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "up": "true",
+        "down": "false",
+        "south": "true",
+        "north": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_001"
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "up": "true",
+        "down": "false",
+        "south": "false",
+        "north": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_002"
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "up": "false",
+        "down": "true",
+        "south": "true",
+        "north": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_010"
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "up": "false",
+        "down": "true",
+        "south": "true",
+        "north": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_011"
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "up": "false",
+        "down": "true",
+        "south": "false",
+        "north": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_012"
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "up": "true",
+        "down": "false",
+        "south": "true",
+        "north": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_100"
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "up": "true",
+        "down": "false",
+        "south": "true",
+        "north": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_101"
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "up": "true",
+        "down": "false",
+        "south": "false",
+        "north": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_102"
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "up": "false",
+        "down": "true",
+        "south": "true",
+        "north": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_110"
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "up": "false",
+        "down": "true",
+        "south": "true",
+        "north": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_111"
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "up": "false",
+        "down": "true",
+        "south": "false",
+        "north": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_112"
+      }
+    },
+    {
+      "when": {
         "AND": [
           {
             "facing": "south",
@@ -49,24 +229,48 @@
           {
             "OR": [
               {
-                "east": "true"
-              },
-              {
-                "west": "true"
-              },
-              {
-                "up": "true"
-              },
-              {
-                "down": "true"
-              },
-              {
                 "south": "false",
                 "north": "false"
               },
               {
+                "east": "true",
+                "west": "true"
+              },
+              {
+                "up": "true",
+                "down": "true"
+              },
+              {
+                "east": "false",
+                "west": "false",
+                "up": "true"
+              },
+              {
+                "east": "false",
+                "west": "false",
+                "down": "true"
+              },
+              {
                 "south": "true",
-                "north": "true"
+                "north": "true",
+                "east": "false",
+                "west": "false"
+              },
+              {
+                "up": "false",
+                "down": "false",
+                "east": "true"
+              },
+              {
+                "up": "false",
+                "down": "false",
+                "west": "true"
+              },
+              {
+                "south": "true",
+                "north": "true",
+                "up": "false",
+                "down": "false"
               }
             ]
           }
@@ -92,10 +296,10 @@
         "formed": "true",
         "west": "true",
         "east": "false",
-        "up": "false",
-        "down": "false",
         "south": "false",
-        "north": "false"
+        "north": "false",
+        "up": "false",
+        "down": "false"
       },
       "apply": {
         "model": "ae2federation:block/beam_converter",
@@ -108,13 +312,205 @@
         "formed": "true",
         "west": "false",
         "east": "true",
-        "up": "false",
-        "down": "false",
         "south": "false",
-        "north": "false"
+        "north": "false",
+        "up": "false",
+        "down": "false"
       },
       "apply": {
         "model": "ae2federation:block/beam_converter_head",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "true",
+        "north": "false",
+        "up": "true",
+        "down": "false",
+        "west": "true",
+        "east": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_000",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "true",
+        "north": "false",
+        "up": "true",
+        "down": "false",
+        "west": "true",
+        "east": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_001",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "true",
+        "north": "false",
+        "up": "true",
+        "down": "false",
+        "west": "false",
+        "east": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_002",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "true",
+        "north": "false",
+        "up": "false",
+        "down": "true",
+        "west": "true",
+        "east": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_010",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "true",
+        "north": "false",
+        "up": "false",
+        "down": "true",
+        "west": "true",
+        "east": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_011",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "true",
+        "north": "false",
+        "up": "false",
+        "down": "true",
+        "west": "false",
+        "east": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_012",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "false",
+        "north": "true",
+        "up": "true",
+        "down": "false",
+        "west": "true",
+        "east": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_100",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "false",
+        "north": "true",
+        "up": "true",
+        "down": "false",
+        "west": "true",
+        "east": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_101",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "false",
+        "north": "true",
+        "up": "true",
+        "down": "false",
+        "west": "false",
+        "east": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_102",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "false",
+        "north": "true",
+        "up": "false",
+        "down": "true",
+        "west": "true",
+        "east": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_110",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "false",
+        "north": "true",
+        "up": "false",
+        "down": "true",
+        "west": "true",
+        "east": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_111",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "formed": "true",
+        "south": "false",
+        "north": "true",
+        "up": "false",
+        "down": "true",
+        "west": "false",
+        "east": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_112",
         "y": 90
       }
     },
@@ -128,24 +524,48 @@
           {
             "OR": [
               {
-                "up": "true"
-              },
-              {
-                "down": "true"
-              },
-              {
-                "south": "true"
-              },
-              {
-                "north": "true"
-              },
-              {
                 "west": "false",
                 "east": "false"
               },
               {
+                "south": "true",
+                "north": "true"
+              },
+              {
+                "up": "true",
+                "down": "true"
+              },
+              {
+                "south": "false",
+                "north": "false",
+                "up": "true"
+              },
+              {
+                "south": "false",
+                "north": "false",
+                "down": "true"
+              },
+              {
                 "west": "true",
-                "east": "true"
+                "east": "true",
+                "south": "false",
+                "north": "false"
+              },
+              {
+                "up": "false",
+                "down": "false",
+                "south": "true"
+              },
+              {
+                "up": "false",
+                "down": "false",
+                "north": "true"
+              },
+              {
+                "west": "true",
+                "east": "true",
+                "up": "false",
+                "down": "false"
               }
             ]
           }
@@ -172,8 +592,8 @@
         "formed": "true",
         "north": "true",
         "south": "false",
-        "east": "false",
         "west": "false",
+        "east": "false",
         "up": "false",
         "down": "false"
       },
@@ -188,13 +608,205 @@
         "formed": "true",
         "north": "false",
         "south": "true",
-        "east": "false",
         "west": "false",
+        "east": "false",
         "up": "false",
         "down": "false"
       },
       "apply": {
         "model": "ae2federation:block/beam_converter_head",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "true",
+        "east": "false",
+        "up": "true",
+        "down": "false",
+        "north": "true",
+        "south": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_000",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "true",
+        "east": "false",
+        "up": "true",
+        "down": "false",
+        "north": "true",
+        "south": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_001",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "true",
+        "east": "false",
+        "up": "true",
+        "down": "false",
+        "north": "false",
+        "south": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_002",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "true",
+        "east": "false",
+        "up": "false",
+        "down": "true",
+        "north": "true",
+        "south": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_010",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "true",
+        "east": "false",
+        "up": "false",
+        "down": "true",
+        "north": "true",
+        "south": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_011",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "true",
+        "east": "false",
+        "up": "false",
+        "down": "true",
+        "north": "false",
+        "south": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_012",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "false",
+        "east": "true",
+        "up": "true",
+        "down": "false",
+        "north": "true",
+        "south": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_100",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "false",
+        "east": "true",
+        "up": "true",
+        "down": "false",
+        "north": "true",
+        "south": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_101",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "false",
+        "east": "true",
+        "up": "true",
+        "down": "false",
+        "north": "false",
+        "south": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_102",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "false",
+        "east": "true",
+        "up": "false",
+        "down": "true",
+        "north": "true",
+        "south": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_110",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "false",
+        "east": "true",
+        "up": "false",
+        "down": "true",
+        "north": "true",
+        "south": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_111",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "formed": "true",
+        "west": "false",
+        "east": "true",
+        "up": "false",
+        "down": "true",
+        "north": "false",
+        "south": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_112",
         "y": 180
       }
     },
@@ -208,24 +820,48 @@
           {
             "OR": [
               {
-                "east": "true"
-              },
-              {
-                "west": "true"
-              },
-              {
-                "up": "true"
-              },
-              {
-                "down": "true"
-              },
-              {
                 "north": "false",
                 "south": "false"
               },
               {
+                "west": "true",
+                "east": "true"
+              },
+              {
+                "up": "true",
+                "down": "true"
+              },
+              {
+                "west": "false",
+                "east": "false",
+                "up": "true"
+              },
+              {
+                "west": "false",
+                "east": "false",
+                "down": "true"
+              },
+              {
                 "north": "true",
-                "south": "true"
+                "south": "true",
+                "west": "false",
+                "east": "false"
+              },
+              {
+                "up": "false",
+                "down": "false",
+                "west": "true"
+              },
+              {
+                "up": "false",
+                "down": "false",
+                "east": "true"
+              },
+              {
+                "north": "true",
+                "south": "true",
+                "up": "false",
+                "down": "false"
               }
             ]
           }
@@ -252,10 +888,10 @@
         "formed": "true",
         "east": "true",
         "west": "false",
-        "up": "false",
-        "down": "false",
+        "north": "false",
         "south": "false",
-        "north": "false"
+        "up": "false",
+        "down": "false"
       },
       "apply": {
         "model": "ae2federation:block/beam_converter",
@@ -268,13 +904,205 @@
         "formed": "true",
         "east": "false",
         "west": "true",
-        "up": "false",
-        "down": "false",
+        "north": "false",
         "south": "false",
-        "north": "false"
+        "up": "false",
+        "down": "false"
       },
       "apply": {
         "model": "ae2federation:block/beam_converter_head",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "true",
+        "south": "false",
+        "up": "true",
+        "down": "false",
+        "east": "true",
+        "west": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_000",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "true",
+        "south": "false",
+        "up": "true",
+        "down": "false",
+        "east": "true",
+        "west": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_001",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "true",
+        "south": "false",
+        "up": "true",
+        "down": "false",
+        "east": "false",
+        "west": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_002",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "true",
+        "south": "false",
+        "up": "false",
+        "down": "true",
+        "east": "true",
+        "west": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_010",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "true",
+        "south": "false",
+        "up": "false",
+        "down": "true",
+        "east": "true",
+        "west": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_011",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "true",
+        "south": "false",
+        "up": "false",
+        "down": "true",
+        "east": "false",
+        "west": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_012",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "false",
+        "south": "true",
+        "up": "true",
+        "down": "false",
+        "east": "true",
+        "west": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_100",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "false",
+        "south": "true",
+        "up": "true",
+        "down": "false",
+        "east": "true",
+        "west": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_101",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "false",
+        "south": "true",
+        "up": "true",
+        "down": "false",
+        "east": "false",
+        "west": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_102",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "false",
+        "south": "true",
+        "up": "false",
+        "down": "true",
+        "east": "true",
+        "west": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_110",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "false",
+        "south": "true",
+        "up": "false",
+        "down": "true",
+        "east": "true",
+        "west": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_111",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "formed": "true",
+        "north": "false",
+        "south": "true",
+        "up": "false",
+        "down": "true",
+        "east": "false",
+        "west": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_112",
         "y": 270
       }
     },
@@ -288,24 +1116,48 @@
           {
             "OR": [
               {
-                "up": "true"
-              },
-              {
-                "down": "true"
-              },
-              {
-                "south": "true"
-              },
-              {
-                "north": "true"
-              },
-              {
                 "east": "false",
                 "west": "false"
               },
               {
+                "north": "true",
+                "south": "true"
+              },
+              {
+                "up": "true",
+                "down": "true"
+              },
+              {
+                "north": "false",
+                "south": "false",
+                "up": "true"
+              },
+              {
+                "north": "false",
+                "south": "false",
+                "down": "true"
+              },
+              {
                 "east": "true",
-                "west": "true"
+                "west": "true",
+                "north": "false",
+                "south": "false"
+              },
+              {
+                "up": "false",
+                "down": "false",
+                "north": "true"
+              },
+              {
+                "up": "false",
+                "down": "false",
+                "south": "true"
+              },
+              {
+                "east": "true",
+                "west": "true",
+                "up": "false",
+                "down": "false"
               }
             ]
           }
@@ -334,8 +1186,8 @@
         "down": "false",
         "east": "false",
         "west": "false",
-        "south": "false",
-        "north": "false"
+        "north": "false",
+        "south": "false"
       },
       "apply": {
         "model": "ae2federation:block/beam_converter",
@@ -350,11 +1202,203 @@
         "down": "true",
         "east": "false",
         "west": "false",
-        "south": "false",
-        "north": "false"
+        "north": "false",
+        "south": "false"
       },
       "apply": {
         "model": "ae2federation:block/beam_converter_head",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "north": "true",
+        "south": "false",
+        "up": "true",
+        "down": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_000",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "north": "true",
+        "south": "false",
+        "up": "true",
+        "down": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_001",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "north": "true",
+        "south": "false",
+        "up": "false",
+        "down": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_002",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "north": "false",
+        "south": "true",
+        "up": "true",
+        "down": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_010",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "north": "false",
+        "south": "true",
+        "up": "true",
+        "down": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_011",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "north": "false",
+        "south": "true",
+        "up": "false",
+        "down": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_012",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "north": "true",
+        "south": "false",
+        "up": "true",
+        "down": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_100",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "north": "true",
+        "south": "false",
+        "up": "true",
+        "down": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_101",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "north": "true",
+        "south": "false",
+        "up": "false",
+        "down": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_102",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "north": "false",
+        "south": "true",
+        "up": "true",
+        "down": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_110",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "north": "false",
+        "south": "true",
+        "up": "true",
+        "down": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_111",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "north": "false",
+        "south": "true",
+        "up": "false",
+        "down": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_112",
         "x": 90
       }
     },
@@ -368,24 +1412,48 @@
           {
             "OR": [
               {
-                "east": "true"
-              },
-              {
-                "west": "true"
-              },
-              {
-                "south": "true"
-              },
-              {
-                "north": "true"
-              },
-              {
                 "up": "false",
                 "down": "false"
               },
               {
+                "east": "true",
+                "west": "true"
+              },
+              {
+                "north": "true",
+                "south": "true"
+              },
+              {
+                "east": "false",
+                "west": "false",
+                "north": "true"
+              },
+              {
+                "east": "false",
+                "west": "false",
+                "south": "true"
+              },
+              {
                 "up": "true",
-                "down": "true"
+                "down": "true",
+                "east": "false",
+                "west": "false"
+              },
+              {
+                "north": "false",
+                "south": "false",
+                "east": "true"
+              },
+              {
+                "north": "false",
+                "south": "false",
+                "west": "true"
+              },
+              {
+                "up": "true",
+                "down": "true",
+                "north": "false",
+                "south": "false"
               }
             ]
           }
@@ -440,6 +1508,198 @@
     },
     {
       "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "south": "true",
+        "north": "false",
+        "down": "true",
+        "up": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_000",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "south": "true",
+        "north": "false",
+        "down": "true",
+        "up": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_001",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "south": "true",
+        "north": "false",
+        "down": "false",
+        "up": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_002",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "south": "false",
+        "north": "true",
+        "down": "true",
+        "up": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_010",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "south": "false",
+        "north": "true",
+        "down": "true",
+        "up": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_011",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "true",
+        "west": "false",
+        "south": "false",
+        "north": "true",
+        "down": "false",
+        "up": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_012",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "south": "true",
+        "north": "false",
+        "down": "true",
+        "up": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_100",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "south": "true",
+        "north": "false",
+        "down": "true",
+        "up": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_101",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "south": "true",
+        "north": "false",
+        "down": "false",
+        "up": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_102",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "south": "false",
+        "north": "true",
+        "down": "true",
+        "up": "false"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_110",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "south": "false",
+        "north": "true",
+        "down": "true",
+        "up": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_111",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "formed": "true",
+        "east": "false",
+        "west": "true",
+        "south": "false",
+        "north": "true",
+        "down": "false",
+        "up": "true"
+      },
+      "apply": {
+        "model": "ae2federation:block/beam_converter_large_112",
+        "x": 270
+      }
+    },
+    {
+      "when": {
         "AND": [
           {
             "facing": "down",
@@ -448,24 +1708,48 @@
           {
             "OR": [
               {
-                "east": "true"
-              },
-              {
-                "west": "true"
-              },
-              {
-                "south": "true"
-              },
-              {
-                "north": "true"
-              },
-              {
                 "down": "false",
                 "up": "false"
               },
               {
+                "east": "true",
+                "west": "true"
+              },
+              {
+                "south": "true",
+                "north": "true"
+              },
+              {
+                "east": "false",
+                "west": "false",
+                "south": "true"
+              },
+              {
+                "east": "false",
+                "west": "false",
+                "north": "true"
+              },
+              {
                 "down": "true",
-                "up": "true"
+                "up": "true",
+                "east": "false",
+                "west": "false"
+              },
+              {
+                "south": "false",
+                "north": "false",
+                "east": "true"
+              },
+              {
+                "south": "false",
+                "north": "false",
+                "west": "true"
+              },
+              {
+                "down": "true",
+                "up": "true",
+                "south": "false",
+                "north": "false"
               }
             ]
           }

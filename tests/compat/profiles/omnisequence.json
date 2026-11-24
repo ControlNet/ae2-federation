@@ -5,12 +5,12 @@
   "neoforge": "21.1.250",
   "mods": [
     "ae2@19.2.18",
-    "guideme@21.1.20",
-    "ldlib2@2.2.44",
+    "guideme@21.1.22",
+    "ldlib2@2.2.45",
     "glodium@1.21-2.2",
-    "extendedae@2.2.42",
-    "appliedenhancements@1.1.5",
-    "omnisequence@2.0.10"
+    "extendedae@2.2.43",
+    "appliedenhancements@1.1.6",
+    "omnisequence@2.0.13"
   ],
   "tests": [
     "core",

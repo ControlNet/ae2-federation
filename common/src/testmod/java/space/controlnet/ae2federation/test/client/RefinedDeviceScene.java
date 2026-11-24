@@ -35,7 +35,7 @@ import space.controlnet.ae2federation.router.RouterRegistration;
 public final class RefinedDeviceScene {
     public static final String OUTPUT = "ae2federation.refinedDevice.out";
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final String WORLD = "refined-device-scene-v4";
+    private static final String WORLD = "refined-device-scene-v5";
     /** The flat world's first free layer. */
     private static final int Y = -60;
 
@@ -115,6 +115,8 @@ public final class RefinedDeviceScene {
         view("vertical",out,new Vec3(39,Y+8,-7),new Vec3(34,Y+2,1));
         view("items-unformed",out,new Vec3(35,Y+2.8,14),new Vec3(34.5,Y+.5,10.5));
         view("converter-large",out,new Vec3(45,Y+4.5,10),new Vec3(41,Y+1,15));
+        view("bundle-into-cube",out,new Vec3(45,Y+6,14),new Vec3(51.5,Y+2,21.5));
+        view("bundle-between-bodies",out,new Vec3(61,Y+9,3.4),new Vec3(61,Y+1,3.5));
         STEPS.add(new Step("inventory-icons",10,() -> captureItems(minecraft,out)));
         held("beam_converter",out);
         held("quantum_cube",out);
@@ -219,27 +221,37 @@ public final class RefinedDeviceScene {
         for (int n=1;n<=3;n++) {
             int x=n==1 ? 0 : n==2 ? 8 : 14;
             var converter=space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get();
-            for (var p:BlockPos.betweenClosed(x,Y,0,x+n-1,Y+n-1,2*n-1)) level.setBlock(p,
+            int length=space.controlnet.ae2federation.power.CableCrossSection.of(n,n).orElseThrow().converterLength();
+            for (var p:BlockPos.betweenClosed(x,Y,0,x+n-1,Y+n-1,length-1)) level.setBlock(p,
                     converter.defaultBlockState().setValue(space.controlnet.ae2federation.power.BeamConverterBlock.FACING,
                     net.minecraft.core.Direction.NORTH),Block.UPDATE_ALL);
             box(level,space.controlnet.ae2federation.quantum.QuantumRegistration.QUANTUM_CUBE.get(),x,Y,20,n+2,n+2,n+2);
             cable(level,new BlockPos(x,Y,-3),new BlockPos(x+n-1,Y+n-1,-1),n);
             cable(level,new BlockPos(x+1,Y+1,17),new BlockPos(x+n,Y+n,19),n);
-            for (var p:BlockPos.betweenClosed(x+1,Y+1,17-2*n,x+n,Y+n,16)) level.setBlock(p,
+            for (var p:BlockPos.betweenClosed(x+1,Y+1,17-length,x+n,Y+n,16)) level.setBlock(p,
                     converter.defaultBlockState().setValue(space.controlnet.ae2federation.power.BeamConverterBlock.FACING,
                     net.minecraft.core.Direction.SOUTH),Block.UPDATE_ALL);
         }
         for (int i=0;i<2;i++) {
             var facing=i==0 ? net.minecraft.core.Direction.UP : net.minecraft.core.Direction.DOWN;
-            for (var p:BlockPos.betweenClosed(32+4*i,Y,0,33+4*i,Y+3,1)) level.setBlock(p,
+            for (var p:BlockPos.betweenClosed(32+4*i,Y,0,33+4*i,Y+2,1)) level.setBlock(p,
                     space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get().defaultBlockState()
                     .setValue(space.controlnet.ae2federation.power.BeamConverterBlock.FACING,facing),Block.UPDATE_ALL);
         }
+        // A Quantum Cube fed through a 2x2 bundle whose last two layers a Router body flanks: the carrier follows the
+        // box the two layers share.
+        box(level,space.controlnet.ae2federation.quantum.QuantumRegistration.QUANTUM_CUBE.get(),50,Y,20,4,4,4);
+        cable(level,new BlockPos(51,Y+1,16),new BlockPos(52,Y+2,19),2);
+        box(level,RouterRegistration.ROUTER.get(),53,Y+1,18,1,2,2);
+        // A 2x2 bundle between a one-layer Router body on +X and a three-layer one on -X: each turn lands on its body.
+        cable(level,new BlockPos(60,Y,0),new BlockPos(61,Y+1,6),2);
+        box(level,RouterRegistration.ROUTER.get(),62,Y,2,1,2,1);
+        box(level,RouterRegistration.ROUTER.get(),59,Y,2,1,2,3);
         level.setBlock(new BlockPos(32,Y,10),space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get()
                 .defaultBlockState(),Block.UPDATE_ALL);
         level.setBlock(new BlockPos(36,Y,10),space.controlnet.ae2federation.quantum.QuantumRegistration.QUANTUM_CUBE.get()
                 .defaultBlockState(),Block.UPDATE_ALL);
-        for (var p:BlockPos.betweenClosed(39,Y,14,40,Y+1,17)) level.setBlock(p,
+        for (var p:BlockPos.betweenClosed(39,Y,14,40,Y+1,16)) level.setBlock(p,
                 space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get().defaultBlockState()
                 .setValue(space.controlnet.ae2federation.power.BeamConverterBlock.FACING,
                 net.minecraft.core.Direction.NORTH),Block.UPDATE_ALL);

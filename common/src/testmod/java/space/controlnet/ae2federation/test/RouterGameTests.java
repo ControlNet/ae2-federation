@@ -432,7 +432,8 @@ public final class RouterGameTests {
 
     /**
      * The device models have gaps, so their neighbours must keep the faces seen through them: all six around the
-     * Router, the one in front of a Provider or Endpoint. Behind those two the model is closed and still hides it.
+     * Router, the one in front of a Provider or Endpoint, and those in front of and beside an unformed Beam Converter.
+     * Behind those three the model is closed and still hides it.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 100, required = true, manualOnly = true)
@@ -466,8 +467,23 @@ public final class RouterGameTests {
                     "The closed back still hides the block behind it");
             assertions += 2;
         }
+        // A lone Beam Converter block stays unformed and draws the single-block model, which closes only its back.
+        var converter = CENTER.east(3);
+        helper.setBlock(converter, space.controlnet.ae2federation.power.PowerRegistration.BEAM_CONVERTER.get()
+                .defaultBlockState().setValue(facing, Direction.EAST));
+        for (var face : new Direction[] {Direction.EAST, Direction.WEST, Direction.NORTH}) {
+            helper.setBlock(converter.relative(face), stone);
+        }
+        helper.assertTrue(faceDrawn(helper, converter.east(), Direction.WEST),
+                "The unformed converter's open front must not hide the block in front of it");
+        helper.assertTrue(faceDrawn(helper, converter.north(), Direction.SOUTH),
+                "The unformed converter's notched side must not hide the block beside it");
+        helper.assertTrue(!faceDrawn(helper, converter.west(), Direction.EAST),
+                "The unformed converter's closed back still hides the block behind it");
+        assertions += 3;
         RouterEvidence.write("deviceocclusion", assertions, Map.of(
-                "routerFacesDrawn", "6", "frontFaceDrawn", "2", "backFaceHidden", "2"));
+                "routerFacesDrawn", "6", "frontFaceDrawn", "2", "backFaceHidden", "2",
+                "converterFrontAndSideDrawn", "2", "converterBackHidden", "1"));
         helper.succeed();
     }
 
@@ -802,6 +818,77 @@ public final class RouterGameTests {
                     "sweepRecovers", "federation", "sweepWithinTicks", "150", "eventAfterSweep", "federation"));
             fixtures.close();
         });
+    }
+
+    /**
+     * A Switch face beside a Provider's front whose cache went stale while the face still had a node, as a missed event
+     * leaves it, links in its sweep and drops the node in that same resolve, not one resolve later. TEST-ONLY: the
+     * stale cache and the leftover node are made through reflection.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void switchFaceDropsItsNodeWhenItsSweepLinks(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeSwitch(CENTER);
+        helper.setBlock(CENTER.east(), space.controlnet.ae2federation.processing.ProcessingRegistration.PROVIDER.get()
+                .defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING,
+                        Direction.WEST));
+        var phase = new int[1];
+        var staleAt = new long[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                        "Waiting for the Provider's front to link");
+                helper.assertTrue(faceNode(router, Direction.EAST) == null, "A linked face has no node");
+                staleFederationCache(router, Direction.EAST);
+                leftoverNode(router, Direction.EAST);
+                staleAt[0] = helper.getTick();
+                phase[0] = 1;
+                helper.fail("Waiting for the sweep");
+            }
+            helper.assertTrue(helper.getTick() <= staleAt[0] + 150, "The sweep must find the face within its period");
+            helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                    "Waiting for the sweep to link the face again");
+            // Checked once, on the tick the link comes back: a later resolve would drop the node anyway.
+            GameTestChecks.once(helper, () -> helper.assertTrue(faceNode(router, Direction.EAST) == null,
+                    "The resolve that links the face must also drop its node"));
+            RouterEvidence.write("switchfacedropsitsnodewhenitssweeplinks", 3, Map.of(
+                    "sweepRecovers", "federation", "nodeDropped", "same resolve", "sweepWithinTicks", "150"));
+            fixtures.close();
+        });
+    }
+
+    private static Object facePort(space.controlnet.ae2federation.router.RouterBlockEntity router, Direction face)
+            throws ReflectiveOperationException {
+        var portsField = space.controlnet.ae2federation.router.RouterBlockEntity.class.getDeclaredField("facePorts");
+        portsField.setAccessible(true);
+        return ((java.util.Map<?, ?>) portsField.get(router)).get(face);
+    }
+
+    private static Object faceNode(space.controlnet.ae2federation.router.RouterBlockEntity router, Direction face) {
+        try {
+            var port = facePort(router, face);
+            var nodeField = port.getClass().getDeclaredField("boundaryNode");
+            nodeField.setAccessible(true);
+            return nodeField.get(port);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("The test must reach the Switch face's node", exception);
+        }
+    }
+
+    /** TEST-ONLY: gives the face the node it would still hold from before, and leaves no work pending. */
+    private static void leftoverNode(space.controlnet.ae2federation.router.RouterBlockEntity router, Direction face) {
+        try {
+            var port = facePort(router, face);
+            var createNode = port.getClass().getDeclaredMethod("createNode");
+            createNode.setAccessible(true);
+            createNode.invoke(port);
+            var dirtyField = port.getClass().getDeclaredField("dirty");
+            dirtyField.setAccessible(true);
+            dirtyField.setBoolean(port, false);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("The test must reach the Switch face's node", exception);
+        }
     }
 
     /**

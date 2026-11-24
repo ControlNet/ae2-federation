@@ -125,6 +125,10 @@ final class FederationTopologyView {
     /** {@link #shown()} by id, rebuilt after the shown networks change; the canvas looks networks up every frame. */
     private Map<String, Network> shownById;
     private int relatedTotal;
+    /** Member networks and Endpoints a large domain could not send (see {@code SyncBudget}). */
+    private int omittedNetworks;
+    private int omittedEndpoints;
+    private int sentEndpoints;
     private final Map<String, JsonObject> relatedRules = new HashMap<>();
     /** Accepted deliveries per rule key over the last five seconds, from real transfers only. */
     private final Map<String, JsonObject> flows = new HashMap<>();
@@ -448,6 +452,9 @@ final class FederationTopologyView {
         }
         related.clear();
         relatedTotal = root.has("relatedTotal") ? root.get("relatedTotal").getAsInt() : 0;
+        omittedNetworks = FederationProviderMenuHolder.omitted(root, "networks");
+        omittedEndpoints = FederationProviderMenuHolder.omitted(root, "endpoint");
+        sentEndpoints = root.has("endpoint") ? root.getAsJsonArray("endpoint").size() : 0;
         if (root.has("relatedNetworks")) {
             var index = networks.size();
             for (var value : root.getAsJsonArray("relatedNetworks")) {
@@ -589,6 +596,10 @@ final class FederationTopologyView {
         var caption = Component.literal("· ").append(tr(showRelated ? "scope.related" : "scope.domain"));
         boolean truncated = relatedTotal > related.size();
         if (showRelated && truncated) caption.append(" · ").append(tr("scope.truncated", related.size(), relatedTotal));
+        if (!showRelated && omittedNetworks > 0) caption.append(" · ")
+                .append(tr("scope.truncated", networks.size(), networks.size() + omittedNetworks));
+        if (omittedEndpoints > 0) caption.append(" · ")
+                .append(tr("scope.truncated_endpoints", sentEndpoints, sentEndpoints + omittedEndpoints));
         if (openedOverCapacity) caption.append(" · ").append(tr("over_capacity")
                 .withStyle(Style.EMPTY.withColor(FederationTheme.ERROR & 0xffffff)));
         scopeCaption.setText(caption);

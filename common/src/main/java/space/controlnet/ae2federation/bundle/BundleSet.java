@@ -25,6 +25,15 @@ public final class BundleSet {
     private final Map<Long, Bundle> bundleCache = new HashMap<>();
     private long nextSerial = 1;
 
+    public BundleSet() {
+    }
+
+    private BundleSet(BundleSet other) {
+        segments.putAll(other.segments);
+        cells.putAll(other.cells);
+        nextSerial = other.nextSerial;
+    }
+
     /** One bundle; its id is the lowest serial among its segments and changes when the bundle splits or merges. */
     public record Bundle(long id, BundleShape shape, List<BundleSegment> segments) {
     }
@@ -38,7 +47,9 @@ public final class BundleSet {
         NOT_AN_END,
         NOT_A_SIDE,
         TOO_SHORT,
-        OCCUPIED
+        OCCUPIED,
+        /** Two branches of one run would share some of their layers but not all. */
+        OVERLAPS_BRANCH
     }
 
     public sealed interface Plan permits Placement, Refused {
@@ -201,7 +212,48 @@ public final class BundleSet {
         for (var pos : placement.cells()) {
             if (cells.containsKey(pos)) return new Refused(Problem.OCCUPIED);
         }
-        return plan;
+        return overlapsBranch(placement.segment()) ? new Refused(Problem.OVERLAPS_BRANCH) : plan;
+    }
+
+    /**
+     * Whether forming {@code segment}, whose cells are free, would leave two branches of one run in its bundle sharing
+     * some of their layers but not all. The run's one beam takes the layers of each branch as one box, so such branches,
+     * on different sides, would need boxes that overlap; branches over the same layers share one.
+     */
+    public boolean overlapsBranch(BundleSegment segment) {
+        for (var pos : segment.cells()) {
+            if (cells.containsKey(pos)) return false;
+        }
+        var trial = new BundleSet(this);
+        long serial = trial.coalesce(trial.add(trial.nextSerial++, segment));
+        for (var run : trial.bundleOf(serial).segments()) {
+            if (trial.branchesOverlap(run)) return true;
+        }
+        return false;
+    }
+
+    /** Whether two branches of {@code run} share some of their layers along it but not all. */
+    private boolean branchesOverlap(BundleSegment run) {
+        var axis = run.axis();
+        var spans = new ArrayList<int[]>();
+        for (var side : Direction.values()) {
+            if (side.getAxis() == axis) continue;
+            var seen = new HashSet<Long>();
+            for (var pos : sideLayer(run, side).cells()) {
+                var serial = cells.get(pos);
+                if (serial == null || !seen.add(serial)) continue;
+                var branch = segments.get(serial);
+                if (!endAgainst(branch, side.getOpposite(), run)) continue;
+                int first = branch.min().get(axis);
+                int last = branch.max().get(axis);
+                for (var span : spans) {
+                    boolean shared = first <= span[1] && span[0] <= last;
+                    if (shared && (first != span[0] || last != span[1])) return true;
+                }
+                spans.add(new int[] {first, last});
+            }
+        }
+        return false;
     }
 
     private long add(long serial, BundleSegment segment) {

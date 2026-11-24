@@ -150,6 +150,11 @@ public final class StorageMountService implements AutoCloseable {
         return provenance.providerScans();
     }
 
+    /** Networks the source index holds a domain or cached discovery for. Diagnostic only. */
+    public Set<space.controlnet.ae2federation.storage.provenance.OriginNetworkId> sourceOrigins() {
+        return provenance.origins();
+    }
+
     /** Per-operation/per-enumeration source validity evaluations of held projections. Diagnostic counter only. */
     public long sourceValidationCount() {
         return sourceValidations;
@@ -341,7 +346,8 @@ public final class StorageMountService implements AutoCloseable {
         var statistics = observability.statistics();
         var toProvider = statistics.meter(key.consumerNetworkId(), key.providerNetworkId());
         var toConsumer = statistics.meter(key.providerNetworkId(), key.consumerNetworkId());
-        var projection = new AuthorizedStorageProjection(delegate, authority,
+        var projection = new AuthorizedStorageProjection(delegate,
+                domain.runtimeGrid().getStorageService().getInventory(), authority,
                 operation -> {
                     observability.recordAcceptedStorage(authority.scopes(), operation);
                     observability.recordPairFlow(key, operation.amount());

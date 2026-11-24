@@ -435,10 +435,11 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         boolean stale = choices.has("stale") && choices.get("stale").getAsBoolean();
         var slotChoices = objects(choices, "slot");
         var targets = objects(choices, "target");
+        int omittedTargets = omitted(choices, "target");
         long used = slotChoices.stream().filter(slot -> !slot.get("empty").getAsBoolean()).count();
         int mappings = choices.has("mappings") ? choices.get("mappings").getAsInt() : 0;
         // Without a domain on its Federation face the Provider still has its patterns and keeps its mappings.
-        element(ui, "provider_summary", Label.class).setText(face ? tr("summary", used, slotChoices.size(), mappings, targets.size())
+        element(ui, "provider_summary", Label.class).setText(face ? tr("summary", used, slotChoices.size(), mappings, targets.size() + omittedTargets)
                 : tr(stale ? "summary_stale" : "summary_noface", used, slotChoices.size(), mappings));
         var notice = element(ui, "provider_noface", UIElement.class);
         notice.setDisplay(!face && !stale);
@@ -451,7 +452,7 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
             arrangeUpgrades();
         }
         var selected = choices.getAsJsonObject("selected");
-        graph.accept(slotChoices, targets, selected.has("target") ? selected.get("target").getAsString() : "", position,
+        graph.accept(slotChoices, targets, omittedTargets, selected.has("target") ? selected.get("target").getAsString() : "", position,
                 objects(choices, "processingProviders"), names);
     }
 
@@ -498,9 +499,9 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
             var returns = patterns.resources(lane, "returns");
             boolean sending = lane.get("pendingSend").getAsBoolean();
             if (!returns.isEmpty()) {
-                var names = returns.stream().map(stack -> stack.what().getDisplayName().getString() + " × "
-                        + PatternChoices.amount(stack)).toList();
-                state.setText(tr("returns_waiting", String.join(", ", names))
+                var names = returns.stream().map(stack -> Component.empty().append(stack.what().getDisplayName())
+                        .append(" × " + PatternChoices.amount(stack))).toList();
+                state.setText(tr("returns_waiting", joined(names))
                         .withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
             } else {
                 state.setText(tr(sending ? "returns_sending" : "returns_empty").withStyle(Style.EMPTY.withColor(
@@ -619,11 +620,28 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         }
     }
 
+    /** How many entries of {@code field} a large domain could not send: {@code SyncBudget}'s {@code omitted} count. */
+    static int omitted(JsonObject root, String field) {
+        if (!root.has("omitted") || !root.get("omitted").isJsonObject()) return 0;
+        var omitted = root.getAsJsonObject("omitted");
+        return omitted.has(field) ? Math.max(0, omitted.get(field).getAsInt()) : 0;
+    }
+
     private static List<JsonObject> objects(JsonObject root, String field) {
         if (!root.has(field)) return List.of();
         var values = new ArrayList<JsonObject>();
         root.getAsJsonArray(field).forEach(value -> values.add(value.getAsJsonObject()));
         return values;
+    }
+
+    /** {@code parts} joined with the language's list separator. */
+    static net.minecraft.network.chat.MutableComponent joined(List<? extends Component> parts) {
+        var joined = Component.empty();
+        for (int index = 0; index < parts.size(); index++) {
+            if (index > 0) joined.append(tr("returns_separator"));
+            joined.append(parts.get(index));
+        }
+        return joined;
     }
 
     static net.minecraft.network.chat.MutableComponent tr(String key, Object... arguments) {

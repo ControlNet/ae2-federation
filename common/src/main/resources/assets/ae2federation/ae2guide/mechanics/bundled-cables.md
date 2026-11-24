@@ -61,6 +61,8 @@ Hold Federation Cables and right-click the bundle. An outline shows where the ne
 * An **end face** adds one layer, using one cable for each cell of the cross-section: 4 for a 2×2.
 * A **side** starts a branch with the same cross-section. It covers the side's full width and takes as many layers of
   the bundle as it needs: a 2×2 branch takes two layers, and a 3×3 branch three. The branch is centred where you click. Extend it from its end face.
+  Branches on different sides take the same layers or none of the same: a branch that would share only some is
+  refused.
 * A **turn** is a branch from the last layers.
 
 Sneak to place a single ordinary cable instead.

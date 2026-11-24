@@ -1,5 +1,8 @@
 package space.controlnet.ae2federation.router;
 
+import appeng.api.util.DimensionalBlockPos;
+import appeng.util.InteractionUtil;
+import appeng.util.Platform;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
@@ -11,7 +14,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 /**
@@ -33,10 +35,15 @@ public final class WrenchDismantle {
         }
     }
 
-    /** Whether {@code player} is asking to dismantle: sneaking with a wrench in the main hand. */
+    /** Whether {@code player} is asking to dismantle: sneaking with a wrench in the main hand, as AE2 judges it. */
     public static boolean asked(Player player, InteractionHand hand) {
-        return !player.isSpectator() && hand == InteractionHand.MAIN_HAND && player.isSecondaryUseActive()
-                && player.getItemInHand(hand).is(Tags.Items.TOOLS_WRENCH);
+        return !player.isSpectator() && hand == InteractionHand.MAIN_HAND && InteractionUtil.isInAlternateUseMode(player)
+                && InteractionUtil.canWrenchDisassemble(player.getItemInHand(hand));
+    }
+
+    /** Whether {@code player} may change the block at {@code position}, by the check AE2's tools make. */
+    public static boolean permitted(Player player, Level level, BlockPos position) {
+        return Platform.hasPermissions(new DimensionalBlockPos(level, position), player);
     }
 
     /**
@@ -47,7 +54,7 @@ public final class WrenchDismantle {
     public static InteractionResult dismantle(Player player, Level level, InteractionHand hand, BlockHitResult hit) {
         if (!asked(player, hand)) return InteractionResult.PASS;
         var position = hit.getBlockPos();
-        if (!level.mayInteract(player, position)) return InteractionResult.FAIL;
+        if (!permitted(player, level, position)) return InteractionResult.FAIL;
         if (level instanceof ServerLevel serverLevel) {
             var state = level.getBlockState(position);
             var drops = Block.getDrops(state, serverLevel, position, level.getBlockEntity(position), player,

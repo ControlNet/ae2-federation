@@ -5,6 +5,7 @@ import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
+import space.controlnet.ae2federation.router.CableLinkedBlock;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
 /**
@@ -49,7 +50,7 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
 
         /**
          * Whether the device beside {@code face} of {@code pos} belongs to one body with the device beside the same face
-         * of the next cell {@code toward}.
+         * of the next cell {@code toward}, and that device links cable toward the bundle.
          */
         default boolean oneBody(BlockPos pos, Direction face, Direction toward) {
             return false;
@@ -166,15 +167,20 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
 
             @Override
             public boolean oneBody(BlockPos cell, Direction face, Direction toward) {
-                return BundleContacts.oneBody(level, cell.relative(face), toward);
+                // One body need not take the next row: a Quantum Cube's border members link no cable.
+                var next = cell.relative(toward).relative(face);
+                return BundleContacts.oneBody(level, cell.relative(face), toward)
+                        && level.getBlockState(next).getBlock() instanceof CableLinkedBlock linked
+                        && linked.linksCable(level.getBlockState(next), face.getOpposite());
             }
         });
     }
 
     /**
      * Whether the dense arm toward {@code side} of {@code pos}, whose whole row one device body takes, runs on into the
-     * next cell {@code toward}: the device beside it belongs to the same body. A formed body is a solid cuboid, so it then
-     * takes that cell's whole row too, which need not be read again.
+     * next cell {@code toward}: the device beside it belongs to the same body and links cable there. A formed body is a
+     * solid cuboid whose link rule is the same across a row, so it then takes that cell's whole row too, which need not
+     * be read again.
      */
     private static boolean armRunsOn(BundleSegment segment, BlockPos pos, Direction side, Direction toward,
             Contacts contacts) {

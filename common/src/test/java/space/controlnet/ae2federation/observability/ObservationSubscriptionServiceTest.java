@@ -96,6 +96,29 @@ class ObservationSubscriptionServiceTest {
         assertTrue(authority.lastDelta.replacement().providers().isEmpty());
     }
 
+    @Test
+    void dataOnlyChangesRebuildAtMostOncePerRefreshPeriod() {
+        var service = new ObservationSubscriptionService(4, 2);
+        var authority = new MutableAuthority(UUID.randomUUID(), UUID.randomUUID(), SCOPE, true);
+        authority.deltaDelivery = true;
+        service.subscribe(authority, SCOPE);
+        var builds = 0;
+        // Traffic every tick: the data revision moves each tick, topology and rules stay.
+        for (long tick = 0; tick < 100; tick++) {
+            if (service.projectionDue(SCOPE, 1, 0, tick)) {
+                builds++;
+                service.synchronizeProjection(snapshot(tick, java.util.List.of()), false, tick);
+            }
+        }
+
+        assertEquals(100 / ObservationSubscriptionService.DATA_REFRESH_TICKS, builds);
+        assertEquals(builds - 1, authority.deltaDeliveries);
+        assertFalse(service.projectionDue(SCOPE, 1, 0, 99));
+        assertTrue(service.projectionDue(SCOPE, 2, 0, 99), "A topology change rebuilds at once");
+        assertTrue(service.projectionDue(SCOPE, 1, 1, 99), "A rule change rebuilds at once");
+        assertTrue(service.projectionDue(OTHER, 1, 0, 99), "A scope never projected is due");
+    }
+
     private static FederationDomainStateDelta delta(long baseRevision, long dataRevision) {
         return new FederationDomainStateDelta(new FederationDomainStateSnapshot(SCOPE, 1, 0, dataRevision, java.util.List.of(),
                 java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(),

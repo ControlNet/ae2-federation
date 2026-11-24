@@ -128,7 +128,7 @@ public final class EcoComputationSystemBlockEntity extends ECOComputationSystemB
                 this::getSelectedBuildLength, this::isMirrorBuild, mirror -> builder.setMirrorBuild(player, mirror),
                 () -> builder.decreaseBuildLength(player), () -> builder.increaseBuildLength(player),
                 () -> builder.autoBuild(player), this::isFormed, this::isBuildInProgress,
-                builder::createLocalPreviewPlan));
+                builder::createLocalPreviewPlan, this::getBuildDefinition));
         return EcoComputationPanel.create(this, holder, buildWindow);
     }
 

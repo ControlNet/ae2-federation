@@ -77,6 +77,12 @@ public final class QuantumLinkService {
         dirty.clear();
         for (var pairId : pairs) {
             for (var cube : index.members(pairId)) {
+                if (index.copy(cube) || index.partnerRebound(cube) && !partnerHolds(cube)) {
+                    // Its blocks lose the pair id; the cube then reports itself unbound.
+                    unbind(cube);
+                    publish(cube, null);
+                    continue;
+                }
                 var status = index.status(cube);
                 publish(cube, status.kind() == QuantumPairIndex.Status.Kind.LINKED ? status.partner() : null);
             }
@@ -92,6 +98,24 @@ public final class QuantumLinkService {
         }
     }
 
+    /**
+     * Whether the block at the cube's bound partner place already holds the cube's pair id: a fresh bind whose other
+     * end has not reported again yet (its chunk may be loaded but not ticking).
+     */
+    private boolean partnerHolds(Cube cube) {
+        var to = cube.boundTo();
+        var level = level(to.dimension());
+        return level != null && level.isLoaded(to.min())
+                && level.getBlockEntity(to.min()) instanceof QuantumCubeBlockEntity there
+                && there.pairId() == cube.pairId();
+    }
+
+    private void unbind(Cube cube) {
+        var level = level(cube.dimension());
+        var body = body(level, cube.min());
+        if (body != null) QuantumCubeBlockEntity.bind(level, body.min, body.max, 0, null);
+    }
+
     private @Nullable ServerLevel level(String dimension) {
         for (var level : server.getAllLevels()) {
             if (FederationDomainRegistryAccess.dimension(level).equals(dimension)) return level;
@@ -104,7 +128,8 @@ public final class QuantumLinkService {
 
     /**
      * Binds the cube whose lowest block the card names to the cube whose lowest block is {@code to}, under a new pair
-     * id. Both leave whatever pair they had: a loaded cube left behind is cleared, so a third cube never joins a pair.
+     * id. Both leave whatever pair they had: a loaded cube left behind is cleared, so a third cube never joins a pair;
+     * one that is not loaded is cleared once it loads beside its rebound partner ({@link QuantumPairIndex#stale}).
      */
     public Bind bind(GlobalPos from, GlobalPos to) {
         if (from.equals(to)) return Bind.SAME_CUBE;

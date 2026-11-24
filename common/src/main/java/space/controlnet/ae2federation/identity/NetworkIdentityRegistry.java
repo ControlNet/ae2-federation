@@ -1,27 +1,23 @@
 package space.controlnet.ae2federation.identity;
 
 import appeng.api.networking.IGrid;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 
 /**
  * Level-wide identity registry. Live claims are held in an {@link IdentityClaimIndex}, updated incrementally by each
- * Grid's identity service as nodes join and leave. Only the settled status per network is persisted, and the data is
- * marked dirty only when that status changes.
+ * Grid's identity service as nodes join and leave. Nothing is saved: each node keeps its own lineage in the Grid's save,
+ * and settlement is recomputed from the live claims. The SavedData only gives the server one shared instance.
  */
 public final class NetworkIdentityRegistry extends SavedData {
     private static final String DATA_NAME = "ae2federation_network_identities";
     private static final Factory<NetworkIdentityRegistry> FACTORY =
             new Factory<>(NetworkIdentityRegistry::new, NetworkIdentityRegistry::load);
 
-    private final Map<NetworkId, IdentityStatus> settlements = new HashMap<>();
     private final IdentityClaimIndex<IGrid> claims = new IdentityClaimIndex<>();
 
     public static NetworkIdentityRegistry get(ServerLevel level) {
@@ -41,11 +37,7 @@ public final class NetworkIdentityRegistry extends SavedData {
     }
 
     public IdentitySettlement settle(IGrid grid) {
-        return claims.settle(grid, result -> result.networkId().ifPresent(networkId -> {
-            if (settlements.put(networkId, result.status()) != result.status()) {
-                setDirty();
-            }
-        }));
+        return claims.settle(grid, result -> { });
     }
 
     /** Read-only view of each live Grid's published lineages, for diagnostics. */
@@ -64,26 +56,10 @@ public final class NetworkIdentityRegistry extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
-        var entries = new ListTag();
-        settlements.forEach((networkId, status) -> {
-            var entry = new CompoundTag();
-            entry.putUUID("network", networkId.value());
-            entry.putString("status", status.name());
-            entries.add(entry);
-        });
-        tag.put("settlements", entries);
         return tag;
     }
 
     private static NetworkIdentityRegistry load(CompoundTag tag, HolderLookup.Provider registries) {
-        var registry = new NetworkIdentityRegistry();
-        for (var rawEntry : tag.getList("settlements", Tag.TAG_COMPOUND)) {
-            var entry = (CompoundTag) rawEntry;
-            if (entry.hasUUID("network")) {
-                registry.settlements.put(new NetworkId(entry.getUUID("network")),
-                        IdentityStatus.valueOf(entry.getString("status")));
-            }
-        }
-        return registry;
+        return new NetworkIdentityRegistry();
     }
 }

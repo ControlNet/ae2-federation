@@ -175,13 +175,18 @@ final class SolarObservatoryScene implements AutoCloseable {
         return grid(MAIN).getStorageService().getInventory().getAvailableStacks().get(stellarFlux());
     }
 
+    /** The Stellar Flux key; Data Energistics 3.4 moved it from {@code ae2.key} to {@code integration.ae.ae2.key}. */
     private static AEKey stellarFlux() {
-        try {
-            return (AEKey) Class.forName("com.fish_dan_.data_energistics.ae2.key.StellarFluxKey").getField("INSTANCE")
-                    .get(null);
-        } catch (ReflectiveOperationException exception) {
-            throw new IllegalStateException("Data Energistics' Stellar Flux key is missing", exception);
+        var missing = new IllegalStateException("Data Energistics' Stellar Flux key is missing");
+        for (var name : List.of("com.fish_dan_.data_energistics.integration.ae.ae2.key.StellarFluxKey",
+                "com.fish_dan_.data_energistics.ae2.key.StellarFluxKey")) {
+            try {
+                return (AEKey) Class.forName(name).getField("INSTANCE").get(null);
+            } catch (ReflectiveOperationException exception) {
+                missing.addSuppressed(exception);
+            }
         }
+        throw missing;
     }
 
     private BlockPos observatory() {

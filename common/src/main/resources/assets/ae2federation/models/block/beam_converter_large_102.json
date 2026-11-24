@@ -1,0 +1,165 @@
+{
+  "parent": "minecraft:block/block",
+  "render_type": "cutout",
+  "textures": {
+    "0": "ae2federation:block/beam_converter/beam_converter_side",
+    "1": "ae2federation:block/beam_converter/large_beam_converter",
+    "particle": "ae2federation:block/beam_converter/beam_converter_side",
+    "surface": "ae2federation:block/refined_devices/surface",
+    "emission": "ae2federation:block/refined_devices/emission"
+  },
+  "elements": [
+    {
+      "name": "long_c",
+      "from": [
+        -1,
+        7,
+        -2
+      ],
+      "to": [
+        1,
+        10,
+        8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9.0,
+            14.75,
+            9.5,
+            15.5
+          ],
+          "texture": "#1"
+        },
+        "east": {
+          "uv": [
+            6.5,
+            14.75,
+            4.0,
+            15.5
+          ],
+          "texture": "#1"
+        },
+        "south": {
+          "uv": [
+            9.5,
+            14.75,
+            10.0,
+            15.5
+          ],
+          "texture": "#1"
+        },
+        "west": {
+          "uv": [
+            4.0,
+            14.75,
+            6.5,
+            15.5
+          ],
+          "texture": "#1"
+        },
+        "up": {
+          "uv": [
+            6.5,
+            15.25,
+            9.0,
+            15.75
+          ],
+          "texture": "#1",
+          "rotation": 90
+        },
+        "down": {
+          "uv": [
+            6.5,
+            14.75,
+            9.0,
+            15.25
+          ],
+          "texture": "#1",
+          "rotation": 270
+        }
+      },
+      "rotation": {
+        "angle": 45,
+        "axis": "z",
+        "origin": [
+          0,
+          16,
+          -16
+        ]
+      }
+    },
+    {
+      "name": "long_d",
+      "from": [
+        -1,
+        9,
+        8
+      ],
+      "to": [
+        1,
+        10,
+        16
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            11.25,
+            11.25,
+            9.25,
+            11.5
+          ],
+          "texture": "#1"
+        },
+        "south": {
+          "uv": [
+            11.0,
+            11.25,
+            11.25,
+            11.75
+          ],
+          "texture": "#1",
+          "rotation": 90
+        },
+        "west": {
+          "uv": [
+            9.25,
+            11.5,
+            11.25,
+            11.75
+          ],
+          "texture": "#1"
+        },
+        "up": {
+          "uv": [
+            9.25,
+            11.25,
+            11.25,
+            11.75
+          ],
+          "texture": "#1",
+          "rotation": 90
+        },
+        "down": {
+          "uv": [
+            9.25,
+            11.25,
+            11.25,
+            11.75
+          ],
+          "texture": "#1",
+          "rotation": 270
+        }
+      },
+      "rotation": {
+        "angle": 45,
+        "axis": "z",
+        "origin": [
+          0,
+          16,
+          -16
+        ]
+      }
+    }
+  ]
+}

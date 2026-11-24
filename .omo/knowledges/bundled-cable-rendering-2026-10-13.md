@@ -62,6 +62,16 @@ a beam per cell), 1a34a908 (rails open at joints), then the guide page `bundled-
   turns at their boundary (the second of them draws none). Stretches stop at branch layers, whose joint box turns on
   its own. Boxes stay at most 3 layers, so `BundleBeamMesh` is unchanged. Walking the stretch reads up to its length
   in extra looks, only for corner cells of layers with a side contact. Check: `build/design-review-check/round5/`.
+- 2026-11-03 (review fix): the stretch is per side now (`BundleBeam.Turns`). Before, one walk followed any side's
+  `contactsBefore/After`, so bodies on opposite sides with different lengths merged into one stretch and every turn
+  landed at its middle, into a side with no device (a 1-layer body on +X and a 3-layer body on -X). Each side's body
+  now turns at its own middle. Two layers share one box only when every body touching either layer turns at their
+  boundary; otherwise an even body turns at its lower middle layer with a 1-layer box. Single bodies and aligned bodies
+  look as before (`BundleBeamTest`). Same review: a layer covered by the previous layer's box (the second of an even
+  pair, or a branch box's far layers) draws none, so a Quantum Cube that read only the cable touching its face lost
+  its carrier; `RefinedDeviceRenderer.covering` now looks back for the covering box. Check:
+  `build/bundle-beam-check/before-after.png` (dev scene `runRefinedDeviceClient`, views `bundle-into-cube` and
+  `bundle-between-bodies`).
 - Cost, measured 2026-10-30 (temporary GameTest probe, not in git: three 24-layer bundles, 3x3 and 2x2 with 4-layer
   Router bodies on top, 3x3 alone; `BundleLook.of` + `BundleBeam.of` per corner cell, 2000 rounds, median of 3 runs,
   same probe in a worktree of d53d57b9). Per corner cell per tick: 3x3 with Routers 2.1 us before, 11.5 us with the

@@ -1,0 +1,21 @@
+{
+ "data": [
+  {
+   "id": 9397680,
+   "fileName": "Create-Ultimate-Selection-2-Serverpack-MC-1.21.1-13.1.0.zip",
+   "displayName": "Create Ultimate Selection 2 Serverpack MC 1.21.1-13.1.0",
+   "releaseType": 1,
+   "gameVersions": [
+    "1.21.1",
+    "NeoForge"
+   ],
+   "isEarlyAccessContent": false,
+   "hasServerPack": false,
+   "additionalFilesCount": 0,
+   "additionalServerPackFilesCount": 0,
+   "parentProjectFileId": 9397678,
+   "fileLength": 797421839,
+   "dateCreated": "2026-11-01T18:22:32.013Z"
+  }
+ ]
+}

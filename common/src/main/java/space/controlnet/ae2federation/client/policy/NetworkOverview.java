@@ -42,6 +42,42 @@ public final class NetworkOverview {
         return out;
     }
 
+    /**
+     * {@link #describe}'s text within what the screen's binding can send ({@link SyncBudget}): each network first keeps
+     * fewer block positions and devices (the location outline gets coarser), then the last networks are left out.
+     * Measured on 2026-11-07: about 680 characters per network of some twenty blocks; all 256 blocks would add
+     * roughly 4,000 more (estimated from the coordinates' length).
+     */
+    public static String text(ServerLevel level, Collection<NetworkId> members) {
+        var described = describe(level, members);
+        var text = described.toString();
+        for (int cap : new int[] {MAX_BLOCKS / 4, MAX_BLOCKS / 16, MAX_BLOCKS / 64, 0}) {
+            if (text.length() <= SyncBudget.MAX_CHARS) return text;
+            for (var value : described) cap(value.getAsJsonObject(), cap);
+            text = described.toString();
+        }
+        return text.length() <= SyncBudget.MAX_CHARS ? text : SyncBudget.fitArray(described);
+    }
+
+    /** Keeps the first {@code count} block positions and devices of one network and of each of its identity parts. */
+    private static void cap(JsonObject network, int count) {
+        if (network.has("blocks")) network.add("blocks", head(network.getAsJsonArray("blocks"), count * 3));
+        if (network.has("devices")) network.add("devices", head(network.getAsJsonArray("devices"), count));
+        if (network.has("identityParts")) {
+            for (var part : network.getAsJsonArray("identityParts")) {
+                var json = part.getAsJsonObject();
+                if (json.has("blocks")) json.add("blocks", head(json.getAsJsonArray("blocks"), count * 3));
+            }
+        }
+    }
+
+    private static JsonArray head(JsonArray values, int count) {
+        if (values.size() <= count) return values;
+        var kept = new JsonArray();
+        for (int index = 0; index < count; index++) kept.add(values.get(index));
+        return kept;
+    }
+
     /** The live Grids claiming each network; more than one only while a split is unresolved. */
     static Map<NetworkId, List<IGrid>> gridsByNetwork(ServerLevel level) {
         var byNetwork = new HashMap<NetworkId, List<IGrid>>();

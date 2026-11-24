@@ -185,22 +185,7 @@ public final class StorageChainGameTests {
             if (phase[0] == -1) {
                 helper.assertTrue(false, failure[0]);
             }
-            if (phase[0] == 0 && fixture.networksSettled()) {
-                phase[0] = 1;
-                helper.assertTrue(false, "Waiting one tick after native endpoint settlement");
-            }
-            if (phase[0] == 1) {
-                fixture.placeNextBridge();
-                phase[0] = 2;
-                helper.assertTrue(false, "Waiting for first Bridge attachment");
-            }
-            if (phase[0] >= 2 && phase[0] <= 4 && fixture.latestBridgeReady()) {
-                fixture.placeNextBridge();
-                phase[0]++;
-                helper.assertTrue(false, "Waiting for next Bridge attachment");
-            }
-            helper.assertTrue(phase[0] == 5 && fixture.bridgesReady(),
-                    "Four Bridge Federation Domains and native endpoint identities must be ready: " + fixture.readiness());
+            awaitBridges(helper, fixture, phase);
             try {
                 assertion.verify(fixture, PolicyService.get(helper.getLevel()), StorageMountService.get(helper.getLevel()));
                 fixture.close();
@@ -211,6 +196,78 @@ public final class StorageChainGameTests {
                 throw exception;
             }
         });
+    }
+
+    /**
+     * A's ME Storage Bus faces an unconfigured ME Interface of B, so it reads B's whole storage, while B and C both
+     * consume A. C reads A through its own projection, which reaches B's projection of A through that Bus: A's drive
+     * must still count once for C, as for A and B.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 500, required = true, manualOnly = true)
+    public static void chainStorageBusLoopCountsOnce(GameTestHelper helper) {
+        var fixture = new ChainStorageFixture(helper);
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            awaitBridges(helper, fixture, phase);
+            var policies = PolicyService.get(helper.getLevel());
+            var mounts = StorageMountService.get(helper.getLevel());
+            if (phase[0] == 5) {
+                helper.assertValueEqual(inventory(fixture.aGrid()).insert(IRON, 7, Actionable.MODULATE, ACTION_SOURCE),
+                        7L, "A's drive takes its own iron before the Bus exists");
+                helper.assertValueEqual(inventory(fixture.bGrid()).insert(GOLD, 3, Actionable.MODULATE, ACTION_SOURCE),
+                        3L, "B's drive takes its own gold");
+                fixture.placeBusFromAToBInterface();
+                configure(policies, fixture.aToB(), PolicyRule.storageDefaults());
+                configure(policies, fixture.aToC(), PolicyRule.storageDefaults());
+                phase[0] = 6;
+                helper.assertTrue(false, "Waiting for the Storage Bus and both projections of A");
+            }
+            helper.assertValueEqual(inventory(fixture.aGrid()).getAvailableStacks().get(GOLD), 3L,
+                    "Waiting for A's Storage Bus to read B");
+            helper.assertTrue(mounts.projection(fixture.aToB()) != null && mounts.projection(fixture.aToC()) != null,
+                    "Waiting for B's and C's projections of A");
+            helper.assertTrue(inventory(fixture.cGrid()).getAvailableStacks().get(IRON) > 0,
+                    "Waiting for C to see A's iron");
+            GameTestChecks.once(helper, () -> {
+                var c = inventory(fixture.cGrid());
+                helper.assertValueEqual(c.getAvailableStacks().get(IRON), 7L,
+                        "C counts A's drive once, not again through A's Bus and B's projection of A");
+                helper.assertValueEqual(c.extract(IRON, 8, Actionable.SIMULATE, ACTION_SOURCE), 7L,
+                        "C cannot take more of A's iron than A really holds");
+                helper.assertValueEqual(inventory(fixture.aGrid()).getAvailableStacks().get(IRON), 7L,
+                        "A counts its own drive once");
+                helper.assertValueEqual(inventory(fixture.bGrid()).getAvailableStacks().get(IRON), 7L,
+                        "B counts A's drive once");
+                PolicyEvidence.write("chainstoragebusloopcountsonce", 6, Map.of("cIron", "7", "cExtractable", "7",
+                        "aIron", "7", "bIron", "7"));
+                fixture.close();
+            });
+        });
+    }
+
+    private static appeng.api.storage.MEStorage inventory(appeng.api.networking.IGrid grid) {
+        return grid.getStorageService().getInventory();
+    }
+
+    /** Places the four Bridges one at a time; passes once all four Federation Domains are ready (phase 5). */
+    private static void awaitBridges(GameTestHelper helper, ChainStorageFixture fixture, int[] phase) {
+        if (phase[0] == 0 && fixture.networksSettled()) {
+            phase[0] = 1;
+            helper.assertTrue(false, "Waiting one tick after native endpoint settlement");
+        }
+        if (phase[0] == 1) {
+            fixture.placeNextBridge();
+            phase[0] = 2;
+            helper.assertTrue(false, "Waiting for first Bridge attachment");
+        }
+        if (phase[0] >= 2 && phase[0] <= 4 && fixture.latestBridgeReady()) {
+            fixture.placeNextBridge();
+            phase[0]++;
+            helper.assertTrue(false, "Waiting for next Bridge attachment");
+        }
+        helper.assertTrue(phase[0] >= 5 && fixture.bridgesReady(),
+                "Four Bridge Federation Domains and native endpoint identities must be ready: " + fixture.readiness());
     }
 
     private static space.controlnet.ae2federation.policy.PolicyRevision configure(

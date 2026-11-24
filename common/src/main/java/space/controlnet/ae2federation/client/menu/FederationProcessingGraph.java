@@ -104,6 +104,8 @@ public final class FederationProcessingGraph {
 
     private final List<JsonObject> slots = new ArrayList<>();
     private final List<JsonObject> endpoints = new ArrayList<>();
+    /** Endpoints a large domain could not send (see {@code SyncBudget}); the column says how many. */
+    private int moreEndpoints;
     /** {@link #endpoints} by id; the wires look their Endpoint up every frame. */
     private final java.util.Map<String, JsonObject> endpointsById = new java.util.HashMap<>();
     /** Display names of the domain's networks, in the order of the choices' {@code networkIndex}. */
@@ -293,12 +295,13 @@ public final class FederationProcessingGraph {
     /** "2 Providers · 3 Endpoints · 4 mappings", for the header while this page is shown. */
     Component summary() {
         int mappings = wires.size() + otherWires.size();
-        return tr("summary", providers.size(), endpoints.size(), mappings);
+        return tr("summary", providers.size(), endpoints.size() + moreEndpoints, mappings);
     }
 
     /** Pattern slots and Endpoints of the selected Provider, from the same authorized choices as the list view. */
-    void accept(List<JsonObject> slotChoices, List<JsonObject> targetChoices, String selectedTarget, String providerAt,
-            List<JsonObject> providerSections, List<String> names) {
+    void accept(List<JsonObject> slotChoices, List<JsonObject> targetChoices, int omittedTargets, String selectedTarget,
+            String providerAt, List<JsonObject> providerSections, List<String> names) {
+        moreEndpoints = Math.max(0, omittedTargets);
         providerPosition = providerAt == null ? "" : providerAt;
         networkNames.clear();
         networkNames.addAll(names);
@@ -414,7 +417,8 @@ public final class FederationProcessingGraph {
         }
         int index = 0;
         for (var endpoint : endpoints) right.addChild(endpointCard(endpoint, index++ < MAX_ENDPOINT_THUMBNAILS));
-        if (endpoints.isEmpty()) right.addChild(note(tr("no_endpoints")));
+        if (endpoints.isEmpty() && moreEndpoints == 0) right.addChild(note(tr("no_endpoints")));
+        if (moreEndpoints > 0) right.addChild(note(tr("more_endpoints", moreEndpoints)));
         body.addChildren(left, right);
         searchEmpty = note(tr("no_matches"));
         searchEmpty.setId("processing_search_empty");

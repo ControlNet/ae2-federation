@@ -27,6 +27,7 @@ import space.controlnet.ae2federation.energy.EnergyPoolReading;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityRegistry;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomainRegistry;
+import space.controlnet.ae2federation.storage.provenance.OriginNetworkId;
 import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
 
 /**
@@ -428,6 +429,9 @@ public final class FederationStatistics {
             book.prune(second);
             stored.keySet().retainAll(pass.members);
             names.keySet().retainAll(pass.members);
+            // Networks that left or unloaded would otherwise keep their dead Grids in this source index.
+            provenance.retain(pass.members.stream().map(OriginNetworkId::new)
+                    .collect(java.util.stream.Collectors.toSet()));
         }
         changed.accept(second);
     }

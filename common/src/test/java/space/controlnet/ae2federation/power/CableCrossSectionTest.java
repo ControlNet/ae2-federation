@@ -57,10 +57,12 @@ final class CableCrossSectionTest {
     }
 
     @Test
-    void aConverterIsTwiceItsWiderSideLong() {
+    void converterLengths() {
         assertEquals(2, CableCrossSection.ONE_BY_ONE.converterLength());
-        assertEquals(6, CableCrossSection.ONE_BY_THREE.converterLength());
-        assertEquals(4, CableCrossSection.TWO_BY_TWO.converterLength());
+        assertEquals(3, CableCrossSection.TWO_BY_TWO.converterLength(), "the artist's 2x2 converter is 3 long");
+        assertEquals(6, CableCrossSection.THREE_BY_THREE.converterLength());
+        assertEquals(6, CableCrossSection.ONE_BY_THREE.converterLength(), "unbuilt sections keep twice their wider side");
+        assertEquals(12, CableCrossSection.TWO_BY_TWO.converterBlocks());
         assertEquals(54, CableCrossSection.THREE_BY_THREE.converterBlocks());
         assertEquals(Optional.of(CableCrossSection.ONE_BY_THREE), CableCrossSection.of(3, 1), "either order");
         assertEquals(Optional.empty(), CableCrossSection.of(1, 4));

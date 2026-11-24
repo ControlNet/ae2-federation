@@ -58,7 +58,7 @@ public final class CraftingCpuLifecycle {
             var link = access.lastLink(cpu);
             return new Observation(link instanceof ICraftingLink nativeLink ? nativeLink : null,
                     level, block.getBlockPos(), false);
-        } catch (ReflectiveOperationException | RuntimeException unavailable) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
             return null;
         }
     }
@@ -70,7 +70,7 @@ public final class CraftingCpuLifecycle {
         if (access == null) return null;
         try {
             return access.lastLink(cpu) instanceof ICraftingLink link ? link : null;
-        } catch (ReflectiveOperationException | RuntimeException unavailable) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
             return null;
         }
     }
@@ -81,7 +81,7 @@ public final class CraftingCpuLifecycle {
         if (access == null) return -1;
         try {
             return access.waitingFor(cpu, key);
-        } catch (ReflectiveOperationException | RuntimeException unavailable) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
             return -1;
         }
     }
@@ -99,7 +99,7 @@ public final class CraftingCpuLifecycle {
         try {
             var pending = access.pendingOutputs(cpu, key);
             return pending < 0 ? -1 : access.waitingFor(cpu, key) + pending;
-        } catch (ReflectiveOperationException | RuntimeException unavailable) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
             return -1;
         }
     }
@@ -110,7 +110,7 @@ public final class CraftingCpuLifecycle {
         if (access == null) return false;
         try {
             return access.terminated(anchor, craftingId);
-        } catch (ReflectiveOperationException | RuntimeException unavailable) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
             return false;
         }
     }

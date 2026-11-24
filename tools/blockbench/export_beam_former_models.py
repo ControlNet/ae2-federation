@@ -50,6 +50,7 @@ def clip_face(face, name, fr, to, cfr, cto):
 
 
 def export_elements(model, clip=None, offset=(0, 0, 0)):
+    """Elements of a Blockbench project as model JSON, cut to the member box clip=(lo, hi), x and y or x, y and z."""
     res = model["resolution"]["width"]
     out = []
     for e in model["elements"]:
@@ -59,18 +60,19 @@ def export_elements(model, clip=None, offset=(0, 0, 0)):
         cfr, cto = list(fr), list(to)
         if clip is not None:
             lo, hi = clip
+            axes = range(len(lo))
             if any(rot):
-                # Rotated parts go whole to the member that holds their rotated centre.
+                # Rotated parts (about z) go whole to the member that holds their rotated centre.
                 cx, cy = (fr[0] + to[0]) / 2 - origin[0], (fr[1] + to[1]) / 2 - origin[1]
                 a = math.radians(rot[2])
-                px = origin[0] + cx * math.cos(a) - cy * math.sin(a)
-                py = origin[1] + cx * math.sin(a) + cy * math.cos(a)
-                if not (lo[0] <= px < hi[0] and lo[1] <= py < hi[1]):
+                centre = (origin[0] + cx * math.cos(a) - cy * math.sin(a),
+                          origin[1] + cx * math.sin(a) + cy * math.cos(a), (fr[2] + to[2]) / 2)
+                if not all(lo[i] <= centre[i] < hi[i] for i in axes):
                     continue
             else:
-                for i in (0, 1):
+                for i in axes:
                     cfr[i], cto[i] = max(fr[i], lo[i]), min(to[i], hi[i])
-                if cfr[0] >= cto[0] or cfr[1] >= cto[1]:
+                if any(cfr[i] >= cto[i] for i in axes):
                     continue
         faces = {}
         for name, f in e["faces"].items():
@@ -80,7 +82,7 @@ def export_elements(model, clip=None, offset=(0, 0, 0)):
             if clip is not None and not any(rot):
                 normal_axis = {"north": 2, "south": 2, "east": 0, "west": 0, "up": 1, "down": 1}[name]
                 at_max = name in ("south", "east", "up")
-                if normal_axis in (0, 1):
+                if normal_axis < len(clip[0]):
                     plane = cto[normal_axis] if at_max else cfr[normal_axis]
                     orig = to[normal_axis] if at_max else fr[normal_axis]
                     if plane != orig:

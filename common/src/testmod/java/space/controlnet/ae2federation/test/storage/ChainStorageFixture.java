@@ -52,6 +52,20 @@ public final class ChainStorageFixture implements AutoCloseable {
         lineX(3, 6, 4, 7, AEColor.YELLOW);
     }
 
+    /**
+     * Extends A's cable by one block next to B's and puts an ME Storage Bus on it facing an unconfigured ME Interface
+     * on B's cable, so A's Bus reads B's whole network storage.
+     */
+    public void placeBusFromAToBInterface() {
+        var busCable = new BlockPos(3, 3, 4);
+        fixtures.nativePorts().placeCable(busCable, AEColor.RED);
+        var bus = appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(busCable),
+                Direction.WEST, null, appeng.core.definitions.AEParts.STORAGE_BUS.asItem());
+        var face = appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(busCable.west()),
+                Direction.EAST, null, appeng.core.definitions.AEParts.INTERFACE.asItem());
+        helper.assertTrue(bus != null && face != null, "Native Storage Bus and Interface parts must be placeable");
+    }
+
     /** Takes B's only cell out, so B has no storage of its own and can only pass A's on. */
     public void emptyB() {
         chest(B_CHEST).setCell(net.minecraft.world.item.ItemStack.EMPTY);

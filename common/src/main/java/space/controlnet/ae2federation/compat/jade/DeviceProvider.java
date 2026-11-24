@@ -13,7 +13,9 @@ import space.controlnet.ae2federation.router.DeviceStructureUpdater;
 import space.controlnet.ae2federation.router.DeviceSummary;
 
 /**
- * A Router, Switch or Beam Converter: its body's size or why it does not form, and the networks a Switch body attaches.
+ * A Router, Switch, Beam Converter, Beam Former or Quantum Cube: its body's size or why it does not form, and the
+ * networks a Switch body attaches. Each of these block entities is a {@code RouterBlockEntity}, so one toggle covers them
+ * all; its label names no single device.
  */
 enum DeviceProvider implements IBlockComponentProvider, IServerDataProvider<BlockAccessor> {
     INSTANCE;

@@ -184,6 +184,14 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
         previousGroup = current;
     }
 
+    /**
+     * Drops a refresh still queued when the server stops; its TickTask never runs then. The queued tunnels reach the
+     * server through their levels, so the weak key alone would keep a closed single-player world in memory.
+     */
+    public static void closeServer(MinecraftServer server) {
+        PENDING.remove(server);
+    }
+
     private static void drain(MinecraftServer server) {
         var pending = PENDING.remove(server);
         if (pending == null) return;

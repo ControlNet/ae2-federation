@@ -22,7 +22,8 @@ import space.controlnet.ae2federation.storage.provenance.FederationManagedStorag
  * What a consumer is owed but does not take now, because the networks are not linked, the consumer is not loaded or
  * its CPU is out of sight, also stays there and is counted as held, to be handed back by {@link HeldReturnTransfer}
  * once the consumer can take it. What a consumer is owed after all its jobs ended, such as the output of a job it
- * cancelled, goes straight into its storage, so it needs no storage on the executing network to wait in.
+ * cancelled, goes straight into its storage, so it needs no storage on the executing network to wait in; but only while
+ * the consumer still uses this network's crafting. A consumer that dropped its rule gets nothing more from it.
  *
  * <p>What a provider gives back beyond any debt, such as a byproduct no pattern names, goes where it would go if the
  * provider were on the network that pushed to it: into the storage of the consumer whose CPU pushed to that provider
@@ -128,7 +129,7 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
                     handed += accepted;
                     left -= accepted;
                 }
-                // Then into the storage of the consumers whose jobs all ended: no CPU will wait for it any more.
+                // Then into the storage of consumers whose jobs all ended and that still use this network's crafting.
                 for (var owed : ledger.consumers(executing, what).entrySet()) {
                     if (left <= 0) break;
                     var consumer = consumerGrids.apply(owed.getKey());

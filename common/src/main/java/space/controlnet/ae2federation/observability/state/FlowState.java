@@ -14,7 +14,7 @@ public record FlowState(FederationDomainReference scope, FlowId id, OperationEve
         Objects.requireNonNull(unit);
         Objects.requireNonNull(attribution);
         long maximum = switch (unit) {
-            case ITEM, FLUID_DROPLET -> ObservationLimits.MAX_RESOURCE_AMOUNT;
+            case ITEM, FLUID_MILLIBUCKET -> ObservationLimits.MAX_RESOURCE_AMOUNT;
             case NANO_AE -> ObservationLimits.MAX_NANO_AE_AMOUNT;
         };
         if (amount <= 0 || amount > maximum) {

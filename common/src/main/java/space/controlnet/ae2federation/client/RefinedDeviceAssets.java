@@ -22,8 +22,9 @@ public final class RefinedDeviceAssets {
     public static List<RefinedDeviceMesh.Quad> mesh(String name) { return meshes.getOrDefault(name,List.of()); }
     public static void reload() {
         var next=new HashMap<String,List<RefinedDeviceMesh.Quad>>();
-        var names=new ArrayList<>(List.of("core-outer","core-inner","core-centre"));
-        for (int n=1;n<=3;n++) { names.add("laser-"+n); names.add("quantum-"+n); }
+        // Only the 3x3x6 Beam Converter still draws the Blender laser; 1x1x2 and 2x2x3 use the artist's models.
+        var names=new ArrayList<>(List.of("core-outer","core-inner","core-centre","laser-3"));
+        for (int n=1;n<=3;n++) names.add("quantum-"+n);
         for (var name:names) {
             try (var reader=Minecraft.getInstance().getResourceManager().openAsReader(id("device_meshes/"+name+".json"))) {
                 var result=new ArrayList<RefinedDeviceMesh.Quad>();

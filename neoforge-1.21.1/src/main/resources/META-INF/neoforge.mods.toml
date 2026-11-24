@@ -43,3 +43,11 @@ type="required"
 versionRange="${ldlib2_version_range}"
 ordering="AFTER"
 side="BOTH"
+
+# ExpandedAE before 2.1.2 overwrites PatternProviderLogic.pushPattern, which Federation's target binding wraps.
+[[dependencies.ae2federation]]
+modId="expandedae"
+type="optional"
+versionRange="[2.1.2,)"
+ordering="NONE"
+side="BOTH"
